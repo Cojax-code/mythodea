@@ -426,6 +426,41 @@ def choisir_flanc_attaquant(armee, joueur):
     else:
         return None
 
+def ordre_attaque_manche_2(armee, joueur, initiative_avant):
+    ordre = []
+    avant_deja_utilise = False
+
+    # 1. Avant-garde si bonus d'initiative
+    if initiative_avant[joueur] and armee[joueur]["avant"]["nombre"] > 0:
+        ordre.append("avant")
+        avant_deja_utilise = True
+
+    # 2. Arrière-garde
+    if armee[joueur]["arriere"]["nombre"] > 0:
+        ordre.append("arriere")
+
+    # 3. Flanc le plus nombreux puis flanc le moins nombreux
+    flancs = []
+
+    for flanc in ["droite", "gauche"]:
+        nombre = armee[joueur][flanc]["nombre"]
+
+        if nombre > 0:
+            flancs.append((flanc, nombre))
+
+    if len(flancs) == 2 and flancs[0][1] == flancs[1][1]:
+        random.shuffle(flancs)
+    else:
+        flancs.sort(key=lambda element: element[1], reverse=True)
+
+    for flanc, nombre in flancs:
+        ordre.append(flanc)
+
+    # 4. Avant normal, seulement si pas déjà utilisé avec le bonus
+    if not avant_deja_utilise and armee[joueur]["avant"]["nombre"] > 0:
+        ordre.append("avant")
+
+    return ordre
 
 def choisir_cible(armee, joueur_attaquant, type_attaquant):
     joueur_ennemi = ennemi_de(joueur_attaquant)
@@ -447,50 +482,60 @@ def manche_2(territory, initiative_avant):
 
     while controle_territoire(armee) == "conteste" and tour < 5:
         tour += 1
+        afficher_et_ecrire(f"\n--- Manche 2 / Tour {tour} ---")
 
-        for joueur in joueurs:
+        attaque_effectuee = False
+
+        for joueur in ["j1", "j2"]:
             armee = lire_blocs(territory)
 
             if controle_territoire(armee) != "conteste":
                 break
 
-            bloc_attaquant = None
+            ordre_attaques = ordre_attaque_manche_2(armee, joueur, initiative_avant)
 
-            # 1. Bonus avant-garde
-            # seulement si l'avant-garde était libre AVANT la manche 1
-            if initiative_avant[joueur] and armee[joueur]["avant"]["nombre"] > 0:
-                bloc_attaquant = "avant"
-
-            # 2. Sinon, arrière-garde
-            if bloc_attaquant is None:
-                if armee[joueur]["arriere"]["nombre"] > 0:
-                    bloc_attaquant = "arriere"
-
-            # 3. Sinon, flanc le plus nombreux
-            if bloc_attaquant is None:
-                bloc_attaquant = choisir_flanc_attaquant(armee, joueur)
-
-            if bloc_attaquant is None:
+            if len(ordre_attaques) == 0:
                 continue
 
-            type_attaquant = armee[joueur][bloc_attaquant]["type"]
+            afficher_et_ecrire(f"\nOrdre d'attaque de {joueur} : {', '.join(ordre_attaques)}")
 
-            cible = choisir_cible(armee, joueur, type_attaquant)
+            for bloc_attaquant in ordre_attaques:
+                armee = lire_blocs(territory)
 
-            if cible is None:
-                continue
+                if controle_territoire(armee) != "conteste":
+                    break
 
-            attaque_ciblee(armee, joueur, bloc_attaquant, cible)
+                if armee[joueur][bloc_attaquant]["nombre"] <= 0:
+                    continue
 
-            armee = lire_blocs(territory)
+                type_attaquant = armee[joueur][bloc_attaquant]["type"]
 
-        if tour >= 5 and controle_territoire(armee) == "conteste":
+                cible = choisir_cible(armee, joueur, type_attaquant)
+
+                if cible is None:
+                    continue
+
+                attaque_ciblee(armee, joueur, bloc_attaquant, cible)
+                attaque_effectuee = True
+
+                armee = lire_blocs(territory)
+
+        armee = lire_blocs(territory)
+
+        if not attaque_effectuee and controle_territoire(armee) == "conteste":
             afficher_et_ecrire(
-                "Les forces restantes sont incapables de prendre l'avantage. "
-                "La bataille s'achève dans un bain de sang. "
-                "Le territoire reste contesté."
+                "Aucune attaque possible. La bataille reste bloquée."
             )
+            break
 
+    armee = lire_blocs(territory)
+
+    if tour >= 5 and controle_territoire(armee) == "conteste":
+        afficher_et_ecrire(
+            "Les forces restantes sont incapables de prendre l'avantage. "
+            "La bataille s'achève dans un bain de sang. "
+            "Le territoire reste contesté."
+        )
 
 def ecrire_rapport(texte):
     rapport_path.parent.mkdir(exist_ok=True)
