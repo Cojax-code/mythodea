@@ -1,94 +1,70 @@
 #!/bin/bash
 
-echo "Nettoyage de Mythodea..."
+echo "=== Nettoyage Mythodea V1.5 ==="
 
-# Liste des territoires
-territoires="base1 terrain1 terrain2 terrain3 base2"
-joueurs="j1 j2"
-blocs="avant droite gauche arriere"
+# Supprimer l'ancien plateau.
+sudo rm -rf /home/game
 
-# 1. Réouvrir les dossiers pour permettre le nettoyage
-echo "Restauration temporaire des permissions..."
+# Recréer les dossiers principaux.
+sudo mkdir -p /home/game/base1
+sudo mkdir -p /home/game/terrain1
+sudo mkdir -p /home/game/terrain2
+sudo mkdir -p /home/game/terrain3
+sudo mkdir -p /home/game/base2
+sudo mkdir -p /home/game/rapport
+sudo mkdir -p /home/game/systeme
 
-for territoire in $territoires
+# Recréer les dossiers joueurs + emplacements.
+for territoire in base1 terrain1 terrain2 terrain3 base2
 do
-    for joueur in $joueurs
+    for joueur in j1 j2
     do
-        sudo chmod 700 /home/game/$territoire/$joueur 2>/dev/null
+        sudo mkdir -p /home/game/$territoire/$joueur/1
+        sudo mkdir -p /home/game/$territoire/$joueur/2
+        sudo mkdir -p /home/game/$territoire/$joueur/3
+        sudo mkdir -p /home/game/$territoire/$joueur/4
 
-        for bloc in $blocs
-        do
-            sudo chmod 700 /home/game/$territoire/$joueur/$bloc 2>/dev/null
-        done
+        sudo chown -R $joueur:$joueur /home/game/$territoire/$joueur
+        sudo chmod -R 700 /home/game/$territoire/$joueur
     done
 done
 
-sudo chmod 700 /home/j1 2>/dev/null
-sudo chmod 700 /home/j2 2>/dev/null
+# Nettoyer les anciens généraux dans les homes.
+sudo rm -rf /home/j1/general1 /home/j1/general2 /home/j1/general3 /home/j1/general4 /home/j1/general5
+sudo rm -rf /home/j2/general1 /home/j2/general2 /home/j2/general3 /home/j2/general4 /home/j2/general5
 
-# 2. Nettoyer les rapports
-echo "Nettoyage des rapports..."
+# Recréer les fichiers de victoire.
+sudo touch /home/game/base1/objectif.txt
+sudo touch /home/game/base2/objectif.txt
+sudo touch /home/game/base1/tentative_j2.txt
+sudo touch /home/game/base2/tentative_j1.txt
 
-sudo rm -f /home/game/rapport/rapport_bataille.txt
-sudo rm -f /home/game/rapport/rapport_court.txt
-sudo rm -f /home/game/etat.txt
+# Exemple d'objectifs.
+echo "lezard" | sudo tee /home/game/base1/objectif.txt > /dev/null
+echo "dragon" | sudo tee /home/game/base2/objectif.txt > /dev/null
 
-# 3. Nettoyer les unités dans tous les blocs
-echo "Nettoyage des unités..."
+# Permissions objectifs.
+# j2 doit pouvoir lire l'objectif de base1.
+sudo chown root:j2 /home/game/base1/objectif.txt
+sudo chmod 640 /home/game/base1/objectif.txt
 
-for territoire in $territoires
-do
-    for joueur in $joueurs
-    do
-        for bloc in $blocs
-        do
-            sudo sh -c "rm -rf /home/game/$territoire/$joueur/$bloc/*"
-        done
-    done
-done
+# j1 doit pouvoir lire l'objectif de base2.
+sudo chown root:j1 /home/game/base2/objectif.txt
+sudo chmod 640 /home/game/base2/objectif.txt
 
-# 4. Nettoyer les tentatives de victoire
-echo "Nettoyage des tentatives..."
+# Permissions tentatives.
+sudo chown j2:j2 /home/game/base1/tentative_j2.txt
+sudo chmod 600 /home/game/base1/tentative_j2.txt
 
-sudo truncate -s 0 /home/game/base1/tentative_j2.txt 2>/dev/null
-sudo truncate -s 0 /home/game/base2/tentative_j1.txt 2>/dev/null
+sudo chown j1:j1 /home/game/base2/tentative_j1.txt
+sudo chmod 600 /home/game/base2/tentative_j1.txt
 
-# 5. Nettoyer les unités connues
-echo "Nettoyage du système..."
+# Permissions rapport et système.
+sudo chown -R root:root /home/game/rapport
+sudo chmod -R 755 /home/game/rapport
 
-sudo rm -f /home/game/systeme/unites_connues.txt
+sudo chown -R root:root /home/game/systeme
+sudo chmod -R 755 /home/game/systeme
 
-# 6. Restaurer propriétaires et permissions normales
-echo "Restauration des permissions finales..."
-
-for territoire in $territoires
-do
-    for joueur in $joueurs
-    do
-        sudo chown $joueur:$joueur /home/game/$territoire/$joueur
-        sudo chmod 700 /home/game/$territoire/$joueur
-
-        for bloc in $blocs
-        do
-            sudo chown $joueur:$joueur /home/game/$territoire/$joueur/$bloc
-            sudo chmod 700 /home/game/$territoire/$joueur/$bloc
-        done
-    done
-done
-
-# 7. Restaurer les home des joueurs
-sudo chown j1:j1 /home/j1
-sudo chmod 700 /home/j1
-
-sudo chown j2:j2 /home/j2
-sudo chmod 700 /home/j2
-
-# 8. Protéger les dossiers système
-sudo chown -R root:root /home/game/rapport 2>/dev/null
-sudo chmod 755 /home/game/rapport 2>/dev/null
-
-sudo chown -R root:root /home/game/systeme 2>/dev/null
-sudo chmod 700 /home/game/systeme 2>/dev/null
-
-echo "Nettoyage terminé."
-echo "Permissions restaurées."
+echo "Nettoyage V1.5 terminé."
+echo "Lance ensuite : ./start_v15.sh"
