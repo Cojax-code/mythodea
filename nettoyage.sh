@@ -29,6 +29,12 @@ do
     done
 done
 
+# Nettoyer les anciens généraux dans les homes des joueurs
+for joueur in j1 j2
+do
+    sudo rm -rf /home/$joueur/general*
+done
+
 # Nettoyer les anciens généraux dans les homes.
 sudo rm -rf /home/j1/general1 /home/j1/general2 /home/j1/general3 /home/j1/general4 /home/j1/general5
 sudo rm -rf /home/j2/general1 /home/j2/general2 /home/j2/general3 /home/j2/general4 /home/j2/general5

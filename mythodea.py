@@ -1142,6 +1142,7 @@ preparer_rapport()
 reparer_structure()
 
 test_lecture_generaux()
+exit()
 
 vainqueur = verifier_victoire()
 
