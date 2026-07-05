@@ -1219,11 +1219,51 @@ def test_lecture_generaux():
                     f"({general['total_unites']} unités)"
                 )
 
+
+def lancer_bataille_v15():
+    # Première boucle de résolution V1.5.
+    #
+    # Pour l'instant, elle ne fait pas encore les combats.
+    # Elle vérifie seulement :
+    # - les généraux présents
+    # - les unités présentes
+    # - le contrôle du territoire
+    # - si un combat doit être lancé
+
+    afficher_et_ecrire("\n=== RESOLUTION MYTHODEA V1.5 ===")
+
+    for territory in territoires:
+        afficher_et_ecrire(f"\nTerritoire : {territory.name}")
+
+        generaux_territoire = lire_generaux_territoire(territory)
+        controle = controle_territoire_generaux(generaux_territoire)
+
+        afficher_et_ecrire(f"Controle actuel : {controle}")
+
+        for joueur in joueurs:
+            afficher_et_ecrire(f"\n{joueur} :")
+
+            for emplacement in emplacements:
+                general = generaux_territoire[joueur][emplacement]
+
+                if general is None:
+                    afficher_et_ecrire(f"emplacement {emplacement} : vide")
+                    continue
+
+                afficher_et_ecrire(
+                    f"emplacement {emplacement} : "
+                    f"{general['nom']} "
+                    f"({general['total_unites']} unités)"
+                )
+
+        if controle == "conteste":
+            afficher_et_ecrire(
+                "Combat détecté sur ce territoire. "
+                "La résolution V1.5 du combat n'est pas encore codée."
+            )
+
 preparer_rapport()
 reparer_structure()
-
-test_lecture_generaux()
-exit()
 
 vainqueur = verifier_victoire()
 
@@ -1232,5 +1272,8 @@ if vainqueur:
 
     afficher_et_ecrire(f"🏆 Victoire de {vainqueur} !")
     exit()
+
+lancer_bataille_v15()
+exit()
 
 lancer_bataille()
