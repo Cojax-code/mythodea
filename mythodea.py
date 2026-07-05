@@ -20,14 +20,79 @@ carte_territoires = ["base1", "terrain1", "terrain2", "terrain3", "base2"]
 ordre_blocs = ["avant", "droite", "gauche", "arriere"]
 joueurs = ["j1", "j2"]
 
+emplacements = ["1", "2", "3","4"]
+generaux = ["general1", "general2", "general3", "general4", "general5"]
+orientations = ["stratege", "combattant"]
+orientation_rare = "hybride"
+
 rapport_path = game_path / "rapport" / "rapport_bataille.txt"
 
 rapport_court_path = game_path / "rapport" / "rapport_court.txt"
 
 unites_connues_path = game_path / "systeme" / "unites_connues.txt"
 
+def choisir_orientation_general():
+    chance = random.randint(1, 100)
+
+    if chance == 1:
+        return orientation_rare
+
+    return random.choice(orientations)
+
+def creer_general(chemin_general, nom_general):
+    chemin_general.mkdir(exist_ok=True)
+
+    for bloc in ordre_blocs:
+        bloc_dir = chemin_general / bloc
+        bloc_dir.mkdir(exist_ok=True)
+
+    fiche = chemin_general / "fiche.txt"
+
+    if not fiche.exists():
+        orientation = choisir_orientation_general()
+
+        texte = [
+            f"nom={nom_general}",
+            f"orientation={orientation}",
+            "strategie=0",
+            "force=0",
+            "experience=0",
+        ]
+
+        fiche.write_text("\n".join(texte), encoding="utf-8")
+
+    ordre = chemin_general / "ordre.txt"
+
+    if not ordre.exists():
+        ordre.write_text("1-g-1\n2-g-1\n", encoding="utf-8")
+
+def est_general_valide(chemin_general):
+    # Un général doit être un dossier.
+    if not chemin_general.is_dir():
+        return False
+
+    # Son nom doit commencer par "general".
+    # Exemple : general1, general2, general6, etc.
+    if not chemin_general.name.startswith("general"):
+        return False
+
+    # Un général doit contenir les quatre blocs militaires.
+    for bloc in ordre_blocs:
+        if not (chemin_general / bloc).is_dir():
+            return False
+
+    # La fiche est importante pour les futures statistiques.
+    if not (chemin_general / "fiche.txt").is_file():
+        return False
+
+    # L'ordre est important pour les futures décisions tactiques.
+    if not (chemin_general / "ordre.txt").is_file():
+        return False
+
+    return True
 
 def reparer_structure():
+    # 1. Créer les emplacements dans les territoires
     for territory in territoires:
         for joueur in joueurs:
             joueur_dir = territory / joueur
@@ -39,12 +104,34 @@ def reparer_structure():
             os.chown(joueur_dir, uid, gid)
             os.chmod(joueur_dir, 0o700)
 
-            for bloc in ordre_blocs:
-                bloc_dir = joueur_dir / bloc
-                bloc_dir.mkdir(exist_ok=True)
+            for emplacement in emplacements:
+                emplacement_dir = joueur_dir / emplacement
+                emplacement_dir.mkdir(exist_ok=True)
 
-                os.chown(bloc_dir, uid, gid)
-                os.chmod(bloc_dir, 0o700)
+                os.chown(emplacement_dir, uid, gid)
+                os.chmod(emplacement_dir, 0o700)
+
+    # 2. Créer les généraux dans le home des joueurs
+    for joueur in joueurs:
+        home_joueur = Path(f"/home/{joueur}")
+
+        uid = pwd.getpwnam(joueur).pw_uid
+        gid = grp.getgrnam(joueur).gr_gid
+
+        for nom_general in generaux:
+            chemin_general = home_joueur / nom_general
+            creer_general(chemin_general, nom_general)
+
+            os.chown(chemin_general, uid, gid)
+            os.chmod(chemin_general, 0o700)
+
+            for element in chemin_general.rglob("*"):
+                os.chown(element, uid, gid)
+
+                if element.is_dir():
+                    os.chmod(element, 0o700)
+                else:
+                    os.chmod(element, 0o600)
 
 
 def lire_fichier(chemin):
