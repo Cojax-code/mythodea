@@ -29,11 +29,17 @@ do
     done
 done
 
-# Nettoyer les anciens généraux dans les homes des joueurs
-for joueur in j1 j2
-do
-    sudo rm -rf /home/$joueur/general*
-done
+# Nettoyage complet des homes des joueurs
+echo "Nettoyage des homes j1 et j2..."
+
+sudo find /home/j1 -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+sudo find /home/j2 -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+
+sudo chown j1:j1 /home/j1
+sudo chmod 700 /home/j1
+
+sudo chown j2:j2 /home/j2
+sudo chmod 700 /home/j2
 
 # Nettoyer les anciens généraux dans les homes.
 sudo rm -rf /home/j1/general1 /home/j1/general2 /home/j1/general3 /home/j1/general4 /home/j1/general5

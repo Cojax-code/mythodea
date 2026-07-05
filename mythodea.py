@@ -524,7 +524,7 @@ def reparer_structure():
                 os.chown(emplacement_dir, uid, gid)
                 os.chmod(emplacement_dir, 0o700)
 
-        # 2. Faire apparaître un général par joueur si possible.
+    # 2. Faire apparaître un général par joueur si possible.
     for joueur in joueurs:
         faire_apparaitre_general_si_possible(joueur)
 
