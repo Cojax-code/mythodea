@@ -22,14 +22,20 @@ joueurs = ["j1", "j2"]
 
 emplacements = ["1", "2", "3","4"]
 generaux = ["general1", "general2", "general3", "general4", "general5"]
+max_unites_par_general = 20
+
 orientations = ["stratege", "combattant"]
 orientation_rare = "hybride"
+
 
 rapport_path = game_path / "rapport" / "rapport_bataille.txt"
 
 rapport_court_path = game_path / "rapport" / "rapport_court.txt"
 
 unites_connues_path = game_path / "systeme" / "unites_connues.txt"
+
+
+
 
 def choisir_orientation_general():
     chance = random.randint(1, 100)
@@ -66,6 +72,8 @@ def creer_general(chemin_general, nom_general):
     if not ordre.exists():
         ordre.write_text("1-g-1\n2-g-1\n", encoding="utf-8")
 
+
+
 def est_general_valide(chemin_general):
     # Un général doit être un dossier.
     if not chemin_general.is_dir():
@@ -90,6 +98,312 @@ def est_general_valide(chemin_general):
         return False
 
     return True
+
+def lire_fiche_general(chemin_general):
+    # Lecture simple de fiche.txt sous forme de dictionnaire.
+    # Exemple :
+    # nom=general1
+    # orientation=stratege
+    # strategie=0
+    # force=0
+    # experience=0
+
+    fiche_path = chemin_general / "fiche.txt"
+    fiche = {}
+
+    if not fiche_path.exists():
+        return fiche
+
+    lignes = fiche_path.read_text(encoding="utf-8").splitlines()
+
+    for ligne in lignes:
+        if "=" not in ligne:
+            continue
+
+        cle, valeur = ligne.split("=", 1)
+        fiche[cle.strip()] = valeur.strip()
+
+    return fiche
+
+def lire_ordres_general(chemin_general):
+    # Lecture de ordre.txt.
+    # Format prévu :
+    # phase-qui-action
+    #
+    # Exemple :
+    # 1-g-1
+    # 2-g-1
+
+    ordre_path = chemin_general / "ordre.txt"
+    ordres = []
+
+    if not ordre_path.exists():
+        return ordres
+
+    lignes = ordre_path.read_text(encoding="utf-8").splitlines()
+
+    for ligne in lignes:
+        ligne = ligne.strip()
+
+        if ligne == "":
+            continue
+
+        morceaux = ligne.split("-")
+
+        if len(morceaux) != 3:
+            continue
+
+        phase = morceaux[0]
+        qui = morceaux[1]
+        action = morceaux[2]
+
+        ordres.append(
+            {
+                "phase": phase,
+                "qui": qui,
+                "action": action,
+                "texte": ligne,
+            }
+        )
+
+    return ordres
+
+def lire_generaux_territoire(territory):
+    # Lit les généraux présents sur un territoire.
+    #
+    # Structure attendue :
+    # territoire/joueur/emplacement/generalX/
+    #
+    # Exemple :
+    # /home/game/terrain1/j1/1/general1
+
+    resultat = {}
+
+    for joueur in joueurs:
+        resultat[joueur] = {}
+
+        for emplacement in emplacements:
+            resultat[joueur][emplacement] = None
+
+            emplacement_dir = territory / joueur / emplacement
+
+            if not emplacement_dir.exists():
+                continue
+
+            generaux_trouves = []
+
+            for element in emplacement_dir.iterdir():
+                if element.is_dir() and element.name.startswith("general"):
+                    generaux_trouves.append(element)
+
+            if len(generaux_trouves) == 0:
+                continue
+
+            generaux_trouves = sorted(generaux_trouves)
+
+            # Un seul général est autorisé par emplacement.
+            # Le premier reste, les autres retournent dans le home du joueur.
+            chemin_general = generaux_trouves[0]
+            generaux_en_trop = generaux_trouves[1:]
+
+            for general_en_trop in generaux_en_trop:
+                destination = Path(f"/home/{joueur}") / general_en_trop.name
+
+                if not destination.exists():
+                    shutil.move(str(general_en_trop), str(destination))
+                    afficher_et_ecrire(
+                        f"Général en trop renvoyé au home : {joueur} {general_en_trop.name}"
+                    )
+                else:
+                    shutil.rmtree(general_en_trop)
+                    afficher_et_ecrire(
+                        f"Général en trop supprimé : {joueur} {general_en_trop.name}, retour impossible"
+                    )
+
+            # On répare le général restant si fiche.txt ou ordre.txt manque.
+            creer_general(chemin_general, chemin_general.name)
+
+            if not est_general_valide(chemin_general):
+                continue
+
+            # On vérifie la limite de 20 unités par général.
+            verifier_limite_unites_general(chemin_general)
+
+            blocs_general = lire_blocs_general(chemin_general)
+
+            resultat[joueur][emplacement] = {
+                "chemin": chemin_general,
+                "nom": chemin_general.name,
+                "joueur": joueur,
+                "emplacement": emplacement,
+                "fiche": lire_fiche_general(chemin_general),
+                "ordres": lire_ordres_general(chemin_general),
+                "blocs": blocs_general,
+                "total_unites": total_unites_general(blocs_general),
+            }
+
+    return resultat
+
+
+def lire_blocs_general(chemin_general):
+    # Lit les unités d'un seul général.
+    #
+    # Structure attendue :
+    # generalX/avant/infanterie1
+    # generalX/droite/cavalerie1
+    # generalX/gauche/...
+    # generalX/arriere/...
+
+    blocs_general = {}
+
+    # On prépare les quatre blocs, même s'ils sont vides.
+    for bloc in ordre_blocs:
+        blocs_general[bloc] = {
+            "type": "vide",
+            "nombre": 0,
+            "unites": [],
+        }
+
+    for bloc in ordre_blocs:
+        bloc_dir = chemin_general / bloc
+
+        # Si le bloc manque, on le recrée.
+        # Ça évite qu'un général soit cassé par erreur.
+        bloc_dir.mkdir(exist_ok=True)
+
+        type_trouves = []
+        unites_trouvees = []
+        a_supprimer = []
+
+        for unite in bloc_dir.iterdir():
+            type_unite = identifier_unite(unite)
+
+            if type_unite == "inconnu":
+                a_supprimer.append(unite)
+                continue
+
+            type_trouves.append(type_unite)
+            unites_trouvees.append(unite)
+
+        # Supprimer les unités invalides.
+        for unite in a_supprimer:
+            if unite.is_dir():
+                shutil.rmtree(unite)
+            else:
+                unite.unlink()
+
+            afficher_et_ecrire(f"Unité invalide supprimée : {unite.name}")
+
+        if len(type_trouves) > 0:
+            blocs_general[bloc]["type"] = type_trouves[0]
+            blocs_general[bloc]["nombre"] = len(type_trouves)
+            blocs_general[bloc]["unites"] = unites_trouvees
+
+    return blocs_general
+
+def total_unites_general(blocs_general):
+    # Calcule le nombre total d'unités dans un général.
+    #
+    # Exemple :
+    # avant   : 5 unités
+    # droite  : 3 unités
+    # gauche  : 2 unités
+    # arriere : 0 unité
+    # total   : 10 unités
+
+    total = 0
+
+    for bloc in ordre_blocs:
+        total += blocs_general[bloc]["nombre"]
+
+    return total
+
+def total_unites_joueur_generaux(generaux_territoire, joueur):
+    # Calcule le nombre total d'unités d'un joueur sur un territoire,
+    # en utilisant le nouveau système des généraux.
+    #
+    # Exemple :
+    # j1 emplacement 1 : general1 avec 10 unités
+    # j1 emplacement 2 : general2 avec 5 unités
+    # total j1 sur le territoire = 15 unités
+
+    total = 0
+
+    for emplacement in emplacements:
+        general = generaux_territoire[joueur][emplacement]
+
+        if general is None:
+            continue
+
+        total += general["total_unites"]
+
+    return total
+
+def controle_territoire_generaux(generaux_territoire):
+    # Détermine qui contrôle un territoire avec le système des généraux.
+    #
+    # Pour l'instant, règle simple :
+    # - si j1 a des unités et j2 non : j1 contrôle
+    # - si j2 a des unités et j1 non : j2 contrôle
+    # - si personne n'a d'unités : neutre
+    # - si les deux ont des unités : contesté
+
+    total_j1 = total_unites_joueur_generaux(generaux_territoire, "j1")
+    total_j2 = total_unites_joueur_generaux(generaux_territoire, "j2")
+
+    if total_j1 > 0 and total_j2 == 0:
+        return "j1"
+
+    elif total_j2 > 0 and total_j1 == 0:
+        return "j2"
+
+    elif total_j1 == 0 and total_j2 == 0:
+        return "neutre"
+
+    else:
+        return "conteste"
+
+def verifier_limite_unites_general(chemin_general):
+    # Vérifie qu'un général ne dépasse pas la limite d'unités autorisée.
+    #
+    # Règle actuelle :
+    # un général peut avoir maximum 20 unités au total,
+    # réparties librement entre avant, droite, gauche, arriere.
+
+    blocs_general = lire_blocs_general(chemin_general)
+    total = total_unites_general(blocs_general)
+
+    if total <= max_unites_par_general:
+        return
+
+    surplus = total - max_unites_par_general
+
+    afficher_et_ecrire(
+        f"{chemin_general.name} dépasse la limite : "
+        f"{total}/{max_unites_par_general} unités. "
+        f"{surplus} unité(s) supprimée(s)."
+    )
+
+    # On supprime les unités en trop en partant de l'arrière vers l'avant.
+    ordre_suppression = ["arriere", "gauche", "droite", "avant"]
+
+    for bloc in ordre_suppression:
+        if surplus <= 0:
+            break
+
+        blocs_general = lire_blocs_general(chemin_general)
+        infos = blocs_general[bloc]
+
+        for unite in infos["unites"]:
+            if surplus <= 0:
+                break
+
+            shutil.rmtree(unite)
+            afficher_et_ecrire(
+                f"Unité supprimée pour limite de général : {unite.name}"
+            )
+            surplus -= 1
+
 
 def reparer_structure():
     # 1. Créer les emplacements dans les territoires
@@ -791,9 +1105,43 @@ def verifier_victoire():
     return None
 
 
+def test_lecture_generaux():
+    # Fonction temporaire pour vérifier que Python lit correctement
+    # les généraux, les emplacements et les unités.
+    #
+    # Elle ne modifie pas le jeu.
+    # Elle écrit seulement dans le rapport.
+
+    afficher_et_ecrire("\n=== TEST LECTURE GENERAUX V1.5 ===")
+
+    for territory in territoires:
+        afficher_et_ecrire(f"\nTerritoire : {territory.name}")
+
+        generaux_territoire = lire_generaux_territoire(territory)
+        controle = controle_territoire_generaux(generaux_territoire)
+
+        afficher_et_ecrire(f"Controle version generaux : {controle}")
+
+        for joueur in joueurs:
+            afficher_et_ecrire(f"\n{joueur} :")
+
+            for emplacement in emplacements:
+                general = generaux_territoire[joueur][emplacement]
+
+                if general is None:
+                    afficher_et_ecrire(f"emplacement {emplacement} : vide")
+                    continue
+
+                afficher_et_ecrire(
+                    f"emplacement {emplacement} : "
+                    f"{general['nom']} "
+                    f"({general['total_unites']} unités)"
+                )
+
 preparer_rapport()
 reparer_structure()
 
+test_lecture_generaux()
 
 vainqueur = verifier_victoire()
 
