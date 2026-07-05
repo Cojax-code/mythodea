@@ -23,6 +23,7 @@ joueurs = ["j1", "j2"]
 emplacements = ["1", "2", "3","4"]
 generaux = ["general1", "general2", "general3", "general4", "general5"]
 max_unites_par_general = 20
+max_generaux_par_joueur = 5
 
 orientations = ["stratege", "combattant"]
 orientation_rare = "hybride"
@@ -72,6 +73,104 @@ def creer_general(chemin_general, nom_general):
     if not ordre.exists():
         ordre.write_text("1-g-1\n2-g-1\n", encoding="utf-8")
 
+def donner_permissions_general(chemin_general, joueur):
+    # Donne les bonnes permissions à un général.
+    # Le général appartient au joueur et reste privé.
+
+    uid = pwd.getpwnam(joueur).pw_uid
+    gid = grp.getgrnam(joueur).gr_gid
+
+    os.chown(chemin_general, uid, gid)
+    os.chmod(chemin_general, 0o700)
+
+    for element in chemin_general.rglob("*"):
+        os.chown(element, uid, gid)
+
+        if element.is_dir():
+            os.chmod(element, 0o700)
+        else:
+            os.chmod(element, 0o600)
+
+
+def home_contient_general(joueur):
+    # Vérifie si le home du joueur contient déjà un général.
+    #
+    # Règle V1.5 :
+    # si un général est déjà dans le home, aucun nouveau général n'apparaît.
+
+    home_joueur = Path(f"/home/{joueur}")
+
+    if not home_joueur.exists():
+        return False
+
+    for element in home_joueur.iterdir():
+        if element.is_dir() and element.name.startswith("general"):
+            return True
+
+    return False
+
+
+def lire_compteur_general(joueur):
+    # Lit le compteur de génération des généraux.
+    #
+    # Exemple :
+    # /home/game/systeme/compteur_general_j1.txt contient 2
+    # donc le prochain général sera general3.
+
+    compteur_path = game_path / "systeme" / f"compteur_general_{joueur}.txt"
+
+    if not compteur_path.exists():
+        return 0
+
+    texte = compteur_path.read_text(encoding="utf-8").strip()
+
+    if texte == "":
+        return 0
+
+    return int(texte)
+
+
+def sauvegarder_compteur_general(joueur, numero):
+    # Sauvegarde le dernier numéro de général créé.
+
+    compteur_path = game_path / "systeme" / f"compteur_general_{joueur}.txt"
+    compteur_path.parent.mkdir(exist_ok=True)
+    compteur_path.write_text(str(numero), encoding="utf-8")
+
+
+def faire_apparaitre_general_si_possible(joueur):
+    # Fait apparaître un seul général dans le home du joueur si possible.
+    #
+    # Règles :
+    # - si le home contient déjà un général : rien n'apparaît
+    # - si le joueur a déjà atteint la limite : rien n'apparaît
+    # - sinon, le prochain generalX apparaît dans /home/joueur/
+
+    if home_contient_general(joueur):
+        afficher_et_ecrire(
+            f"{joueur} a déjà un général dans son home. Aucun nouveau général."
+        )
+        return
+
+    dernier_numero = lire_compteur_general(joueur)
+
+    if dernier_numero >= max_generaux_par_joueur:
+        afficher_et_ecrire(
+            f"{joueur} a déjà atteint la limite de {max_generaux_par_joueur} généraux."
+        )
+        return
+
+    nouveau_numero = dernier_numero + 1
+    nom_general = f"general{nouveau_numero}"
+    chemin_general = Path(f"/home/{joueur}") / nom_general
+
+    creer_general(chemin_general, nom_general)
+    donner_permissions_general(chemin_general, joueur)
+    sauvegarder_compteur_general(joueur, nouveau_numero)
+
+    afficher_et_ecrire(
+        f"Nouveau général apparu pour {joueur} : {nom_general}"
+    )
 
 
 def est_general_valide(chemin_general):
@@ -425,27 +524,9 @@ def reparer_structure():
                 os.chown(emplacement_dir, uid, gid)
                 os.chmod(emplacement_dir, 0o700)
 
-    # 2. Créer les généraux dans le home des joueurs
+        # 2. Faire apparaître un général par joueur si possible.
     for joueur in joueurs:
-        home_joueur = Path(f"/home/{joueur}")
-
-        uid = pwd.getpwnam(joueur).pw_uid
-        gid = grp.getgrnam(joueur).gr_gid
-
-        for nom_general in generaux:
-            chemin_general = home_joueur / nom_general
-            creer_general(chemin_general, nom_general)
-
-            os.chown(chemin_general, uid, gid)
-            os.chmod(chemin_general, 0o700)
-
-            for element in chemin_general.rglob("*"):
-                os.chown(element, uid, gid)
-
-                if element.is_dir():
-                    os.chmod(element, 0o700)
-                else:
-                    os.chmod(element, 0o600)
+        faire_apparaitre_general_si_possible(joueur)
 
 
 def lire_fichier(chemin):
