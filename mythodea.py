@@ -1329,6 +1329,25 @@ def supprimer_unites(infos, survivants):
         )
         shutil.rmtree(unite)
 
+def attaque_ciblee(armee, joueur_attaquant, bloc_attaquant, bloc_cible):
+    joueur_ennemi = ennemi_de(joueur_attaquant)
+
+    infos_attaquant = armee[joueur_attaquant][bloc_attaquant]
+    infos_defenseur = armee[joueur_ennemi][bloc_cible]
+
+    afficher_et_ecrire("\nAttaque ciblée :")
+    afficher_et_ecrire(
+        f"{joueur_attaquant} {bloc_attaquant} attaque {joueur_ennemi} {bloc_cible}"
+    )
+
+    survivants_attaquant, survivants_defenseur = combat_bloc(
+        infos_attaquant,
+        infos_defenseur
+    )
+
+    supprimer_unites(infos_attaquant, survivants_attaquant)
+    supprimer_unites(infos_defenseur, survivants_defenseur)
+
 
 def choisir_flanc_attaquant(armee, joueur):
     flancs = ["droite", "gauche"]
