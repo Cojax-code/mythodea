@@ -1319,30 +1319,15 @@ def supprimer_unites(infos, survivants):
     if pertes <= 0:
         return
 
+    type_unite = infos["type"]
+
     unites_a_supprimer = random.sample(infos["unites"], pertes)
 
     for unite in unites_a_supprimer:
+        afficher_et_ecrire(
+            f"Unité supprimée : {unite.name} ({type_unite})"
+        )
         shutil.rmtree(unite)
-        afficher_et_ecrire(f"Unité supprimée : {unite.name}")
-
-
-def attaque_ciblee(armee, joueur_attaquant, bloc_attaquant, bloc_cible):
-    joueur_ennemi = ennemi_de(joueur_attaquant)
-
-    infos_attaquant = armee[joueur_attaquant][bloc_attaquant]
-    infos_defenseur = armee[joueur_ennemi][bloc_cible]
-
-    afficher_et_ecrire("\nAttaque ciblée :")
-    afficher_et_ecrire(
-        f"{joueur_attaquant} {bloc_attaquant} attaque {joueur_ennemi} {bloc_cible}"
-    )
-
-    survivants_attaquant, survivants_defenseur = combat_bloc(
-        infos_attaquant, infos_defenseur
-    )
-
-    supprimer_unites(infos_attaquant, survivants_attaquant)
-    supprimer_unites(infos_defenseur, survivants_defenseur)
 
 
 def choisir_flanc_attaquant(armee, joueur):

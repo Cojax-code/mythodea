@@ -2,14 +2,10 @@
 
 echo "=== Lancement Mythodea V1.5 ==="
 
-# On lance le script Python principal.
-sudo python3 /home/cojax/mythodea_v1.5/mythodea.py
+cd /home/cojax/mythodea_v1.5 || exit 1
+
+sudo python3 mythodea.py
 
 echo
-echo "=== Rapport court ==="
-
-if [ -f /home/game/rapport/rapport_court.txt ]; then
-    cat /home/game/rapport/rapport_court.txt
-else
-    echo "Aucun rapport court trouvé."
-fi
+echo "=== Rapport bataille ==="
+cat /home/game/rapport/rapport_bataille.txt
