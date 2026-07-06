@@ -3,7 +3,7 @@
 echo "=== Lancement Mythodea V1.5 ==="
 
 # On lance le script Python principal.
-sudo python3 /home/cojax/mythodea.py
+sudo python3 /home/cojax/mythodea_v1.5/mythodea.py
 
 echo
 echo "=== Rapport court ==="
