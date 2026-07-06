@@ -35,6 +35,7 @@ rapport_court_path = game_path / "rapport" / "rapport_court.txt"
 
 unites_connues_path = game_path / "systeme" / "unites_connues.txt"
 
+controle_territoires_path = game_path / "systeme" / "controle_territoires.txt"
 
 
 
@@ -461,6 +462,460 @@ def controle_territoire_generaux(generaux_territoire):
 
     else:
         return "conteste"
+    
+def charger_controle_territoires():
+    # Charge le contrôle des territoires au tour précédent.
+    #
+    # Exemple du fichier :
+    # base1=j1
+    # terrain1=neutre
+    # terrain2=j2
+
+    controle = {}
+
+    # Par défaut, tous les territoires sont neutres.
+    for territory in territoires:
+        controle[territory.name] = "neutre"
+
+    if not controle_territoires_path.exists():
+        return controle
+
+    lignes = controle_territoires_path.read_text(encoding="utf-8").splitlines()
+
+    for ligne in lignes:
+        if "=" not in ligne:
+            continue
+
+        nom_territoire, valeur = ligne.split("=", 1)
+        controle[nom_territoire.strip()] = valeur.strip()
+
+    return controle
+
+
+def sauvegarder_controle_territoires():
+    # Sauvegarde le contrôle des territoires après la résolution.
+    #
+    # Ce fichier servira au prochain tour pour savoir
+    # qui défend un territoire.
+
+    lignes = []
+
+    for territory in territoires:
+        generaux_territoire = lire_generaux_territoire(territory)
+        controle = controle_territoire_generaux(generaux_territoire)
+
+        lignes.append(f"{territory.name}={controle}")
+
+    controle_territoires_path.parent.mkdir(exist_ok=True)
+    controle_territoires_path.write_text("\n".join(lignes), encoding="utf-8")
+
+
+def general_a_des_unites(general):
+    # Vérifie si un général existe et possède encore des unités.
+
+    if general is None:
+        return False
+
+    return general["total_unites"] > 0
+
+
+def generaux_actifs_joueur(generaux_territoire, joueur):
+    # Retourne la liste des généraux d'un joueur qui ont encore des unités.
+    #
+    # Un général vide n'est pas considéré comme actif.
+
+    actifs = []
+
+    for emplacement in emplacements:
+        general = generaux_territoire[joueur][emplacement]
+
+        if general_a_des_unites(general):
+            actifs.append(general)
+
+    return actifs
+
+
+def supprimer_general_si_vide(general):
+    # Si un général n'a plus aucune unité, il est considéré comme vaincu.
+    # On le supprime du plateau.
+
+    if general is None:
+        return
+
+    chemin_general = general["chemin"]
+    blocs_general = lire_blocs_general(chemin_general)
+    total = total_unites_general(blocs_general)
+
+    if total > 0:
+        return
+
+    afficher_et_ecrire(
+        f"{general['joueur']} {general['nom']} n'a plus d'unités. Général supprimé."
+    )
+
+    shutil.rmtree(chemin_general)
+
+def combat_generaux_off_off(general_j1, general_j2):
+    # Combat OFF/OFF simple entre deux généraux.
+    #
+    # Idée :
+    # - pas de choc frontal obligatoire
+    # - chaque bloc actif attaque une cible ennemie
+    # - le duel continue jusqu'à ce qu'un général n'ait plus d'unités
+
+    afficher_et_ecrire(
+        f"\nDuel OFF/OFF : {general_j1['nom']} VS {general_j2['nom']}"
+    )
+
+    chemin_j1 = general_j1["chemin"]
+    chemin_j2 = general_j2["chemin"]
+
+    tour = 0
+
+    while tour < 10:
+        tour += 1
+
+        blocs_j1 = lire_blocs_general(chemin_j1)
+        blocs_j2 = lire_blocs_general(chemin_j2)
+
+        total_j1 = total_unites_general(blocs_j1)
+        total_j2 = total_unites_general(blocs_j2)
+
+        if total_j1 == 0 or total_j2 == 0:
+            break
+
+        afficher_et_ecrire(f"\n--- Tour de duel OFF/OFF {tour} ---")
+
+        attaque_effectuee = False
+
+        for joueur_attaquant in ["j1", "j2"]:
+            armee = {
+                "j1": lire_blocs_general(chemin_j1),
+                "j2": lire_blocs_general(chemin_j2),
+            }
+
+            for bloc_attaquant in ordre_blocs:
+                armee = {
+                    "j1": lire_blocs_general(chemin_j1),
+                    "j2": lire_blocs_general(chemin_j2),
+                }
+
+                infos_attaquant = armee[joueur_attaquant][bloc_attaquant]
+
+                if infos_attaquant["nombre"] <= 0:
+                    continue
+
+                type_attaquant = infos_attaquant["type"]
+                cible = choisir_cible(armee, joueur_attaquant, type_attaquant)
+
+                if cible is None:
+                    continue
+
+                attaque_ciblee(armee, joueur_attaquant, bloc_attaquant, cible)
+                attaque_effectuee = True
+
+                armee = {
+                    "j1": lire_blocs_general(chemin_j1),
+                    "j2": lire_blocs_general(chemin_j2),
+                }
+
+                if total_unites_general(armee["j1"]) == 0:
+                    break
+
+                if total_unites_general(armee["j2"]) == 0:
+                    break
+
+        if not attaque_effectuee:
+            afficher_et_ecrire(
+                "Aucune attaque possible entre ces deux généraux. Duel bloqué."
+            )
+            break
+
+    supprimer_general_si_vide(general_j1)
+    supprimer_general_si_vide(general_j2)
+
+def resoudre_combat_v15(territory, generaux_territoire):
+    # Résolution OFF/OFF simple d'un territoire.
+    #
+    # Règle actuelle :
+    # - premier général actif de j1 contre premier général actif de j2
+    # - le gagnant continue contre le général suivant
+    # - si un général meurt, il est supprimé
+    # - la bataille continue jusqu'à ce qu'un camp n'ait plus d'unités
+
+    afficher_et_ecrire(f"\n=== Combat OFF/OFF sur {territory.name} ===")
+
+    round_combat = 0
+
+    while round_combat < 20:
+        round_combat += 1
+
+        generaux_territoire = lire_generaux_territoire(territory)
+        controle = controle_territoire_generaux(generaux_territoire)
+
+        if controle != "conteste":
+            afficher_et_ecrire(f"Fin du combat. Controle final : {controle}")
+            return
+
+        actifs_j1 = generaux_actifs_joueur(generaux_territoire, "j1")
+        actifs_j2 = generaux_actifs_joueur(generaux_territoire, "j2")
+
+        if len(actifs_j1) == 0 or len(actifs_j2) == 0:
+            controle = controle_territoire_generaux(generaux_territoire)
+            afficher_et_ecrire(f"Fin du combat. Controle final : {controle}")
+            return
+
+        general_j1 = actifs_j1[0]
+        general_j2 = actifs_j2[0]
+
+        afficher_et_ecrire(f"\n--- Round OFF/OFF {round_combat} ---")
+
+        combat_generaux_off_off(general_j1, general_j2)
+
+    generaux_territoire = lire_generaux_territoire(territory)
+    controle = controle_territoire_generaux(generaux_territoire)
+
+    afficher_et_ecrire(
+        f"Limite de rounds atteinte sur {territory.name}. Controle actuel : {controle}"
+    )
+
+def combat_generaux_off_def(general_attaquant, general_defenseur):
+    # Combat OFF/DEF entre deux généraux.
+    #
+    # Idée :
+    # - l'attaquant entre sur un territoire contrôlé par le défenseur
+    # - il doit donc subir la ligne défensive
+    # - Phase 1 : choc frontal bloc contre bloc
+    # - Phase 2 : si les deux survivent, attaques ciblées
+
+    joueur_attaquant = general_attaquant["joueur"]
+    joueur_defenseur = general_defenseur["joueur"]
+
+    afficher_et_ecrire(
+        f"\nDuel OFF/DEF : "
+        f"{joueur_attaquant} {general_attaquant['nom']} attaque "
+        f"{joueur_defenseur} {general_defenseur['nom']}"
+    )
+
+    chemin_attaquant = general_attaquant["chemin"]
+    chemin_defenseur = general_defenseur["chemin"]
+
+    chemins = {
+        joueur_attaquant: chemin_attaquant,
+        joueur_defenseur: chemin_defenseur,
+    }
+
+    # PHASE 1 : choc frontal.
+    afficher_et_ecrire("\nPhase 1 : choc frontal défensif")
+
+    armee = {
+        "j1": lire_blocs_general(chemins["j1"]),
+        "j2": lire_blocs_general(chemins["j2"]),
+    }
+
+    for bloc in ordre_blocs:
+        armee = {
+            "j1": lire_blocs_general(chemins["j1"]),
+            "j2": lire_blocs_general(chemins["j2"]),
+        }
+
+        infos_attaquant = armee[joueur_attaquant][bloc]
+        infos_defenseur = armee[joueur_defenseur][bloc]
+
+        if infos_attaquant["nombre"] == 0 and infos_defenseur["nombre"] == 0:
+            continue
+
+        afficher_et_ecrire(f"\nBloc {bloc} :")
+
+        survivants_attaquant, survivants_defenseur = combat_bloc(
+            infos_attaquant,
+            infos_defenseur
+        )
+
+        supprimer_unites(infos_attaquant, survivants_attaquant)
+        supprimer_unites(infos_defenseur, survivants_defenseur)
+
+    # Vérification après le choc frontal.
+    armee = {
+        "j1": lire_blocs_general(chemins["j1"]),
+        "j2": lire_blocs_general(chemins["j2"]),
+    }
+
+    if total_unites_general(armee[joueur_attaquant]) == 0:
+        supprimer_general_si_vide(general_attaquant)
+        supprimer_general_si_vide(general_defenseur)
+        return
+
+    if total_unites_general(armee[joueur_defenseur]) == 0:
+        supprimer_general_si_vide(general_attaquant)
+        supprimer_general_si_vide(general_defenseur)
+        return
+
+    # PHASE 2 : attaques ciblées si les deux généraux ont survécu.
+    afficher_et_ecrire("\nPhase 2 : attaques ciblées après le choc")
+
+    tour = 0
+
+    while tour < 10:
+        tour += 1
+
+        armee = {
+            "j1": lire_blocs_general(chemins["j1"]),
+            "j2": lire_blocs_general(chemins["j2"]),
+        }
+
+        if total_unites_general(armee[joueur_attaquant]) == 0:
+            break
+
+        if total_unites_general(armee[joueur_defenseur]) == 0:
+            break
+
+        afficher_et_ecrire(f"\n--- Tour OFF/DEF {tour} ---")
+
+        attaque_effectuee = False
+
+        for joueur_attaque in [joueur_attaquant, joueur_defenseur]:
+            for bloc_attaquant in ordre_blocs:
+                armee = {
+                    "j1": lire_blocs_general(chemins["j1"]),
+                    "j2": lire_blocs_general(chemins["j2"]),
+                }
+
+                if total_unites_general(armee[joueur_attaquant]) == 0:
+                    break
+
+                if total_unites_general(armee[joueur_defenseur]) == 0:
+                    break
+
+                infos_attaquant = armee[joueur_attaque][bloc_attaquant]
+
+                if infos_attaquant["nombre"] <= 0:
+                    continue
+
+                type_attaquant = infos_attaquant["type"]
+                cible = choisir_cible(armee, joueur_attaque, type_attaquant)
+
+                if cible is None:
+                    continue
+
+                attaque_ciblee(armee, joueur_attaque, bloc_attaquant, cible)
+                attaque_effectuee = True
+
+        if not attaque_effectuee:
+            afficher_et_ecrire(
+                "Aucune attaque possible entre ces deux généraux. Duel bloqué."
+            )
+            break
+
+    supprimer_general_si_vide(general_attaquant)
+    supprimer_general_si_vide(general_defenseur)
+
+
+def resoudre_combat_off_def(territory, defenseur):
+    # Résout une bataille OFF/DEF sur un territoire.
+    #
+    # defenseur = joueur qui contrôlait le territoire avant le combat.
+    # attaquant = l'autre joueur.
+
+    attaquant = ennemi_de(defenseur)
+
+    afficher_et_ecrire(
+        f"\n=== Combat OFF/DEF sur {territory.name} ==="
+    )
+    afficher_et_ecrire(
+        f"Défenseur : {defenseur} | Attaquant : {attaquant}"
+    )
+
+    round_combat = 0
+
+    while round_combat < 20:
+        round_combat += 1
+
+        generaux_territoire = lire_generaux_territoire(territory)
+        controle = controle_territoire_generaux(generaux_territoire)
+
+        if controle != "conteste":
+            afficher_et_ecrire(f"Fin du combat. Controle final : {controle}")
+            return
+
+        actifs_attaquant = generaux_actifs_joueur(generaux_territoire, attaquant)
+        actifs_defenseur = generaux_actifs_joueur(generaux_territoire, defenseur)
+
+        if len(actifs_attaquant) == 0 or len(actifs_defenseur) == 0:
+            controle = controle_territoire_generaux(generaux_territoire)
+            afficher_et_ecrire(f"Fin du combat. Controle final : {controle}")
+            return
+
+        general_attaquant = actifs_attaquant[0]
+        general_defenseur = actifs_defenseur[0]
+
+        afficher_et_ecrire(f"\n--- Round OFF/DEF {round_combat} ---")
+
+        combat_generaux_off_def(general_attaquant, general_defenseur)
+
+    generaux_territoire = lire_generaux_territoire(territory)
+    controle = controle_territoire_generaux(generaux_territoire)
+
+    afficher_et_ecrire(
+        f"Limite de rounds atteinte sur {territory.name}. Controle actuel : {controle}"
+    )
+
+
+def lancer_bataille_v15():
+    # Boucle de résolution V1.5.
+    #
+    # Elle décide :
+    # - OFF/OFF si le territoire était neutre ou contesté avant
+    # - OFF/DEF si le territoire appartenait à un joueur avant
+
+    afficher_et_ecrire("\n=== RESOLUTION MYTHODEA V1.5 ===")
+
+    controle_avant_resolution = charger_controle_territoires()
+
+    for territory in territoires:
+        afficher_et_ecrire(f"\nTerritoire : {territory.name}")
+
+        generaux_territoire = lire_generaux_territoire(territory)
+        controle_actuel = controle_territoire_generaux(generaux_territoire)
+
+        afficher_et_ecrire(f"Controle actuel : {controle_actuel}")
+
+        for joueur in joueurs:
+            afficher_et_ecrire(f"\n{joueur} :")
+
+            for emplacement in emplacements:
+                general = generaux_territoire[joueur][emplacement]
+
+                if general is None:
+                    afficher_et_ecrire(f"emplacement {emplacement} : vide")
+                    continue
+
+                afficher_et_ecrire(
+                    f"emplacement {emplacement} : "
+                    f"{general['nom']} "
+                    f"({general['total_unites']} unités)"
+                )
+
+        if controle_actuel == "conteste":
+            ancien_controle = controle_avant_resolution.get(
+                territory.name,
+                "neutre"
+            )
+
+            if ancien_controle in joueurs:
+                afficher_et_ecrire(
+                    f"Combat détecté : OFF/DEF. "
+                    f"{ancien_controle} défend."
+                )
+                resoudre_combat_off_def(territory, ancien_controle)
+            else:
+                afficher_et_ecrire(
+                    "Combat détecté : OFF/OFF."
+                )
+                resoudre_combat_v15(territory, generaux_territoire)
+
+    sauvegarder_controle_territoires()
+
 
 def verifier_limite_unites_general(chemin_general):
     # Vérifie qu'un général ne dépasse pas la limite d'unités autorisée.
@@ -1083,81 +1538,6 @@ def ecrire_rapport_court(territoires_combattus):
     rapport_court_path.write_text("\n".join(lignes), encoding="utf-8")
 
 
-def lancer_bataille():
-    territoires_combattus = set()
-
-    verifier_renforts()
-    verifier_doublons_unites()
-
-    for territory in territoires:
-        afficher_et_ecrire(f"\nTerritoire : {territory.name}")
-
-        armee = lire_blocs(territory)
-
-        combat_ce_tour = territoire_a_combat(armee)
-
-        if combat_ce_tour:
-            territoires_combattus.add(territory.name)
-
-        initiative_avant = {
-            "j1": False,
-            "j2": False,
-        }
-
-        if armee["j1"]["avant"]["nombre"] > 0 and armee["j2"]["avant"]["nombre"] == 0:
-            initiative_avant["j1"] = True
-
-        if armee["j2"]["avant"]["nombre"] > 0 and armee["j1"]["avant"]["nombre"] == 0:
-            initiative_avant["j2"] = True
-
-        if combat_ce_tour:
-            for joueur, blocs in armee.items():
-                afficher_et_ecrire(f"\nJoueur : {joueur}")
-
-                for nom_bloc, infos in blocs.items():
-
-                    if infos["nombre"] == 0:
-                        afficher_et_ecrire(f"{nom_bloc} : vide")
-                    else:
-                        afficher_et_ecrire(
-                            f"{nom_bloc} : {infos['nombre']} {infos['type']}"
-                        )
-        else:
-            afficher_et_ecrire("Aucun combat ce tour.")
-            afficher_et_ecrire("Unités non révélées.")
-
-        afficher_et_ecrire("\nResultat des combats :")
-
-        for bloc in ordre_blocs:
-            survivants_j1, survivants_j2 = combat_bloc(
-                armee["j1"][bloc], armee["j2"][bloc]
-            )
-
-            afficher_et_ecrire(f"{bloc} :")
-            afficher_et_ecrire(f" j1 survivants : {survivants_j1}")
-            afficher_et_ecrire(f" j2 survivants : {survivants_j2}")
-
-            supprimer_unites(armee["j1"][bloc], survivants_j1)
-            supprimer_unites(armee["j2"][bloc], survivants_j2)
-
-        armee = lire_blocs(territory)
-
-        controle = controle_territoire(armee)
-
-        afficher_et_ecrire(f"\nControle du territoire : {controle}")
-
-        if controle == "conteste":
-            manche_2(territory, initiative_avant)
-
-            armee = lire_blocs(territory)
-            controle = controle_territoire(armee)
-
-            afficher_et_ecrire(f"\nControle final du territoire : {controle}")
-
-    afficher_ravitaillement()
-    ecrire_rapport_court(territoires_combattus)
-
-
 def vider_fichier(chemin):
     chemin.write_text("", encoding="utf-8")
 
@@ -1220,48 +1600,6 @@ def test_lecture_generaux():
                 )
 
 
-def lancer_bataille_v15():
-    # Première boucle de résolution V1.5.
-    #
-    # Pour l'instant, elle ne fait pas encore les combats.
-    # Elle vérifie seulement :
-    # - les généraux présents
-    # - les unités présentes
-    # - le contrôle du territoire
-    # - si un combat doit être lancé
-
-    afficher_et_ecrire("\n=== RESOLUTION MYTHODEA V1.5 ===")
-
-    for territory in territoires:
-        afficher_et_ecrire(f"\nTerritoire : {territory.name}")
-
-        generaux_territoire = lire_generaux_territoire(territory)
-        controle = controle_territoire_generaux(generaux_territoire)
-
-        afficher_et_ecrire(f"Controle actuel : {controle}")
-
-        for joueur in joueurs:
-            afficher_et_ecrire(f"\n{joueur} :")
-
-            for emplacement in emplacements:
-                general = generaux_territoire[joueur][emplacement]
-
-                if general is None:
-                    afficher_et_ecrire(f"emplacement {emplacement} : vide")
-                    continue
-
-                afficher_et_ecrire(
-                    f"emplacement {emplacement} : "
-                    f"{general['nom']} "
-                    f"({general['total_unites']} unités)"
-                )
-
-        if controle == "conteste":
-            afficher_et_ecrire(
-                "Combat détecté sur ce territoire. "
-                "La résolution V1.5 du combat n'est pas encore codée."
-            )
-
 preparer_rapport()
 reparer_structure()
 
@@ -1274,6 +1612,3 @@ if vainqueur:
     exit()
 
 lancer_bataille_v15()
-exit()
-
-lancer_bataille()
