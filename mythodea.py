@@ -555,50 +555,92 @@ def supprimer_general_si_vide(general):
 
     shutil.rmtree(chemin_general)
 
-def combat_generaux_off_off(general_j1, general_j2):
-    # Combat OFF/OFF simple entre deux généraux.
+def combat_poursuite_generaux(general_1, general_2):
+    # Duel de poursuite entre deux généraux.
     #
-    # Idée :
-    # - pas de choc frontal obligatoire
-    # - chaque bloc actif attaque une cible ennemie
-    # - le duel continue jusqu'à ce qu'un général n'ait plus d'unités
+    # Cette fonction sert au OFF/OFF et au OFF/DEF.
+    # Elle ne suppose plus que le premier général est forcément j1.
+    # Le général survivant continue tant qu'il a des unités.
+
+    joueur_1 = general_1["joueur"]
+    joueur_2 = general_2["joueur"]
+
+    chemin_1 = general_1["chemin"]
+    chemin_2 = general_2["chemin"]
 
     afficher_et_ecrire(
-        f"\nDuel OFF/OFF : {general_j1['nom']} VS {general_j2['nom']}"
+        f"\nDuel de poursuite : "
+        f"{joueur_1} {general_1['nom']} "
+        f"VS "
+        f"{joueur_2} {general_2['nom']}"
     )
 
-    chemin_j1 = general_j1["chemin"]
-    chemin_j2 = general_j2["chemin"]
+    if ordre_frontal_present(general_1, general_2):
+        afficher_et_ecrire(
+            "Ordre frontal détecté. Choc frontal avant la poursuite."
+        )
+
+        choc_frontal_generaux(general_1, general_2)
+
+        if not chemin_1.exists():
+            return
+
+        if not chemin_2.exists():
+            return
+
+        afficher_et_ecrire(
+            "\nLe choc frontal est terminé. Passage en poursuite."
+        )
 
     tour = 0
 
     while tour < 10:
         tour += 1
 
-        blocs_j1 = lire_blocs_general(chemin_j1)
-        blocs_j2 = lire_blocs_general(chemin_j2)
-
-        total_j1 = total_unites_general(blocs_j1)
-        total_j2 = total_unites_general(blocs_j2)
-
-        if total_j1 == 0 or total_j2 == 0:
+        if not chemin_1.exists() or not chemin_2.exists():
             break
 
-        afficher_et_ecrire(f"\n--- Tour de duel OFF/OFF {tour} ---")
+        armee = {
+            joueur_1: lire_blocs_general(chemin_1),
+            joueur_2: lire_blocs_general(chemin_2),
+        }
+
+        total_1 = total_unites_general(armee[joueur_1])
+        total_2 = total_unites_general(armee[joueur_2])
+
+        if total_1 == 0 or total_2 == 0:
+            break
+
+        afficher_et_ecrire(f"\n--- Tour de poursuite {tour} ---")
 
         attaque_effectuee = False
 
-        for joueur_attaquant in ["j1", "j2"]:
+        for joueur_attaquant in [joueur_1, joueur_2]:
+            if not chemin_1.exists() or not chemin_2.exists():
+                break
+
             armee = {
-                "j1": lire_blocs_general(chemin_j1),
-                "j2": lire_blocs_general(chemin_j2),
+                joueur_1: lire_blocs_general(chemin_1),
+                joueur_2: lire_blocs_general(chemin_2),
             }
+
+            if total_unites_general(armee[joueur_1]) == 0:
+                break
+
+            if total_unites_general(armee[joueur_2]) == 0:
+                break
 
             for bloc_attaquant in ordre_blocs:
                 armee = {
-                    "j1": lire_blocs_general(chemin_j1),
-                    "j2": lire_blocs_general(chemin_j2),
+                    joueur_1: lire_blocs_general(chemin_1),
+                    joueur_2: lire_blocs_general(chemin_2),
                 }
+
+                if total_unites_general(armee[joueur_1]) == 0:
+                    break
+
+                if total_unites_general(armee[joueur_2]) == 0:
+                    break
 
                 infos_attaquant = armee[joueur_attaquant][bloc_attaquant]
 
@@ -614,36 +656,27 @@ def combat_generaux_off_off(general_j1, general_j2):
                 attaque_ciblee(armee, joueur_attaquant, bloc_attaquant, cible)
                 attaque_effectuee = True
 
-                armee = {
-                    "j1": lire_blocs_general(chemin_j1),
-                    "j2": lire_blocs_general(chemin_j2),
-                }
-
-                if total_unites_general(armee["j1"]) == 0:
-                    break
-
-                if total_unites_general(armee["j2"]) == 0:
-                    break
-
         if not attaque_effectuee:
             afficher_et_ecrire(
                 "Aucune attaque possible entre ces deux généraux. Duel bloqué."
             )
             break
 
-    supprimer_general_si_vide(general_j1)
-    supprimer_general_si_vide(general_j2)
+    if chemin_1.exists():
+        supprimer_general_si_vide(general_1)
 
-def resoudre_combat_v15(territory, generaux_territoire):
-    # Résolution OFF/OFF simple d'un territoire.
+    if chemin_2.exists():
+        supprimer_general_si_vide(general_2)
+
+
+def resoudre_poursuite_generaux(territory, mode_combat):
+    # Moteur commun de poursuite.
     #
+    # Sert à OFF/OFF et OFF/DEF.
     # Règle actuelle :
     # - premier général actif de j1 contre premier général actif de j2
-    # - le gagnant continue contre le général suivant
-    # - si un général meurt, il est supprimé
-    # - la bataille continue jusqu'à ce qu'un camp n'ait plus d'unités
-
-    afficher_et_ecrire(f"\n=== Combat OFF/OFF sur {territory.name} ===")
+    # - le gagnant continue
+    # - le combat continue jusqu'à disparition d'un camp
 
     round_combat = 0
 
@@ -668,9 +701,9 @@ def resoudre_combat_v15(territory, generaux_territoire):
         general_j1 = actifs_j1[0]
         general_j2 = actifs_j2[0]
 
-        afficher_et_ecrire(f"\n--- Round OFF/OFF {round_combat} ---")
+        afficher_et_ecrire(f"\n--- Round {mode_combat} {round_combat} ---")
 
-        combat_generaux_off_off(general_j1, general_j2)
+        combat_poursuite_generaux(general_j1, general_j2)
 
     generaux_territoire = lire_generaux_territoire(territory)
     controle = controle_territoire_generaux(generaux_territoire)
@@ -679,38 +712,75 @@ def resoudre_combat_v15(territory, generaux_territoire):
         f"Limite de rounds atteinte sur {territory.name}. Controle actuel : {controle}"
     )
 
-def combat_generaux_off_def(general_attaquant, general_defenseur):
-    # Combat OFF/DEF entre deux généraux.
-    #
-    # Idée :
-    # - l'attaquant entre sur un territoire contrôlé par le défenseur
-    # - il doit donc subir la ligne défensive
-    # - Phase 1 : choc frontal bloc contre bloc
-    # - Phase 2 : si les deux survivent, attaques ciblées
 
-    joueur_attaquant = general_attaquant["joueur"]
-    joueur_defenseur = general_defenseur["joueur"]
+def resoudre_combat_v15(territory, generaux_territoire):
+    # Résolution OFF/OFF.
+    #
+    # Deux armées se rencontrent sur un territoire qui n'avait pas
+    # de défenseur clair au tour précédent.
+
+    afficher_et_ecrire(f"\n=== Combat OFF/OFF sur {territory.name} ===")
+
+    resoudre_poursuite_generaux(territory, "OFF/OFF")
+
+def general_demande_frontal(general):
+    # Vérifie si un général a donné un ordre frontal.
+    #
+    # Format accepté pour l'instant dans ordre.txt :
+    # 1-g-frontal
+    #
+    # Plus tard, on pourra préciser :
+    # 1-avant-frontal
+    # 1-g-defensif
+    # etc.
+
+    for ordre in general["ordres"]:
+        if ordre["action"] == "frontal":
+            return True
+
+    return False
+
+
+def ordre_frontal_present(general_1, general_2):
+    # Pour l'instant, si l'un des deux généraux demande frontal,
+    # le choc frontal est déclenché.
+    #
+    # Plus tard, on pourra décider :
+    # - seulement le défenseur peut imposer frontal
+    # - ou seulement si les deux choisissent frontal
+    # - ou priorité selon stratégie / terrain / ordre
+
+    if general_demande_frontal(general_1):
+        return True
+
+    if general_demande_frontal(general_2):
+        return True
+
+    return False
+
+
+def choc_frontal_generaux(general_1, general_2):
+    # Choc frontal entre deux généraux.
+    #
+    # Ce n'est plus automatique en OFF/DEF.
+    # Cette fonction sera appelée seulement si un ordre frontal existe.
+
+    joueur_1 = general_1["joueur"]
+    joueur_2 = general_2["joueur"]
 
     afficher_et_ecrire(
-        f"\nDuel OFF/DEF : "
-        f"{joueur_attaquant} {general_attaquant['nom']} attaque "
-        f"{joueur_defenseur} {general_defenseur['nom']}"
+        f"\nOrdre frontal : "
+        f"{joueur_1} {general_1['nom']} "
+        f"VS "
+        f"{joueur_2} {general_2['nom']}"
     )
 
-    chemin_attaquant = general_attaquant["chemin"]
-    chemin_defenseur = general_defenseur["chemin"]
+    chemin_1 = general_1["chemin"]
+    chemin_2 = general_2["chemin"]
 
     chemins = {
-        joueur_attaquant: chemin_attaquant,
-        joueur_defenseur: chemin_defenseur,
-    }
-
-    # PHASE 1 : choc frontal.
-    afficher_et_ecrire("\nPhase 1 : choc frontal défensif")
-
-    armee = {
-        "j1": lire_blocs_general(chemins["j1"]),
-        "j2": lire_blocs_general(chemins["j2"]),
+        joueur_1: chemin_1,
+        joueur_2: chemin_2,
     }
 
     for bloc in ordre_blocs:
@@ -719,103 +789,33 @@ def combat_generaux_off_def(general_attaquant, general_defenseur):
             "j2": lire_blocs_general(chemins["j2"]),
         }
 
-        infos_attaquant = armee[joueur_attaquant][bloc]
-        infos_defenseur = armee[joueur_defenseur][bloc]
+        infos_1 = armee[joueur_1][bloc]
+        infos_2 = armee[joueur_2][bloc]
 
-        if infos_attaquant["nombre"] == 0 and infos_defenseur["nombre"] == 0:
+        if infos_1["nombre"] == 0 and infos_2["nombre"] == 0:
             continue
 
         afficher_et_ecrire(f"\nBloc {bloc} :")
 
-        survivants_attaquant, survivants_defenseur = combat_bloc(
-            infos_attaquant,
-            infos_defenseur
+        survivants_1, survivants_2 = combat_bloc(
+            infos_1,
+            infos_2
         )
 
-        supprimer_unites(infos_attaquant, survivants_attaquant)
-        supprimer_unites(infos_defenseur, survivants_defenseur)
+        supprimer_unites(infos_1, survivants_1)
+        supprimer_unites(infos_2, survivants_2)
 
-    # Vérification après le choc frontal.
-    armee = {
-        "j1": lire_blocs_general(chemins["j1"]),
-        "j2": lire_blocs_general(chemins["j2"]),
-    }
+    supprimer_general_si_vide(general_1)
+    supprimer_general_si_vide(general_2)
 
-    if total_unites_general(armee[joueur_attaquant]) == 0:
-        supprimer_general_si_vide(general_attaquant)
-        supprimer_general_si_vide(general_defenseur)
-        return
-
-    if total_unites_general(armee[joueur_defenseur]) == 0:
-        supprimer_general_si_vide(general_attaquant)
-        supprimer_general_si_vide(general_defenseur)
-        return
-
-    # PHASE 2 : attaques ciblées si les deux généraux ont survécu.
-    afficher_et_ecrire("\nPhase 2 : attaques ciblées après le choc")
-
-    tour = 0
-
-    while tour < 10:
-        tour += 1
-
-        armee = {
-            "j1": lire_blocs_general(chemins["j1"]),
-            "j2": lire_blocs_general(chemins["j2"]),
-        }
-
-        if total_unites_general(armee[joueur_attaquant]) == 0:
-            break
-
-        if total_unites_general(armee[joueur_defenseur]) == 0:
-            break
-
-        afficher_et_ecrire(f"\n--- Tour OFF/DEF {tour} ---")
-
-        attaque_effectuee = False
-
-        for joueur_attaque in [joueur_attaquant, joueur_defenseur]:
-            for bloc_attaquant in ordre_blocs:
-                armee = {
-                    "j1": lire_blocs_general(chemins["j1"]),
-                    "j2": lire_blocs_general(chemins["j2"]),
-                }
-
-                if total_unites_general(armee[joueur_attaquant]) == 0:
-                    break
-
-                if total_unites_general(armee[joueur_defenseur]) == 0:
-                    break
-
-                infos_attaquant = armee[joueur_attaque][bloc_attaquant]
-
-                if infos_attaquant["nombre"] <= 0:
-                    continue
-
-                type_attaquant = infos_attaquant["type"]
-                cible = choisir_cible(armee, joueur_attaque, type_attaquant)
-
-                if cible is None:
-                    continue
-
-                attaque_ciblee(armee, joueur_attaque, bloc_attaquant, cible)
-                attaque_effectuee = True
-
-        if not attaque_effectuee:
-            afficher_et_ecrire(
-                "Aucune attaque possible entre ces deux généraux. Duel bloqué."
-            )
-            break
-
-    supprimer_general_si_vide(general_attaquant)
-    supprimer_general_si_vide(general_defenseur)
 
 
 def resoudre_combat_off_def(territory, defenseur):
-    # Résout une bataille OFF/DEF sur un territoire.
+    # Résolution OFF/DEF.
     #
-    # defenseur = joueur qui contrôlait le territoire avant le combat.
-    # attaquant = l'autre joueur.
+    # Pour l'instant, le moteur de combat est le même que OFF/OFF.
+    # Mais on garde la distinction défenseur / attaquant pour les règles futures :
+    # terrain, fortification, ravitaillement, avant-poste, brouillard de guerre, etc.
 
     attaquant = ennemi_de(defenseur)
 
@@ -826,39 +826,7 @@ def resoudre_combat_off_def(territory, defenseur):
         f"Défenseur : {defenseur} | Attaquant : {attaquant}"
     )
 
-    round_combat = 0
-
-    while round_combat < 20:
-        round_combat += 1
-
-        generaux_territoire = lire_generaux_territoire(territory)
-        controle = controle_territoire_generaux(generaux_territoire)
-
-        if controle != "conteste":
-            afficher_et_ecrire(f"Fin du combat. Controle final : {controle}")
-            return
-
-        actifs_attaquant = generaux_actifs_joueur(generaux_territoire, attaquant)
-        actifs_defenseur = generaux_actifs_joueur(generaux_territoire, defenseur)
-
-        if len(actifs_attaquant) == 0 or len(actifs_defenseur) == 0:
-            controle = controle_territoire_generaux(generaux_territoire)
-            afficher_et_ecrire(f"Fin du combat. Controle final : {controle}")
-            return
-
-        general_attaquant = actifs_attaquant[0]
-        general_defenseur = actifs_defenseur[0]
-
-        afficher_et_ecrire(f"\n--- Round OFF/DEF {round_combat} ---")
-
-        combat_generaux_off_def(general_attaquant, general_defenseur)
-
-    generaux_territoire = lire_generaux_territoire(territory)
-    controle = controle_territoire_generaux(generaux_territoire)
-
-    afficher_et_ecrire(
-        f"Limite de rounds atteinte sur {territory.name}. Controle actuel : {controle}"
-    )
+    resoudre_poursuite_generaux(territory, "OFF/DEF")
 
 
 def lancer_bataille_v15():
