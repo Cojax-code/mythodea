@@ -15,13 +15,11 @@ territoires = [
     game_path / "base2",
 ]
 
-carte_territoires = ["base1", "terrain1", "terrain2", "terrain3", "base2"]
 
 ordre_blocs = ["avant", "droite", "gauche", "arriere"]
 joueurs = ["j1", "j2"]
 
 emplacements = ["1", "2", "3","4"]
-generaux = ["general1", "general2", "general3", "general4", "general5"]
 max_unites_par_general = 20
 max_generaux_par_joueur = 5
 
@@ -32,8 +30,6 @@ orientation_rare = "hybride"
 rapport_path = game_path / "rapport" / "rapport_bataille.txt"
 
 rapport_court_path = game_path / "rapport" / "rapport_court.txt"
-
-unites_connues_path = game_path / "systeme" / "unites_connues.txt"
 
 controle_territoires_path = game_path / "systeme" / "controle_territoires.txt"
 
@@ -536,31 +532,43 @@ def generaux_actifs_joueur(generaux_territoire, joueur):
 
 
 def supprimer_general_si_vide(general):
-    # Si un général n'a plus aucune unité, il est considéré comme vaincu.
-    # On le supprime du plateau.
+    # Supprime du plateau un général qui n'a plus aucune unité.
 
     if general is None:
-        return
+        return False
 
     chemin_general = general["chemin"]
+
+    if not chemin_general.exists():
+        return False
+
     blocs_general = lire_blocs_general(chemin_general)
     total = total_unites_general(blocs_general)
 
     if total > 0:
-        return
+        return False
 
     afficher_et_ecrire(
-        f"{general['joueur']} {general['nom']} n'a plus d'unités. Général supprimé."
+        f"{general['joueur']} {general['nom']} "
+        f"n'a plus d'unités. Général supprimé."
     )
 
     shutil.rmtree(chemin_general)
 
+    return True
+
 def combat_poursuite_generaux(general_1, general_2):
-    # Duel de poursuite entre deux généraux.
+    # Affrontement complet entre deux généraux.
     #
-    # Cette fonction sert au OFF/OFF et au OFF/DEF.
-    # Elle ne suppose plus que le premier général est forcément j1.
-    # Le général survivant continue tant qu'il a des unités.
+    # Cette fonction est utilisée pour OFF/OFF et OFF/DEF.
+    #
+    # Déroulement :
+    # 1. Engagement initial entre les blocs placés face à face.
+    # 2. Attaques d'initiative entre les blocs survivants.
+    #
+    # Les ordres des généraux sont laissés en suspens.
+    # Ils serviront plus tard à choisir l'ordre des généraux
+    # et leurs adversaires.
 
     joueur_1 = general_1["joueur"]
     joueur_2 = general_2["joueur"]
@@ -569,28 +577,32 @@ def combat_poursuite_generaux(general_1, general_2):
     chemin_2 = general_2["chemin"]
 
     afficher_et_ecrire(
-        f"\nDuel de poursuite : "
+        f"\nEngagement : "
         f"{joueur_1} {general_1['nom']} "
         f"VS "
         f"{joueur_2} {general_2['nom']}"
     )
 
-    if ordre_frontal_present(general_1, general_2):
-        afficher_et_ecrire(
-            "Ordre frontal détecté. Choc frontal avant la poursuite."
-        )
+    # --------------------------------------------------
+    # Phase 1 : engagement initial
+    # --------------------------------------------------
 
-        choc_frontal_generaux(general_1, general_2)
+    initiative_avant = phase_engagement_initial(
+        general_1,
+        general_2
+)
 
-        if not chemin_1.exists():
-            return
+    # La phase 1 peut avoir détruit un général.
+    if not chemin_1.exists() or not chemin_2.exists():
+        return
 
-        if not chemin_2.exists():
-            return
+    # --------------------------------------------------
+    # Phase 2 : attaques d'initiative
+    # --------------------------------------------------
 
-        afficher_et_ecrire(
-            "\nLe choc frontal est terminé. Passage en poursuite."
-        )
+    afficher_et_ecrire(
+        "\n=== Phase 2 : attaques d'initiative ==="
+    )
 
     tour = 0
 
@@ -611,11 +623,17 @@ def combat_poursuite_generaux(general_1, general_2):
         if total_1 == 0 or total_2 == 0:
             break
 
-        afficher_et_ecrire(f"\n--- Tour de poursuite {tour} ---")
+        afficher_et_ecrire(
+            f"\n--- Tour d'initiative {tour} ---"
+        )
 
         attaque_effectuee = False
 
+        # Pour le moment, joueur_1 agit avant joueur_2.
+        # La priorité sera retravaillée avec les ordres
+        # et les transitions des généraux.
         for joueur_attaquant in [joueur_1, joueur_2]:
+
             if not chemin_1.exists() or not chemin_2.exists():
                 break
 
@@ -630,7 +648,24 @@ def combat_poursuite_generaux(general_1, general_2):
             if total_unites_general(armee[joueur_2]) == 0:
                 break
 
-            for bloc_attaquant in ordre_blocs:
+            ordre_attaques = ordre_attaques_initiative(
+                armee,
+                joueur_attaquant,
+                initiative_avant
+            )
+
+            afficher_et_ecrire(
+                f"\nOrdre d'initiative de {joueur_attaquant} : "
+                f"{', '.join(ordre_attaques)}"
+            )
+
+            for bloc_attaquant in ordre_attaques:
+
+                if not chemin_1.exists() or not chemin_2.exists():
+                    break
+
+                # Relire les unités avant chaque attaque,
+                # car le combat précédent peut avoir provoqué des pertes.
                 armee = {
                     joueur_1: lire_blocs_general(chemin_1),
                     joueur_2: lire_blocs_general(chemin_2),
@@ -644,30 +679,44 @@ def combat_poursuite_generaux(general_1, general_2):
 
                 infos_attaquant = armee[joueur_attaquant][bloc_attaquant]
 
+                # Le bloc pouvait contenir des unités au début du tour,
+                # mais avoir été détruit entre-temps.
                 if infos_attaquant["nombre"] <= 0:
                     continue
 
                 type_attaquant = infos_attaquant["type"]
-                cible = choisir_cible(armee, joueur_attaquant, type_attaquant)
+
+                cible = choisir_cible(
+                    armee,
+                    joueur_attaquant,
+                    type_attaquant
+                )
 
                 if cible is None:
                     continue
 
-                attaque_ciblee(armee, joueur_attaquant, bloc_attaquant, cible)
+                attaque_ciblee(
+                    armee,
+                    joueur_attaquant,
+                    bloc_attaquant,
+                    cible
+                )
+
                 attaque_effectuee = True
 
         if not attaque_effectuee:
             afficher_et_ecrire(
-                "Aucune attaque possible entre ces deux généraux. Duel bloqué."
+                "Aucune attaque d'initiative possible. "
+                "L'affrontement est bloqué."
             )
             break
 
+    # Supprimer les généraux qui n'ont plus d'unités.
     if chemin_1.exists():
         supprimer_general_si_vide(general_1)
 
     if chemin_2.exists():
         supprimer_general_si_vide(general_2)
-
 
 def resoudre_poursuite_generaux(territory, mode_combat):
     # Moteur commun de poursuite.
@@ -713,15 +762,27 @@ def resoudre_poursuite_generaux(territory, mode_combat):
     )
 
 
-def resoudre_combat_v15(territory, generaux_territoire):
+def resoudre_combat_v15(territory):
     # Résolution OFF/OFF.
-    #
-    # Deux armées se rencontrent sur un territoire qui n'avait pas
-    # de défenseur clair au tour précédent.
 
-    afficher_et_ecrire(f"\n=== Combat OFF/OFF sur {territory.name} ===")
+    afficher_et_ecrire(
+        f"\n=== Combat OFF/OFF sur {territory.name} ==="
+    )
 
-    resoudre_poursuite_generaux(territory, "OFF/OFF")
+    resoudre_poursuite_generaux(
+        territory,
+        "OFF/OFF"
+    )
+
+
+    # ==================================================
+# ORDRES DES GENERAUX : FONCTIONS EN SUSPENS
+#
+# Elles seront utilisées plus tard lors du travail
+# sur la transition et la sélection des généraux.
+# Elles ne doivent pas intervenir dans la résolution
+# interne d'un engagement pour le moment.
+# ==================================================
 
 def general_demande_frontal(general):
     # Vérifie si un général a donné un ordre frontal.
@@ -740,73 +801,6 @@ def general_demande_frontal(general):
 
     return False
 
-
-def ordre_frontal_present(general_1, general_2):
-    # Pour l'instant, si l'un des deux généraux demande frontal,
-    # le choc frontal est déclenché.
-    #
-    # Plus tard, on pourra décider :
-    # - seulement le défenseur peut imposer frontal
-    # - ou seulement si les deux choisissent frontal
-    # - ou priorité selon stratégie / terrain / ordre
-
-    if general_demande_frontal(general_1):
-        return True
-
-    if general_demande_frontal(general_2):
-        return True
-
-    return False
-
-
-def choc_frontal_generaux(general_1, general_2):
-    # Choc frontal entre deux généraux.
-    #
-    # Ce n'est plus automatique en OFF/DEF.
-    # Cette fonction sera appelée seulement si un ordre frontal existe.
-
-    joueur_1 = general_1["joueur"]
-    joueur_2 = general_2["joueur"]
-
-    afficher_et_ecrire(
-        f"\nOrdre frontal : "
-        f"{joueur_1} {general_1['nom']} "
-        f"VS "
-        f"{joueur_2} {general_2['nom']}"
-    )
-
-    chemin_1 = general_1["chemin"]
-    chemin_2 = general_2["chemin"]
-
-    chemins = {
-        joueur_1: chemin_1,
-        joueur_2: chemin_2,
-    }
-
-    for bloc in ordre_blocs:
-        armee = {
-            "j1": lire_blocs_general(chemins["j1"]),
-            "j2": lire_blocs_general(chemins["j2"]),
-        }
-
-        infos_1 = armee[joueur_1][bloc]
-        infos_2 = armee[joueur_2][bloc]
-
-        if infos_1["nombre"] == 0 and infos_2["nombre"] == 0:
-            continue
-
-        afficher_et_ecrire(f"\nBloc {bloc} :")
-
-        survivants_1, survivants_2 = combat_bloc(
-            infos_1,
-            infos_2
-        )
-
-        supprimer_unites(infos_1, survivants_1)
-        supprimer_unites(infos_2, survivants_2)
-
-    supprimer_general_si_vide(general_1)
-    supprimer_general_si_vide(general_2)
 
 
 
@@ -880,7 +874,7 @@ def lancer_bataille_v15():
                 afficher_et_ecrire(
                     "Combat détecté : OFF/OFF."
                 )
-                resoudre_combat_v15(territory, generaux_territoire)
+                resoudre_combat_v15(territory)
 
     sauvegarder_controle_territoires()
 
@@ -983,82 +977,6 @@ def identifier_unite(unite):
     return "inconnu"
 
 
-def verifier_doublons_unites():
-    noms_vus = {}
-
-    for territory in territoires:
-        armee = lire_blocs(territory)
-
-        for joueur in joueurs:
-            for bloc in ordre_blocs:
-                for unite in armee[joueur][bloc]["unites"]:
-                    identifiant = identifiant_unite(joueur, unite)
-
-                    if identifiant not in noms_vus:
-                        noms_vus[identifiant] = []
-
-                    noms_vus[identifiant].append(unite)
-
-    for identifiant, unites in noms_vus.items():
-        if len(unites) > 1:
-            afficher_et_ecrire(
-                f"Doublon d'unité détecté : {identifiant}. Toutes les copies sont supprimées."
-            )
-
-            for unite in unites:
-                shutil.rmtree(unite)
-
-
-def lire_blocs(territory):
-    armee = {"j1": {}, "j2": {}}
-
-    for joueur in armee:
-        for bloc in ordre_blocs:
-            armee[joueur][bloc] = {"type": "vide", "nombre": 0, "unites": []}
-
-    for joueur_dir in territory.iterdir():
-        if joueur_dir.is_dir():
-            joueur = joueur_dir.name
-
-            if joueur not in armee:
-                continue
-
-            for bloc_dir in joueur_dir.iterdir():
-                if bloc_dir.is_dir():
-                    bloc = bloc_dir.name
-
-                    if bloc not in ordre_blocs:
-                        shutil.rmtree(bloc_dir)
-                        afficher_et_ecrire(
-                            f"Dossier invalide supprimé : {joueur}/{bloc}"
-                        )
-                        continue
-
-                    type_trouves = []
-                    unites_trouvees = []
-                    a_supprimer = []
-
-                    for unite in bloc_dir.iterdir():
-                        type_unite = identifier_unite(unite)
-
-                        if type_unite == "inconnu":
-                            a_supprimer.append(unite)
-                            continue
-
-                        type_trouves.append(type_unite)
-                        unites_trouvees.append(unite)
-
-                    for unite in a_supprimer:
-                        shutil.rmtree(unite)
-                        afficher_et_ecrire(f"Unité invalide supprimée : {unite.name}")
-
-                    if len(type_trouves) > 0:
-                        armee[joueur][bloc]["type"] = type_trouves[0]
-                        armee[joueur][bloc]["nombre"] = len(type_trouves)
-                        armee[joueur][bloc]["unites"] = unites_trouvees
-
-    return armee
-
 
 def cible_facile(type_unite):
     if type_unite == "archer":
@@ -1152,150 +1070,156 @@ def trouver_cible_faible(armee, joueur_ennemi):
     return cible
 
 
-def total_unites_joueur(armee, joueur):
-    total = 0
 
-    for bloc in ordre_blocs:
-        total += armee[joueur][bloc]["nombre"]
-
-    return total
-
-
-def controle_territoire(armee):
-    total_j1 = total_unites_joueur(armee, "j1")
-    total_j2 = total_unites_joueur(armee, "j2")
-
-    if total_j1 > 0 and total_j2 == 0:
-        return "j1"
-
-    elif total_j2 > 0 and total_j1 == 0:
-        return "j2"
-
-    elif total_j1 == 0 and total_j2 == 0:
-        return "neutre"
-
-    else:
-        return "conteste"
-
-
-def identifiant_unite(joueur, unite):
-    return f"{joueur}:{unite.name}"
-
-
-def charger_unites_connues():
-    if not unites_connues_path.exists():
-        return set()
-
-    lignes = unites_connues_path.read_text(encoding="utf-8").splitlines()
-    return set(lignes)
-
-
-def sauvegarder_unites_connues(unites_connues):
-    unites_connues_path.parent.mkdir(exist_ok=True)
-    texte = "\n".join(sorted(unites_connues))
-    unites_connues_path.write_text(texte, encoding="utf-8")
-
-
-def verifier_renforts():
-    controle = controle_des_territoires()
-    unites_connues = charger_unites_connues()
-    nouvelles_unites_connues = set()
-
-    for territory in territoires:
-        armee = lire_blocs(territory)
-
-        for joueur in joueurs:
-            ravitaille = territoire_relie(joueur, controle, territory.name)
-
-            for bloc in ordre_blocs:
-                infos = armee[joueur][bloc]
-
-                for unite in infos["unites"]:
-                    identifiant = identifiant_unite(joueur, unite)
-
-                    if identifiant in unites_connues:
-                        nouvelles_unites_connues.add(identifiant)
-                        continue
-
-                    if ravitaille:
-                        afficher_et_ecrire(
-                            f"Nouvelle unité acceptée : {joueur} {unite.name} sur {territory.name}"
-                        )
-                        nouvelles_unites_connues.add(identifiant)
-                    else:
-                        shutil.rmtree(unite)
-                        afficher_et_ecrire(
-                            f"Renfort illégal supprimé : {joueur} {unite.name} sur {territory.name} non ravitaillé"
-                        )
-
-    sauvegarder_unites_connues(nouvelles_unites_connues)
-
-
-def territoire_relie(joueur, controle, territoire):
-    if joueur == "j1":
-        depart = "base1"
-    else:
-        depart = "base2"
-
-    position_depart = carte_territoires.index(depart)
-    position_territoire = carte_territoires.index(territoire)
-
-    if joueur == "j1":
-        chemin = carte_territoires[position_depart : position_territoire + 1]
-    else:
-        chemin = carte_territoires[position_territoire : position_depart + 1]
-
-    for nom in chemin:
-        if nom == depart:
-            continue
-
-        if controle[nom] != joueur:
-            return False
-
-    return True
-
-
-def afficher_ravitaillement():
-    controle = controle_des_territoires()
-
-    afficher_et_ecrire("\n=== Ravitaillement ===")
-
-    for joueur in joueurs:
-        afficher_et_ecrire(f"\n{joueur} :")
-
-        for nom_territoire in carte_territoires:
-            if territoire_relie(joueur, controle, nom_territoire):
-                afficher_et_ecrire(f"{nom_territoire} : ravitaillé")
-            else:
-                afficher_et_ecrire(f"{nom_territoire} : coupé")
-
-
-def controle_des_territoires():
-    resultat = {}
-
-    for territory in territoires:
-        armee = lire_blocs(territory)
-        resultat[territory.name] = controle_territoire(armee)
-
-    return resultat
 
 
 def supprimer_unites(infos, survivants):
     nombre_actuel = infos["nombre"]
     pertes = nombre_actuel - survivants
 
+    unites_supprimees = []
+
     if pertes <= 0:
-        return
+        return unites_supprimees
 
     type_unite = infos["type"]
 
     unites_a_supprimer = random.sample(infos["unites"], pertes)
 
     for unite in unites_a_supprimer:
-        afficher_et_ecrire(
-            f"Unité supprimée : {unite.name} ({type_unite})"
-        )
+        unites_supprimees.append(f"{unite.name} ({type_unite})")
         shutil.rmtree(unite)
+
+    return unites_supprimees
+
+def afficher_tableau_pertes(pertes_joueur_1, pertes_joueur_2, nom_joueur_1, nom_joueur_2):
+    if len(pertes_joueur_1) == 0 and len(pertes_joueur_2) == 0:
+        afficher_et_ecrire("Aucune perte.")
+        return
+
+    afficher_et_ecrire("\nPertes :")
+    afficher_et_ecrire(f"{nom_joueur_1:<35} | {nom_joueur_2:<35}")
+    afficher_et_ecrire("-" * 35 + "-+-" + "-" * 35)
+
+    longueur = max(len(pertes_joueur_1), len(pertes_joueur_2))
+
+    for i in range(longueur):
+        if i < len(pertes_joueur_1):
+            gauche = pertes_joueur_1[i]
+        else:
+            gauche = ""
+
+        if i < len(pertes_joueur_2):
+            droite = pertes_joueur_2[i]
+        else:
+            droite = ""
+
+        afficher_et_ecrire(f"{gauche:<35} | {droite:<35}")
+
+def confrontation_directe(armee, joueur_1, joueur_2, bloc):
+    infos_1 = armee[joueur_1][bloc]
+    infos_2 = armee[joueur_2][bloc]
+
+    if infos_1["nombre"] == 0 or infos_2["nombre"] == 0:
+        return False
+
+    afficher_et_ecrire(f"\nConfrontation directe : {bloc}")
+    afficher_et_ecrire(
+        f"{joueur_1} {bloc} VS {joueur_2} {bloc}"
+    )
+    afficher_et_ecrire("")
+
+    survivants_1, survivants_2 = combat_bloc(
+        infos_1,
+        infos_2
+    )
+
+    pertes_1 = supprimer_unites(infos_1, survivants_1)
+    pertes_2 = supprimer_unites(infos_2, survivants_2)
+
+    afficher_tableau_pertes(pertes_1, pertes_2, joueur_1, joueur_2)
+
+    return True
+
+def phase_engagement_initial(general_1, general_2):
+    joueur_1 = general_1["joueur"]
+    joueur_2 = general_2["joueur"]
+
+    chemin_1 = general_1["chemin"]
+    chemin_2 = general_2["chemin"]
+
+    afficher_et_ecrire("\n=== Phase 1 : engagement initial ===")
+
+    armee_depart = {
+        joueur_1: lire_blocs_general(chemin_1),
+        joueur_2: lire_blocs_general(chemin_2),
+    }
+
+    initiative_avant = {
+        joueur_1: False,
+        joueur_2: False,
+    }
+
+    infos_avant_1 = armee_depart[joueur_1]["avant"]
+    infos_avant_2 = armee_depart[joueur_2]["avant"]
+
+    if infos_avant_1["nombre"] > 0 and infos_avant_2["nombre"] == 0:
+        initiative_avant[joueur_1] = True
+
+    if infos_avant_2["nombre"] > 0 and infos_avant_1["nombre"] == 0:
+        initiative_avant[joueur_2] = True
+
+    combats_prevus = []
+
+    for bloc in ordre_blocs:
+        infos_1 = armee_depart[joueur_1][bloc]
+        infos_2 = armee_depart[joueur_2][bloc]
+
+        if infos_1["nombre"] > 0 and infos_2["nombre"] > 0:
+            combats_prevus.append(bloc)
+
+    if len(combats_prevus) == 0:
+        afficher_et_ecrire("Aucune confrontation directe prévue.")
+        return initiative_avant
+
+    afficher_et_ecrire("\nCombats prévus :")
+
+    for bloc in combats_prevus:
+        infos_1 = armee_depart[joueur_1][bloc]
+        infos_2 = armee_depart[joueur_2][bloc]
+
+        afficher_et_ecrire(
+            f"- {bloc} : "
+            f"{joueur_1} {infos_1['nombre']} {infos_1['type']} "
+            f"VS "
+            f"{joueur_2} {infos_2['nombre']} {infos_2['type']}"
+        )
+
+    afficher_et_ecrire("\n--- Résolution des engagements ---")
+
+    for bloc in combats_prevus:
+        if not chemin_1.exists() or not chemin_2.exists():
+            break
+
+        armee = {
+            joueur_1: lire_blocs_general(chemin_1),
+            joueur_2: lire_blocs_general(chemin_2),
+        }
+
+        confrontation_directe(
+            armee,
+            joueur_1,
+            joueur_2,
+            bloc
+        )
+
+        if chemin_1.exists():
+            supprimer_general_si_vide(general_1)
+
+        if chemin_2.exists():
+            supprimer_general_si_vide(general_2)
+
+    return initiative_avant
 
 def attaque_ciblee(armee, joueur_attaquant, bloc_attaquant, bloc_cible):
     joueur_ennemi = ennemi_de(joueur_attaquant)
@@ -1303,73 +1227,51 @@ def attaque_ciblee(armee, joueur_attaquant, bloc_attaquant, bloc_cible):
     infos_attaquant = armee[joueur_attaquant][bloc_attaquant]
     infos_defenseur = armee[joueur_ennemi][bloc_cible]
 
-    afficher_et_ecrire("\nAttaque ciblée :")
+    afficher_et_ecrire("\nAttaque d'initiative :")
     afficher_et_ecrire(
-        f"{joueur_attaquant} {bloc_attaquant} attaque {joueur_ennemi} {bloc_cible}"
+        f"{joueur_attaquant} {bloc_attaquant} exploite une ouverture contre "
+        f"{joueur_ennemi} {bloc_cible}"
     )
+    afficher_et_ecrire("")
 
     survivants_attaquant, survivants_defenseur = combat_bloc(
         infos_attaquant,
         infos_defenseur
     )
 
-    supprimer_unites(infos_attaquant, survivants_attaquant)
-    supprimer_unites(infos_defenseur, survivants_defenseur)
+    pertes_attaquant = supprimer_unites(infos_attaquant, survivants_attaquant)
+    pertes_defenseur = supprimer_unites(infos_defenseur, survivants_defenseur)
+
+    afficher_tableau_pertes(
+        pertes_attaquant,
+        pertes_defenseur,
+        joueur_attaquant,
+        joueur_ennemi
+    )
 
 
 def choisir_flanc_attaquant(armee, joueur):
-    flancs = ["droite", "gauche"]
+    # Choisit le flanc qui doit agir en premier.
+    #
+    # Règles :
+    # - le flanc le plus nombreux agit en premier ;
+    # - en cas d'égalité, le choix est aléatoire ;
+    # - si les deux flancs sont vides, retourne None.
 
-    droite_nombre = armee[joueur]["droite"]["nombre"]
-    gauche_nombre = armee[joueur]["gauche"]["nombre"]
+    nombre_droite = armee[joueur]["droite"]["nombre"]
+    nombre_gauche = armee[joueur]["gauche"]["nombre"]
 
-    if droite_nombre > gauche_nombre:
-        return "droite"
-
-    elif gauche_nombre > droite_nombre:
-        return "gauche"
-
-    elif droite_nombre > 0:
-        return random.choice(flancs)
-
-    else:
+    if nombre_droite == 0 and nombre_gauche == 0:
         return None
 
-def ordre_attaque_manche_2(armee, joueur, initiative_avant):
-    ordre = []
-    avant_deja_utilise = False
+    if nombre_droite > nombre_gauche:
+        return "droite"
 
-    # 1. Avant-garde si bonus d'initiative
-    if initiative_avant[joueur] and armee[joueur]["avant"]["nombre"] > 0:
-        ordre.append("avant")
-        avant_deja_utilise = True
+    if nombre_gauche > nombre_droite:
+        return "gauche"
 
-    # 2. Arrière-garde
-    if armee[joueur]["arriere"]["nombre"] > 0:
-        ordre.append("arriere")
+    return random.choice(["droite", "gauche"])
 
-    # 3. Flanc le plus nombreux puis flanc le moins nombreux
-    flancs = []
-
-    for flanc in ["droite", "gauche"]:
-        nombre = armee[joueur][flanc]["nombre"]
-
-        if nombre > 0:
-            flancs.append((flanc, nombre))
-
-    if len(flancs) == 2 and flancs[0][1] == flancs[1][1]:
-        random.shuffle(flancs)
-    else:
-        flancs.sort(key=lambda element: element[1], reverse=True)
-
-    for flanc, nombre in flancs:
-        ordre.append(flanc)
-
-    # 4. Avant normal, seulement si pas déjà utilisé avec le bonus
-    if not avant_deja_utilise and armee[joueur]["avant"]["nombre"] > 0:
-        ordre.append("avant")
-
-    return ordre
 
 def choisir_cible(armee, joueur_attaquant, type_attaquant):
     joueur_ennemi = ennemi_de(joueur_attaquant)
@@ -1382,69 +1284,48 @@ def choisir_cible(armee, joueur_attaquant, type_attaquant):
     return cible
 
 
-def manche_2(territory, initiative_avant):
-    afficher_et_ecrire("\n=== Manche 2 ===")
+def ordre_attaques_initiative(armee, joueur, initiative_avant):
+    # Ordre :
+    # 1. avant-garde si elle n'a pas été engagée en phase 1
+    # 2. arrière-garde
+    # 3. flanc le plus nombreux
+    # 4. second flanc
+    # 5. avant-garde si elle n'a pas déjà agi
 
-    armee = lire_blocs(territory)
+    ordre = []
+    avant_deja_ajoute = False
 
-    tour = 0
+    if (
+        initiative_avant[joueur]
+        and armee[joueur]["avant"]["nombre"] > 0
+    ):
+        ordre.append("avant")
+        avant_deja_ajoute = True
 
-    while controle_territoire(armee) == "conteste" and tour < 5:
-        tour += 1
-        afficher_et_ecrire(f"\n--- Manche 2 / Tour {tour} ---")
+    if armee[joueur]["arriere"]["nombre"] > 0:
+        ordre.append("arriere")
 
-        attaque_effectuee = False
+    premier_flanc = choisir_flanc_attaquant(armee, joueur)
 
-        for joueur in ["j1", "j2"]:
-            armee = lire_blocs(territory)
+    if premier_flanc is not None:
+        ordre.append(premier_flanc)
 
-            if controle_territoire(armee) != "conteste":
-                break
+        if premier_flanc == "droite":
+            second_flanc = "gauche"
+        else:
+            second_flanc = "droite"
 
-            ordre_attaques = ordre_attaque_manche_2(armee, joueur, initiative_avant)
+        if armee[joueur][second_flanc]["nombre"] > 0:
+            ordre.append(second_flanc)
 
-            if len(ordre_attaques) == 0:
-                continue
+    if (
+        not avant_deja_ajoute
+        and armee[joueur]["avant"]["nombre"] > 0
+    ):
+        ordre.append("avant")
 
-            afficher_et_ecrire(f"\nOrdre d'attaque de {joueur} : {', '.join(ordre_attaques)}")
+    return ordre
 
-            for bloc_attaquant in ordre_attaques:
-                armee = lire_blocs(territory)
-
-                if controle_territoire(armee) != "conteste":
-                    break
-
-                if armee[joueur][bloc_attaquant]["nombre"] <= 0:
-                    continue
-
-                type_attaquant = armee[joueur][bloc_attaquant]["type"]
-
-                cible = choisir_cible(armee, joueur, type_attaquant)
-
-                if cible is None:
-                    continue
-
-                attaque_ciblee(armee, joueur, bloc_attaquant, cible)
-                attaque_effectuee = True
-
-                armee = lire_blocs(territory)
-
-        armee = lire_blocs(territory)
-
-        if not attaque_effectuee and controle_territoire(armee) == "conteste":
-            afficher_et_ecrire(
-                "Aucune attaque possible. La bataille reste bloquée."
-            )
-            break
-
-    armee = lire_blocs(territory)
-
-    if tour >= 5 and controle_territoire(armee) == "conteste":
-        afficher_et_ecrire(
-            "Les forces restantes sont incapables de prendre l'avantage. "
-            "La bataille s'achève dans un bain de sang. "
-            "Le territoire reste contesté."
-        )
 
 def ecrire_rapport(texte):
     rapport_path.parent.mkdir(exist_ok=True)
@@ -1462,52 +1343,7 @@ def preparer_rapport():
     rapport_path.write_text("", encoding="utf-8")
 
 
-def lignes_blocs(armee, joueur):
-    lignes = []
 
-    for bloc in ordre_blocs:
-        infos = armee[joueur][bloc]
-
-        if infos["nombre"] > 0:
-            lignes.append(f"{bloc} : {infos['nombre']} {infos['type']}")
-
-    if len(lignes) == 0:
-        lignes.append("aucune unité")
-
-    return lignes
-
-
-def territoire_a_combat(armee):
-    total_j1 = total_unites_joueur(armee, "j1")
-    total_j2 = total_unites_joueur(armee, "j2")
-
-    return total_j1 > 0 and total_j2 > 0
-
-
-def ecrire_rapport_court(territoires_combattus):
-    lignes = []
-    lignes.append("=== RAPPORT COURT ===")
-
-    for territory in territoires:
-        armee = lire_blocs(territory)
-        controle = controle_territoire(armee)
-
-        lignes.append(f"\n{territory.name}")
-        lignes.append(f"Gagnant / contrôle : {controle}")
-
-        if territory.name not in territoires_combattus:
-            lignes.append("Aucun combat ce tour.")
-            lignes.append("Unités non révélées.")
-            continue
-
-        lignes.append("\nj1 :")
-        lignes.extend(lignes_blocs(armee, "j1"))
-
-        lignes.append("\nj2 :")
-        lignes.extend(lignes_blocs(armee, "j2"))
-
-    rapport_court_path.parent.mkdir(exist_ok=True)
-    rapport_court_path.write_text("\n".join(lignes), encoding="utf-8")
 
 
 def vider_fichier(chemin):
@@ -1537,39 +1373,6 @@ def verifier_victoire():
 
     return None
 
-
-def test_lecture_generaux():
-    # Fonction temporaire pour vérifier que Python lit correctement
-    # les généraux, les emplacements et les unités.
-    #
-    # Elle ne modifie pas le jeu.
-    # Elle écrit seulement dans le rapport.
-
-    afficher_et_ecrire("\n=== TEST LECTURE GENERAUX V1.5 ===")
-
-    for territory in territoires:
-        afficher_et_ecrire(f"\nTerritoire : {territory.name}")
-
-        generaux_territoire = lire_generaux_territoire(territory)
-        controle = controle_territoire_generaux(generaux_territoire)
-
-        afficher_et_ecrire(f"Controle version generaux : {controle}")
-
-        for joueur in joueurs:
-            afficher_et_ecrire(f"\n{joueur} :")
-
-            for emplacement in emplacements:
-                general = generaux_territoire[joueur][emplacement]
-
-                if general is None:
-                    afficher_et_ecrire(f"emplacement {emplacement} : vide")
-                    continue
-
-                afficher_et_ecrire(
-                    f"emplacement {emplacement} : "
-                    f"{general['nom']} "
-                    f"({general['total_unites']} unités)"
-                )
 
 
 preparer_rapport()
