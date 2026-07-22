@@ -33,7 +33,44 @@ rapport_court_path = game_path / "rapport" / "rapport_court.txt"
 
 controle_territoires_path = game_path / "systeme" / "controle_territoires.txt"
 
+carte_territoires = {
+    "base1": ["terrain1"],
+    "terrain1": ["base1", "terrain2"],
+    "terrain2": ["terrain1", "terrain3"],
+    "terrain3": ["terrain2", "base2"],
+    "base2": ["terrain3"],
+}
 
+
+def territoires_adjacents(territoire_depart, territoire_arrivee):
+    voisins = carte_territoires.get(territoire_depart, [])
+    return territoire_arrivee in voisins
+
+def territoires_ravitailles(joueur, controle_territoires):
+    if joueur == "j1":
+        base = "base1"
+    else:
+        base = "base2"
+
+    ravitailles = set()
+    a_explorer = [base]
+
+    while a_explorer:
+        territoire_actuel = a_explorer.pop()
+
+        if territoire_actuel in ravitailles:
+            continue
+
+        if controle_territoires.get(territoire_actuel) != joueur:
+            continue
+
+        ravitailles.add(territoire_actuel)
+
+        for voisin in carte_territoires.get(territoire_actuel, []):
+            if voisin not in ravitailles:
+                a_explorer.append(voisin)
+
+    return ravitailles
 
 def choisir_orientation_general():
     chance = random.randint(1, 100)
@@ -695,9 +732,17 @@ def combat_poursuite_generaux(general_1, general_2):
                 if cible is None:
                     continue
 
+                if joueur_attaquant == joueur_1:
+                    general_attaquant = general_1
+                    general_defenseur = general_2
+                else:
+                    general_attaquant = general_2
+                    general_defenseur = general_1
+
                 attaque_ciblee(
                     armee,
-                    joueur_attaquant,
+                    general_attaquant,
+                    general_defenseur,
                     bloc_attaquant,
                     cible
                 )
@@ -998,39 +1043,62 @@ def multiplicateur(type_attaquant, type_defenseur):
     return 1
 
 
-def combat_bloc(infos_j1, infos_j2):
-    type_j1 = infos_j1["type"]
-    type_j2 = infos_j2["type"]
 
-    nombre_j1 = infos_j1["nombre"]
-    nombre_j2 = infos_j2["nombre"]
+def formater_force(infos):
+    # Transforme les informations d'un bloc en texte lisible.
+    #
+    # Exemples :
+    # 0 unité  → "aucune unité"
+    # 1 archer → "1 archer"
+    # 4 archer → "4 archers"
 
-    valeur_j1 = multiplicateur(type_j1, type_j2)
-    valeur_j2 = multiplicateur(type_j2, type_j1)
+    nombre = infos["nombre"]
+    type_unite = infos["type"]
 
-    degats_j1 = nombre_j1 * valeur_j1
-    degats_j2 = nombre_j2 * valeur_j2
+    if nombre <= 0:
+        return "aucune unité"
 
-    pertes_j1 = degats_j2 // valeur_j1
-    pertes_j2 = degats_j1 // valeur_j2
+    if nombre == 1:
+        return f"1 {type_unite}"
 
-    survivants_j1 = max(0, nombre_j1 - pertes_j1)
-    survivants_j2 = max(0, nombre_j2 - pertes_j2)
+    return f"{nombre} {type_unite}s"
 
-    if nombre_j1 == 0:
-        gauche = "vide"
-    else:
-        gauche = f"{nombre_j1} {type_j1}"
+def formater_survivants(nombre, type_unite):
+    # Présente le résultat d'un bloc après le combat.
 
-    if nombre_j2 == 0:
-        droite = "vide"
-    else:
-        droite = f"{nombre_j2} {type_j2}"
+    if nombre <= 0:
+        return "aucune unité survivante"
 
-    afficher_et_ecrire(f"{gauche} VS {droite}")
+    if nombre == 1:
+        return f"1 {type_unite} survivant"
 
-    return survivants_j1, survivants_j2
+    return f"{nombre} {type_unite}s survivants"
 
+def combat_bloc(infos_1, infos_2):
+    # Calcule le résultat d'un combat entre deux blocs.
+    #
+    # Cette fonction n'écrit rien dans le rapport.
+    # Elle retourne seulement le nombre de survivants.
+
+    type_1 = infos_1["type"]
+    type_2 = infos_2["type"]
+
+    nombre_1 = infos_1["nombre"]
+    nombre_2 = infos_2["nombre"]
+
+    valeur_1 = multiplicateur(type_1, type_2)
+    valeur_2 = multiplicateur(type_2, type_1)
+
+    degats_1 = nombre_1 * valeur_1
+    degats_2 = nombre_2 * valeur_2
+
+    pertes_1 = degats_2 // valeur_1
+    pertes_2 = degats_1 // valeur_2
+
+    survivants_1 = max(0, nombre_1 - pertes_1)
+    survivants_2 = max(0, nombre_2 - pertes_2)
+
+    return survivants_1, survivants_2
 
 def ennemi_de(joueur):
     if joueur == "j1":
@@ -1116,28 +1184,68 @@ def afficher_tableau_pertes(pertes_joueur_1, pertes_joueur_2, nom_joueur_1, nom_
 
         afficher_et_ecrire(f"{gauche:<35} | {droite:<35}")
 
-def confrontation_directe(armee, joueur_1, joueur_2, bloc):
+def confrontation_directe(
+    armee,
+    general_1,
+    general_2,
+    bloc
+):
+    # Résout une confrontation entre deux blocs placés face à face.
+
+    joueur_1 = general_1["joueur"]
+    joueur_2 = general_2["joueur"]
+
+    nom_1 = f"{joueur_1} {general_1['nom']}"
+    nom_2 = f"{joueur_2} {general_2['nom']}"
+
     infos_1 = armee[joueur_1][bloc]
     infos_2 = armee[joueur_2][bloc]
 
     if infos_1["nombre"] == 0 or infos_2["nombre"] == 0:
         return False
 
-    afficher_et_ecrire(f"\nConfrontation directe : {bloc}")
-    afficher_et_ecrire(
-        f"{joueur_1} {bloc} VS {joueur_2} {bloc}"
-    )
+    afficher_et_ecrire("\n" + "-" * 60)
+    afficher_et_ecrire(f"Confrontation directe : {bloc}")
     afficher_et_ecrire("")
+
+    afficher_et_ecrire(
+        f"{nom_1} : {formater_force(infos_1)}"
+    )
+    afficher_et_ecrire(
+        f"{nom_2} : {formater_force(infos_2)}"
+    )
 
     survivants_1, survivants_2 = combat_bloc(
         infos_1,
         infos_2
     )
 
-    pertes_1 = supprimer_unites(infos_1, survivants_1)
-    pertes_2 = supprimer_unites(infos_2, survivants_2)
+    afficher_et_ecrire("\nRésultat :")
+    afficher_et_ecrire(
+        f"{nom_1} : "
+        f"{formater_survivants(survivants_1, infos_1['type'])}"
+    )
+    afficher_et_ecrire(
+        f"{nom_2} : "
+        f"{formater_survivants(survivants_2, infos_2['type'])}"
+    )
 
-    afficher_tableau_pertes(pertes_1, pertes_2, joueur_1, joueur_2)
+    pertes_1 = supprimer_unites(
+        infos_1,
+        survivants_1
+    )
+
+    pertes_2 = supprimer_unites(
+        infos_2,
+        survivants_2
+    )
+
+    afficher_tableau_pertes(
+        pertes_1,
+        pertes_2,
+        nom_1,
+        nom_2
+    )
 
     return True
 
@@ -1190,10 +1298,13 @@ def phase_engagement_initial(general_1, general_2):
 
         afficher_et_ecrire(
             f"- {bloc} : "
-            f"{joueur_1} {infos_1['nombre']} {infos_1['type']} "
+            f"{joueur_1} {general_1['nom']} "
+            f"{formater_force(infos_1)} "
             f"VS "
-            f"{joueur_2} {infos_2['nombre']} {infos_2['type']}"
+            f"{joueur_2} {general_2['nom']} "
+            f"{formater_force(infos_2)}"
         )
+
 
     afficher_et_ecrire("\n--- Résolution des engagements ---")
 
@@ -1208,8 +1319,8 @@ def phase_engagement_initial(general_1, general_2):
 
         confrontation_directe(
             armee,
-            joueur_1,
-            joueur_2,
+            general_1,
+            general_2,
             bloc
         )
 
@@ -1221,32 +1332,88 @@ def phase_engagement_initial(general_1, general_2):
 
     return initiative_avant
 
-def attaque_ciblee(armee, joueur_attaquant, bloc_attaquant, bloc_cible):
-    joueur_ennemi = ennemi_de(joueur_attaquant)
+def attaque_ciblee(
+    armee,
+    general_attaquant,
+    general_defenseur,
+    bloc_attaquant,
+    bloc_cible
+):
+    # Résout une attaque d'initiative contre un bloc ennemi.
+
+    joueur_attaquant = general_attaquant["joueur"]
+    joueur_ennemi = general_defenseur["joueur"]
+
+    nom_attaquant = (
+        f"{joueur_attaquant} {general_attaquant['nom']}"
+    )
+
+    nom_defenseur = (
+        f"{joueur_ennemi} {general_defenseur['nom']}"
+    )
 
     infos_attaquant = armee[joueur_attaquant][bloc_attaquant]
     infos_defenseur = armee[joueur_ennemi][bloc_cible]
 
-    afficher_et_ecrire("\nAttaque d'initiative :")
-    afficher_et_ecrire(
-        f"{joueur_attaquant} {bloc_attaquant} exploite une ouverture contre "
-        f"{joueur_ennemi} {bloc_cible}"
-    )
+    afficher_et_ecrire("\n" + "-" * 60)
+    afficher_et_ecrire("Attaque d'initiative")
     afficher_et_ecrire("")
+
+    afficher_et_ecrire(
+        f"{nom_attaquant} {bloc_attaquant} "
+        f"attaque {nom_defenseur} {bloc_cible}"
+    )
+
+    afficher_et_ecrire("\nForces engagées :")
+    afficher_et_ecrire(
+        f"{nom_attaquant} {bloc_attaquant} : "
+        f"{formater_force(infos_attaquant)}"
+    )
+    afficher_et_ecrire(
+        f"{nom_defenseur} {bloc_cible} : "
+        f"{formater_force(infos_defenseur)}"
+    )
 
     survivants_attaquant, survivants_defenseur = combat_bloc(
         infos_attaquant,
         infos_defenseur
     )
 
-    pertes_attaquant = supprimer_unites(infos_attaquant, survivants_attaquant)
-    pertes_defenseur = supprimer_unites(infos_defenseur, survivants_defenseur)
+    resultat_attaquant = formater_survivants(
+        survivants_attaquant,
+        infos_attaquant["type"]
+    )
+
+    resultat_defenseur = formater_survivants(
+        survivants_defenseur,
+        infos_defenseur["type"]
+    )
+
+    afficher_et_ecrire("\nRésultat :")
+    afficher_et_ecrire(
+        f"{nom_attaquant} {bloc_attaquant} : "
+        f"{resultat_attaquant}"
+    )
+    afficher_et_ecrire(
+        f"{nom_defenseur} {bloc_cible} : "
+        f"{resultat_defenseur}"
+    )
+
+    pertes_attaquant = supprimer_unites(
+        infos_attaquant,
+        survivants_attaquant
+    )
+
+    pertes_defenseur = supprimer_unites(
+        infos_defenseur,
+        survivants_defenseur
+    )
 
     afficher_tableau_pertes(
         pertes_attaquant,
         pertes_defenseur,
-        joueur_attaquant,
-        joueur_ennemi
+        nom_attaquant,
+        nom_defenseur
     )
 
 
