@@ -15,6 +15,29 @@ territoires = [
     game_path / "base2",
 ]
 
+carte_territoires = {
+    "base1": ["terrain1"],
+    "terrain1": ["base1", "terrain2"],
+    "terrain2": ["terrain1", "terrain3"],
+    "terrain3": ["terrain2", "base2"],
+    "base2": ["terrain3"],
+}
+
+bases_joueurs = {
+    "j1": "base1",
+    "j2": "base2",
+}
+
+positions_generaux_path = (
+    game_path / "systeme" / "positions_generaux.txt"
+)
+
+fatigue_generaux_path = (
+    game_path / "systeme" / "fatigue_generaux.txt"
+)
+
+repli_path = game_path / "repli"
+
 
 ordre_blocs = ["avant", "droite", "gauche", "arriere"]
 joueurs = ["j1", "j2"]
@@ -32,14 +55,6 @@ rapport_path = game_path / "rapport" / "rapport_bataille.txt"
 rapport_court_path = game_path / "rapport" / "rapport_court.txt"
 
 controle_territoires_path = game_path / "systeme" / "controle_territoires.txt"
-
-carte_territoires = {
-    "base1": ["terrain1"],
-    "terrain1": ["base1", "terrain2"],
-    "terrain2": ["terrain1", "terrain3"],
-    "terrain3": ["terrain2", "base2"],
-    "base2": ["terrain3"],
-}
 
 
 def territoires_adjacents(territoire_depart, territoire_arrivee):
@@ -202,6 +217,11 @@ def faire_apparaitre_general_si_possible(joueur):
     donner_permissions_general(chemin_general, joueur)
     sauvegarder_compteur_general(joueur, nouveau_numero)
 
+    enregistrer_position_nouveau_general(
+    joueur,
+    nom_general
+)
+
     afficher_et_ecrire(
         f"Nouveau général apparu pour {joueur} : {nom_general}"
     )
@@ -309,6 +329,10 @@ def lire_generaux_territoire(territory):
     #
     # Exemple :
     # /home/game/terrain1/j1/1/general1
+    #
+    # Cette fonction ne sanctionne rien et ne déplace rien.
+    # Les anomalies sont traitées auparavant par les
+    # fonctions de sécurisation des mouvements.
 
     resultat = {}
 
@@ -318,7 +342,11 @@ def lire_generaux_territoire(territory):
         for emplacement in emplacements:
             resultat[joueur][emplacement] = None
 
-            emplacement_dir = territory / joueur / emplacement
+            emplacement_dir = (
+                territory
+                / joueur
+                / emplacement
+            )
 
             if not emplacement_dir.exists():
                 continue
@@ -326,53 +354,77 @@ def lire_generaux_territoire(territory):
             generaux_trouves = []
 
             for element in emplacement_dir.iterdir():
-                if element.is_dir() and element.name.startswith("general"):
+                if (
+                    element.is_dir()
+                    and numero_general_depuis_nom(
+                        element.name
+                    ) is not None
+                ):
                     generaux_trouves.append(element)
 
             if len(generaux_trouves) == 0:
                 continue
 
-            generaux_trouves = sorted(generaux_trouves)
+            generaux_trouves = sorted(
+                generaux_trouves,
+                key=lambda chemin: (
+                    numero_general_depuis_nom(
+                        chemin.name
+                    )
+                )
+            )
 
-            # Un seul général est autorisé par emplacement.
-            # Le premier reste, les autres retournent dans le home du joueur.
+            # Normalement, après la sécurisation,
+            # il ne doit rester qu'un seul général.
+            #
+            # Cette fonction se contente de lire
+            # le premier dossier valide trouvé.
             chemin_general = generaux_trouves[0]
-            generaux_en_trop = generaux_trouves[1:]
 
-            for general_en_trop in generaux_en_trop:
-                destination = Path(f"/home/{joueur}") / general_en_trop.name
+            # Répare la structure interne du général
+            # si un bloc, fiche.txt ou ordre.txt manque.
+            creer_general(
+                chemin_general,
+                chemin_general.name
+            )
 
-                if not destination.exists():
-                    shutil.move(str(general_en_trop), str(destination))
-                    afficher_et_ecrire(
-                        f"Général en trop renvoyé au home : {joueur} {general_en_trop.name}"
-                    )
-                else:
-                    shutil.rmtree(general_en_trop)
-                    afficher_et_ecrire(
-                        f"Général en trop supprimé : {joueur} {general_en_trop.name}, retour impossible"
-                    )
+            if not est_general_valide(
+                chemin_general
+            ):
+                afficher_et_ecrire(
+                    f"Général invalide ignoré : "
+                    f"{joueur} "
+                    f"{chemin_general.name} "
+                    f"sur {territory.name}/"
+                    f"{emplacement}"
+                )
 
-            # On répare le général restant si fiche.txt ou ordre.txt manque.
-            creer_general(chemin_general, chemin_general.name)
-
-            if not est_general_valide(chemin_general):
                 continue
 
-            # On vérifie la limite de 20 unités par général.
-            verifier_limite_unites_general(chemin_general)
+            # Vérifie la limite de 20 unités.
+            verifier_limite_unites_general(
+                chemin_general
+            )
 
-            blocs_general = lire_blocs_general(chemin_general)
+            blocs_general = lire_blocs_general(
+                chemin_general
+            )
 
             resultat[joueur][emplacement] = {
                 "chemin": chemin_general,
                 "nom": chemin_general.name,
                 "joueur": joueur,
                 "emplacement": emplacement,
-                "fiche": lire_fiche_general(chemin_general),
-                "ordres": lire_ordres_general(chemin_general),
+                "fiche": lire_fiche_general(
+                    chemin_general
+                ),
+                "ordres": lire_ordres_general(
+                    chemin_general
+                ),
                 "blocs": blocs_general,
-                "total_unites": total_unites_general(blocs_general),
+                "total_unites": total_unites_general(
+                    blocs_general
+                ),
             }
 
     return resultat
@@ -543,6 +595,1045 @@ def sauvegarder_controle_territoires():
     controle_territoires_path.write_text("\n".join(lignes), encoding="utf-8")
 
 
+def charger_positions_generaux():
+    positions = {}
+
+    if not positions_generaux_path.exists():
+        return positions
+
+    lignes = positions_generaux_path.read_text(
+        encoding="utf-8"
+    ).splitlines()
+
+    for ligne in lignes:
+        if "=" not in ligne:
+            continue
+
+        identifiant, position = ligne.split("=", 1)
+        positions[identifiant.strip()] = position.strip()
+
+    return positions
+
+
+def sauvegarder_positions_generaux(positions):
+    lignes = []
+
+    for identifiant in sorted(positions):
+        lignes.append(
+            f"{identifiant}={positions[identifiant]}"
+        )
+
+    positions_generaux_path.parent.mkdir(exist_ok=True)
+
+    positions_generaux_path.write_text(
+        "\n".join(lignes),
+        encoding="utf-8"
+    )
+
+def numero_general_depuis_nom(nom_general):
+    # Vérifie que le nom est exactement du type :
+    # general1
+    # general2
+    # general15
+    #
+    # "generalabc" ou "general999x" sont invalides.
+
+    prefixe = "general"
+
+    if not nom_general.startswith(prefixe):
+        return None
+
+    numero_texte = nom_general[len(prefixe):]
+
+    if not numero_texte.isdigit():
+        return None
+
+    return int(numero_texte)
+
+def trouver_position_general(joueur, nom_general):
+    # 1. Home
+    chemin_home = Path(f"/home/{joueur}") / nom_general
+
+    if chemin_home.is_dir():
+        return "home", chemin_home
+
+    # 2. Zone de repli
+    chemin_repli = repli_path / joueur / nom_general
+
+    if chemin_repli.is_dir():
+        return "repli", chemin_repli
+
+    # 3. Territoires
+    for territory in territoires:
+        for emplacement in emplacements:
+            chemin = (
+                territory
+                / joueur
+                / emplacement
+                / nom_general
+            )
+
+            if chemin.is_dir():
+                return territory.name, chemin
+
+    return None, None
+
+def trouver_toutes_positions_general(joueur, nom_general):
+    # Recherche toutes les occurrences du même général.
+    #
+    # Normalement cette liste doit contenir exactement
+    # un seul élément.
+
+    positions = []
+
+    # ------------------------------------------
+    # Home
+    # ------------------------------------------
+
+    chemin_home = (
+        Path(f"/home/{joueur}")
+        / nom_general
+    )
+
+    if chemin_home.is_dir():
+        positions.append(
+            {
+                "position": "home",
+                "chemin": chemin_home,
+            }
+        )
+
+    # ------------------------------------------
+    # Repli
+    # ------------------------------------------
+
+    chemin_repli = (
+        repli_path
+        / joueur
+        / nom_general
+    )
+
+    if chemin_repli.is_dir():
+        positions.append(
+            {
+                "position": "repli",
+                "chemin": chemin_repli,
+            }
+        )
+
+    # ------------------------------------------
+    # Territoires
+    # ------------------------------------------
+
+    for territory in territoires:
+        for emplacement in emplacements:
+
+            chemin = (
+                territory
+                / joueur
+                / emplacement
+                / nom_general
+            )
+
+            if chemin.is_dir():
+                positions.append(
+                    {
+                        "position": territory.name,
+                        "chemin": chemin,
+                        "emplacement": emplacement,
+                    }
+                )
+
+    return positions
+
+def joueur_proprietaire_chemin(chemin):
+    # Retrouve le joueur propriétaire d'un dossier
+    # à partir de son UID Linux.
+    #
+    # Retourne :
+    # "j1", "j2" ou None si le propriétaire
+    # ne correspond à aucun joueur connu.
+
+    try:
+        uid_chemin = chemin.stat().st_uid
+    except FileNotFoundError:
+        return None
+
+    for joueur in joueurs:
+        uid_joueur = pwd.getpwnam(joueur).pw_uid
+
+        if uid_chemin == uid_joueur:
+            return joueur
+
+    return None
+
+def securiser_generaux_mauvais_joueur(
+    positions_avant
+):
+    # Vérifie qu'un général se trouve bien dans
+    # l'arborescence de son véritable propriétaire.
+    #
+    # L'identité du propriétaire est déterminée
+    # grâce à l'UID Linux du dossier.
+    #
+    # Exemple interdit :
+    # un dossier appartenant à j1 placé dans :
+    # terrain2/j2/1/general1
+    #
+    # La fonction retourne les identifiants punis.
+
+    generaux_punis = set()
+
+    for joueur_zone in joueurs:
+
+        zones = [
+            (
+                "home",
+                Path(f"/home/{joueur_zone}")
+            ),
+            (
+                "repli",
+                repli_path / joueur_zone
+            ),
+        ]
+
+        for territory in territoires:
+            for emplacement in emplacements:
+                zones.append(
+                    (
+                        territory.name,
+                        territory
+                        / joueur_zone
+                        / emplacement
+                    )
+                )
+
+        for nom_zone, chemin_zone in zones:
+
+            if not chemin_zone.exists():
+                continue
+
+            for chemin_general in list(
+                chemin_zone.iterdir()
+            ):
+                if not chemin_general.is_dir():
+                    continue
+
+                numero = numero_general_depuis_nom(
+                    chemin_general.name
+                )
+
+                if numero is None:
+                    continue
+
+                proprietaire_reel = (
+                    joueur_proprietaire_chemin(
+                        chemin_general
+                    )
+                )
+
+                # Le propriétaire est correct.
+                if proprietaire_reel == joueur_zone:
+                    continue
+
+                # Propriétaire Linux inconnu :
+                # le dossier ne peut pas être considéré
+                # comme un véritable général.
+                if proprietaire_reel is None:
+                    afficher_et_ecrire(
+                        f"Général au propriétaire inconnu "
+                        f"supprimé : "
+                        f"{chemin_general}"
+                    )
+
+                    shutil.rmtree(
+                        chemin_general
+                    )
+
+                    continue
+
+                identifiant = (
+                    f"{proprietaire_reel}:"
+                    f"{chemin_general.name}"
+                )
+
+                afficher_et_ecrire(
+                    f"{identifiant} placé dans "
+                    f"l'arborescence de {joueur_zone} "
+                    f"({nom_zone})."
+                )
+
+                dernier_numero = lire_compteur_general(
+                    proprietaire_reel
+                )
+
+                # Le dossier appartient bien à un joueur,
+                # mais le général n'a jamais été généré.
+                if (
+                    numero < 1
+                    or numero > dernier_numero
+                ):
+                    afficher_et_ecrire(
+                        f"Général non autorisé supprimé : "
+                        f"{identifiant}"
+                    )
+
+                    shutil.rmtree(
+                        chemin_general
+                    )
+
+                    continue
+
+                occurrences_correctes = (
+                    trouver_toutes_positions_general(
+                        proprietaire_reel,
+                        chemin_general.name
+                    )
+                )
+
+                # --------------------------------------
+                # Aucune autre occurrence
+                # --------------------------------------
+
+                if len(occurrences_correctes) == 0:
+                    destination = (
+                        repli_path
+                        / proprietaire_reel
+                        / chemin_general.name
+                    )
+
+                    destination.parent.mkdir(
+                        parents=True,
+                        exist_ok=True
+                    )
+
+                    # Il ne devrait normalement pas déjà
+                    # exister de destination puisque
+                    # occurrences_correctes est vide.
+                    if destination.exists():
+                        shutil.rmtree(
+                            destination
+                        )
+
+                    shutil.move(
+                        str(chemin_general),
+                        str(destination)
+                    )
+
+                    donner_permissions_general(
+                        destination,
+                        proprietaire_reel
+                    )
+
+                    generaux_punis.add(
+                        identifiant
+                    )
+
+                    afficher_et_ecrire(
+                        f"{identifiant} envoyé au repli "
+                        f"de {proprietaire_reel}."
+                    )
+
+                    continue
+
+                # --------------------------------------
+                # Une occurrence correcte existe déjà
+                # --------------------------------------
+
+                shutil.rmtree(
+                    chemin_general
+                )
+
+                afficher_et_ecrire(
+                    f"Copie située chez {joueur_zone} "
+                    f"supprimée : {identifiant}"
+                )
+
+                # S'il n'existe qu'une occurrence correcte,
+                # elle reçoit immédiatement la sanction.
+                #
+                # S'il y en a plusieurs, la fonction
+                # securiser_generaux_dupliques()
+                # traitera ensuite la duplication.
+                if len(occurrences_correctes) == 1:
+                    occurrence_reelle = (
+                        occurrences_correctes[0]
+                    )
+
+                    if (
+                        occurrence_reelle["position"]
+                        != "repli"
+                    ):
+                        envoyer_general_au_repli(
+                            proprietaire_reel,
+                            chemin_general.name,
+                            occurrence_reelle["chemin"]
+                        )
+
+                    generaux_punis.add(
+                        identifiant
+                    )
+
+                    afficher_et_ecrire(
+                        f"{identifiant} envoyé au repli "
+                        f"pour placement chez "
+                        f"{joueur_zone}."
+                    )
+
+    return generaux_punis
+
+def supprimer_generaux_non_autorises():
+    # Supprime les dossiers generalX qui ne correspondent
+    # à aucun général réellement généré par le jeu.
+
+    for joueur in joueurs:
+        dernier_numero = lire_compteur_general(joueur)
+
+        # ------------------------------------------
+        # Home
+        # ------------------------------------------
+
+        zones_a_verifier = [
+            Path(f"/home/{joueur}"),
+            repli_path / joueur,
+        ]
+
+        for zone in zones_a_verifier:
+
+            if not zone.exists():
+                continue
+
+            for element in list(zone.iterdir()):
+
+                if not element.is_dir():
+                    continue
+
+                if not element.name.startswith("general"):
+                    continue
+
+                numero = numero_general_depuis_nom(
+                    element.name
+                )
+
+                if (
+                    numero is None
+                    or numero < 1
+                    or numero > dernier_numero
+                ):
+                    afficher_et_ecrire(
+                        f"Général non autorisé supprimé : "
+                        f"{joueur} {element.name}"
+                    )
+
+                    shutil.rmtree(element)
+
+        # ------------------------------------------
+        # Territoires
+        # ------------------------------------------
+
+        for territory in territoires:
+            for emplacement in emplacements:
+
+                emplacement_dir = (
+                    territory
+                    / joueur
+                    / emplacement
+                )
+
+                if not emplacement_dir.exists():
+                    continue
+
+                for element in list(
+                    emplacement_dir.iterdir()
+                ):
+
+                    if not element.is_dir():
+                        continue
+
+                    if not element.name.startswith(
+                        "general"
+                    ):
+                        continue
+
+                    numero = numero_general_depuis_nom(
+                        element.name
+                    )
+
+                    if (
+                        numero is None
+                        or numero < 1
+                        or numero > dernier_numero
+                    ):
+                        afficher_et_ecrire(
+                            f"Général non autorisé supprimé : "
+                            f"{joueur} {element.name} "
+                            f"sur {territory.name}"
+                        )
+
+                        shutil.rmtree(element)
+
+
+def securiser_generaux_dupliques(positions_avant):
+    # Détecte les généraux présents plusieurs fois.
+    #
+    # En cas de duplication :
+    # - une seule copie est conservée ;
+    # - les autres sont supprimées ;
+    # - la copie conservée est envoyée au repli.
+    #
+    # La fonction retourne les identifiants punis.
+
+    generaux_punis = set()
+
+    for joueur in joueurs:
+        dernier_numero = lire_compteur_general(joueur)
+
+        for numero in range(
+            1,
+            dernier_numero + 1
+        ):
+            nom_general = f"general{numero}"
+            identifiant = (
+                f"{joueur}:{nom_general}"
+            )
+
+            occurrences = (
+                trouver_toutes_positions_general(
+                    joueur,
+                    nom_general
+                )
+            )
+
+            if len(occurrences) <= 1:
+                continue
+
+            afficher_et_ecrire(
+                f"{identifiant} est présent "
+                f"{len(occurrences)} fois."
+            )
+
+            ancienne_position = (
+                positions_avant.get(identifiant)
+            )
+
+            copie_a_garder = None
+
+            # Si possible, conserver la copie située
+            # à la position officielle du tour précédent.
+            for occurrence in occurrences:
+
+                if (
+                    occurrence["position"]
+                    == ancienne_position
+                ):
+                    copie_a_garder = occurrence
+                    break
+
+            # Si aucune copie n'est à l'ancienne position,
+            # on en choisit une de manière déterministe.
+            if copie_a_garder is None:
+                occurrences = sorted(
+                    occurrences,
+                    key=lambda x: str(x["chemin"])
+                )
+
+                copie_a_garder = occurrences[0]
+
+            # Supprimer toutes les autres copies.
+            for occurrence in occurrences:
+
+                if occurrence is copie_a_garder:
+                    continue
+
+                chemin = occurrence["chemin"]
+
+                if chemin.exists():
+                    shutil.rmtree(chemin)
+
+                    afficher_et_ecrire(
+                        f"Copie illégale supprimée : "
+                        f"{identifiant} "
+                        f"({occurrence['position']})"
+                    )
+
+            # La copie réelle reçoit malgré tout
+            # la sanction de repli.
+            chemin_garde = (
+                copie_a_garder["chemin"]
+            )
+
+            if (
+                copie_a_garder["position"]
+                != "repli"
+            ):
+                envoyer_general_au_repli(
+                    joueur,
+                    nom_general,
+                    chemin_garde
+                )
+
+            generaux_punis.add(
+                identifiant
+            )
+
+            afficher_et_ecrire(
+                f"{identifiant} envoyé au repli "
+                f"pour duplication."
+            )
+
+    return generaux_punis
+
+
+def securiser_emplacements_generaux():
+    # Un emplacement ne peut contenir qu'un général.
+    #
+    # Si plusieurs généraux sont placés dans le même
+    # emplacement, tous sont envoyés au repli.
+    #
+    # Cela empêche de choisir arbitrairement lequel
+    # serait autorisé à rester.
+
+    generaux_punis = set()
+
+    for territory in territoires:
+        for joueur in joueurs:
+            for emplacement in emplacements:
+
+                emplacement_dir = (
+                    territory
+                    / joueur
+                    / emplacement
+                )
+
+                if not emplacement_dir.exists():
+                    continue
+
+                generaux_trouves = []
+
+                for element in (
+                    emplacement_dir.iterdir()
+                ):
+                    if (
+                        element.is_dir()
+                        and element.name.startswith(
+                            "general"
+                        )
+                    ):
+                        generaux_trouves.append(
+                            element
+                        )
+
+                if len(generaux_trouves) <= 1:
+                    continue
+
+                afficher_et_ecrire(
+                    f"Emplacement invalide : "
+                    f"{territory.name} "
+                    f"{joueur}/{emplacement} "
+                    f"contient plusieurs généraux."
+                )
+
+                for chemin_general in (
+                    generaux_trouves
+                ):
+                    identifiant = (
+                        f"{joueur}:"
+                        f"{chemin_general.name}"
+                    )
+
+                    envoyer_general_au_repli(
+                        joueur,
+                        chemin_general.name,
+                        chemin_general
+                    )
+
+                    generaux_punis.add(
+                        identifiant
+                    )
+
+                    afficher_et_ecrire(
+                        f"{identifiant} envoyé "
+                        f"au repli."
+                    )
+
+    return generaux_punis
+
+
+def verifier_tous_les_deplacements():
+    # Vérifie et sécurise tous les déplacements
+    # avant la résolution des combats.
+    #
+    # Ordre :
+    # 1. détecter les généraux placés chez
+    #    le mauvais joueur ;
+    # 2. supprimer les faux généraux ;
+    # 3. détecter les duplications ;
+    # 4. détecter les conflits d'emplacement ;
+    # 5. vérifier les déplacements ;
+    # 6. enregistrer les marches forcées.
+
+    afficher_et_ecrire(
+        "\n=== Vérification des déplacements ==="
+    )
+
+    positions = charger_positions_generaux()
+    controle_avant = charger_controle_territoires()
+
+    # ------------------------------------------
+    # Sécurité générale
+    # ------------------------------------------
+
+    punis_mauvais_joueur = (
+        securiser_generaux_mauvais_joueur(
+            positions
+        )
+    )
+
+    supprimer_generaux_non_autorises()
+
+    punis_duplication = (
+        securiser_generaux_dupliques(
+            positions
+        )
+    )
+
+    punis_emplacement = (
+        securiser_emplacements_generaux()
+    )
+
+    generaux_deja_punis = (
+        punis_mauvais_joueur
+        | punis_duplication
+        | punis_emplacement
+    )
+
+    # ------------------------------------------
+    # Fatigue du nouveau tour
+    # ------------------------------------------
+
+    generaux_fatigues = set()
+    nouvelles_positions = {}
+
+    # ------------------------------------------
+    # Vérification individuelle
+    # ------------------------------------------
+
+    for joueur in joueurs:
+        dernier_numero = (
+            lire_compteur_general(joueur)
+        )
+
+        for numero in range(
+            1,
+            dernier_numero + 1
+        ):
+            nom_general = f"general{numero}"
+
+            identifiant = (
+                f"{joueur}:{nom_general}"
+            )
+
+            position_actuelle, chemin_actuel = (
+                trouver_position_general(
+                    joueur,
+                    nom_general
+                )
+            )
+
+            # Général détruit ou absent.
+            if position_actuelle is None:
+                continue
+
+            # Un général sanctionné pendant l'audit
+            # doit maintenant se trouver au repli.
+            if identifiant in generaux_deja_punis:
+                nouvelles_positions[
+                    identifiant
+                ] = "repli"
+
+                continue
+
+            origine = positions.get(
+                identifiant
+            )
+
+            # Compatibilité avec une ancienne partie
+            # créée avant le système de positions.
+            if origine is None:
+                nouvelles_positions[
+                    identifiant
+                ] = position_actuelle
+
+                afficher_et_ecrire(
+                    f"{identifiant} : "
+                    f"position initiale enregistrée "
+                    f"({position_actuelle})"
+                )
+
+                continue
+
+            autorise, fatigue, raison = (
+                verifier_deplacement_general(
+                    joueur,
+                    origine,
+                    position_actuelle,
+                    controle_avant
+                )
+            )
+
+            # --------------------------------------
+            # Mouvement valide
+            # --------------------------------------
+
+            if autorise:
+                nouvelles_positions[
+                    identifiant
+                ] = position_actuelle
+
+                if fatigue:
+                    generaux_fatigues.add(
+                        identifiant
+                    )
+
+                    afficher_et_ecrire(
+                        f"{identifiant} : "
+                        f"{origine} -> "
+                        f"{position_actuelle} "
+                        f"[MARCHE FORCÉE - FATIGUE]"
+                    )
+
+                elif origine == position_actuelle:
+                    afficher_et_ecrire(
+                        f"{identifiant} : "
+                        f"reste sur {origine}"
+                    )
+
+                else:
+                    afficher_et_ecrire(
+                        f"{identifiant} : "
+                        f"{origine} -> "
+                        f"{position_actuelle} "
+                        f"[{raison}]"
+                    )
+
+                continue
+
+            # --------------------------------------
+            # Mouvement interdit
+            # --------------------------------------
+
+            afficher_et_ecrire(
+                f"{identifiant} : "
+                f"déplacement interdit "
+                f"{origine} -> "
+                f"{position_actuelle}"
+            )
+
+            afficher_et_ecrire(
+                f"Raison : {raison}"
+            )
+
+            envoyer_general_au_repli(
+                joueur,
+                nom_general,
+                chemin_actuel
+            )
+
+            nouvelles_positions[
+                identifiant
+            ] = "repli"
+
+            afficher_et_ecrire(
+                f"{identifiant} envoyé au repli."
+            )
+
+    # ------------------------------------------
+    # Sauvegarde
+    # ------------------------------------------
+
+    sauvegarder_positions_generaux(
+        nouvelles_positions
+    )
+
+    sauvegarder_generaux_fatigues(
+        generaux_fatigues
+    )
+
+
+def enregistrer_position_nouveau_general(joueur, nom_general):
+    positions = charger_positions_generaux()
+
+    identifiant = f"{joueur}:{nom_general}"
+    positions[identifiant] = "home"
+
+    sauvegarder_positions_generaux(positions)
+
+def chemin_deux_territoires(
+    origine,
+    destination
+):
+    # Cherche un territoire intermédiaire permettant :
+    # origine -> intermédiaire -> destination.
+
+    for intermediaire in carte_territoires.get(
+        origine,
+        []
+    ):
+        if destination in carte_territoires.get(
+            intermediaire,
+            []
+        ):
+            return intermediaire
+
+    return None
+
+def verifier_deplacement_general(
+    joueur,
+    origine,
+    destination,
+    controle_avant
+):
+    base = bases_joueurs[joueur]
+
+    # Aucun déplacement.
+    if origine == destination:
+        return True, False, "immobile"
+
+    # Première apparition :
+    # home -> propre base uniquement.
+    if origine == "home":
+        if destination == base:
+            return True, False, "deploiement"
+
+        return False, False, "sortie du home interdite"
+
+    # Depuis le repli :
+    # uniquement vers sa propre base.
+    if origine == "repli":
+        if destination == base:
+            return True, False, "retour de repli"
+
+        return False, False, "sortie du repli interdite"
+
+    # Destination spéciale interdite.
+    if destination in ["home", "repli"]:
+        return False, False, "destination interdite"
+
+    # Déplacement normal : 1 territoire.
+    if destination in carte_territoires.get(
+        origine,
+        []
+    ):
+        return True, False, "deplacement normal"
+
+    # Marche forcée : 2 territoires.
+    intermediaire = chemin_deux_territoires(
+        origine,
+        destination
+    )
+
+    if intermediaire is None:
+        return False, False, "destination trop éloignée"
+
+    # Le territoire traversé doit appartenir au joueur.
+    if controle_avant.get(intermediaire) != joueur:
+        return (
+            False,
+            False,
+            f"{intermediaire} n'est pas allié"
+        )
+
+    return True, True, "marche forcee"
+
+def sauvegarder_generaux_fatigues(generaux_fatigues):
+    fatigue_generaux_path.parent.mkdir(exist_ok=True)
+
+    fatigue_generaux_path.write_text(
+        "\n".join(sorted(generaux_fatigues)),
+        encoding="utf-8"
+    )
+
+
+def charger_generaux_fatigues():
+    if not fatigue_generaux_path.exists():
+        return set()
+
+    return set(
+        ligne.strip()
+        for ligne in fatigue_generaux_path.read_text(
+            encoding="utf-8"
+        ).splitlines()
+        if ligne.strip()
+    )
+
+
+def general_est_fatigue(general):
+    # Vérifie si un général est fatigué à cause
+    # d'une marche forcée effectuée pendant ce tour.
+
+    generaux_fatigues = charger_generaux_fatigues()
+
+    identifiant = (
+        f"{general['joueur']}:{general['nom']}"
+    )
+
+    return identifiant in generaux_fatigues
+
+def envoyer_general_au_repli(
+    joueur,
+    nom_general,
+    chemin_actuel
+):
+    # Envoie le général et toutes ses unités
+    # dans sa zone de repli.
+    #
+    # La fonction refuse d'écraser un général
+    # déjà présent dans le repli.
+
+    destination = (
+        repli_path
+        / joueur
+        / nom_general
+    )
+
+    destination.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    # Le général est déjà au repli.
+    if chemin_actuel == destination:
+        donner_permissions_general(
+            destination,
+            joueur
+        )
+
+        return destination
+
+    # Une autre occurrence existe déjà au repli.
+    # On ne supprime aucun dossier ici :
+    # les fonctions de sécurisation doivent
+    # résoudre la duplication auparavant.
+    if destination.exists():
+        afficher_et_ecrire(
+            f"Impossible d'envoyer "
+            f"{joueur}:{nom_general} au repli : "
+            f"une occurrence existe déjà."
+        )
+
+        return None
+
+    shutil.move(
+        str(chemin_actuel),
+        str(destination)
+    )
+
+    donner_permissions_general(
+        destination,
+        joueur
+    )
+
+    return destination
 def general_a_des_unites(general):
     # Vérifie si un général existe et possède encore des unités.
 
@@ -986,6 +2077,19 @@ def reparer_structure():
                 os.chown(emplacement_dir, uid, gid)
                 os.chmod(emplacement_dir, 0o700)
 
+        # Créer les zones de repli.
+    for joueur in joueurs:
+        repli_joueur = repli_path / joueur
+        repli_joueur.mkdir(parents=True, exist_ok=True)
+
+        uid = pwd.getpwnam(joueur).pw_uid
+        gid = grp.getgrnam(joueur).gr_gid
+
+        os.chown(repli_joueur, uid, gid)
+        os.chmod(repli_joueur, 0o700)
+
+
+
     # 2. Faire apparaître un général par joueur si possible.
     for joueur in joueurs:
         faire_apparaitre_general_si_possible(joueur)
@@ -1074,11 +2178,20 @@ def formater_survivants(nombre, type_unite):
 
     return f"{nombre} {type_unite}s survivants"
 
-def combat_bloc(infos_1, infos_2):
+def combat_bloc(
+    infos_1,
+    infos_2,
+    fatigue_1=False,
+    fatigue_2=False
+):
     # Calcule le résultat d'un combat entre deux blocs.
     #
-    # Cette fonction n'écrit rien dans le rapport.
-    # Elle retourne seulement le nombre de survivants.
+    # Règle de fatigue :
+    # si les deux unités sont normalement équivalentes,
+    # l'unité non fatiguée obtient l'avantage sur l'unité fatiguée.
+    #
+    # La fatigue ne modifie pas les avantages naturels
+    # entre types différents.
 
     type_1 = infos_1["type"]
     type_2 = infos_2["type"]
@@ -1086,8 +2199,29 @@ def combat_bloc(infos_1, infos_2):
     nombre_1 = infos_1["nombre"]
     nombre_2 = infos_2["nombre"]
 
-    valeur_1 = multiplicateur(type_1, type_2)
-    valeur_2 = multiplicateur(type_2, type_1)
+    valeur_1 = multiplicateur(
+        type_1,
+        type_2
+    )
+
+    valeur_2 = multiplicateur(
+        type_2,
+        type_1
+    )
+
+    # ------------------------------------------
+    # Fatigue
+    # ------------------------------------------
+
+    if type_1 == type_2:
+
+        # Général 1 fatigué, général 2 frais.
+        if fatigue_1 and not fatigue_2:
+            valeur_2 = 2
+
+        # Général 2 fatigué, général 1 frais.
+        elif fatigue_2 and not fatigue_1:
+            valeur_1 = 2
 
     degats_1 = nombre_1 * valeur_1
     degats_2 = nombre_2 * valeur_2
@@ -1095,11 +2229,17 @@ def combat_bloc(infos_1, infos_2):
     pertes_1 = degats_2 // valeur_1
     pertes_2 = degats_1 // valeur_2
 
-    survivants_1 = max(0, nombre_1 - pertes_1)
-    survivants_2 = max(0, nombre_2 - pertes_2)
+    survivants_1 = max(
+        0,
+        nombre_1 - pertes_1
+    )
+
+    survivants_2 = max(
+        0,
+        nombre_2 - pertes_2
+    )
 
     return survivants_1, survivants_2
-
 def ennemi_de(joueur):
     if joueur == "j1":
         return "j2"
@@ -1204,27 +2344,52 @@ def confrontation_directe(
     if infos_1["nombre"] == 0 or infos_2["nombre"] == 0:
         return False
 
+    fatigue_1 = general_est_fatigue(
+        general_1
+    )
+
+    fatigue_2 = general_est_fatigue(
+        general_2
+    )
+
     afficher_et_ecrire("\n" + "-" * 60)
-    afficher_et_ecrire(f"Confrontation directe : {bloc}")
+    afficher_et_ecrire(
+        f"Confrontation directe : {bloc}"
+    )
     afficher_et_ecrire("")
+
+    if fatigue_1:
+        afficher_et_ecrire(
+            f"{nom_1} : FATIGUÉ"
+        )
+
+    if fatigue_2:
+        afficher_et_ecrire(
+            f"{nom_2} : FATIGUÉ"
+        )
 
     afficher_et_ecrire(
         f"{nom_1} : {formater_force(infos_1)}"
     )
+
     afficher_et_ecrire(
         f"{nom_2} : {formater_force(infos_2)}"
     )
 
     survivants_1, survivants_2 = combat_bloc(
         infos_1,
-        infos_2
+        infos_2,
+        fatigue_1,
+        fatigue_2
     )
 
     afficher_et_ecrire("\nRésultat :")
+
     afficher_et_ecrire(
         f"{nom_1} : "
         f"{formater_survivants(survivants_1, infos_1['type'])}"
     )
+
     afficher_et_ecrire(
         f"{nom_2} : "
         f"{formater_survivants(survivants_2, infos_2['type'])}"
@@ -1345,18 +2510,35 @@ def attaque_ciblee(
     joueur_ennemi = general_defenseur["joueur"]
 
     nom_attaquant = (
-        f"{joueur_attaquant} {general_attaquant['nom']}"
+        f"{joueur_attaquant} "
+        f"{general_attaquant['nom']}"
     )
 
     nom_defenseur = (
-        f"{joueur_ennemi} {general_defenseur['nom']}"
+        f"{joueur_ennemi} "
+        f"{general_defenseur['nom']}"
     )
 
-    infos_attaquant = armee[joueur_attaquant][bloc_attaquant]
-    infos_defenseur = armee[joueur_ennemi][bloc_cible]
+    infos_attaquant = (
+        armee[joueur_attaquant][bloc_attaquant]
+    )
+
+    infos_defenseur = (
+        armee[joueur_ennemi][bloc_cible]
+    )
+
+    fatigue_attaquant = general_est_fatigue(
+        general_attaquant
+    )
+
+    fatigue_defenseur = general_est_fatigue(
+        general_defenseur
+    )
 
     afficher_et_ecrire("\n" + "-" * 60)
-    afficher_et_ecrire("Attaque d'initiative")
+    afficher_et_ecrire(
+        "Attaque d'initiative"
+    )
     afficher_et_ecrire("")
 
     afficher_et_ecrire(
@@ -1364,11 +2546,25 @@ def attaque_ciblee(
         f"attaque {nom_defenseur} {bloc_cible}"
     )
 
-    afficher_et_ecrire("\nForces engagées :")
+    if fatigue_attaquant:
+        afficher_et_ecrire(
+            f"{nom_attaquant} : FATIGUÉ"
+        )
+
+    if fatigue_defenseur:
+        afficher_et_ecrire(
+            f"{nom_defenseur} : FATIGUÉ"
+        )
+
+    afficher_et_ecrire(
+        "\nForces engagées :"
+    )
+
     afficher_et_ecrire(
         f"{nom_attaquant} {bloc_attaquant} : "
         f"{formater_force(infos_attaquant)}"
     )
+
     afficher_et_ecrire(
         f"{nom_defenseur} {bloc_cible} : "
         f"{formater_force(infos_defenseur)}"
@@ -1376,7 +2572,9 @@ def attaque_ciblee(
 
     survivants_attaquant, survivants_defenseur = combat_bloc(
         infos_attaquant,
-        infos_defenseur
+        infos_defenseur,
+        fatigue_attaquant,
+        fatigue_defenseur
     )
 
     resultat_attaquant = formater_survivants(
@@ -1390,10 +2588,12 @@ def attaque_ciblee(
     )
 
     afficher_et_ecrire("\nRésultat :")
+
     afficher_et_ecrire(
         f"{nom_attaquant} {bloc_attaquant} : "
         f"{resultat_attaquant}"
     )
+
     afficher_et_ecrire(
         f"{nom_defenseur} {bloc_cible} : "
         f"{resultat_defenseur}"
@@ -1545,12 +2745,19 @@ def verifier_victoire():
 preparer_rapport()
 reparer_structure()
 
+verifier_tous_les_deplacements()
+
 vainqueur = verifier_victoire()
 
 if vainqueur:
-    rapport_court_path.write_text(f"🏆 VICTOIRE DE {vainqueur}\n", encoding="utf-8")
+    rapport_court_path.write_text(
+        f"🏆 VICTOIRE DE {vainqueur}\n",
+        encoding="utf-8"
+    )
 
-    afficher_et_ecrire(f"🏆 Victoire de {vainqueur} !")
+    afficher_et_ecrire(
+        f"🏆 Victoire de {vainqueur} !"
+    )
     exit()
 
 lancer_bataille_v15()
