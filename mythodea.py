@@ -49,11 +49,106 @@ max_generaux_par_joueur = 5
 orientations = ["stratege", "combattant"]
 orientation_rare = "hybride"
 
+# ==================================================
+# ORDRES DES GÉNÉRAUX
+# ==================================================
+#
+# Format dans ordre.txt :
+#
+# type-numero
+#
+# ou, si l'ordre demande une précision :
+#
+# type-numero-specification
+#
+# Exemples :
+#
+# 1-1
+# 2-2
+# 2-2-1
+#
+# Un ordre inconnu, mal écrit ou non applicable
+# est simplement ignoré.
 
-rapport_path = game_path / "rapport" / "rapport_bataille.txt"
+legende_ordres = {
+    "1-1": {
+        "type": 1,
+        "numero": 1,
+        "nom": "retraite_apres_premiere_manche",
+        "categorie": "armee",
+    },
 
-rapport_court_path = game_path / "rapport" / "rapport_court.txt"
+    "1-2": {
+        "type": 1,
+        "numero": 2,
+        "nom": "attaque_frontale",
+        "categorie": "armee",
+    },
 
+    "2-1": {
+        "type": 2,
+        "numero": 1,
+        "nom": "attaque_chirurgicale",
+        "categorie": "formation",
+    },
+
+    "2-2": {
+        "type": 2,
+        "numero": 2,
+        "nom": "pluie_de_fleches",
+        "categorie": "formation",
+    },
+
+    "3-1": {
+        "type": 3,
+        "numero": 1,
+        "nom": "fuir_avant_la_mort",
+        "categorie": "intrinseque",
+    },
+}
+
+
+rapport_dir = game_path / "rapport"
+
+rapport_court_path = (
+    rapport_dir
+    / "rapport_court.txt"
+)
+
+rapport_long_path = (
+    rapport_dir
+    / "rapport_long.txt"
+)
+
+rapports_territoires_dir = (
+    rapport_dir
+    / "territoires"
+)
+
+meteo_path = (
+    game_path
+    / "systeme"
+    / "meteo.txt"
+)
+
+meteos_possibles = [
+    "clair",
+    "pluie",
+    "brouillard",
+    "vent",
+    "orage",
+    "neige",
+]
+
+# Territoire dont les événements sont actuellement
+# en cours de résolution.
+#
+# Lorsque cette variable vaut None, les messages
+# sont seulement envoyés vers le rapport long.
+territoire_rapport_actuel = None
+
+# Météo choisie une seule fois pour le tour.
+meteo_tour = None
 controle_territoires_path = game_path / "systeme" / "controle_territoires.txt"
 
 
@@ -120,7 +215,10 @@ def creer_general(chemin_general, nom_general):
     ordre = chemin_general / "ordre.txt"
 
     if not ordre.exists():
-        ordre.write_text("1-g-1\n2-g-1\n", encoding="utf-8")
+        ordre.write_text(
+            "1-2\n",
+            encoding="utf-8"
+        )
 
 def donner_permissions_general(chemin_general, joueur):
     # Donne les bonnes permissions à un général.
@@ -279,13 +377,24 @@ def lire_fiche_general(chemin_general):
     return fiche
 
 def lire_ordres_general(chemin_general):
-    # Lecture de ordre.txt.
-    # Format prévu :
-    # phase-qui-action
+    # Lit et valide les ordres présents dans ordre.txt.
     #
-    # Exemple :
-    # 1-g-1
-    # 2-g-1
+    # Formats acceptés :
+    #
+    # type-numero
+    #
+    # type-numero-specification
+    #
+    # Exemples :
+    #
+    # 1-1
+    # 1-2
+    # 2-1
+    # 2-2
+    # 3-1
+    # 2-2-1
+    #
+    # Un ordre mal écrit ou inconnu est ignoré.
 
     ordre_path = chemin_general / "ordre.txt"
     ordres = []
@@ -293,7 +402,9 @@ def lire_ordres_general(chemin_general):
     if not ordre_path.exists():
         return ordres
 
-    lignes = ordre_path.read_text(encoding="utf-8").splitlines()
+    lignes = ordre_path.read_text(
+        encoding="utf-8"
+    ).splitlines()
 
     for ligne in lignes:
         ligne = ligne.strip()
@@ -303,23 +414,101 @@ def lire_ordres_general(chemin_general):
 
         morceaux = ligne.split("-")
 
-        if len(morceaux) != 3:
+        # Un ordre contient deux ou trois nombres.
+        if len(morceaux) not in [2, 3]:
+            afficher_et_ecrire(
+                f"Ordre ignoré pour "
+                f"{chemin_general.name} : "
+                f"{ligne} "
+                f"[format invalide]"
+            )
+
             continue
 
-        phase = morceaux[0]
-        qui = morceaux[1]
-        action = morceaux[2]
+        # Tous les éléments doivent être numériques.
+        if not all(
+            morceau.isdigit()
+            for morceau in morceaux
+        ):
+            afficher_et_ecrire(
+                f"Ordre ignoré pour "
+                f"{chemin_general.name} : "
+                f"{ligne} "
+                f"[valeur non numérique]"
+            )
+
+            continue
+
+        type_ordre = int(morceaux[0])
+        numero_ordre = int(morceaux[1])
+
+        specification = None
+
+        if len(morceaux) == 3:
+            specification = int(morceaux[2])
+
+        identifiant = (
+            f"{type_ordre}-"
+            f"{numero_ordre}"
+        )
+
+        # L'ordre doit exister dans la légende.
+        if identifiant not in legende_ordres:
+            afficher_et_ecrire(
+                f"Ordre ignoré pour "
+                f"{chemin_general.name} : "
+                f"{ligne} "
+                f"[ordre inconnu]"
+            )
+
+            continue
+
+        fiche_ordre = legende_ordres[
+            identifiant
+        ]
 
         ordres.append(
             {
-                "phase": phase,
-                "qui": qui,
-                "action": action,
+                "identifiant": identifiant,
                 "texte": ligne,
+                "type": type_ordre,
+                "numero": numero_ordre,
+                "specification": specification,
+                "nom": fiche_ordre["nom"],
+                "categorie": fiche_ordre[
+                    "categorie"
+                ],
             }
         )
 
     return ordres
+
+def general_possede_ordre(
+    general,
+    identifiant_ordre
+):
+    # Vérifie si un général possède un ordre précis.
+    #
+    # Exemple :
+    #
+    # general_possede_ordre(general, "2-2")
+    #
+    # retourne True si le général possède
+    # l'ordre pluie de flèches.
+
+    if general is None:
+        return False
+
+    for ordre in general.get("ordres", []):
+        if (
+            ordre["identifiant"]
+            == identifiant_ordre
+        ):
+            return True
+
+    return False
+
+
 
 def lire_generaux_territoire(territory):
     # Lit les généraux présents sur un territoire.
@@ -1658,6 +1847,33 @@ def generaux_actifs_joueur(generaux_territoire, joueur):
 
     return actifs
 
+def joueur_possede_ordre_armee(
+    generaux_territoire,
+    joueur,
+    identifiant_ordre
+):
+    # Vérifie si au moins un général actif du joueur
+    # possède l'ordre d'armée demandé.
+
+    for emplacement in emplacements:
+        general = (
+            generaux_territoire[
+                joueur
+            ][
+                emplacement
+            ]
+        )
+
+        if not general_a_des_unites(general):
+            continue
+
+        if general_possede_ordre(
+            general,
+            identifiant_ordre
+        ):
+            return True
+
+    return False
 
 def supprimer_general_si_vide(general):
     # Supprime du plateau un général qui n'a plus aucune unité.
@@ -1854,47 +2070,249 @@ def combat_poursuite_generaux(general_1, general_2):
     if chemin_2.exists():
         supprimer_general_si_vide(general_2)
 
-def resoudre_poursuite_generaux(territory, mode_combat):
-    # Moteur commun de poursuite.
+def resoudre_attaque_frontale(
+    territory,
+    mode_combat
+):
+    # Ordre 1-2 : attaque frontale.
     #
-    # Sert à OFF/OFF et OFF/DEF.
-    # Règle actuelle :
-    # - premier général actif de j1 contre premier général actif de j2
-    # - le gagnant continue
-    # - le combat continue jusqu'à disparition d'un camp
+    # Les généraux placés dans les mêmes
+    # emplacements s'affrontent d'abord :
+    #
+    # 1 contre 1
+    # 2 contre 2
+    # 3 contre 3
+    # 4 contre 4
+    #
+    # Après cette phase, les survivants seront
+    # pris en charge par la poursuite normale.
+
+    afficher_et_ecrire(
+        "\n=== ORDRE 1-2 : ATTAQUE FRONTALE ==="
+    )
+
+    engagement_effectue = False
+
+    for emplacement in emplacements:
+
+        # Relire entièrement le territoire avant
+        # chaque duel, car le duel précédent peut
+        # avoir supprimé un général.
+        generaux_territoire = (
+            lire_generaux_territoire(
+                territory
+            )
+        )
+
+        general_j1 = (
+            generaux_territoire[
+                "j1"
+            ][
+                emplacement
+            ]
+        )
+
+        general_j2 = (
+            generaux_territoire[
+                "j2"
+            ][
+                emplacement
+            ]
+        )
+
+        # Il faut un général actif dans les deux camps
+        # au même emplacement.
+        if not general_a_des_unites(
+            general_j1
+        ):
+            afficher_et_ecrire(
+                f"Emplacement {emplacement} : "
+                f"aucun général actif pour j1."
+            )
+
+            continue
+
+        if not general_a_des_unites(
+            general_j2
+        ):
+            afficher_et_ecrire(
+                f"Emplacement {emplacement} : "
+                f"aucun général actif pour j2."
+            )
+
+            continue
+
+        engagement_effectue = True
+
+        afficher_et_ecrire(
+            f"\n--- Duel frontal "
+            f"{mode_combat} : "
+            f"emplacement {emplacement} ---"
+        )
+
+        afficher_et_ecrire(
+            f"{general_j1['nom']} "
+            f"contre "
+            f"{general_j2['nom']}"
+        )
+
+        combat_poursuite_generaux(
+            general_j1,
+            general_j2
+        )
+
+    if not engagement_effectue:
+        afficher_et_ecrire(
+            "Ordre 1-2 sans effet : "
+            "aucun couple de généraux correspondants."
+        )
+
+def resoudre_poursuite_generaux(
+    territory,
+    mode_combat
+):
+    # Moteur commun de résolution.
+    #
+    # Première étape éventuelle :
+    # - ordre 1-2 : affrontements par emplacement.
+    #
+    # Deuxième étape :
+    # - poursuite normale entre les premiers
+    #   généraux encore actifs ;
+    # - le survivant continue ;
+    # - le combat s'arrête lorsqu'un camp disparaît.
+
+    generaux_depart = (
+        lire_generaux_territoire(
+            territory
+        )
+    )
+
+    ordre_frontal_j1 = (
+        joueur_possede_ordre_armee(
+            generaux_depart,
+            "j1",
+            "1-2"
+        )
+    )
+
+    ordre_frontal_j2 = (
+        joueur_possede_ordre_armee(
+            generaux_depart,
+            "j2",
+            "1-2"
+        )
+    )
+
+    # Pour cette première version,
+    # un seul des deux camps suffit pour provoquer
+    # l'organisation frontale du combat.
+    if ordre_frontal_j1 or ordre_frontal_j2:
+
+        camps = []
+
+        if ordre_frontal_j1:
+            camps.append("j1")
+
+        if ordre_frontal_j2:
+            camps.append("j2")
+
+        afficher_et_ecrire(
+            "Ordre frontal demandé par : "
+            + ", ".join(camps)
+        )
+
+        resoudre_attaque_frontale(
+            territory,
+            mode_combat
+        )
+
+    # --------------------------------------------------
+    # Poursuite normale
+    # --------------------------------------------------
 
     round_combat = 0
 
     while round_combat < 20:
         round_combat += 1
 
-        generaux_territoire = lire_generaux_territoire(territory)
-        controle = controle_territoire_generaux(generaux_territoire)
+        generaux_territoire = (
+            lire_generaux_territoire(
+                territory
+            )
+        )
+
+        controle = (
+            controle_territoire_generaux(
+                generaux_territoire
+            )
+        )
 
         if controle != "conteste":
-            afficher_et_ecrire(f"Fin du combat. Controle final : {controle}")
+            afficher_et_ecrire(
+                f"Fin du combat. "
+                f"Controle final : {controle}"
+            )
+
             return
 
-        actifs_j1 = generaux_actifs_joueur(generaux_territoire, "j1")
-        actifs_j2 = generaux_actifs_joueur(generaux_territoire, "j2")
+        actifs_j1 = generaux_actifs_joueur(
+            generaux_territoire,
+            "j1"
+        )
 
-        if len(actifs_j1) == 0 or len(actifs_j2) == 0:
-            controle = controle_territoire_generaux(generaux_territoire)
-            afficher_et_ecrire(f"Fin du combat. Controle final : {controle}")
+        actifs_j2 = generaux_actifs_joueur(
+            generaux_territoire,
+            "j2"
+        )
+
+        if (
+            len(actifs_j1) == 0
+            or len(actifs_j2) == 0
+        ):
+            controle = (
+                controle_territoire_generaux(
+                    generaux_territoire
+                )
+            )
+
+            afficher_et_ecrire(
+                f"Fin du combat. "
+                f"Controle final : {controle}"
+            )
+
             return
 
         general_j1 = actifs_j1[0]
         general_j2 = actifs_j2[0]
 
-        afficher_et_ecrire(f"\n--- Round {mode_combat} {round_combat} ---")
+        afficher_et_ecrire(
+            f"\n--- Poursuite "
+            f"{mode_combat} "
+            f"{round_combat} ---"
+        )
 
-        combat_poursuite_generaux(general_j1, general_j2)
+        combat_poursuite_generaux(
+            general_j1,
+            general_j2
+        )
 
-    generaux_territoire = lire_generaux_territoire(territory)
-    controle = controle_territoire_generaux(generaux_territoire)
+    generaux_territoire = (
+        lire_generaux_territoire(
+            territory
+        )
+    )
+
+    controle = (
+        controle_territoire_generaux(
+            generaux_territoire
+        )
+    )
 
     afficher_et_ecrire(
-        f"Limite de rounds atteinte sur {territory.name}. Controle actuel : {controle}"
+        f"Limite de rounds atteinte "
+        f"sur {territory.name}. "
+        f"Controle actuel : {controle}"
     )
 
 
@@ -1919,23 +2337,6 @@ def resoudre_combat_v15(territory):
 # Elles ne doivent pas intervenir dans la résolution
 # interne d'un engagement pour le moment.
 # ==================================================
-
-def general_demande_frontal(general):
-    # Vérifie si un général a donné un ordre frontal.
-    #
-    # Format accepté pour l'instant dans ordre.txt :
-    # 1-g-frontal
-    #
-    # Plus tard, on pourra préciser :
-    # 1-avant-frontal
-    # 1-g-defensif
-    # etc.
-
-    for ordre in general["ordres"]:
-        if ordre["action"] == "frontal":
-            return True
-
-    return False
 
 
 
@@ -1963,57 +2364,286 @@ def lancer_bataille_v15():
     # Boucle de résolution V1.5.
     #
     # Elle décide :
-    # - OFF/OFF si le territoire était neutre ou contesté avant
-    # - OFF/DEF si le territoire appartenait à un joueur avant
+    # - OFF/OFF si le territoire était neutre
+    #   ou contesté avant ;
+    # - OFF/DEF si le territoire appartenait
+    #   à un joueur avant.
+    #
+    # Le rapport court ne reçoit que les
+    # informations publiques.
+    #
+    # Le rapport long et le rapport territorial
+    # reçoivent les informations détaillées.
 
-    afficher_et_ecrire("\n=== RESOLUTION MYTHODEA V1.5 ===")
+    afficher_et_ecrire(
+        "\n=== RÉSOLUTION MYTHODEA V1.5 ==="
+    )
 
-    controle_avant_resolution = charger_controle_territoires()
+    controle_avant_resolution = (
+        charger_controle_territoires()
+    )
 
     for territory in territoires:
-        afficher_et_ecrire(f"\nTerritoire : {territory.name}")
+        definir_territoire_rapport(
+            territory
+        )
 
-        generaux_territoire = lire_generaux_territoire(territory)
-        controle_actuel = controle_territoire_generaux(generaux_territoire)
+        ancien_controle = (
+            controle_avant_resolution.get(
+                territory.name,
+                "neutre"
+            )
+        )
 
-        afficher_et_ecrire(f"Controle actuel : {controle_actuel}")
+        afficher_et_ecrire(
+            f"\n=== TERRITOIRE : "
+            f"{territory.name.upper()} ==="
+        )
+
+        afficher_et_ecrire(
+            f"Contrôle avant le tour : "
+            f"{ancien_controle}"
+        )
+
+        generaux_territoire = (
+            lire_generaux_territoire(
+                territory
+            )
+        )
+
+        controle_avant_combat = (
+            controle_territoire_generaux(
+                generaux_territoire
+            )
+        )
+
+        afficher_et_ecrire(
+            f"Contrôle après les déplacements : "
+            f"{controle_avant_combat}"
+        )
+
+        # --------------------------------------
+        # Présence initiale
+        # --------------------------------------
+
+        afficher_et_ecrire(
+            "\n--- Présence avant combat ---"
+        )
 
         for joueur in joueurs:
-            afficher_et_ecrire(f"\n{joueur} :")
+            afficher_et_ecrire(
+                f"\n{joueur} :"
+            )
 
             for emplacement in emplacements:
-                general = generaux_territoire[joueur][emplacement]
+                general = (
+                    generaux_territoire[
+                        joueur
+                    ][
+                        emplacement
+                    ]
+                )
 
                 if general is None:
-                    afficher_et_ecrire(f"emplacement {emplacement} : vide")
+                    afficher_et_ecrire(
+                        f"emplacement "
+                        f"{emplacement} : vide"
+                    )
+
                     continue
 
                 afficher_et_ecrire(
-                    f"emplacement {emplacement} : "
+                    f"emplacement "
+                    f"{emplacement} : "
                     f"{general['nom']} "
                     f"({general['total_unites']} unités)"
                 )
 
-        if controle_actuel == "conteste":
-            ancien_controle = controle_avant_resolution.get(
-                territory.name,
-                "neutre"
-            )
+                # Informations de niveau renseignement.
+                # Elles sont visibles dans le rapport long
+                # et territorial pendant la V1.5.
+                fiche = general["fiche"]
+
+                afficher_et_ecrire(
+                    f"  orientation : "
+                    f"{fiche.get('orientation', 'inconnue')}"
+                )
+
+                afficher_et_ecrire(
+                    f"  stratégie : "
+                    f"{fiche.get('strategie', 'inconnue')}"
+                )
+
+                afficher_et_ecrire(
+                    f"  force : "
+                    f"{fiche.get('force', 'inconnue')}"
+                )
+
+                afficher_et_ecrire(
+                    f"  expérience : "
+                    f"{fiche.get('experience', 'inconnue')}"
+                )
+
+                if general_est_fatigue(general):
+                    afficher_et_ecrire(
+                        "  fatigue : oui"
+                    )
+                else:
+                    afficher_et_ecrire(
+                        "  fatigue : non"
+                    )
+
+                if len(general["ordres"]) == 0:
+                    afficher_et_ecrire(
+                        "  ordres : aucun ordre valide"
+                    )
+                else:
+                    textes_ordres = [
+                        ordre["texte"]
+                        for ordre
+                        in general["ordres"]
+                    ]
+
+                    afficher_et_ecrire(
+                        "  ordres : "
+                        + ", ".join(
+                            textes_ordres
+                        )
+                    )
+
+        # --------------------------------------
+        # Combat
+        # --------------------------------------
+
+        combat_declenche = False
+        mode_combat = None
+
+        if controle_avant_combat == "conteste":
+            combat_declenche = True
 
             if ancien_controle in joueurs:
+                mode_combat = "OFF/DEF"
+
                 afficher_et_ecrire(
-                    f"Combat détecté : OFF/DEF. "
+                    f"\nCombat détecté : "
+                    f"OFF/DEF. "
                     f"{ancien_controle} défend."
                 )
-                resoudre_combat_off_def(territory, ancien_controle)
-            else:
-                afficher_et_ecrire(
-                    "Combat détecté : OFF/OFF."
+
+                resoudre_combat_off_def(
+                    territory,
+                    ancien_controle
                 )
-                resoudre_combat_v15(territory)
+
+            else:
+                mode_combat = "OFF/OFF"
+
+                afficher_et_ecrire(
+                    "\nCombat détecté : OFF/OFF."
+                )
+
+                resoudre_combat_v15(
+                    territory
+                )
+
+        else:
+            afficher_et_ecrire(
+                "\nAucun combat sur ce territoire."
+            )
+
+        # --------------------------------------
+        # Situation finale
+        # --------------------------------------
+
+        generaux_finaux = (
+            lire_generaux_territoire(
+                territory
+            )
+        )
+
+        controle_final = (
+            controle_territoire_generaux(
+                generaux_finaux
+            )
+        )
+
+        afficher_et_ecrire(
+            f"\nContrôle final : "
+            f"{controle_final}"
+        )
+
+        afficher_et_ecrire(
+            "\n--- Forces survivantes ---"
+        )
+
+        for joueur in joueurs:
+            total_joueur = (
+                total_unites_joueur_generaux(
+                    generaux_finaux,
+                    joueur
+                )
+            )
+
+            afficher_et_ecrire(
+                f"{joueur} : "
+                f"{total_joueur} unité(s)"
+            )
+
+        # --------------------------------------
+        # Informations publiques
+        # --------------------------------------
+
+        if combat_declenche:
+            ecrire_rapport_court(
+                f"{territory.name} : "
+                f"combat {mode_combat}"
+            )
+
+            ecrire_rapport_court(
+                f"{territory.name} : "
+                f"contrôle final = "
+                f"{controle_final}"
+            )
+
+        elif ancien_controle != controle_final:
+            # Changement de contrôle sans combat,
+            # par exemple occupation d'un territoire vide.
+            ecrire_rapport_court(
+                f"{territory.name} : "
+                f"changement de contrôle "
+                f"{ancien_controle} -> "
+                f"{controle_final}"
+            )
+
+        definir_territoire_rapport(
+            None
+        )
 
     sauvegarder_controle_territoires()
 
+    # ------------------------------------------
+    # Contrôle public final de la carte
+    # ------------------------------------------
+
+    ecrire_rapport_court("")
+
+    ecrire_rapport_court(
+        "CONTRÔLE FINAL"
+    )
+
+    controle_final_carte = (
+        charger_controle_territoires()
+    )
+
+    for territory in territoires:
+        controle = controle_final_carte.get(
+            territory.name,
+            "neutre"
+        )
+
+        ecrire_rapport_court(
+            f"{territory.name} : {controle}"
+        )
 
 def verifier_limite_unites_general(chemin_general):
     # Vérifie qu'un général ne dépasse pas la limite d'unités autorisée.
@@ -2694,24 +3324,328 @@ def ordre_attaques_initiative(armee, joueur, initiative_avant):
     return ordre
 
 
-def ecrire_rapport(texte):
-    rapport_path.parent.mkdir(exist_ok=True)
+def ajouter_ligne_fichier(chemin, texte):
+    # Ajoute une ligne dans un fichier de rapport.
 
-    with open(rapport_path, "a", encoding="utf-8") as rapport:
-        rapport.write(texte + "\n")
+    chemin.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    with open(
+        chemin,
+        "a",
+        encoding="utf-8"
+    ) as fichier:
+        fichier.write(
+            str(texte) + "\n"
+        )
+
+
+def ecrire_rapport_long(texte):
+    # Rapport complet réservé au développement,
+    # aux tests et au futur système de renseignement.
+
+    ajouter_ligne_fichier(
+        rapport_long_path,
+        texte
+    )
+
+
+def ecrire_rapport_court(texte):
+    # Rapport contenant uniquement
+    # les informations publiques.
+
+    ajouter_ligne_fichier(
+        rapport_court_path,
+        texte
+    )
+
+
+def chemin_rapport_territoire(territoire):
+    # Accepte soit :
+    # - un objet Path représentant un territoire ;
+    # - directement son nom sous forme de texte.
+
+    if isinstance(territoire, Path):
+        nom_territoire = territoire.name
+    else:
+        nom_territoire = str(territoire)
+
+    return (
+        rapports_territoires_dir
+        / f"{nom_territoire}.txt"
+    )
+
+
+def ecrire_rapport_territoire(
+    territoire,
+    texte
+):
+    # Écrit une information dans le rapport
+    # détaillé d'un territoire.
+
+    chemin = chemin_rapport_territoire(
+        territoire
+    )
+
+    ajouter_ligne_fichier(
+        chemin,
+        texte
+    )
+
+
+def definir_territoire_rapport(territoire):
+    # Définit le territoire actuellement résolu.
+    #
+    # À partir de cet instant, afficher_et_ecrire()
+    # écrit à la fois dans :
+    # - rapport_long.txt ;
+    # - le rapport du territoire concerné.
+
+    global territoire_rapport_actuel
+
+    if territoire is None:
+        territoire_rapport_actuel = None
+        return
+
+    if isinstance(territoire, Path):
+        territoire_rapport_actuel = (
+            territoire.name
+        )
+    else:
+        territoire_rapport_actuel = (
+            str(territoire)
+        )
 
 
 def afficher_et_ecrire(texte):
-    ecrire_rapport(texte)
+    # Fonction utilisée par le moteur existant.
+    #
+    # Toutes les informations vont dans
+    # le rapport long.
+    #
+    # Pendant la résolution d'un territoire,
+    # elles vont également dans son rapport.
+
+    ecrire_rapport_long(texte)
+
+    if territoire_rapport_actuel is not None:
+        ecrire_rapport_territoire(
+            territoire_rapport_actuel,
+            texte
+        )
 
 
-def preparer_rapport():
-    rapport_path.parent.mkdir(exist_ok=True)
-    rapport_path.write_text("", encoding="utf-8")
+def choisir_meteo_tour():
+    # Choisit une météo aléatoire.
+    #
+    # La météo est commune à toute la carte
+    # et n'a encore aucun effet sur le jeu.
+
+    return random.choice(
+        meteos_possibles
+    )
 
 
+def sauvegarder_meteo(meteo):
+    # Conserve la météo du tour dans le système.
+
+    meteo_path.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    meteo_path.write_text(
+        meteo,
+        encoding="utf-8"
+    )
 
 
+def charger_meteo():
+    # Permet aux futures fonctions du jeu
+    # de consulter la météo choisie.
+
+    if not meteo_path.exists():
+        return None
+
+    meteo = meteo_path.read_text(
+        encoding="utf-8"
+    ).strip()
+
+    if meteo == "":
+        return None
+
+    return meteo
+
+
+def preparer_rapports():
+    # Prépare tous les rapports du nouveau tour.
+    #
+    # Les rapports du tour précédent sont effacés.
+    # Une nouvelle météo est ensuite générée.
+
+    global meteo_tour
+    global territoire_rapport_actuel
+
+    territoire_rapport_actuel = None
+
+    rapport_dir.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    rapports_territoires_dir.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    # Effacer les rapports généraux.
+    rapport_court_path.write_text(
+        "",
+        encoding="utf-8"
+    )
+
+    rapport_long_path.write_text(
+        "",
+        encoding="utf-8"
+    )
+
+    # Préparer un rapport pour chaque territoire.
+    for territory in territoires:
+        chemin = chemin_rapport_territoire(
+            territory
+        )
+
+        chemin.write_text(
+            "",
+            encoding="utf-8"
+        )
+
+    # Générer la météo commune au tour.
+    meteo_tour = choisir_meteo_tour()
+
+    sauvegarder_meteo(
+        meteo_tour
+    )
+
+    # ------------------------------------------
+    # Rapport court public
+    # ------------------------------------------
+
+    ecrire_rapport_court(
+        "=== RÉSUMÉ DU TOUR ==="
+    )
+
+    ecrire_rapport_court("")
+
+    ecrire_rapport_court(
+        f"MÉTÉO : {meteo_tour}"
+    )
+
+    ecrire_rapport_court("")
+
+    # ------------------------------------------
+    # Rapport long complet
+    # ------------------------------------------
+
+    ecrire_rapport_long(
+        "=== RAPPORT LONG DU TOUR ==="
+    )
+
+    ecrire_rapport_long("")
+
+    ecrire_rapport_long(
+        f"Météo du tour : {meteo_tour}"
+    )
+
+    ecrire_rapport_long(
+        "Effet actuel de la météo : aucun"
+    )
+
+    ecrire_rapport_long("")
+
+    # ------------------------------------------
+    # Rapports territoriaux
+    # ------------------------------------------
+
+    for territory in territoires:
+        ecrire_rapport_territoire(
+            territory,
+            (
+                f"=== RAPPORT DE "
+                f"{territory.name.upper()} ==="
+            )
+        )
+
+        ecrire_rapport_territoire(
+            territory,
+            ""
+        )
+
+        ecrire_rapport_territoire(
+            territory,
+            f"Météo : {meteo_tour}"
+        )
+
+        ecrire_rapport_territoire(
+            territory,
+            ""
+        )
+
+
+def afficher_fin_de_tour():
+    # Affiche automatiquement le rapport court
+    # dans le terminal.
+    #
+    # Pour les autres rapports, affiche seulement
+    # des commandes prêtes à copier-coller.
+
+    print()
+    print("=" * 48)
+    print("                 RAPPORT COURT")
+    print("=" * 48)
+    print()
+
+    if rapport_court_path.exists():
+        contenu = rapport_court_path.read_text(
+            encoding="utf-8"
+        ).strip()
+
+        if contenu:
+            print(contenu)
+        else:
+            print("Le rapport court est vide.")
+    else:
+        print("Le rapport court est introuvable.")
+
+    print()
+    print("=" * 48)
+    print("            CONSULTER LES RAPPORTS")
+    print("=" * 48)
+    print()
+
+    print("Rapport long complet :")
+    print(
+        f"cat {rapport_long_path}"
+    )
+
+    print()
+
+    print("Exemple de rapport territorial :")
+    print(
+        "cat "
+        f"{rapports_territoires_dir / 'terrain1.txt'}"
+    )
+
+    print()
+
+    print("Liste des rapports territoriaux :")
+    print(
+        f"ls {rapports_territoires_dir}/"
+    )
+
+    print()
 
 def vider_fichier(chemin):
     chemin.write_text("", encoding="utf-8")
@@ -2742,7 +3676,14 @@ def verifier_victoire():
 
 
 
-preparer_rapport()
+preparer_rapports()
+reparer_structure()
+
+verifier_tous_les_deplacements()
+
+vainqueur = verifier_victoire()
+
+preparer_rapports()
 reparer_structure()
 
 verifier_tous_les_deplacements()
@@ -2750,14 +3691,17 @@ verifier_tous_les_deplacements()
 vainqueur = verifier_victoire()
 
 if vainqueur:
-    rapport_court_path.write_text(
-        f"🏆 VICTOIRE DE {vainqueur}\n",
-        encoding="utf-8"
+    ecrire_rapport_court("")
+
+    ecrire_rapport_court(
+        f"VICTOIRE DE {vainqueur}"
     )
 
-    afficher_et_ecrire(
-        f"🏆 Victoire de {vainqueur} !"
+    ecrire_rapport_long(
+        f"Victoire de {vainqueur}."
     )
-    exit()
 
-lancer_bataille_v15()
+else:
+    lancer_bataille_v15()
+
+afficher_fin_de_tour()
