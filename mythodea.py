@@ -2395,10 +2395,15 @@ def lancer_bataille_v15():
             )
         )
 
+        afficher_et_ecrire("")
+        afficher_et_ecrire("")
+
         afficher_et_ecrire(
-            f"\n=== TERRITOIRE : "
+            f"=== TERRITOIRE : "
             f"{territory.name.upper()} ==="
         )
+
+        afficher_et_ecrire("")
 
         afficher_et_ecrire(
             f"Contrôle avant le tour : "
