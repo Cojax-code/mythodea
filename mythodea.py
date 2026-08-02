@@ -1724,12 +1724,25 @@ def verifier_deplacement_general(
     if intermediaire is None:
         return False, False, "destination trop éloignée"
 
-    # Le territoire traversé doit appartenir au joueur.
-    if controle_avant.get(intermediaire) != joueur:
+    # Le territoire intermédiaire peut être :
+    # - allié ;
+    # - neutre.
+    #
+    # Le passage est interdit uniquement s'il est
+    # contrôlé par l'ennemi.
+
+    controle_intermediaire = controle_avant.get(
+        intermediaire,
+        "neutre"
+    )
+
+    joueur_ennemi = ennemi_de(joueur)
+
+    if controle_intermediaire == joueur_ennemi:
         return (
             False,
             False,
-            f"{intermediaire} n'est pas allié"
+            f"{intermediaire} est contrôlé par {joueur_ennemi}"
         )
 
     return True, True, "marche forcee"
