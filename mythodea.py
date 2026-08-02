@@ -3701,13 +3701,6 @@ verifier_tous_les_deplacements()
 
 vainqueur = verifier_victoire()
 
-preparer_rapports()
-reparer_structure()
-
-verifier_tous_les_deplacements()
-
-vainqueur = verifier_victoire()
-
 if vainqueur:
     ecrire_rapport_court("")
 
