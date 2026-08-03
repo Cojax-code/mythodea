@@ -1933,6 +1933,13 @@ def combat_poursuite_generaux(general_1, general_2):
     chemin_1 = general_1["chemin"]
     chemin_2 = general_2["chemin"]
 
+    initial_1 = total_general_depuis_chemin(
+        chemin_1
+    )
+    initial_2 = total_general_depuis_chemin(
+        chemin_2
+    )
+
     afficher_et_ecrire(
         f"\nEngagement : "
         f"{joueur_1} {general_1['nom']} "
@@ -1951,7 +1958,16 @@ def combat_poursuite_generaux(general_1, general_2):
 
     # La phase 1 peut avoir détruit un général.
     if not chemin_1.exists() or not chemin_2.exists():
-        return
+        return {
+            "joueur_1": joueur_1,
+            "general_1": general_1["nom"],
+            "initial_1": initial_1,
+            "final_1": total_general_depuis_chemin(chemin_1),
+            "joueur_2": joueur_2,
+            "general_2": general_2["nom"],
+            "initial_2": initial_2,
+            "final_2": total_general_depuis_chemin(chemin_2),
+        }
 
     # --------------------------------------------------
     # Phase 2 : attaques d'initiative
@@ -2083,6 +2099,17 @@ def combat_poursuite_generaux(general_1, general_2):
     if chemin_2.exists():
         supprimer_general_si_vide(general_2)
 
+    return {
+        "joueur_1": joueur_1,
+        "general_1": general_1["nom"],
+        "initial_1": initial_1,
+        "final_1": total_general_depuis_chemin(chemin_1),
+        "joueur_2": joueur_2,
+        "general_2": general_2["nom"],
+        "initial_2": initial_2,
+        "final_2": total_general_depuis_chemin(chemin_2),
+    }
+
 def resoudre_attaque_frontale(
     territory,
     mode_combat
@@ -2169,9 +2196,15 @@ def resoudre_attaque_frontale(
             f"{general_j2['nom']}"
         )
 
-        combat_poursuite_generaux(
+        resultat_duel = combat_poursuite_generaux(
             general_j1,
             general_j2
+        )
+
+        ecrire_ligne_affrontement_territoire(
+            territory,
+            emplacement,
+            resultat_duel
         )
 
     if not engagement_effectue:
@@ -2233,6 +2266,19 @@ def resoudre_poursuite_generaux(
         afficher_et_ecrire(
             "Ordre frontal demandé par : "
             + ", ".join(camps)
+        )
+
+        ecrire_rapport_territoire(
+            territory,
+            ""
+        )
+        ecrire_rapport_territoire(
+            territory,
+            "================ DUELS FRONTAUX ================"
+        )
+        ecrire_rapport_territoire(
+            territory,
+            ""
         )
 
         resoudre_attaque_frontale(
@@ -2305,9 +2351,29 @@ def resoudre_poursuite_generaux(
             f"{round_combat} ---"
         )
 
-        combat_poursuite_generaux(
+        resultat_poursuite = combat_poursuite_generaux(
             general_j1,
             general_j2
+        )
+
+        if round_combat == 1:
+            ecrire_rapport_territoire(
+                territory,
+                ""
+            )
+            ecrire_rapport_territoire(
+                territory,
+                "=================== POURSUITE ==================="
+            )
+            ecrire_rapport_territoire(
+                territory,
+                ""
+            )
+
+        ecrire_ligne_affrontement_territoire(
+            territory,
+            f"P{round_combat}",
+            resultat_poursuite
         )
 
     generaux_territoire = (
@@ -2440,6 +2506,60 @@ def lancer_bataille_v15():
             f"{controle_avant_combat}"
         )
 
+        total_initial_j1 = total_unites_joueur_generaux(
+            generaux_territoire,
+            "j1"
+        )
+        total_initial_j2 = total_unites_joueur_generaux(
+            generaux_territoire,
+            "j2"
+        )
+
+        # Rapport territorial lisible.
+        chemin_rapport_territoire(
+            territory
+        ).write_text(
+            "",
+            encoding="utf-8"
+        )
+
+        ecrire_rapport_territoire(
+            territory,
+            "=" * 56
+        )
+        ecrire_rapport_territoire(
+            territory,
+            f"{territory.name.upper()} — RAPPORT DE COMBAT"
+        )
+        ecrire_rapport_territoire(
+            territory,
+            "=" * 56
+        )
+        ecrire_rapport_territoire(
+            territory,
+            ""
+        )
+        ecrire_rapport_territoire(
+            territory,
+            f"Météo            : {meteo_tour}"
+        )
+        ecrire_rapport_territoire(
+            territory,
+            f"Contrôle initial : {ancien_controle}"
+        )
+        ecrire_rapport_territoire(
+            territory,
+            f"Forces initiales : j1 = {total_initial_j1} | j2 = {total_initial_j2}"
+        )
+        ecrire_rapport_territoire(
+            territory,
+            ""
+        )
+        ecrire_rapport_territoire(
+            territory,
+            "Légende : ○ survivant | × détruit | (nombre) unités restantes"
+        )
+
         # --------------------------------------
         # Présence initiale
         # --------------------------------------
@@ -2542,6 +2662,11 @@ def lancer_bataille_v15():
             if ancien_controle in joueurs:
                 mode_combat = "OFF/DEF"
 
+                ecrire_rapport_territoire(
+                    territory,
+                    f"Mode de combat   : {mode_combat} ({ancien_controle} défend)"
+                )
+
                 afficher_et_ecrire(
                     f"\nCombat détecté : "
                     f"OFF/DEF. "
@@ -2555,6 +2680,11 @@ def lancer_bataille_v15():
 
             else:
                 mode_combat = "OFF/OFF"
+
+                ecrire_rapport_territoire(
+                    territory,
+                    f"Mode de combat   : {mode_combat}"
+                )
 
                 afficher_et_ecrire(
                     "\nCombat détecté : OFF/OFF."
@@ -2594,6 +2724,8 @@ def lancer_bataille_v15():
             "\n--- Forces survivantes ---"
         )
 
+        totaux_finaux = {}
+
         for joueur in joueurs:
             total_joueur = (
                 total_unites_joueur_generaux(
@@ -2601,11 +2733,33 @@ def lancer_bataille_v15():
                     joueur
                 )
             )
+            totaux_finaux[joueur] = total_joueur
 
             afficher_et_ecrire(
                 f"{joueur} : "
                 f"{total_joueur} unité(s)"
             )
+
+        ecrire_rapport_territoire(
+            territory,
+            ""
+        )
+        ecrire_rapport_territoire(
+            territory,
+            "================ RÉSULTAT FINAL ================"
+        )
+        ecrire_rapport_territoire(
+            territory,
+            ""
+        )
+        ecrire_rapport_territoire(
+            territory,
+            f"Contrôle final : {controle_final}"
+        )
+        ecrire_rapport_territoire(
+            territory,
+            f"Survivants     : j1 = {totaux_finaux['j1']} | j2 = {totaux_finaux['j2']}"
+        )
 
         # --------------------------------------
         # Informations publiques
@@ -3438,21 +3592,66 @@ def definir_territoire_rapport(territoire):
 
 
 def afficher_et_ecrire(texte):
-    # Fonction utilisée par le moteur existant.
+    # Journal technique complet.
     #
-    # Toutes les informations vont dans
-    # le rapport long.
-    #
-    # Pendant la résolution d'un territoire,
-    # elles vont également dans son rapport.
+    # Les détails du moteur sont conservés uniquement
+    # dans rapport_long.txt. Le rapport territorial est
+    # alimenté séparément avec des informations synthétiques.
 
     ecrire_rapport_long(texte)
 
-    if territoire_rapport_actuel is not None:
-        ecrire_rapport_territoire(
-            territoire_rapport_actuel,
-            texte
-        )
+
+def symbole_survie(nombre_unites):
+    # Symbole utilisé dans le rapport territorial lisible.
+
+    if nombre_unites > 0:
+        return "○"
+
+    return "×"
+
+
+def total_general_depuis_chemin(chemin_general):
+    # Retourne le nombre d'unités encore présentes.
+    # Un général supprimé vaut automatiquement zéro.
+
+    if not chemin_general.exists():
+        return 0
+
+    return total_unites_general(
+        lire_blocs_general(chemin_general)
+    )
+
+
+def ecrire_ligne_affrontement_territoire(
+    territoire,
+    etiquette,
+    resultat
+):
+    # Exemple :
+    # [1] j1 general1  ○ (9)  <->  × (0)  j2 general1
+
+    symbole_1 = symbole_survie(
+        resultat["final_1"]
+    )
+    symbole_2 = symbole_survie(
+        resultat["final_2"]
+    )
+
+    ligne = (
+        f"[{etiquette}] "
+        f"{resultat['joueur_1']} "
+        f"{resultat['general_1']}  "
+        f"{symbole_1} ({resultat['final_1']})  "
+        f"<->  "
+        f"{symbole_2} ({resultat['final_2']})  "
+        f"{resultat['joueur_2']} "
+        f"{resultat['general_2']}"
+    )
+
+    ecrire_rapport_territoire(
+        territoire,
+        ligne
+    )
 
 
 def choisir_meteo_tour():
