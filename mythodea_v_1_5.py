@@ -1917,15 +1917,9 @@ def supprimer_general_si_vide(general):
 def combat_entre_generaux(general_1, general_2):
     # Affrontement complet entre deux généraux.
     #
-    # Cette fonction est utilisée pour OFF/OFF et OFF/DEF.
-    #
     # Déroulement :
-    # 1. Engagement initial entre les blocs placés face à face.
-    # 2. Attaques d'initiative entre les blocs survivants.
-    #
-    # Les ordres des généraux sont laissés en suspens.
-    # Ils serviront plus tard à choisir l'ordre des généraux
-    # et leurs adversaires.
+    # 1. Choc initial entre les blocs placés face à face.
+    # 2. Manœuvres entre les blocs survivants.
 
     joueur_1 = general_1["joueur"]
     joueur_2 = general_2["joueur"]
@@ -1933,30 +1927,23 @@ def combat_entre_generaux(general_1, general_2):
     chemin_1 = general_1["chemin"]
     chemin_2 = general_2["chemin"]
 
-    initial_1 = total_general_depuis_chemin(
-        chemin_1
-    )
-    initial_2 = total_general_depuis_chemin(
-        chemin_2
-    )
+    initial_1 = total_general_depuis_chemin(chemin_1)
+    initial_2 = total_general_depuis_chemin(chemin_2)
 
     afficher_et_ecrire(
         f"\nEngagement : "
-        f"{joueur_1} {general_1['nom']} "
-        f"VS "
+        f"{joueur_1} {general_1['nom']} VS "
         f"{joueur_2} {general_2['nom']}"
     )
 
-    # --------------------------------------------------
-    # Phase 1 : engagement initial
-    # --------------------------------------------------
-
-    initiative_avant = phase_engagement_initial(
+    initiative_avant, details_choc = phase_engagement_initial(
         general_1,
         general_2
-)
+    )
 
-    # La phase 1 peut avoir détruit un général.
+    details_manoeuvre = []
+
+    # Le choc initial peut avoir détruit un général.
     if not chemin_1.exists() or not chemin_2.exists():
         return {
             "joueur_1": joueur_1,
@@ -1967,17 +1954,14 @@ def combat_entre_generaux(general_1, general_2):
             "general_2": general_2["nom"],
             "initial_2": initial_2,
             "final_2": total_general_depuis_chemin(chemin_2),
+            "chocs": details_choc,
+            "manoeuvres": details_manoeuvre,
         }
 
-    # --------------------------------------------------
-    # Phase 2 : attaques d'initiative
-    # --------------------------------------------------
-
-    afficher_et_ecrire(
-        "\n=== Phase 2 : attaques d'initiative ==="
-    )
+    afficher_et_ecrire("\n=== MANŒUVRE ===")
 
     tour = 0
+    numero_manoeuvre = 0
 
     while tour < 10:
         tour += 1
@@ -1990,23 +1974,16 @@ def combat_entre_generaux(general_1, general_2):
             joueur_2: lire_blocs_general(chemin_2),
         }
 
-        total_1 = total_unites_general(armee[joueur_1])
-        total_2 = total_unites_general(armee[joueur_2])
-
-        if total_1 == 0 or total_2 == 0:
+        if (
+            total_unites_general(armee[joueur_1]) == 0
+            or total_unites_general(armee[joueur_2]) == 0
+        ):
             break
 
-        afficher_et_ecrire(
-            f"\n--- Tour d'initiative {tour} ---"
-        )
-
+        afficher_et_ecrire(f"\n--- Tour de manœuvre {tour} ---")
         attaque_effectuee = False
 
-        # Pour le moment, joueur_1 agit avant joueur_2.
-        # La priorité sera retravaillée avec les ordres
-        # et les transitions des généraux.
         for joueur_attaquant in [joueur_1, joueur_2]:
-
             if not chemin_1.exists() or not chemin_2.exists():
                 break
 
@@ -2017,7 +1994,6 @@ def combat_entre_generaux(general_1, general_2):
 
             if total_unites_general(armee[joueur_1]) == 0:
                 break
-
             if total_unites_general(armee[joueur_2]) == 0:
                 break
 
@@ -2028,17 +2004,14 @@ def combat_entre_generaux(general_1, general_2):
             )
 
             afficher_et_ecrire(
-                f"\nOrdre d'initiative de {joueur_attaquant} : "
+                f"\nOrdre de manœuvre de {joueur_attaquant} : "
                 f"{', '.join(ordre_attaques)}"
             )
 
             for bloc_attaquant in ordre_attaques:
-
                 if not chemin_1.exists() or not chemin_2.exists():
                     break
 
-                # Relire les unités avant chaque attaque,
-                # car le combat précédent peut avoir provoqué des pertes.
                 armee = {
                     joueur_1: lire_blocs_general(chemin_1),
                     joueur_2: lire_blocs_general(chemin_2),
@@ -2046,23 +2019,17 @@ def combat_entre_generaux(general_1, general_2):
 
                 if total_unites_general(armee[joueur_1]) == 0:
                     break
-
                 if total_unites_general(armee[joueur_2]) == 0:
                     break
 
                 infos_attaquant = armee[joueur_attaquant][bloc_attaquant]
-
-                # Le bloc pouvait contenir des unités au début du tour,
-                # mais avoir été détruit entre-temps.
                 if infos_attaquant["nombre"] <= 0:
                     continue
-
-                type_attaquant = infos_attaquant["type"]
 
                 cible = choisir_cible(
                     armee,
                     joueur_attaquant,
-                    type_attaquant
+                    infos_attaquant["type"]
                 )
 
                 if cible is None:
@@ -2075,7 +2042,7 @@ def combat_entre_generaux(general_1, general_2):
                     general_attaquant = general_2
                     general_defenseur = general_1
 
-                attaque_ciblee(
+                detail = attaque_ciblee(
                     armee,
                     general_attaquant,
                     general_defenseur,
@@ -2083,19 +2050,20 @@ def combat_entre_generaux(general_1, general_2):
                     cible
                 )
 
+                numero_manoeuvre += 1
+                detail["numero"] = numero_manoeuvre
+                detail["tour"] = tour
+                details_manoeuvre.append(detail)
                 attaque_effectuee = True
 
         if not attaque_effectuee:
             afficher_et_ecrire(
-                "Aucune attaque d'initiative possible. "
-                "L'affrontement est bloqué."
+                "Aucune manœuvre possible. L'affrontement est bloqué."
             )
             break
 
-    # Supprimer les généraux qui n'ont plus d'unités.
     if chemin_1.exists():
         supprimer_general_si_vide(general_1)
-
     if chemin_2.exists():
         supprimer_general_si_vide(general_2)
 
@@ -2108,6 +2076,8 @@ def combat_entre_generaux(general_1, general_2):
         "general_2": general_2["nom"],
         "initial_2": initial_2,
         "final_2": total_general_depuis_chemin(chemin_2),
+        "chocs": details_choc,
+        "manoeuvres": details_manoeuvre,
     }
 
 def resoudre_attaque_frontale(
@@ -2132,6 +2102,7 @@ def resoudre_attaque_frontale(
     )
 
     engagement_effectue = False
+    resultats = []
 
     for emplacement in emplacements:
 
@@ -2206,12 +2177,15 @@ def resoudre_attaque_frontale(
             emplacement,
             resultat_duel
         )
+        resultats.append((emplacement, resultat_duel))
 
     if not engagement_effectue:
         afficher_et_ecrire(
             "Ordre 1-2 sans effet : "
             "aucun couple de généraux correspondants."
         )
+
+    return resultats
 
 def resoudre_combat_range(
     territory,
@@ -2285,7 +2259,7 @@ def resoudre_combat_range(
             "Pos"
         )
 
-        resoudre_attaque_frontale(
+        engagements_frontaux = resoudre_attaque_frontale(
             territory,
             mode_combat
         )
@@ -2294,12 +2268,18 @@ def resoudre_combat_range(
             territory
         )
 
+        ecrire_details_engagements(
+            territory,
+            engagements_frontaux
+        )
+
     # --------------------------------------------------
     # Combat rangé
     # --------------------------------------------------
 
     round_combat = 0
     tableau_combat_range_ouvert = False
+    engagements_combat_range = []
 
     while round_combat < 20:
         round_combat += 1
@@ -2320,6 +2300,20 @@ def resoudre_combat_range(
             if tableau_combat_range_ouvert:
                 ecrire_fin_tableau_affrontements(
                     territory
+                )
+                ecrire_details_engagements(
+                    territory,
+                    engagements_combat_range
+                )
+            else:
+                ecrire_rapport_territoire(territory, "")
+                ecrire_rapport_territoire(
+                    territory,
+                    "=================== COMBAT RANGÉ ==================="
+                )
+                ecrire_rapport_territoire(
+                    territory,
+                    "Aucun combat rangé."
                 )
 
             afficher_et_ecrire(
@@ -2352,6 +2346,20 @@ def resoudre_combat_range(
             if tableau_combat_range_ouvert:
                 ecrire_fin_tableau_affrontements(
                     territory
+                )
+                ecrire_details_engagements(
+                    territory,
+                    engagements_combat_range
+                )
+            else:
+                ecrire_rapport_territoire(territory, "")
+                ecrire_rapport_territoire(
+                    territory,
+                    "=================== COMBAT RANGÉ ==================="
+                )
+                ecrire_rapport_territoire(
+                    territory,
+                    "Aucun combat rangé."
                 )
 
             afficher_et_ecrire(
@@ -2399,10 +2407,27 @@ def resoudre_combat_range(
             round_combat,
             resultat_combat_range
         )
+        engagements_combat_range.append(
+            (round_combat, resultat_combat_range)
+        )
 
     if tableau_combat_range_ouvert:
         ecrire_fin_tableau_affrontements(
             territory
+        )
+        ecrire_details_engagements(
+            territory,
+            engagements_combat_range
+        )
+    else:
+        ecrire_rapport_territoire(territory, "")
+        ecrire_rapport_territoire(
+            territory,
+            "=================== COMBAT RANGÉ ==================="
+        )
+        ecrire_rapport_territoire(
+            territory,
+            "Aucun combat rangé."
         )
 
     generaux_territoire = (
@@ -2557,7 +2582,7 @@ def lancer_bataille_v15():
         )
         ecrire_rapport_territoire(
             territory,
-            f"{territory.name.upper()} — RAPPORT DE COMBAT"
+            f"{territory.name.upper()} — RAPPORT DE BATAILLE"
         )
         ecrire_rapport_territoire(
             territory,
@@ -2575,9 +2600,16 @@ def lancer_bataille_v15():
             territory,
             f"Contrôle initial : {ancien_controle}"
         )
+        generaux_initiaux_j1 = len(generaux_actifs_joueur(generaux_territoire, "j1"))
+        generaux_initiaux_j2 = len(generaux_actifs_joueur(generaux_territoire, "j2"))
+
         ecrire_rapport_territoire(
             territory,
             f"Forces initiales : j1 = {total_initial_j1} | j2 = {total_initial_j2}"
+        )
+        ecrire_rapport_territoire(
+            territory,
+            f"Généraux engagés: j1 = {generaux_initiaux_j1} | j2 = {generaux_initiaux_j2}"
         )
         ecrire_rapport_territoire(
             territory,
@@ -2585,7 +2617,7 @@ def lancer_bataille_v15():
         )
         ecrire_rapport_territoire(
             territory,
-            "Légende : ○ survivant | × détruit | (nombre) unités restantes"
+            "Légende : ○ survivant | × détruit | effectif initial → effectif final"
         )
 
         # --------------------------------------
@@ -2772,21 +2804,59 @@ def lancer_bataille_v15():
             territory,
             ""
         )
+        generaux_survivants_j1 = len(
+            generaux_actifs_joueur(generaux_finaux, "j1")
+        )
+        generaux_survivants_j2 = len(
+            generaux_actifs_joueur(generaux_finaux, "j2")
+        )
+
+        pertes_j1 = total_initial_j1 - totaux_finaux["j1"]
+        pertes_j2 = total_initial_j2 - totaux_finaux["j2"]
+
+        generaux_detruits_j1 = max(
+            0,
+            generaux_initiaux_j1 - generaux_survivants_j1
+        )
+        generaux_detruits_j2 = max(
+            0,
+            generaux_initiaux_j2 - generaux_survivants_j2
+        )
+
         ecrire_rapport_territoire(
             territory,
-            "================ RÉSULTAT FINAL ================"
+            "===================== BILAN ====================="
         )
+        ecrire_rapport_territoire(territory, "")
+
+        bordure_bilan = "+----------------------+--------+--------+"
+        ecrire_rapport_territoire(territory, bordure_bilan)
         ecrire_rapport_territoire(
             territory,
-            ""
+            f"| {'':<20} | {'j1':<6} | {'j2':<6} |"
         )
+        ecrire_rapport_territoire(territory, bordure_bilan)
+
+        lignes_bilan = [
+            ("Forces initiales", total_initial_j1, total_initial_j2),
+            ("Forces restantes", totaux_finaux["j1"], totaux_finaux["j2"]),
+            ("Pertes", pertes_j1, pertes_j2),
+            ("Généraux engagés", generaux_initiaux_j1, generaux_initiaux_j2),
+            ("Généraux survivants", generaux_survivants_j1, generaux_survivants_j2),
+            ("Généraux détruits", generaux_detruits_j1, generaux_detruits_j2),
+        ]
+
+        for libelle, valeur_j1, valeur_j2 in lignes_bilan:
+            ecrire_rapport_territoire(
+                territory,
+                f"| {libelle:<20} | {str(valeur_j1):<6} | {str(valeur_j2):<6} |"
+            )
+
+        ecrire_rapport_territoire(territory, bordure_bilan)
+        ecrire_rapport_territoire(territory, "")
         ecrire_rapport_territoire(
             territory,
             f"Contrôle final : {controle_final}"
-        )
-        ecrire_rapport_territoire(
-            territory,
-            f"Survivants     : j1 = {totaux_finaux['j1']} | j2 = {totaux_finaux['j2']}"
         )
 
         # --------------------------------------
@@ -3160,7 +3230,8 @@ def confrontation_directe(
     general_2,
     bloc
 ):
-    # Résout une confrontation entre deux blocs placés face à face.
+    # Résout le choc initial entre deux blocs placés face à face.
+    # Retourne aussi les données structurées utilisées par le rapport de bataille.
 
     joueur_1 = general_1["joueur"]
     joueur_2 = general_2["joueur"]
@@ -3172,39 +3243,28 @@ def confrontation_directe(
     infos_2 = armee[joueur_2][bloc]
 
     if infos_1["nombre"] == 0 or infos_2["nombre"] == 0:
-        return False
+        return None
 
-    fatigue_1 = general_est_fatigue(
-        general_1
-    )
+    initial_1 = infos_1["nombre"]
+    initial_2 = infos_2["nombre"]
+    type_1 = infos_1["type"]
+    type_2 = infos_2["type"]
 
-    fatigue_2 = general_est_fatigue(
-        general_2
-    )
+    fatigue_1 = general_est_fatigue(general_1)
+    fatigue_2 = general_est_fatigue(general_2)
 
     afficher_et_ecrire("\n" + "-" * 60)
-    afficher_et_ecrire(
-        f"Confrontation directe : {bloc}"
-    )
+    afficher_et_ecrire(f"Choc initial : {bloc}")
     afficher_et_ecrire("")
 
     if fatigue_1:
-        afficher_et_ecrire(
-            f"{nom_1} : FATIGUÉ"
-        )
+        afficher_et_ecrire(f"{nom_1} : FATIGUÉ")
 
     if fatigue_2:
-        afficher_et_ecrire(
-            f"{nom_2} : FATIGUÉ"
-        )
+        afficher_et_ecrire(f"{nom_2} : FATIGUÉ")
 
-    afficher_et_ecrire(
-        f"{nom_1} : {formater_force(infos_1)}"
-    )
-
-    afficher_et_ecrire(
-        f"{nom_2} : {formater_force(infos_2)}"
-    )
+    afficher_et_ecrire(f"{nom_1} : {formater_force(infos_1)}")
+    afficher_et_ecrire(f"{nom_2} : {formater_force(infos_2)}")
 
     survivants_1, survivants_2 = combat_bloc(
         infos_1,
@@ -3214,35 +3274,29 @@ def confrontation_directe(
     )
 
     afficher_et_ecrire("\nRésultat :")
-
     afficher_et_ecrire(
-        f"{nom_1} : "
-        f"{formater_survivants(survivants_1, infos_1['type'])}"
+        f"{nom_1} : {formater_survivants(survivants_1, type_1)}"
     )
-
     afficher_et_ecrire(
-        f"{nom_2} : "
-        f"{formater_survivants(survivants_2, infos_2['type'])}"
+        f"{nom_2} : {formater_survivants(survivants_2, type_2)}"
     )
 
-    pertes_1 = supprimer_unites(
-        infos_1,
-        survivants_1
-    )
+    pertes_1 = supprimer_unites(infos_1, survivants_1)
+    pertes_2 = supprimer_unites(infos_2, survivants_2)
 
-    pertes_2 = supprimer_unites(
-        infos_2,
-        survivants_2
-    )
+    afficher_tableau_pertes(pertes_1, pertes_2, nom_1, nom_2)
 
-    afficher_tableau_pertes(
-        pertes_1,
-        pertes_2,
-        nom_1,
-        nom_2
-    )
-
-    return True
+    return {
+        "moment": "Choc",
+        "bloc_1": bloc,
+        "type_1": type_1,
+        "initial_1": initial_1,
+        "final_1": survivants_1,
+        "bloc_2": bloc,
+        "type_2": type_2,
+        "initial_2": initial_2,
+        "final_2": survivants_2,
+    }
 
 def phase_engagement_initial(general_1, general_2):
     joueur_1 = general_1["joueur"]
@@ -3251,7 +3305,7 @@ def phase_engagement_initial(general_1, general_2):
     chemin_1 = general_1["chemin"]
     chemin_2 = general_2["chemin"]
 
-    afficher_et_ecrire("\n=== Phase 1 : engagement initial ===")
+    afficher_et_ecrire("\n=== CHOC INITIAL ===")
 
     armee_depart = {
         joueur_1: lire_blocs_general(chemin_1),
@@ -3262,6 +3316,8 @@ def phase_engagement_initial(general_1, general_2):
         joueur_1: False,
         joueur_2: False,
     }
+
+    details_choc = []
 
     infos_avant_1 = armee_depart[joueur_1]["avant"]
     infos_avant_2 = armee_depart[joueur_2]["avant"]
@@ -3283,7 +3339,7 @@ def phase_engagement_initial(general_1, general_2):
 
     if len(combats_prevus) == 0:
         afficher_et_ecrire("Aucune confrontation directe prévue.")
-        return initiative_avant
+        return initiative_avant, details_choc
 
     afficher_et_ecrire("\nCombats prévus :")
 
@@ -3293,15 +3349,12 @@ def phase_engagement_initial(general_1, general_2):
 
         afficher_et_ecrire(
             f"- {bloc} : "
-            f"{joueur_1} {general_1['nom']} "
-            f"{formater_force(infos_1)} "
+            f"{joueur_1} {general_1['nom']} {formater_force(infos_1)} "
             f"VS "
-            f"{joueur_2} {general_2['nom']} "
-            f"{formater_force(infos_2)}"
+            f"{joueur_2} {general_2['nom']} {formater_force(infos_2)}"
         )
 
-
-    afficher_et_ecrire("\n--- Résolution des engagements ---")
+    afficher_et_ecrire("\n--- Résolution du choc initial ---")
 
     for bloc in combats_prevus:
         if not chemin_1.exists() or not chemin_2.exists():
@@ -3312,12 +3365,15 @@ def phase_engagement_initial(general_1, general_2):
             joueur_2: lire_blocs_general(chemin_2),
         }
 
-        confrontation_directe(
+        detail = confrontation_directe(
             armee,
             general_1,
             general_2,
             bloc
         )
+
+        if detail is not None:
+            details_choc.append(detail)
 
         if chemin_1.exists():
             supprimer_general_si_vide(general_1)
@@ -3325,7 +3381,7 @@ def phase_engagement_initial(general_1, general_2):
         if chemin_2.exists():
             supprimer_general_si_vide(general_2)
 
-    return initiative_avant
+    return initiative_avant, details_choc
 
 def attaque_ciblee(
     armee,
@@ -3334,41 +3390,28 @@ def attaque_ciblee(
     bloc_attaquant,
     bloc_cible
 ):
-    # Résout une attaque d'initiative contre un bloc ennemi.
+    # Résout une manœuvre contre un bloc ennemi.
+    # Retourne les données nécessaires au rapport de bataille.
 
     joueur_attaquant = general_attaquant["joueur"]
     joueur_ennemi = general_defenseur["joueur"]
 
-    nom_attaquant = (
-        f"{joueur_attaquant} "
-        f"{general_attaquant['nom']}"
-    )
+    nom_attaquant = f"{joueur_attaquant} {general_attaquant['nom']}"
+    nom_defenseur = f"{joueur_ennemi} {general_defenseur['nom']}"
 
-    nom_defenseur = (
-        f"{joueur_ennemi} "
-        f"{general_defenseur['nom']}"
-    )
+    infos_attaquant = armee[joueur_attaquant][bloc_attaquant]
+    infos_defenseur = armee[joueur_ennemi][bloc_cible]
 
-    infos_attaquant = (
-        armee[joueur_attaquant][bloc_attaquant]
-    )
+    initial_attaquant = infos_attaquant["nombre"]
+    initial_defenseur = infos_defenseur["nombre"]
+    type_attaquant = infos_attaquant["type"]
+    type_defenseur = infos_defenseur["type"]
 
-    infos_defenseur = (
-        armee[joueur_ennemi][bloc_cible]
-    )
-
-    fatigue_attaquant = general_est_fatigue(
-        general_attaquant
-    )
-
-    fatigue_defenseur = general_est_fatigue(
-        general_defenseur
-    )
+    fatigue_attaquant = general_est_fatigue(general_attaquant)
+    fatigue_defenseur = general_est_fatigue(general_defenseur)
 
     afficher_et_ecrire("\n" + "-" * 60)
-    afficher_et_ecrire(
-        "Attaque d'initiative"
-    )
+    afficher_et_ecrire("Manœuvre")
     afficher_et_ecrire("")
 
     afficher_et_ecrire(
@@ -3377,27 +3420,17 @@ def attaque_ciblee(
     )
 
     if fatigue_attaquant:
-        afficher_et_ecrire(
-            f"{nom_attaquant} : FATIGUÉ"
-        )
+        afficher_et_ecrire(f"{nom_attaquant} : FATIGUÉ")
 
     if fatigue_defenseur:
-        afficher_et_ecrire(
-            f"{nom_defenseur} : FATIGUÉ"
-        )
+        afficher_et_ecrire(f"{nom_defenseur} : FATIGUÉ")
 
+    afficher_et_ecrire("\nForces engagées :")
     afficher_et_ecrire(
-        "\nForces engagées :"
+        f"{nom_attaquant} {bloc_attaquant} : {formater_force(infos_attaquant)}"
     )
-
     afficher_et_ecrire(
-        f"{nom_attaquant} {bloc_attaquant} : "
-        f"{formater_force(infos_attaquant)}"
-    )
-
-    afficher_et_ecrire(
-        f"{nom_defenseur} {bloc_cible} : "
-        f"{formater_force(infos_defenseur)}"
+        f"{nom_defenseur} {bloc_cible} : {formater_force(infos_defenseur)}"
     )
 
     survivants_attaquant, survivants_defenseur = combat_bloc(
@@ -3407,33 +3440,20 @@ def attaque_ciblee(
         fatigue_defenseur
     )
 
-    resultat_attaquant = formater_survivants(
-        survivants_attaquant,
-        infos_attaquant["type"]
-    )
-
-    resultat_defenseur = formater_survivants(
-        survivants_defenseur,
-        infos_defenseur["type"]
-    )
-
     afficher_et_ecrire("\nRésultat :")
-
     afficher_et_ecrire(
         f"{nom_attaquant} {bloc_attaquant} : "
-        f"{resultat_attaquant}"
+        f"{formater_survivants(survivants_attaquant, type_attaquant)}"
     )
-
     afficher_et_ecrire(
         f"{nom_defenseur} {bloc_cible} : "
-        f"{resultat_defenseur}"
+        f"{formater_survivants(survivants_defenseur, type_defenseur)}"
     )
 
     pertes_attaquant = supprimer_unites(
         infos_attaquant,
         survivants_attaquant
     )
-
     pertes_defenseur = supprimer_unites(
         infos_defenseur,
         survivants_defenseur
@@ -3446,6 +3466,18 @@ def attaque_ciblee(
         nom_defenseur
     )
 
+    return {
+        "joueur_attaquant": joueur_attaquant,
+        "bloc_attaquant": bloc_attaquant,
+        "type_attaquant": type_attaquant,
+        "initial_attaquant": initial_attaquant,
+        "final_attaquant": survivants_attaquant,
+        "joueur_defenseur": joueur_ennemi,
+        "bloc_defenseur": bloc_cible,
+        "type_defenseur": type_defenseur,
+        "initial_defenseur": initial_defenseur,
+        "final_defenseur": survivants_defenseur,
+    }
 
 def choisir_flanc_attaquant(armee, joueur):
     # Choisit le flanc qui doit agir en premier.
@@ -3654,30 +3686,20 @@ def ecrire_entete_tableau_affrontements(
     territoire,
     colonne_numero
 ):
-    # Tableau ASCII volontairement proche de l'affichage SQLite.
+    bordure = "+------+--------------------------+-----+--------------------------+"
 
-    bordure = (
-        "+------+----------------------+-----+----------------------+"
-    )
-
+    ecrire_rapport_territoire(territoire, bordure)
     ecrire_rapport_territoire(
         territoire,
-        bordure
+        f"| {colonne_numero:<4} | {'j1':<24} | {'':^3} | {'j2':<24} |"
     )
-    ecrire_rapport_territoire(
-        territoire,
-        f"| {colonne_numero:<4} | {'j1':<20} | {'':^3} | {'j2':<20} |"
-    )
-    ecrire_rapport_territoire(
-        territoire,
-        bordure
-    )
+    ecrire_rapport_territoire(territoire, bordure)
 
 
 def ecrire_fin_tableau_affrontements(territoire):
     ecrire_rapport_territoire(
         territoire,
-        "+------+----------------------+-----+----------------------+"
+        "+------+--------------------------+-----+--------------------------+"
     )
 
 
@@ -3686,37 +3708,192 @@ def ecrire_ligne_affrontement_territoire(
     etiquette,
     resultat
 ):
-    # Exemple :
-    # | 1    | general1 ○ (9)       | <-> | general1 × (0)       |
-
-    symbole_1 = symbole_survie(
-        resultat["final_1"]
-    )
-    symbole_2 = symbole_survie(
-        resultat["final_2"]
-    )
+    symbole_1 = symbole_survie(resultat["final_1"])
+    symbole_2 = symbole_survie(resultat["final_2"])
 
     gauche = (
-        f"{resultat['general_1']} "
-        f"{symbole_1} ({resultat['final_1']})"
+        f"{resultat['general_1']} {symbole_1} "
+        f"{resultat['initial_1']} → {resultat['final_1']}"
     )
-
     droite = (
-        f"{resultat['general_2']} "
-        f"{symbole_2} ({resultat['final_2']})"
-    )
-
-    ligne = (
-        f"| {str(etiquette):<4} "
-        f"| {gauche:<20} "
-        f"| {'<->':^3} "
-        f"| {droite:<20} |"
+        f"{resultat['general_2']} {symbole_2} "
+        f"{resultat['initial_2']} → {resultat['final_2']}"
     )
 
     ecrire_rapport_territoire(
         territoire,
-        ligne
+        f"| {str(etiquette):<4} | {gauche:<24} | {'<->':^3} | {droite:<24} |"
     )
+
+
+def nom_type_unite(type_unite, nombre):
+    singulier = {
+        "archer": "archer",
+        "piquier": "piquier",
+        "cavalier": "cavalier",
+        "vide": "vide",
+    }
+    pluriel = {
+        "archer": "archers",
+        "piquier": "piquiers",
+        "cavalier": "cavaliers",
+        "vide": "vide",
+    }
+
+    if nombre == 1:
+        return singulier.get(type_unite, type_unite)
+    return pluriel.get(type_unite, type_unite)
+
+
+def formater_force_rapport(nombre, type_unite):
+    return f"{nombre} {nom_type_unite(type_unite, nombre)}"
+
+
+def ecrire_entete_detail_blocs(territoire):
+    bordure = (
+        "+--------+-----------+---------------+-----+-----------+---------------+----------------+"
+    )
+    ecrire_rapport_territoire(territoire, bordure)
+    ecrire_rapport_territoire(
+        territoire,
+        "| Moment | Bloc j1   | Unités j1     |     | Bloc j2   | Unités j2     | Résultat       |"
+    )
+    ecrire_rapport_territoire(territoire, bordure)
+
+
+def ecrire_fin_detail_blocs(territoire):
+    ecrire_rapport_territoire(
+        territoire,
+        "+--------+-----------+---------------+-----+-----------+---------------+----------------+"
+    )
+
+
+def ecrire_detail_choc(territoire, detail):
+    force_1 = formater_force_rapport(detail["initial_1"], detail["type_1"])
+    force_2 = formater_force_rapport(detail["initial_2"], detail["type_2"])
+    resultat = f"j1 ({detail['final_1']}) / j2 ({detail['final_2']})"
+
+    ecrire_rapport_territoire(
+        territoire,
+        f"| {'Choc':<6} | {detail['bloc_1']:<9} | {force_1:<13} "
+        f"| {'<->':^3} | {detail['bloc_2']:<9} | {force_2:<13} | {resultat:<14} |"
+    )
+
+
+def normaliser_manoeuvre(detail, joueur_1):
+    if detail["joueur_attaquant"] == joueur_1:
+        return {
+            "bloc_1": detail["bloc_attaquant"],
+            "type_1": detail["type_attaquant"],
+            "initial_1": detail["initial_attaquant"],
+            "final_1": detail["final_attaquant"],
+            "bloc_2": detail["bloc_defenseur"],
+            "type_2": detail["type_defenseur"],
+            "initial_2": detail["initial_defenseur"],
+            "final_2": detail["final_defenseur"],
+            "fleche": "->",
+        }
+
+    return {
+        "bloc_1": detail["bloc_defenseur"],
+        "type_1": detail["type_defenseur"],
+        "initial_1": detail["initial_defenseur"],
+        "final_1": detail["final_defenseur"],
+        "bloc_2": detail["bloc_attaquant"],
+        "type_2": detail["type_attaquant"],
+        "initial_2": detail["initial_attaquant"],
+        "final_2": detail["final_attaquant"],
+        "fleche": "<-",
+    }
+
+
+def ecrire_detail_manoeuvre(territoire, resultat_engagement, detail):
+    normalise = normaliser_manoeuvre(
+        detail,
+        resultat_engagement["joueur_1"]
+    )
+
+    force_1 = formater_force_rapport(
+        normalise["initial_1"],
+        normalise["type_1"]
+    )
+    force_2 = formater_force_rapport(
+        normalise["initial_2"],
+        normalise["type_2"]
+    )
+    resultat = (
+        f"j1 ({normalise['final_1']}) / "
+        f"j2 ({normalise['final_2']})"
+    )
+
+    ecrire_rapport_territoire(
+        territoire,
+        f"| {('M' + str(detail['numero'])):<6} "
+        f"| {normalise['bloc_1']:<9} | {force_1:<13} "
+        f"| {normalise['fleche']:^3} "
+        f"| {normalise['bloc_2']:<9} | {force_2:<13} "
+        f"| {resultat:<14} |"
+    )
+
+
+def ecrire_detail_engagement(territoire, etiquette, resultat):
+    ecrire_rapport_territoire(territoire, "")
+    ecrire_rapport_territoire(
+        territoire,
+        f"--- Engagement {etiquette} : "
+        f"j1 {resultat['general_1']} <-> j2 {resultat['general_2']} ---"
+    )
+
+    ecrire_rapport_territoire(territoire, "")
+    ecrire_rapport_territoire(territoire, "CHOC INITIAL")
+    ecrire_rapport_territoire(territoire, "")
+
+    if resultat["chocs"]:
+        ecrire_entete_detail_blocs(territoire)
+        for detail in resultat["chocs"]:
+            ecrire_detail_choc(territoire, detail)
+        ecrire_fin_detail_blocs(territoire)
+    else:
+        ecrire_rapport_territoire(territoire, "Aucun choc direct entre blocs.")
+
+    ecrire_rapport_territoire(territoire, "")
+    ecrire_rapport_territoire(territoire, "MANŒUVRE")
+    ecrire_rapport_territoire(territoire, "")
+
+    if resultat["manoeuvres"]:
+        ecrire_entete_detail_blocs(territoire)
+        for detail in resultat["manoeuvres"]:
+            ecrire_detail_manoeuvre(territoire, resultat, detail)
+        ecrire_fin_detail_blocs(territoire)
+    else:
+        ecrire_rapport_territoire(territoire, "Aucune manœuvre.")
+
+    ecrire_rapport_territoire(territoire, "")
+    ecrire_rapport_territoire(
+        territoire,
+        f"Résultat : j1 {resultat['general_1']} "
+        f"{resultat['initial_1']} → {resultat['final_1']} | "
+        f"j2 {resultat['general_2']} "
+        f"{resultat['initial_2']} → {resultat['final_2']}"
+    )
+
+
+def ecrire_details_engagements(territoire, engagements):
+    if not engagements:
+        return
+
+    ecrire_rapport_territoire(territoire, "")
+    ecrire_rapport_territoire(
+        territoire,
+        "================ DÉTAIL DES AFFRONTEMENTS ================"
+    )
+
+    for etiquette, resultat in engagements:
+        ecrire_detail_engagement(
+            territoire,
+            etiquette,
+            resultat
+        )
 
 
 def choisir_meteo_tour():
