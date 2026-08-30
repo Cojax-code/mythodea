@@ -1914,7 +1914,7 @@ def supprimer_general_si_vide(general):
 
     return True
 
-def combat_poursuite_generaux(general_1, general_2):
+def combat_entre_generaux(general_1, general_2):
     # Affrontement complet entre deux généraux.
     #
     # Cette fonction est utilisée pour OFF/OFF et OFF/DEF.
@@ -2125,7 +2125,7 @@ def resoudre_attaque_frontale(
     # 4 contre 4
     #
     # Après cette phase, les survivants seront
-    # pris en charge par la poursuite normale.
+    # pris en charge par le combat rangé.
 
     afficher_et_ecrire(
         "\n=== ORDRE 1-2 : ATTAQUE FRONTALE ==="
@@ -2196,7 +2196,7 @@ def resoudre_attaque_frontale(
             f"{general_j2['nom']}"
         )
 
-        resultat_duel = combat_poursuite_generaux(
+        resultat_duel = combat_entre_generaux(
             general_j1,
             general_j2
         )
@@ -2213,7 +2213,7 @@ def resoudre_attaque_frontale(
             "aucun couple de généraux correspondants."
         )
 
-def resoudre_poursuite_generaux(
+def resoudre_combat_range(
     territory,
     mode_combat
 ):
@@ -2223,7 +2223,7 @@ def resoudre_poursuite_generaux(
     # - ordre 1-2 : affrontements par emplacement.
     #
     # Deuxième étape :
-    # - poursuite normale entre les premiers
+    # - combat rangé entre les premiers
     #   généraux encore actifs ;
     # - le survivant continue ;
     # - le combat s'arrête lorsqu'un camp disparaît.
@@ -2274,11 +2274,15 @@ def resoudre_poursuite_generaux(
         )
         ecrire_rapport_territoire(
             territory,
-            "================ DUELS FRONTAUX ================"
+            "================ ENGAGEMENT FRONTAL ================"
         )
         ecrire_rapport_territoire(
             territory,
             ""
+        )
+        ecrire_entete_tableau_affrontements(
+            territory,
+            "Pos"
         )
 
         resoudre_attaque_frontale(
@@ -2286,11 +2290,16 @@ def resoudre_poursuite_generaux(
             mode_combat
         )
 
+        ecrire_fin_tableau_affrontements(
+            territory
+        )
+
     # --------------------------------------------------
-    # Poursuite normale
+    # Combat rangé
     # --------------------------------------------------
 
     round_combat = 0
+    tableau_combat_range_ouvert = False
 
     while round_combat < 20:
         round_combat += 1
@@ -2308,6 +2317,11 @@ def resoudre_poursuite_generaux(
         )
 
         if controle != "conteste":
+            if tableau_combat_range_ouvert:
+                ecrire_fin_tableau_affrontements(
+                    territory
+                )
+
             afficher_et_ecrire(
                 f"Fin du combat. "
                 f"Controle final : {controle}"
@@ -2335,6 +2349,11 @@ def resoudre_poursuite_generaux(
                 )
             )
 
+            if tableau_combat_range_ouvert:
+                ecrire_fin_tableau_affrontements(
+                    territory
+                )
+
             afficher_et_ecrire(
                 f"Fin du combat. "
                 f"Controle final : {controle}"
@@ -2346,12 +2365,12 @@ def resoudre_poursuite_generaux(
         general_j2 = actifs_j2[0]
 
         afficher_et_ecrire(
-            f"\n--- Poursuite "
+            f"\n--- Combat rangé "
             f"{mode_combat} "
             f"{round_combat} ---"
         )
 
-        resultat_poursuite = combat_poursuite_generaux(
+        resultat_combat_range = combat_entre_generaux(
             general_j1,
             general_j2
         )
@@ -2363,17 +2382,27 @@ def resoudre_poursuite_generaux(
             )
             ecrire_rapport_territoire(
                 territory,
-                "=================== POURSUITE ==================="
+                "=================== COMBAT RANGÉ ==================="
             )
             ecrire_rapport_territoire(
                 territory,
                 ""
             )
+            ecrire_entete_tableau_affrontements(
+                territory,
+                "Tour"
+            )
+            tableau_combat_range_ouvert = True
 
         ecrire_ligne_affrontement_territoire(
             territory,
-            f"P{round_combat}",
-            resultat_poursuite
+            round_combat,
+            resultat_combat_range
+        )
+
+    if tableau_combat_range_ouvert:
+        ecrire_fin_tableau_affrontements(
+            territory
         )
 
     generaux_territoire = (
@@ -2394,7 +2423,6 @@ def resoudre_poursuite_generaux(
         f"Controle actuel : {controle}"
     )
 
-
 def resoudre_combat_v15(territory):
     # Résolution OFF/OFF.
 
@@ -2402,7 +2430,7 @@ def resoudre_combat_v15(territory):
         f"\n=== Combat OFF/OFF sur {territory.name} ==="
     )
 
-    resoudre_poursuite_generaux(
+    resoudre_combat_range(
         territory,
         "OFF/OFF"
     )
@@ -2436,7 +2464,7 @@ def resoudre_combat_off_def(territory, defenseur):
         f"Défenseur : {defenseur} | Attaquant : {attaquant}"
     )
 
-    resoudre_poursuite_generaux(territory, "OFF/DEF")
+    resoudre_combat_range(territory, "OFF/DEF")
 
 
 def lancer_bataille_v15():
@@ -3622,13 +3650,44 @@ def total_general_depuis_chemin(chemin_general):
     )
 
 
+def ecrire_entete_tableau_affrontements(
+    territoire,
+    colonne_numero
+):
+    # Tableau ASCII volontairement proche de l'affichage SQLite.
+
+    bordure = (
+        "+------+----------------------+-----+----------------------+"
+    )
+
+    ecrire_rapport_territoire(
+        territoire,
+        bordure
+    )
+    ecrire_rapport_territoire(
+        territoire,
+        f"| {colonne_numero:<4} | {'j1':<20} | {'':^3} | {'j2':<20} |"
+    )
+    ecrire_rapport_territoire(
+        territoire,
+        bordure
+    )
+
+
+def ecrire_fin_tableau_affrontements(territoire):
+    ecrire_rapport_territoire(
+        territoire,
+        "+------+----------------------+-----+----------------------+"
+    )
+
+
 def ecrire_ligne_affrontement_territoire(
     territoire,
     etiquette,
     resultat
 ):
     # Exemple :
-    # [1] j1 general1  ○ (9)  <->  × (0)  j2 general1
+    # | 1    | general1 ○ (9)       | <-> | general1 × (0)       |
 
     symbole_1 = symbole_survie(
         resultat["final_1"]
@@ -3637,15 +3696,21 @@ def ecrire_ligne_affrontement_territoire(
         resultat["final_2"]
     )
 
+    gauche = (
+        f"{resultat['general_1']} "
+        f"{symbole_1} ({resultat['final_1']})"
+    )
+
+    droite = (
+        f"{resultat['general_2']} "
+        f"{symbole_2} ({resultat['final_2']})"
+    )
+
     ligne = (
-        f"[{etiquette}] "
-        f"{resultat['joueur_1']} "
-        f"{resultat['general_1']}  "
-        f"{symbole_1} ({resultat['final_1']})  "
-        f"<->  "
-        f"{symbole_2} ({resultat['final_2']})  "
-        f"{resultat['joueur_2']} "
-        f"{resultat['general_2']}"
+        f"| {str(etiquette):<4} "
+        f"| {gauche:<20} "
+        f"| {'<->':^3} "
+        f"| {droite:<20} |"
     )
 
     ecrire_rapport_territoire(
