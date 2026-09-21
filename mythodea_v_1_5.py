@@ -330,9 +330,8 @@ def est_general_valide(chemin_general):
     if not chemin_general.is_dir():
         return False
 
-    # Son nom doit commencer par "general".
-    # Exemple : general1, general2, general6, etc.
-    if not chemin_general.name.startswith("general"):
+    # Une seule écriture est autorisée pour chaque identité.
+    if numero_general_depuis_nom(chemin_general.name) is None:
         return False
 
     # Un général doit contenir les quatre blocs militaires.
@@ -669,9 +668,41 @@ def lire_blocs_general(chemin_general):
             afficher_et_ecrire(f"Unité invalide supprimée : {unite.name}")
 
         if len(type_trouves) > 0:
-            blocs_general[bloc]["type"] = type_trouves[0]
-            blocs_general[bloc]["nombre"] = len(type_trouves)
-            blocs_general[bloc]["unites"] = unites_trouvees
+            effectifs = {}
+            for type_unite in type_trouves:
+                effectifs[type_unite] = effectifs.get(type_unite, 0) + 1
+
+            maximum = max(effectifs.values())
+            types_majoritaires = [
+                type_unite for type_unite, nombre in effectifs.items()
+                if nombre == maximum
+            ]
+
+            # Une égalité en tête rend le bloc invalide : tout supprimer.
+            if len(types_majoritaires) > 1:
+                for unite in unites_trouvees:
+                    shutil.rmtree(unite)
+                afficher_et_ecrire(
+                    f"Bloc mixte invalide (égalité) : {bloc_dir}. "
+                    f"{len(unites_trouvees)} unité(s) supprimée(s)."
+                )
+                continue
+
+            type_majoritaire = types_majoritaires[0]
+            unites_conservees = []
+            for unite, type_unite in zip(unites_trouvees, type_trouves):
+                if type_unite == type_majoritaire:
+                    unites_conservees.append(unite)
+                else:
+                    shutil.rmtree(unite)
+                    afficher_et_ecrire(
+                        f"Unité non cohérente supprimée : {unite} "
+                        f"({type_unite}, bloc {type_majoritaire})."
+                    )
+
+            blocs_general[bloc]["type"] = type_majoritaire
+            blocs_general[bloc]["nombre"] = len(unites_conservees)
+            blocs_general[bloc]["unites"] = unites_conservees
 
     return blocs_general
 
@@ -825,7 +856,7 @@ def numero_general_depuis_nom(nom_general):
     # general2
     # general15
     #
-    # "generalabc" ou "general999x" sont invalides.
+    # Pas de zéro initial ni de chiffre Unicode : general01 est invalide.
 
     prefixe = "general"
 
@@ -834,10 +865,17 @@ def numero_general_depuis_nom(nom_general):
 
     numero_texte = nom_general[len(prefixe):]
 
-    if not numero_texte.isdigit():
+    if (
+        not numero_texte.isascii()
+        or not numero_texte.isdecimal()
+        or numero_texte.startswith("0")
+    ):
         return None
 
-    return int(numero_texte)
+    try:
+        return int(numero_texte)
+    except ValueError:
+        return None
 
 def trouver_position_general(joueur, nom_general):
     # 1. Home
@@ -1057,10 +1095,11 @@ def securiser_generaux_mauvais_joueur(
                 )
 
                 # Le dossier appartient bien à un joueur,
-                # mais le général n'a jamais été généré.
+                # mais le général n'est pas officiellement actif.
                 if (
                     numero < 1
                     or numero > dernier_numero
+                    or identifiant not in positions_avant
                 ):
                     afficher_et_ecrire(
                         f"Général non autorisé supprimé : "
@@ -1173,7 +1212,9 @@ def securiser_generaux_mauvais_joueur(
 
 def supprimer_generaux_non_autorises():
     # Supprime les dossiers generalX qui ne correspondent
-    # à aucun général réellement généré par le jeu.
+    # à aucun général généré et encore officiellement actif.
+
+    positions = charger_positions_generaux()
 
     for joueur in joueurs:
         dernier_numero = lire_compteur_general(joueur)
@@ -1208,6 +1249,7 @@ def supprimer_generaux_non_autorises():
                     numero is None
                     or numero < 1
                     or numero > dernier_numero
+                    or f"{joueur}:{element.name}" not in positions
                 ):
                     afficher_et_ecrire(
                         f"Général non autorisé supprimé : "
@@ -1252,6 +1294,7 @@ def supprimer_generaux_non_autorises():
                         numero is None
                         or numero < 1
                         or numero > dernier_numero
+                        or f"{joueur}:{element.name}" not in positions
                     ):
                         afficher_et_ecrire(
                             f"Général non autorisé supprimé : "
@@ -1546,17 +1589,12 @@ def verifier_tous_les_deplacements():
                 identifiant
             )
 
-            # Compatibilité avec une ancienne partie
-            # créée avant le système de positions.
+            # Aucun enregistrement implicite : seul le moteur peut
+            # autoriser une nouvelle identité lors de sa génération.
             if origine is None:
-                nouvelles_positions[
-                    identifiant
-                ] = position_actuelle
-
+                shutil.rmtree(chemin_actuel)
                 afficher_et_ecrire(
-                    f"{identifiant} : "
-                    f"position initiale enregistrée "
-                    f"({position_actuelle})"
+                    f"Général sans position officielle supprimé : {identifiant}"
                 )
 
                 continue
@@ -1912,6 +1950,12 @@ def supprimer_general_si_vide(general):
 
     shutil.rmtree(chemin_general)
 
+    # Retirer l'identité dès la destruction, avant le prochain tour.
+    # Le compteur reste inchangé : ce numéro ne doit jamais être réutilisé.
+    positions = charger_positions_generaux()
+    positions.pop(f"{general['joueur']}:{general['nom']}", None)
+    sauvegarder_positions_generaux(positions)
+
     return True
 
 def combat_entre_generaux(general_1, general_2):
@@ -1983,7 +2027,13 @@ def combat_entre_generaux(general_1, general_2):
         afficher_et_ecrire(f"\n--- Tour de manœuvre {tour} ---")
         attaque_effectuee = False
 
-        for joueur_attaquant in [joueur_1, joueur_2]:
+        actions = ordre_actions_manoeuvre(armee, initiative_avant)
+        afficher_et_ecrire(
+            "\nOrdre global de manœuvre : "
+            + ", ".join(f"{joueur} {bloc}" for joueur, bloc in actions)
+        )
+
+        for joueur_attaquant, bloc_attaquant in actions:
             if not chemin_1.exists() or not chemin_2.exists():
                 break
 
@@ -1997,64 +2047,40 @@ def combat_entre_generaux(general_1, general_2):
             if total_unites_general(armee[joueur_2]) == 0:
                 break
 
-            ordre_attaques = ordre_attaques_initiative(
+            # Les pertes d'une action précédente peuvent avoir détruit ce bloc.
+            infos_attaquant = armee[joueur_attaquant][bloc_attaquant]
+            if infos_attaquant["nombre"] <= 0:
+                continue
+
+            cible = choisir_cible(
                 armee,
                 joueur_attaquant,
-                initiative_avant
+                infos_attaquant["type"]
             )
 
-            afficher_et_ecrire(
-                f"\nOrdre de manœuvre de {joueur_attaquant} : "
-                f"{', '.join(ordre_attaques)}"
+            if cible is None:
+                continue
+
+            if joueur_attaquant == joueur_1:
+                general_attaquant = general_1
+                general_defenseur = general_2
+            else:
+                general_attaquant = general_2
+                general_defenseur = general_1
+
+            detail = attaque_ciblee(
+                armee,
+                general_attaquant,
+                general_defenseur,
+                bloc_attaquant,
+                cible
             )
 
-            for bloc_attaquant in ordre_attaques:
-                if not chemin_1.exists() or not chemin_2.exists():
-                    break
-
-                armee = {
-                    joueur_1: lire_blocs_general(chemin_1),
-                    joueur_2: lire_blocs_general(chemin_2),
-                }
-
-                if total_unites_general(armee[joueur_1]) == 0:
-                    break
-                if total_unites_general(armee[joueur_2]) == 0:
-                    break
-
-                infos_attaquant = armee[joueur_attaquant][bloc_attaquant]
-                if infos_attaquant["nombre"] <= 0:
-                    continue
-
-                cible = choisir_cible(
-                    armee,
-                    joueur_attaquant,
-                    infos_attaquant["type"]
-                )
-
-                if cible is None:
-                    continue
-
-                if joueur_attaquant == joueur_1:
-                    general_attaquant = general_1
-                    general_defenseur = general_2
-                else:
-                    general_attaquant = general_2
-                    general_defenseur = general_1
-
-                detail = attaque_ciblee(
-                    armee,
-                    general_attaquant,
-                    general_defenseur,
-                    bloc_attaquant,
-                    cible
-                )
-
-                numero_manoeuvre += 1
-                detail["numero"] = numero_manoeuvre
-                detail["tour"] = tour
-                details_manoeuvre.append(detail)
-                attaque_effectuee = True
+            numero_manoeuvre += 1
+            detail["numero"] = numero_manoeuvre
+            detail["tour"] = tour
+            details_manoeuvre.append(detail)
+            attaque_effectuee = True
 
         if not attaque_effectuee:
             afficher_et_ecrire(
@@ -3554,6 +3580,31 @@ def ordre_attaques_initiative(armee, joueur, initiative_avant):
         ordre.append("avant")
 
     return ordre
+
+
+def ordre_actions_manoeuvre(armee, initiative_avant):
+    # Réunit les deux camps par priorité de bloc, sans tour réservé à un joueur.
+    # Après le choc, les blocs survivants n'ont plus de vis-à-vis direct :
+    # il ne reste au plus qu'un arrière et un avant (libre ou engagé).
+    priorites = [[], [], [], []]
+
+    for joueur in armee:
+        for bloc in ordre_attaques_initiative(armee, joueur, initiative_avant):
+            if bloc == "avant":
+                rang = 0 if initiative_avant[joueur] else 3
+            elif bloc == "arriere":
+                rang = 1
+            else:
+                rang = 2
+            priorites[rang].append((joueur, bloc))
+
+    # Le tri stable après mélange départage seulement les flancs égaux au hasard.
+    flancs = priorites[2]
+    if len(flancs) > 1:
+        random.shuffle(flancs)
+        flancs.sort(key=lambda action: -armee[action[0]][action[1]]["nombre"])
+
+    return [action for groupe in priorites for action in groupe]
 
 
 def ajouter_ligne_fichier(chemin, texte):

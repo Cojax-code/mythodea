@@ -1,11 +1,15 @@
 #!/bin/bash
 
+set -euo pipefail
+
 echo "=== Lancement Mythodea V1.5 ==="
 
-cd /home/cojax/mythodea_v1.5 || exit 1
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd -- "$SCRIPT_DIR"
 
-sudo python3 mythodea.py
-
-echo
-echo "=== Rapport bataille ==="
-cat /home/game/rapport/rapport_bataille.txt
+# Le moteur affiche déjà le rapport court et les chemins des autres rapports.
+if [[ $EUID -eq 0 ]]; then
+    exec python3 "$SCRIPT_DIR/mythodea_v_1_5.py"
+else
+    exec sudo python3 "$SCRIPT_DIR/mythodea_v_1_5.py"
+fi
