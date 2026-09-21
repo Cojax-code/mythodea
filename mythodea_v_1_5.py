@@ -4186,25 +4186,30 @@ def verifier_victoire():
 
 
 
-preparer_rapports()
-reparer_structure()
+def main():
+    preparer_rapports()
+    reparer_structure()
 
-verifier_tous_les_deplacements()
+    verifier_tous_les_deplacements()
 
-vainqueur = verifier_victoire()
+    vainqueur = verifier_victoire()
 
-if vainqueur:
-    ecrire_rapport_court("")
+    if vainqueur:
+        ecrire_rapport_court("")
 
-    ecrire_rapport_court(
-        f"VICTOIRE DE {vainqueur}"
-    )
+        ecrire_rapport_court(
+            f"VICTOIRE DE {vainqueur}"
+        )
 
-    ecrire_rapport_long(
-        f"Victoire de {vainqueur}."
-    )
+        ecrire_rapport_long(
+            f"Victoire de {vainqueur}."
+        )
 
-else:
-    lancer_bataille_v15()
+    else:
+        lancer_bataille_v15()
 
-afficher_fin_de_tour()
+    afficher_fin_de_tour()
+
+
+if __name__ == "__main__":
+    main()

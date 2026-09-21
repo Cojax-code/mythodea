@@ -2165,3 +2165,17 @@ le point d'entrée complet : ils n'incluent pas l'installation, la réparation d
 permissions, la génération automatique à chaque tour ni la victoire. L'absence
 d'état contesté est vérifiée dans les scénarios testés, pas démontrée pour toute
 partie possible. Le test réel Linux et la définition des ordres restent à faire.
+
+## 2026-09-21 — simplification du chargement des tests
+
+- L'utilisateur a placé le lancement dans `main()`, protégé par
+  `if __name__ == "__main__"`. Importer le moteur ne lance plus de tour.
+- Les tests importent désormais le fichier complet avec `importlib`, dans un
+  module neuf par scénario. Le découpage des déclarations par AST est supprimé.
+- Les modules Unix `pwd` et `grp` sont remplacés pendant l'import pour permettre
+  les tests Windows. Le plateau temporaire et les simulations restent inchangés.
+- `tests/README.md` explique ce chargement. Le moteur et les règles ne sont pas
+  modifiés dans ce travail ; le découpage en modules attend la proposition utilisateur.
+- Vérifications : 32 tests réussis et compilation du fichier de tests validée.
+  La suite a nécessité une exécution hors du bac à sable Windows, qui bloquait
+  les dossiers temporaires. Les droits Linux réels restent à valider.

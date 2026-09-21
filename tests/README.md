@@ -73,13 +73,17 @@ Après consultation, nettoyer uniquement le scénario temporaire avec :
 test.doCleanups()
 ```
 
-## Pourquoi le chargement des tests est un peu complexe
+## Comment les tests chargent le moteur
 
-Le fichier du moteur lance actuellement un tour dès qu'on l'importe normalement.
-Les tests utilisent donc l'**AST**, une représentation du code en éléments Python,
-pour charger les fonctions et les paramètres sans exécuter les instructions qui
-lancent le jeu. Conceptuellement : on prend les outils du moteur, sans appuyer sur
-son bouton « lancer un tour ».
+Le moteur possède maintenant une fonction `main()`, appelée uniquement lorsque
+le fichier est lancé directement. Les tests importent donc le fichier complet
+avec `importlib`, sans découper son code avec l'AST et sans lancer de tour.
+Un module neuf est créé pour chaque test afin d'isoler les variables globales.
+`test.m` donne accès au dictionnaire de ce module.
+
+Pendant cet import, `pwd` et `grp` sont remplacés par des modules vides pour
+permettre les tests sous Windows. Ces remplacements sont retirés dès la fin de
+l'import. Un appel imprévu à leurs fonctions échoue plutôt que de simuler un droit.
 
 `setUp()` prépare un plateau neuf pour chaque test : c'est la **fixture**, ou
 préparation commune. Les chemins des homes sont redirigés vers ce plateau.

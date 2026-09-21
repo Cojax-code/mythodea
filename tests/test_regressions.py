@@ -1,14 +1,14 @@
 """Tests isolés : aucun accès au plateau réel, aucun changement de droits Linux.
 
-Le moteur exécute encore un tour à l'import. On charge donc uniquement ses
-déclarations par AST, sans changer son point d'entrée dans ce correctif.
+Le moteur est importé sans lancer main(), dans un module neuf pour chaque test.
 """
-import ast
+import importlib.util
 import random
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import ModuleType
 from unittest.mock import patch
 
 
@@ -36,17 +36,13 @@ class Regressions(unittest.TestCase):
                 if sys.version_info >= (3, 12):
                     super().__init__(*self.rediriger(args), **kwargs)
 
-        arbre = ast.parse(SOURCE.read_text(encoding="utf-8"))
-        declarations = []
-        for noeud in arbre.body:
-            if isinstance(noeud, ast.Expr) and isinstance(noeud.value, ast.Call):
-                break  # preparer_rapports() : début du vrai tour
-            if isinstance(noeud, ast.Import):
-                if any(alias.name in {"pwd", "grp"} for alias in noeud.names):
-                    continue
-            declarations.append(noeud)
-        self.m = {}
-        exec(compile(ast.Module(body=declarations, type_ignores=[]), str(SOURCE), "exec"), self.m)
+        spec = importlib.util.spec_from_file_location("mythodea_test", SOURCE)
+        moteur = importlib.util.module_from_spec(spec)
+        # Ces modules Unix sont absents de Windows. Les fonctions de droits
+        # sont remplacées plus bas ; tout appel imprévu à ces modules échouera.
+        with patch.dict(sys.modules, {nom: ModuleType(nom) for nom in ("pwd", "grp")}):
+            spec.loader.exec_module(moteur)
+        self.m = vars(moteur)
         self.m["Path"] = CheminTest
         jeu = CheminTest("/home/game")
         self.assertTrue(jeu.is_relative_to(racine))
