@@ -3,7 +3,7 @@
 Depuis la racine du projet, sous Linux :
 
 ```bash
-python3 -B -m unittest discover -s tests -v
+python3 -B -m unittest discover -s python/tests -v
 ```
 
 Sous Windows, utiliser `python` à la place de `python3` si cet alias ne fonctionne
@@ -47,14 +47,14 @@ puis saisir :
 
 ```python
 import sys
-sys.path.insert(0, "tests")
-from test_regressions import Regressions
+sys.path.insert(0, "python/tests")
+from test_mythodea import Regressions
 
 test = Regressions("test_transition_frontal_vers_range_avec_survivants_des_deux_camps")
 test.setUp()
 test.test_transition_frontal_vers_range_avec_survivants_des_deux_camps()
-print((test.m["rapports_territoires_dir"] / "terrain1.txt").read_text(encoding="utf-8"))
-print(test.m["rapport_long_path"].read_text(encoding="utf-8"))
+print((test.config.rapports_territoires_dir / "terrain1.txt").read_text(encoding="utf-8"))
+print(test.config.rapport_long_path.read_text(encoding="utf-8"))
 ```
 
 Résultat attendu :
@@ -66,7 +66,7 @@ Résultat attendu :
 3. En combat rangé, les deux généraux survivants s'affrontent avec 4 archers chacun.
    Ils sont tous deux détruits ; le territoire devient neutre.
 
-Pour voir le chemin des rapports temporaires, saisir `print(test.m["rapport_dir"])`.
+Pour voir le chemin des rapports temporaires, saisir `print(test.config.rapport_dir)`.
 Après consultation, nettoyer uniquement le scénario temporaire avec :
 
 ```python
@@ -75,15 +75,16 @@ test.doCleanups()
 
 ## Comment les tests chargent le moteur
 
-Le moteur possède maintenant une fonction `main()`, appelée uniquement lorsque
-le fichier est lancé directement. Les tests importent donc le fichier complet
-avec `importlib`, sans découper son code avec l'AST et sans lancer de tour.
-Un module neuf est créé pour chaque test afin d'isoler les variables globales.
-`test.m` donne accès au dictionnaire de ce module.
+Le point d'entrée `python/mythodea_v_1_5.py` possède une fonction `main()`, appelée
+uniquement lorsque le fichier est lancé directement. Les tests importent les
+modules complets avec `importlib.import_module`, sans découper leur code et sans
+lancer de tour. Chaque scénario charge des modules neufs pour isoler leurs états.
+Les appels indiquent leur module : `test.combats`, `test.generaux`, `test.etat`, etc.
 
-Pendant cet import, `pwd` et `grp` sont remplacés par des modules vides pour
-permettre les tests sous Windows. Ces remplacements sont retirés dès la fin de
-l'import. Un appel imprévu à leurs fonctions échoue plutôt que de simuler un droit.
+Pendant chaque scénario, `pwd` et `grp` sont remplacés par des modules vides pour
+permettre les tests sous Windows. Les modules et le chemin d'import sont restaurés
+par `doCleanups()`, automatiquement appelé par `unittest`. Un appel imprévu aux
+fonctions de ces modules Unix échoue plutôt que de simuler un droit.
 
 `setUp()` prépare un plateau neuf pour chaque test : c'est la **fixture**, ou
 préparation commune. Les chemins des homes sont redirigés vers ce plateau.
@@ -92,5 +93,6 @@ remplacées temporairement : c'est une **simulation**, pas une validation des UI
 et droits réels. Les calculs de bataille et les opérations sur les unités restent
 ceux du moteur.
 
-Enfin, une graine aléatoire fixe rend les scénarios reproductibles. Elle s'applique
-uniquement aux tests et ne rend pas la partie réelle déterministe.
+Enfin, un même générateur aléatoire de test est partagé par les modules, avec une
+graine fixe par scénario. Cela conserve l'ordre des tirages de l'ancien moteur.
+Cette substitution s'applique uniquement aux tests.

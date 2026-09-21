@@ -59,19 +59,35 @@ Le dépôt ressemble actuellement à :
 
 ```text
 mythodea/
-├── mythodea_v_1_5.py
-├── instal.sh
-├── nettoyage.sh
-├── start.sh
-├── preparer_test_4v4.py
+├── bash/
+│   ├── start.sh
+│   ├── instal.sh
+│   └── nettoyage.sh
+├── python/
+│   ├── mythodea_v_1_5.py
+│   ├── config.py
+│   ├── etat.py
+│   ├── generaux.py
+│   ├── mouvements.py
+│   ├── securite.py
+│   ├── combats.py
+│   ├── rapports.py
+│   ├── plateau.py
+│   ├── victoire.py
+│   └── tests/
+│       └── test_mythodea.py
 ├── README.md
-├── MYTHODEA_SPEC.md
-└── __pycache__/
+├── TESTS.md
+└── MYTHODEA_SPEC.md
 ```
 
-Le moteur principal est encore largement monolithique.
+Le point d'entrée est `python/mythodea_v_1_5.py`. Les fonctions métier sont
+réparties dans neuf modules, sans dépendance circulaire. Importer les modules
+ne lance pas de tour ; seul l'appel de `main()` déclenche la résolution.
 
-Une séparation en plusieurs modules est prévue **après stabilisation du comportement de la V1.5**.
+Tous les scripts Python sont sous `python/`, tous les scripts Bash sous `bash/`.
+La documentation reste à la racine. Les éventuels futurs scripts de préparation
+iront dans `python/outils/`.
 
 ---
 
@@ -109,7 +125,7 @@ Le moteur manipule notamment :
 Il est donc généralement lancé avec :
 
 ```bash
-sudo python3 mythodea_v_1_5.py
+sudo python3 python/mythodea_v_1_5.py
 ```
 
 Ne pas supprimer arbitrairement la logique de permissions afin d'éviter `sudo` : les permissions font partie du jeu.
@@ -1313,13 +1329,17 @@ Il reste donc à valider réellement :
 
 # 42. Scripts de test
 
-Script utile :
+Ancien script de préparation mentionné dans cette spécification :
 
 ```text
 preparer_test_4v4.py
 ```
 
 But : créer rapidement un scénario de bataille 4v4 sur `terrain1`.
+
+Ce fichier n'est pas présent dans le dépôt actuel. S'il est réintroduit, il sera
+placé dans `python/outils/`. Les scénarios disponibles sont dans
+`python/tests/test_mythodea.py` ; leur utilisation est décrite dans `TESTS.md`.
 
 Les unités créées doivent impérativement respecter leur structure Linux réelle.
 
@@ -1442,7 +1462,7 @@ tests
 ## Priorité 4 — tests de régression
 
 La suite compte désormais 32 tests réussis, dont des scénarios sur plusieurs tours.
-Le détail et les commandes de reproduction se trouvent dans `tests/README.md`.
+Le détail et les commandes de reproduction se trouvent dans `TESTS.md`.
 Les permissions réelles et le lancement complet sur Linux restent à valider.
 
 Tester toute la chaîne sans casser :
@@ -1458,93 +1478,53 @@ rapports
 
 ---
 
-# 46. Refactorisation prévue après stabilisation V1.5
+# 46. Architecture modulaire actuelle
 
-Architecture initiale raisonnable :
+Les modules sont dans `python/`. Le découpage déplace les fonctions existantes
+et explicite leurs imports, sans modifier les règles ni les formats persistants.
 
-```text
-mythodea/
-├── main.py
-├── config.py
-├── generaux.py
-├── mouvements.py
-├── combats.py
-├── rapports.py
-├── securite.py
-└── bot.py
-```
+| Module | Responsabilité |
+| --- | --- |
+| `mythodea_v_1_5.py` | `main()`, ordre des étapes d'un tour et garde d'exécution |
+| `config.py` | Chemins, carte, joueurs, emplacements, limites et légende des ordres |
+| `etat.py` | Compteurs, positions officielles, lecture du contrôle, fatigue et météo |
+| `generaux.py` | Création/destruction, identité, recherche des dossiers, permissions, fiches, ordres, blocs, unités, limites et comptage |
+| `mouvements.py` | Adjacence, marche forcée, validation d'un mouvement et envoi au repli |
+| `securite.py` | Propriétaire, faux généraux, duplications, conflits et audit complet des déplacements |
+| `combats.py` | Calcul des pertes, choc initial, manœuvre, frontal, combat rangé et résolution OFF/OFF ou OFF/DEF |
+| `rapports.py` | Journaux, tableaux, affichage et contexte du rapport en cours |
+| `plateau.py` | Réparation du plateau, génération de début de tour, coordination territoriale, ravitaillement et sauvegarde du contrôle calculé |
+| `victoire.py` | Lecture des objectifs et vérification des tentatives |
 
-## `config.py`
+`controle_territoire_generaux()` reste auprès des compteurs de forces dans
+`generaux.py` : il est utilisé par les combats et la coordination territoriale.
+`sauvegarder_controle_territoires()` est dans `plateau.py`, car il relit les
+généraux pour calculer le contrôle avant d'écrire. Cela évite les dépendances
+circulaires `etat → generaux → etat` et `plateau → combats → plateau`.
 
-```text
-chemins
-joueurs
-territoires
-carte
-limites
-météos
-légende des ordres
-```
+Les fonctions qui lisent et corrigent les unités restent regroupées dans
+`generaux.py` ; leur séparation fonctionnelle est un travail ultérieur.
+`verifier_tous_les_deplacements()` est dans `securite.py`, puisqu'il orchestre
+l'audit anti-triche avant d'appliquer les règles de `mouvements.py`.
 
-## `generaux.py`
-
-```text
-création
-validation
-fiche
-ordres
-blocs
-comptage d'unités
-```
-
-## `mouvements.py`
+Dépendances principales, du plus général vers ses dépendances :
 
 ```text
-positions
-déplacement normal
-marche forcée
-fatigue
-repli
+mythodea_v_1_5 → plateau, securite, rapports, victoire
+plateau       → combats, generaux, etat, rapports, config
+combats       → generaux, mouvements, etat, rapports, config
+securite      → generaux, mouvements, etat, rapports, config
+mouvements    → generaux, rapports, config
+generaux      → etat, rapports, config
+victoire      → rapports, config
+rapports      → etat, config
+etat          → config
 ```
 
-## `combats.py`
-
-```text
-triangle des types
-combat de blocs
-choc initial
-manœuvre
-engagements de généraux
-engagement frontal
-combat rangé
-OFF/OFF
-OFF/DEF
-```
-
-## `rapports.py`
-
-```text
-rapport court
-rapport long
-rapport territorial
-tableaux ASCII
-futur rapport d'espionnage
-```
-
-## `securite.py`
-
-```text
-UID/propriétaire
-duplications
-généraux non autorisés
-conflits d'emplacement
-unités invalides
-limites d'unités
-```
-
-## `bot.py`
-
-Réservé au futur mode survie/tutoriel.
+Les constantes sont consultées via `config`. La météo du tour et le contexte
+courant des rapports sont dans `rapports`, sans copie d'état entre modules.
+Le futur mode PNJ pourra ajouter `bot.py` plus tard ; il ne fait pas partie de ce
+refactoring.
 
 ---
 
@@ -1913,7 +1893,7 @@ Priorités de clôture V1.5 :
 3. finaliser la sélection/transition des généraux
 4. finaliser les ordres retenus
 5. tests de régression
-6. ensuite seulement scinder le code en modules
+6. découpage en modules réalisé sur demande ; préserver les tests de régression
 ```
 
 ---
@@ -1989,8 +1969,8 @@ V1.5 reste à finaliser :
 - ordres retenus
 - régression
 
-Après V1.5 :
-refactorisation en modules.
+Architecture actuelle :
+modules dans python/, scripts dans bash/, documentation à la racine.
 
 Plus tard :
 mode survie/tutoriel/coop avec vagues de généraux PNJ préfabriqués utilisant le même moteur.
@@ -2016,14 +1996,24 @@ Le but est double :
 
 # 62. Installation, remise à zéro et lancement
 
-`instal.sh` est destiné à l'installation initiale et appelle `nettoyage.sh`.
+`bash/instal.sh` est destiné à l'installation initiale et appelle le script
+`nettoyage.sh` situé dans le même dossier `bash/`.
 Le nettoyage complet du plateau et des homes de `j1` et `j2` est volontaire :
 une nouvelle partie ne doit conserver aucun résidu de la précédente. Cela inclut
 les fichiers cachés, notamment `.ssh` s'il existe.
 
-`start.sh` lance `mythodea_v_1_5.py` depuis le répertoire du script, quel que soit
-le répertoire courant de l'appelant. Le moteur affiche déjà le rapport court et
-les chemins des rapports détaillés. Une erreur du moteur est propagée au lanceur.
+`bash/start.sh` retrouve la racine du projet à partir de son propre emplacement,
+puis lance `python/mythodea_v_1_5.py`, quel que soit le répertoire de l'appelant.
+Il utilise `sudo` si l'appelant n'est pas root. Le moteur affiche le rapport court
+et les chemins des rapports détaillés. Une erreur du moteur est propagée au lanceur.
+
+Depuis la racine du dépôt :
+
+```bash
+sudo bash bash/instal.sh
+bash bash/start.sh
+python3 -B -m unittest discover -s python/tests -v
+```
 
 ---
 
@@ -2179,3 +2169,31 @@ partie possible. Le test réel Linux et la définition des ordres restent à fai
 - Vérifications : 32 tests réussis et compilation du fichier de tests validée.
   La suite a nécessité une exécution hors du bac à sable Windows, qui bloquait
   les dossiers temporaires. Les droits Linux réels restent à valider.
+
+## 2026-09-21 — découpage en modules et séparation Bash/Python
+
+### Architecture
+
+- Déplacement des trois scripts dans `bash/` et du point d'entrée dans `python/`.
+- Extraction progressive de `config`, `etat`, `rapports`, `victoire`, `generaux`,
+  `mouvements`, `securite`, `combats` et `plateau` ; dépendances sans cycle.
+- Conservation des 98 fonctions, de leurs paramètres et de leur logique ; seuls
+  les accès aux fonctions et variables déplacées portent les préfixes de modules.
+- Tests déplacés dans `python/tests/test_mythodea.py`, avec imports normaux des
+  modules et simulations adaptées à leur nouvel emplacement. Aucun résultat
+  attendu n'est changé. La documentation des tests est à la racine : `TESTS.md`.
+- Lanceur adapté au chemin `python/mythodea_v_1_5.py`. Les deux scripts
+  d'installation et de nettoyage sont déplacés sans changement de logique.
+
+### Vérifications du refactoring
+
+- Compilation et 32 tests de régression réussis après chaque grande extraction.
+- Comparaison avant/après des 32 scénarios : mêmes arborescences, mêmes contenus
+  des fichiers d'état et des rapports (chemin temporaire normalisé).
+- Comparaison structurelle des 98 fonctions : signatures et corps identiques
+  après normalisation des préfixes de modules.
+- Import des dix modules vérifié sans lancement de tour ni accès au plateau.
+- Syntaxe des trois scripts Bash validée ; lanceur vérifié depuis un autre
+  dossier avec Python et sudo simulés, y compris la propagation des codes 0 et 37.
+- Les permissions Linux réelles et une partie complète sur Linux restent hors
+  du périmètre des scénarios isolés sous Windows.
