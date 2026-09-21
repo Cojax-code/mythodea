@@ -1,10 +1,29 @@
-# Mythodea V1.5
+# Mythodea
 
-Jeu de stratégie au tour par tour pour apprendre les commandes Linux. Les comptes
-Linux représentent les joueurs, les dossiers représentent leurs généraux et leurs
-unités. Le moteur est écrit en Python et les scripts de lancement en Bash.
+Mythodea est un jeu de stratégie au tour par tour construit autour de Linux.
 
-## Installation et lancement sous Linux
+Ici, le système de fichiers fait partie du jeu : les joueurs sont des comptes Linux,
+les généraux sont des dossiers, les unités sont des sous-dossiers et déplacer un
+général revient réellement à déplacer son dossier sur le serveur.
+
+Le projet sert à la fois de jeu et de terrain d'apprentissage pour Linux, SSH,
+permissions Unix et Python.
+
+## État actuel
+
+La branche V1.5 contient le moteur classique `j1 contre j2`, désormais découpé en
+modules. Le gameplay reste basé sur le même moteur de déplacement, de sécurité et
+de combat.
+
+Les prochaines étapes prévues sont :
+
+1. finaliser les ordres des généraux ;
+2. faire une validation réelle sous Linux ;
+3. construire le mode Survie en réutilisant le même moteur que le mode multijoueur.
+
+## Lancer le jeu
+
+Mythodea est prévu pour Linux / Raspberry Pi OS.
 
 Depuis la racine du dépôt :
 
@@ -13,42 +32,30 @@ sudo bash bash/instal.sh
 bash bash/start.sh
 ```
 
-L'installation crée les comptes `j1` et `j2`, puis réinitialise le plateau et leurs
-homes. Pour recommencer une partie, utiliser `sudo bash bash/nettoyage.sh`.
-
-Le lanceur fonctionne aussi depuis un autre répertoire :
+Pour remettre complètement le plateau à zéro :
 
 ```bash
-bash /chemin/vers/mythodea/bash/start.sh
+sudo bash bash/nettoyage.sh
 ```
 
-Il utilise `sudo` si nécessaire. Le lancement Python direct reste possible :
+Le moteur peut aussi être lancé directement :
 
 ```bash
 sudo python3 python/mythodea_v_1_5.py
 ```
 
-Importer le moteur depuis `python/` ne lance aucun tour. Le jeu nécessite Linux
-(comptes, UID/GID et permissions) ; les tests isolés fonctionnent aussi sous Windows.
-
 ## Organisation
 
-| Fichier dans `python/` | Responsabilité |
-| --- | --- |
-| `mythodea_v_1_5.py` | Point d'entrée et enchaînement d'un tour |
-| `config.py` | Constantes, carte et chemins |
-| `etat.py` | Compteurs, positions, lecture du contrôle, fatigue et météo |
-| `generaux.py` | Création, identité, permissions, ordres, blocs et unités |
-| `mouvements.py` | Règles de déplacement, marche forcée et repli |
-| `securite.py` | Contrôles anti-triche et audit des déplacements |
-| `combats.py` | Choc initial, manœuvres, frontal et combat rangé |
-| `rapports.py` | Écriture, tableaux et affichage des rapports |
-| `plateau.py` | Structure, résolution des territoires, contrôle et ravitaillement |
-| `victoire.py` | Objectifs et tentatives de victoire |
+```text
+bash/                 scripts d'installation, lancement et nettoyage
+python/               moteur du jeu
+python/tests/         tests automatiques
+MYTHODEA_SPEC.md      règles et architecture de référence
+TESTS.md              détails sur les tests
+```
 
-Les scripts sont dans `bash/`, les tests dans `python/tests/`. Les éventuels futurs
-outils de préparation de scénarios auront leur place dans `python/outils/`.
-Les chemins de partie sous `/home/game`, `/home/j1` et `/home/j2` sont conservés.
+Le point d'entrée Python est volontairement léger ; les règles sont réparties entre
+les modules de généraux, mouvements, sécurité, combats, rapports, état et plateau.
 
 ## Tests
 
@@ -56,7 +63,13 @@ Les chemins de partie sous `/home/game`, `/home/j1` et `/home/j2` sont conservé
 python3 -B -m unittest discover -s python/tests -v
 ```
 
-Sous Windows, utiliser `python` à la place de `python3`. Les 32 tests utilisent un
-plateau temporaire et simulent les droits Linux. Voir [TESTS.md](TESTS.md) pour les
-scénarios et la consultation des rapports, et [MYTHODEA_SPEC.md](MYTHODEA_SPEC.md)
-pour les règles et l'architecture.
+Les tests utilisent un plateau temporaire. Ils ne remplacent pas la validation des
+vrais comptes, UID/GID et permissions sur Linux.
+
+## Documentation
+
+- `MYTHODEA_SPEC.md` : référence des règles actuelles et de l'architecture.
+- `TESTS.md` : scénarios de test et commandes utiles.
+
+Mythodea est encore en développement : la V1.5 stabilise le moteur avant l'ajout
+des ordres restants puis du mode Survie.
