@@ -313,3 +313,210 @@ Les points suivants restent volontairement ouverts :
 10. condition éventuelle de victoire ou fin d'une partie Survie.
 
 Ces décisions doivent être prises avant de figer l'architecture spécifique du mode.
+
+
+---
+
+## 11. Premier prototype jouable : front Est
+
+La première implémentation jouable du mode Survie est volontairement limitée au front Est :
+
+```text
+repli <-> village <-> est_1 <-> est_2 <-> est_3
+```
+
+Le tour 0 est un tour de préparation. Pendant ce tour, les joueurs peuvent créer
+leurs généraux selon les règles classiques : un général créé par tour, cinq généraux
+générés au maximum par joueur. Pendant ce tour 0, un général ne peut se déplacer que
+de son home vers le village.
+
+Le territoire `repli` fait partie du graphe Survie et est directement relié au
+`village`. Il conserve des espaces séparés pour les joueurs.
+
+Pour ce premier prototype, les ennemis de l'Est utilisent uniquement les généraux,
+unités, blocs et règles de combat classiques. Aucun comportement tactique ou ordre
+spécial de bot n'est ajouté. Des ordres propres aux bots pourront être étudiés dans
+une version ultérieure.
+
+### Cycle d'un tour
+
+La phase d'action dure actuellement **2 minutes**.
+
+À la fin de la phase d'action :
+
+1. les forces ennemies déjà présentes avancent d'un territoire vers le village ;
+2. la nouvelle vague est créée sur les territoires prévus par son pattern ;
+3. les mouvements, présences et combats sont résolus ;
+4. les renforts en surnombre peuvent provoquer des affrontements successifs ;
+5. le contrôle final des territoires est calculé ;
+6. si le bot contrôle le village, la partie est perdue ;
+7. les rapports sont finalisés et le tour suivant commence.
+
+Une nouvelle vague n'effectue pas immédiatement un deuxième déplacement après son
+apparition. Il n'y a pas de résolution intermédiaire entre le déplacement des anciens
+ennemis et l'apparition de la nouvelle vague.
+
+### Identité des ennemis
+
+Les noms canoniques des dossiers des généraux joueurs restent inchangés :
+`general1`, `general2`, etc.
+
+Pour les rapports, un général ennemi reçoit un **nom d'affichage** de la forme :
+
+```text
+general<vague>_<numero_dans_la_vague>
+```
+
+Exemples :
+
+```text
+general1_1
+general1_2
+general13_1
+```
+
+Ce nom d'affichage ne doit pas casser les fonctions communes qui valident actuellement
+les noms canoniques `generalN`. L'implémentation doit donc séparer l'identité
+technique du général de son nom affiché dans les rapports si nécessaire.
+
+La `fiche.txt` d'un général ennemi contient en plus :
+
+```text
+faction=est
+vague=<numero>
+```
+
+Les généraux des joueurs ne possèdent pas ces champs.
+
+---
+
+## 12. Progression des vagues Est
+
+La vague 1 sert d'échauffement : un général de 5 unités apparaît sur chacun des trois
+territoires `est_1`, `est_2` et `est_3`. Les types d'unités et leur répartition
+dans les quatre blocs sont entièrement aléatoires.
+
+Ensuite :
+
+- vague 2 : 1 général de 10 unités aléatoires, au fond du front Est ;
+- vague 3 : 1 général de 15 unités aléatoires ;
+- vague 4 : 2 généraux de 10 unités ;
+- vague 5 : vague Boss ;
+- vague 6 : base + 1 général de 20 archers, répartition aléatoire ;
+- vague 7 : base + 1 général de 20 piquiers, répartition aléatoire ;
+- vague 8 : base + 1 général de 20 unités d'un même type choisi aléatoirement,
+  répartition aléatoire ;
+- vague 9 : même principe mono-type, avec apparition au territoire du fond et au
+  territoire du milieu ;
+- vague 10 : vague Boss, base + 1 général complet aléatoire.
+
+À partir de la vague 6, la **base** est d'abord constituée d'un général complet
+aléatoire.
+
+Les vagues suivantes reprennent le pattern 6 à 10 par groupes de cinq :
+
+- vagues 11 à 15 : base = 2 généraux complets aléatoires ;
+- vagues 16 à 20 : base = 3 généraux complets aléatoires ;
+- vagues 21 à 25 : base = 4 généraux complets aléatoires.
+
+Ainsi, par exemple, la vague 13 correspond au pattern de la vague 8 :
+deux généraux complets aléatoires de base + un général mono-type complet.
+
+Après cette progression, quatre généraux apparaissent sur tous les territoires
+concernés jusqu'à la fin du prototype.
+
+Toute vague Boss, c'est-à-dire une vague dont le numéro est divisible par 5, apparaît
+sur tous les territoires Est prévus pour le front à ce stade. La présence d'ennemis
+plus anciens sur ces territoires n'annule pas l'apparition de la vague.
+
+La composition précise de la vague 5 est :
+
+- un général complet aléatoire ;
+- un général contenant 20 cavaliers dans le bloc `avant`.
+
+---
+
+## 13. Surnombre et renforts
+
+Le mode Survie accepte qu'un territoire contienne temporairement plus de généraux
+ennemis que le moteur classique n'en engage simultanément. Ce surnombre est une
+difficulté normale du mode contre l'ordinateur, pas une erreur à corriger en
+supprimant des troupes.
+
+Un affrontement utilise d'abord au maximum le nombre de généraux actifs autorisé par
+le territoire. Lorsque cet affrontement est terminé, les ennemis encore présents sur
+le territoire peuvent entrer comme renforts.
+
+Le joueur doit pouvoir choisir à l'avance s'il reste pour affronter ces renforts.
+
+Chaque général joueur possède donc un fichier séparé des ordres classiques :
+
+```text
+ordre_surnombre.txt
+```
+
+Valeurs :
+
+```text
+1 = battre en retraite si des renforts ennemis doivent entrer
+2 = continuer l'affrontement
+```
+
+Règle par défaut :
+
+- hors du village : `1` ;
+- au village : `2`.
+
+Le fichier appartient au général. Son choix est conservé lorsque le général se
+déplace. S'il est supprimé, le moteur le recrée au scan suivant avec la valeur par
+défaut appropriée à sa situation de création.
+
+Si la valeur `2` est choisie, des ordres spécifiques au combat en surnombre pourront
+être ajoutés ultérieurement. Ils ne font pas partie du premier prototype.
+
+Plusieurs affrontements successifs peuvent donc se produire sur le même territoire
+pendant une seule phase de résolution.
+
+Les généraux ennemis conservent leur numéro de vague dans leur fiche et leur nom
+d'affichage afin que les rapports puissent distinguer les survivants d'anciennes
+vagues des nouveaux renforts.
+
+Certains territoires pourront plus tard limiter le nombre de généraux engagés
+simultanément, par exemple à un seul général. Cette capacité de combat est distincte
+du nombre total de forces ennemies physiquement présentes sur le territoire.
+
+---
+
+## 14. Rythme visible des combats
+
+En mode Survie, les combats ne doivent pas être affichés comme une résolution
+instantanée. Le joueur doit pouvoir suivre les étapes de la bataille et le développeur
+doit pouvoir repérer plus facilement un comportement anormal.
+
+Les délais d'affichage doivent être configurables et désactivables pour les tests
+automatiques.
+
+Le Forum doit pouvoir proposer un journal de combat actualisé progressivement,
+consultable notamment avec `tail -f`.
+
+Le ralentissement concerne la présentation et l'enchaînement des étapes ; il ne doit
+pas modifier les règles mathématiques du moteur de combat.
+
+---
+
+## 15. Coopération j1 / j2 : décision encore à figer
+
+Le village conserve des garnisons séparées pour `j1` et `j2`.
+
+Pour les territoires extérieurs, la question suivante doit être tranchée avant
+implémentation définitive : les quatre emplacements de formation sont-ils partagés
+logiquement entre les deux joueurs alliés, ou chaque joueur conserve-t-il quatre
+emplacements indépendants ?
+
+Une solution envisagée est de conserver les dossiers Linux séparés `j1/` et
+`j2/` pour les permissions, tout en considérant les numéros `1` à `4` comme des
+emplacements alliés partagés. Dans ce modèle, `j1/1` et `j2/1` ne pourraient pas
+être occupés simultanément et les joueurs devraient se coordonner.
+
+Le comportement exact en cas de collision entre deux généraux alliés sur le même
+numéro d'emplacement reste à décider. Codex ne doit pas inventer cette sanction.
