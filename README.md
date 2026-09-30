@@ -15,11 +15,14 @@ La branche V1.5 contient le moteur classique `j1 contre j2`, désormais découp�
 modules. Le gameplay reste basé sur le même moteur de déplacement, de sécurité et
 de combat.
 
-Les prochaines étapes prévues sont :
+La V1.5 est considérée comme la base stable du moteur classique. Le système complet
+d'ordres n'est volontairement pas bloquant pour clôturer cette version : seuls les
+comportements déjà validés sont conservés, et les autres ordres seront affinés plus
+tard à partir de l'expérience de jeu.
 
-1. finaliser les ordres des généraux ;
-2. faire une validation réelle sous Linux ;
-3. construire le mode Survie en réutilisant le même moteur que le mode multijoueur.
+La prochaine étape majeure est la V2.0 : construire le mode Survie en réutilisant le
+même moteur que le mode multijoueur. La validation réelle sous Linux / Raspberry Pi
+continuera au fur et à mesure de ce développement.
 
 ## Lancer le jeu
 
@@ -71,5 +74,6 @@ vrais comptes, UID/GID et permissions sur Linux.
 - `MYTHODEA_SPEC.md` : référence des règles actuelles et de l'architecture.
 - `TESTS.md` : scénarios de test et commandes utiles.
 
-Mythodea est encore en développement : la V1.5 stabilise le moteur avant l'ajout
-des ordres restants puis du mode Survie.
+Mythodea est encore en développement : la V1.5 stabilise le moteur commun, et la
+V2.0 ouvre le développement du mode Survie. Les ordres supplémentaires seront
+introduits progressivement lorsqu'ils apporteront une vraie valeur au gameplay.
