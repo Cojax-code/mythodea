@@ -67,8 +67,13 @@ Pour le premier prototype Survie :
 - permettre le surnombre ennemi propre au mode Survie sans supprimer arbitrairement
   des troupes ;
 - garder les délais visuels de combat configurables et neutralisables dans les tests ;
-- ne pas figer la règle de partage des emplacements entre `j1` et `j2` hors du
-  village tant que la décision correspondante de `SURVIE_SPEC.md` reste ouverte.
+- considérer les positions `1` à `4` comme partagées logiquement entre `j1` et
+  `j2`, tout en conservant leurs dossiers Linux séparés ;
+- en cas de collision alliée sur le même numéro d'emplacement, envoyer les deux
+  généraux au territoire `repli` ;
+- au village, conserver une `reserve/` séparée pour chaque joueur ; le passage
+  `reserve <-> garnison` est une réorganisation interne et ne consomme pas le
+  mouvement normal du général.
 
 ## Tests
 
