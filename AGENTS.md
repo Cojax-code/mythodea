@@ -57,6 +57,19 @@ Pour la V2.0, ne pas dupliquer une règle du moteur dans du code spécifique au 
 Survie si elle peut rester commune. Les règles encore ouvertes dans `SURVIE_SPEC.md`
 doivent rester ouvertes jusqu'à décision explicite.
 
+Pour le premier prototype Survie :
+
+- limiter l'implémentation jouable au front Est tant que les autres fronts ne sont pas demandés ;
+- conserver les règles de combat classiques pour les bots, sans inventer d'IA tactique ni d'ordres spéciaux ;
+- conserver les noms canoniques `generalN` du moteur commun et traiter les noms
+  `general<vague>_<numero>` comme noms d'affichage des ennemis dans les rapports si
+  une adaptation interne est nécessaire ;
+- permettre le surnombre ennemi propre au mode Survie sans supprimer arbitrairement
+  des troupes ;
+- garder les délais visuels de combat configurables et neutralisables dans les tests ;
+- ne pas figer la règle de partage des emplacements entre `j1` et `j2` hors du
+  village tant que la décision correspondante de `SURVIE_SPEC.md` reste ouverte.
+
 ## Tests
 
 Conserver tous les tests de régression existants.
