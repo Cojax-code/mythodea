@@ -171,6 +171,7 @@ village/
 │   │   ├── 2/
 │   │   ├── 3/
 │   │   └── 4/
+│   ├── reserve/
 │   ├── forum/
 │   ├── poste/
 │   └── clocher/
@@ -180,14 +181,22 @@ village/
     │   ├── 2/
     │   ├── 3/
     │   └── 4/
+    ├── reserve/
     ├── forum/
     ├── poste/
     └── clocher/
 ```
 
-La garnison est la zone militaire du village. Les quatre emplacements `1` à `4`
-conservent l'organisation connue du moteur classique. Les généraux conservent leurs
-blocs `avant`, `droite`, `gauche` et `arriere`.
+La garnison est la zone militaire active du village. Les quatre emplacements `1` à
+`4` conservent l'organisation connue du moteur classique. Les généraux conservent
+leurs blocs `avant`, `droite`, `gauche` et `arriere`.
+
+La `reserve/` permet de stocker des généraux présents au village mais non engagés.
+Les généraux y restent complets avec leurs blocs et fichiers. Un passage
+`reserve <-> garnison` est une réorganisation interne au village et **ne compte pas
+comme un mouvement**. Un général peut donc être placé depuis la réserve dans la
+garnison puis effectuer son déplacement normal hors du village pendant le même tour,
+si les autres règles de déplacement l'autorisent.
 
 ### Forum
 
@@ -504,19 +513,39 @@ pas modifier les règles mathématiques du moteur de combat.
 
 ---
 
-## 15. Coopération j1 / j2 : décision encore à figer
+## 15. Coopération j1 / j2
 
-Le village conserve des garnisons séparées pour `j1` et `j2`.
+Les dossiers Linux de `j1` et `j2` restent séparés pour préserver les permissions,
+mais les positions militaires numérotées `1` à `4` sont **partagées logiquement
+entre les deux joueurs alliés**.
 
-Pour les territoires extérieurs, la question suivante doit être tranchée avant
-implémentation définitive : les quatre emplacements de formation sont-ils partagés
-logiquement entre les deux joueurs alliés, ou chaque joueur conserve-t-il quatre
-emplacements indépendants ?
+Cette règle s'applique aux territoires extérieurs et à la garnison du village.
 
-Une solution envisagée est de conserver les dossiers Linux séparés `j1/` et
-`j2/` pour les permissions, tout en considérant les numéros `1` à `4` comme des
-emplacements alliés partagés. Dans ce modèle, `j1/1` et `j2/1` ne pourraient pas
-être occupés simultanément et les joueurs devraient se coordonner.
+Exemple valide :
 
-Le comportement exact en cas de collision entre deux généraux alliés sur le même
-numéro d'emplacement reste à décider. Codex ne doit pas inventer cette sanction.
+```text
+j1/1/general1
+j2/2/general1
+j1/3/general2
+j2/4/general2
+```
+
+Exemple invalide :
+
+```text
+j1/1/general1
+j2/1/general1
+```
+
+Deux généraux alliés ne peuvent donc pas occuper simultanément le même numéro
+d'emplacement, même s'ils se trouvent dans des dossiers joueurs différents.
+
+En cas de collision entre `j1` et `j2` sur le même numéro, **les deux généraux sont
+envoyés au territoire `repli`**.
+
+Les joueurs doivent donc communiquer pour répartir leurs généraux entre les quatre
+positions communes.
+
+Au village, `j1` et `j2` possèdent chacun une `reserve/` séparée. La réserve
+n'est pas une position de combat et n'entre pas dans la règle des quatre emplacements
+partagés.
