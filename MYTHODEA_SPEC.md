@@ -578,16 +578,17 @@ Ordres enregistrés :
 
 | ID | Nom interne | Catégorie | État V1.5 |
 | --- | --- | --- | --- |
-| `1-1` | `retraite_apres_premiere_manche` | armée | comportement détaillé à finaliser |
+| `1-1` | `retraite_apres_premiere_manche` | armée | réservé à une version ultérieure |
 | `1-2` | `attaque_frontale` | armée | implémenté |
-| `2-1` | `attaque_chirurgicale` | formation | comportement détaillé à finaliser |
-| `2-2` | `pluie_de_fleches` | formation | comportement détaillé à finaliser |
-| `3-1` | `fuir_avant_la_mort` | intrinsèque | comportement détaillé à finaliser |
+| `2-1` | `attaque_chirurgicale` | formation | réservé à une version ultérieure |
+| `2-2` | `pluie_de_fleches` | formation | réservé à une version ultérieure |
+| `3-1` | `fuir_avant_la_mort` | intrinsèque | réservé à une version ultérieure |
 
 Un ordre inconnu, mal écrit ou non applicable est ignoré.
 
-Les règles détaillées des ordres restants doivent être intégrées à partir du
-document de design validé par le propriétaire du projet. Ne pas les inventer.
+La V1.5 n'a pas pour objectif de finaliser tout le système d'ordres. Les règles
+détaillées des ordres supplémentaires seront définies plus tard à partir de
+l'expérience de jeu et d'un document de design validé. Ne pas les inventer.
 
 ---
 
@@ -746,14 +747,24 @@ la logique de `j2`.
 
 ---
 
-## 20. Prochaines étapes V1.5
+## 20. Clôture de la V1.5 et passage à la V2.0
 
-Ordre de travail prévu :
+La V1.5 est considérée comme la base de référence du moteur classique actuel.
 
-1. intégrer et finaliser les ordres des généraux à partir du document de design ;
-2. conserver/compléter les tests automatiques pour chaque ordre ;
-3. faire une validation réelle sous Linux ;
-4. après stabilisation, créer le mode Survie avec le moteur commun.
+La finalisation complète des ordres n'est pas une condition de clôture de la V1.5.
+Les ordres supplémentaires seront conçus et introduits progressivement lorsque
+l'expérience de jeu permettra de valider leur utilité et leur équilibre.
+
+La validation réelle sur Raspberry Pi reste nécessaire pour les comportements liés
+aux vrais comptes Linux, UID/GID, propriétaires et permissions. Elle pourra se
+poursuivre pendant le développement du mode Survie, qui réutilise le même moteur.
+
+La prochaine étape majeure est la V2.0 :
+
+1. créer le mode Survie sans dupliquer le moteur commun ;
+2. utiliser ce mode comme environnement d'intégration et de jeu pour éprouver le moteur ;
+3. introduire progressivement les mécaniques propres au Survie ;
+4. intégrer dans ce mode les petits objectifs Linux aléatoires de type Bandit débutant.
 
 ---
 
