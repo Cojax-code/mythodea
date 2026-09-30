@@ -5,9 +5,10 @@ Ce fichier définit les règles de travail pour les agents qui modifient Mythode
 ## Avant toute modification
 
 1. Lire `MYTHODEA_SPEC.md`.
-2. Inspecter les fichiers réellement concernés avant de proposer une modification.
-3. Vérifier les tests existants liés à la zone modifiée.
-4. Ne jamais supposer une règle de gameplay qui n'est pas documentée ou explicitement demandée.
+2. Pour toute modification du mode Survie ou de la V2.0, lire aussi `SURVIE_SPEC.md`.
+3. Inspecter les fichiers réellement concernés avant de proposer une modification.
+4. Vérifier les tests existants liés à la zone modifiée.
+5. Ne jamais supposer une règle de gameplay qui n'est pas documentée ou explicitement demandée.
 
 ## Règle principale
 
@@ -49,8 +50,12 @@ Il doit rester léger et appeler les modules spécialisés.
 
 Ne pas multiplier les petits modules sans raison claire.
 
-Le mode classique, le futur mode Survie et le futur multijoueur doivent réutiliser
+Le mode classique, le mode Survie V2.0 et le futur multijoueur doivent réutiliser
 au maximum le même moteur : généraux, mouvements, combats, ordres, sécurité et rapports.
+
+Pour la V2.0, ne pas dupliquer une règle du moteur dans du code spécifique au mode
+Survie si elle peut rester commune. Les règles encore ouvertes dans `SURVIE_SPEC.md`
+doivent rester ouvertes jusqu'à décision explicite.
 
 ## Tests
 
@@ -87,7 +92,9 @@ réelle sous Linux lorsqu'une modification touche ces aspects.
 
 `README.md` est destiné aux humains et doit rester court et accessible.
 
-`MYTHODEA_SPEC.md` est la référence technique et gameplay actuelle.
+`MYTHODEA_SPEC.md` est la référence technique et gameplay du moteur commun.
+
+`SURVIE_SPEC.md` est la référence de conception du mode Survie V2.0.
 
 Ne pas utiliser la SPEC comme journal de modifications.
 
