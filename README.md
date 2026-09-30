@@ -54,7 +54,7 @@ bash/                 scripts d'installation, lancement et nettoyage
 python/               moteur du jeu
 python/tests/         tests automatiques
 MYTHODEA_SPEC.md      règles et architecture de référence
-TESTS.md              détails sur les tests
+SURVIE_SPEC.md        conception du mode Survie V2.0
 ```
 
 Le point d'entrée Python est volontairement léger ; les règles sont réparties entre
@@ -72,7 +72,7 @@ vrais comptes, UID/GID et permissions sur Linux.
 ## Documentation
 
 - `MYTHODEA_SPEC.md` : référence des règles actuelles et de l'architecture.
-- `TESTS.md` : scénarios de test et commandes utiles.
+- `SURVIE_SPEC.md` : règles et décisions de conception propres au mode Survie V2.0.
 
 Mythodea est encore en développement : la V1.5 stabilise le moteur commun, et la
 V2.0 ouvre le développement du mode Survie. Les ordres supplémentaires seront
