@@ -310,18 +310,20 @@ Ces éléments appartiennent à des étapes ultérieures sauf décision explicit
 
 Les points suivants restent volontairement ouverts :
 
-1. règles précises d'apparition et de composition des vagues ;
+1. futurs fronts Nord, Sud et Ouest ;
 2. chemin choisi par le bot dans la boucle ouest ;
 3. noms des branches situées après `sud_3` ;
-4. ressources initiales du joueur ;
-5. création et remplacement des unités ;
+4. ressources initiales du joueur et future économie ;
+5. création, remplacement et recrutement futurs des unités ;
 6. place exacte des objectifs Linux dans la progression ;
 7. récompenses des objectifs Linux ;
 8. format et fréquence de scan de la poste ;
 9. format et fréquence d'actualisation du clocher ;
-10. condition éventuelle de victoire ou fin d'une partie Survie.
+10. condition éventuelle de victoire ou fin d'une partie Survie ;
+11. ordres spécifiques au combat en surnombre.
 
-Ces décisions doivent être prises avant de figer l'architecture spécifique du mode.
+Ces décisions restent ouvertes tant qu'elles ne sont pas nécessaires à l'étape
+d'implémentation en cours.
 
 
 ---
@@ -472,10 +474,18 @@ Toute vague Boss, c'est-à-dire une vague dont le numéro est divisible par 5, a
 sur tous les territoires Est prévus pour le front à ce stade. La présence d'ennemis
 plus anciens sur ces territoires n'annule pas l'apparition de la vague.
 
-La composition précise de la vague 5 est :
+La composition d'une vague Boss est **répétée intégralement sur chaque territoire
+concerné**, et non répartie entre eux.
 
-- un général complet aléatoire ;
-- un général contenant 20 cavaliers dans le bloc `avant`.
+Ainsi, pour la vague 5 :
+
+```text
+est_1 : 1 général complet aléatoire + 1 général avec 20 cavaliers à l'avant
+est_2 : 1 général complet aléatoire + 1 général avec 20 cavaliers à l'avant
+est_3 : 1 général complet aléatoire + 1 général avec 20 cavaliers à l'avant
+```
+
+La vague 5 fait donc apparaître six généraux au total.
 
 ---
 
@@ -490,9 +500,12 @@ Un affrontement utilise d'abord au maximum le nombre de généraux actifs autori
 le territoire. Lorsque cet affrontement est terminé, les ennemis encore présents sur
 le territoire peuvent entrer comme renforts.
 
-Les ennemis déjà présents sur le territoire sont prioritaires. Les généraux des
-nouvelles vagues complètent les emplacements libres ; ceux qui ne peuvent pas entrer
-attendent comme renforts. Aucune troupe n'est supprimée pour résoudre le surnombre.
+Les ennemis déjà présents sur le territoire sont prioritaires pour les places
+d'engagement. Les généraux des nouvelles vagues sont sélectionnés ensuite. Les
+généraux qui ne peuvent pas être engagés immédiatement restent **physiquement présents
+sur le territoire** comme renforts. La limite de quatre concerne donc l'engagement
+simultané, pas la présence totale sur le territoire. Aucune troupe n'est supprimée
+pour résoudre le surnombre.
 
 Le joueur doit pouvoir choisir à l'avance s'il reste pour affronter ces renforts.
 
