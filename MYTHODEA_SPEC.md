@@ -55,7 +55,9 @@ mythodea/
 │   ├── victoire.py
 │   └── tests/
 │       ├── test_mythodea.py
-│       └── test_modes.py
+│       ├── test_modes.py
+│       ├── test_village.py
+│       └── test_combats_camps.py
 ├── README.md
 ├── TESTS.md
 └── MYTHODEA_SPEC.md
@@ -83,8 +85,37 @@ Importer les modules ne doit jamais lancer un tour. Seul le point d'entrée appe
 `config.configuration_mode(mode)` retourne un profil indépendant pour `classique`
 ou `survie`, sans écriture sur disque ni remplacement des variables globales
 classiques. Le profil distingue les acteurs de jeu, leurs comptes et groupes Linux,
-et leurs camps militaires. Les modules V1.5 continuent d'utiliser leur configuration
-classique ; le profil Survie n'est pas encore raccordé à une résolution jouable.
+et leurs camps militaires. Les fonctions de préparation du plateau, de découverte
+des généraux et d'audit des déplacements acceptent un argument `configuration`
+optionnel. Sans cet argument, elles conservent la configuration classique.
+Le profil Survie permet de préparer et contrôler les zones militaires des joueurs,
+et de résoudre une bataille entre des forces déjà préparées. Il n'est pas encore
+raccordé à un cycle de jeu Survie complet.
+
+`generaux.zones_generaux_territoire()` décrit les emplacements et les éventuelles
+réserves. `generaux.zones_generaux()` ajoute les homes et le repli. Ces descriptions
+communes sont utilisées par la recherche, l'audit et la préparation du plateau ;
+elles ne lisent ni ne modifient le disque. Une zone numérotée porte un champ
+`emplacement` ; une réserve n'en porte pas et ne participe pas aux collisions ni
+à la lecture des forces engagées.
+
+La lecture territoriale conserve les généraux par propriétaire de jeu (`joueur`)
+et ajoute leur `camp` en mémoire d'après le profil. Le compte Linux reste une
+information distincte du profil (`bot` appartient à `root:root`).
+`generaux.regrouper_forces_par_camp()` construit la vue `camp -> emplacement -> général`
+en conservant les références aux généraux, sans remplacer leurs identités ni leurs
+chemins. `lire_forces_territoire()` relit le disque puis construit cette vue.
+
+Les résolutions frontale, rangée, OFF/OFF et OFF/DEF acceptent un profil optionnel
+et utilisent ses deux camps. Le duel conserve les propriétaires réels pour la
+fatigue, les pertes et la suppression de l'identité officielle. Le ciblage prend
+l'adversaire parmi les deux participants effectifs, sans correspondance fixe de
+noms de joueurs. Les calculs et priorités restent communs aux deux modes.
+
+`controle_forces()` calcule le contrôle des forces regroupées ;
+`controle_territoire_generaux()` et `plateau.sauvegarder_controle_territoires()`
+acceptent le profil pour conserver les camps dans le contrôle. La boucle
+`plateau.lancer_bataille_v15()` reste l'orchestration classique.
 
 Le point d'entrée accepte `--mode classique` (valeur par défaut) et `--mode survie`.
 L'option `--afficher-configuration` affiche le profil sans lancer de tour ni importer
@@ -695,8 +726,9 @@ afficher le rapport court
 Le point d'entrée `python/mythodea_v_1_5.py` orchestre ce cycle ; la logique
 métier reste dans les modules spécialisés.
 
-`plateau.reparer_structure()` répare uniquement les dossiers classiques et leurs
-permissions. Le point d'entrée appelle ensuite une fois par joueur
+`plateau.reparer_structure()` répare uniquement les dossiers et leurs permissions,
+selon le profil fourni (classique par défaut). Le point d'entrée classique appelle
+ensuite une fois par joueur
 `generaux.faire_apparaitre_general_si_possible()`. La génération conserve sa place
 avant l'audit : un seul général par joueur et par tour, aucun si le home contient
 déjà un général ou si cinq généraux ont déjà été générés. Réparer plusieurs fois
@@ -732,6 +764,15 @@ La suite conserve les 32 tests de régression V1.5 couvrant notamment :
 `test_modes.py` vérifie en complément les profils classique et Survie, la séparation
 entre propriétaires Linux et camps, la sélection du mode, le cycle classique et la
 réparation du plateau sans génération.
+
+`test_village.py` couvre les zones Survie, les réserves, les positions logiques,
+les déplacements, l'identité et les collisions entre joueurs alliés. Les suites
+V1.5 et de sélection du mode sont conservées sans modification.
+
+`test_combats_camps.py` couvre les duels contre le bot, les forces coopératives,
+l'ordre des positions, les identités, la fatigue, les ordres, le contrôle par camp
+et la compatibilité classique. Les forces sont préparées dans un plateau temporaire,
+sans génération de vagues.
 
 Les tests utilisent un plateau temporaire et peuvent simuler les dépendances Unix.
 Ils ne remplacent pas un test réel sur Linux avec vrais UID/GID, `chown`, `chmod`

@@ -196,6 +196,7 @@ def configuration_mode(mode):
         "acteurs": acteurs,
         "emplacements": list(emplacements),
         "emplacements_partages": mode == "survie",
+        "villages": ["village"] if mode == "survie" else [],
         "permissions_generaux": {"dossiers": 0o700, "fichiers": 0o600},
         "duree_phase_action_secondes": duree_action,
     }

@@ -13,16 +13,18 @@ def territoires_adjacents(territoire_depart, territoire_arrivee):
 
 def chemin_deux_territoires(
     origine,
-    destination
+    destination,
+    configuration=None
 ):
     # Cherche un territoire intermédiaire permettant :
     # origine -> intermédiaire -> destination.
 
-    for intermediaire in config.carte_territoires.get(
+    carte = config.carte_territoires if configuration is None else configuration["carte_territoires"]
+    for intermediaire in carte.get(
         origine,
         []
     ):
-        if destination in config.carte_territoires.get(
+        if destination in carte.get(
             intermediaire,
             []
         ):
@@ -35,9 +37,12 @@ def verifier_deplacement_general(
     joueur,
     origine,
     destination,
-    controle_avant
+    controle_avant,
+    configuration=None
 ):
-    base = config.bases_joueurs[joueur]
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
+    base = configuration["bases_joueurs"][joueur]
 
     # Aucun déplacement.
     if origine == destination:
@@ -64,7 +69,7 @@ def verifier_deplacement_general(
         return False, False, "destination interdite"
 
     # Déplacement normal : 1 territoire.
-    if destination in config.carte_territoires.get(
+    if destination in configuration["carte_territoires"].get(
         origine,
         []
     ):
@@ -73,7 +78,8 @@ def verifier_deplacement_general(
     # Marche forcée : 2 territoires.
     intermediaire = chemin_deux_territoires(
         origine,
-        destination
+        destination,
+        configuration
     )
 
     if intermediaire is None:
@@ -91,13 +97,16 @@ def verifier_deplacement_general(
         "neutre"
     )
 
-    joueur_ennemi = ennemi_de(joueur)
+    acteurs = configuration["acteurs"]
+    camp_joueur = acteurs[joueur]["camp"]
+    camps_ennemis = {acteur["camp"] for acteur in acteurs.values()} - {camp_joueur}
+    camp_intermediaire = acteurs.get(controle_intermediaire, {}).get("camp", controle_intermediaire)
 
-    if controle_intermediaire == joueur_ennemi:
+    if camp_intermediaire in camps_ennemis:
         return (
             False,
             False,
-            f"{intermediaire} est contrôlé par {joueur_ennemi}"
+            f"{intermediaire} est contrôlé par {controle_intermediaire}"
         )
 
     return True, True, "marche forcee"
@@ -106,7 +115,8 @@ def verifier_deplacement_general(
 def envoyer_general_au_repli(
     joueur,
     nom_general,
-    chemin_actuel
+    chemin_actuel,
+    configuration=None
 ):
     # Envoie le général et toutes ses unités
     # dans sa zone de repli.
@@ -114,8 +124,9 @@ def envoyer_general_au_repli(
     # La fonction refuse d'écraser un général
     # déjà présent dans le repli.
 
+    repli = config.repli_path if configuration is None else configuration["repli_path"]
     destination = (
-        config.repli_path
+        repli
         / joueur
         / nom_general
     )

@@ -314,7 +314,42 @@ def general_possede_ordre(
     return False
 
 
-def lire_generaux_territoire(territory):
+def zones_generaux_territoire(territory, joueur, configuration=None):
+    """Décrit les zones militaires, sans lire ni modifier le disque.
+
+    La réserve et la garnison ont la même position logique. Seules les zones
+    possédant un emplacement participent aux combats et aux collisions.
+    """
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
+    joueur_dir = territory / joueur
+    village = (territory.name in configuration["villages"]
+               and joueur in configuration["joueurs"])
+    garnison = joueur_dir / "garnison" if village else joueur_dir
+    zones = [
+        {"position": territory.name, "chemin": garnison / emplacement,
+         "emplacement": emplacement}
+        for emplacement in configuration["emplacements"]
+    ]
+    if village:
+        zones.append({"position": territory.name, "chemin": joueur_dir / "reserve"})
+    return zones
+
+
+def zones_generaux(joueur, configuration=None):
+    """Liste commune pour recherche, identité, propriétaires et duplication."""
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
+    zones = [
+        {"position": "home", "chemin": Path(f"/home/{joueur}")},
+        {"position": "repli", "chemin": configuration["repli_path"] / joueur},
+    ]
+    for territory in configuration["territoires"]:
+        zones.extend(zones_generaux_territoire(territory, joueur, configuration))
+    return zones
+
+
+def lire_generaux_territoire(territory, configuration=None):
     # Lit les généraux présents sur un territoire.
     #
     # Structure attendue :
@@ -327,19 +362,20 @@ def lire_generaux_territoire(territory):
     # Les anomalies sont traitées auparavant par les
     # fonctions de sécurisation des mouvements.
 
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
     resultat = {}
 
-    for joueur in config.joueurs:
+    for joueur in configuration["acteurs"]:
         resultat[joueur] = {}
 
-        for emplacement in config.emplacements:
+        for zone in zones_generaux_territoire(territory, joueur, configuration):
+            if "emplacement" not in zone:
+                continue  # La réserve n'est pas une force engagée.
+            emplacement = zone["emplacement"]
             resultat[joueur][emplacement] = None
 
-            emplacement_dir = (
-                territory
-                / joueur
-                / emplacement
-            )
+            emplacement_dir = zone["chemin"]
 
             if not emplacement_dir.exists():
                 continue
@@ -407,6 +443,7 @@ def lire_generaux_territoire(territory):
                 "chemin": chemin_general,
                 "nom": chemin_general.name,
                 "joueur": joueur,
+                "camp": configuration["acteurs"][joueur]["camp"],
                 "emplacement": emplacement,
                 "fiche": lire_fiche_general(
                     chemin_general
@@ -421,6 +458,46 @@ def lire_generaux_territoire(territory):
             }
 
     return resultat
+
+
+def regrouper_forces_par_camp(generaux_territoire, configuration=None):
+    """Regroupe les références aux généraux sans remplacer leur propriétaire.
+
+    Les collisions doivent avoir été traitées par la sécurité avant cet appel.
+    Aucun général ne doit être écrasé silencieusement lors du regroupement.
+    """
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
+    forces = {
+        acteur["camp"]: {place: None for place in configuration["emplacements"]}
+        for acteur in configuration["acteurs"].values()
+    }
+    for joueur, emplacements_joueur in generaux_territoire.items():
+        camp = configuration["acteurs"][joueur]["camp"]
+        for place in configuration["emplacements"]:
+            general = emplacements_joueur.get(place)
+            if general is None:
+                continue
+            if forces[camp][place] is not None:
+                raise ValueError(f"Collision non résolue : {camp}/{place}")
+            forces[camp][place] = general
+    return forces
+
+
+def lire_forces_territoire(territory, configuration=None):
+    return regrouper_forces_par_camp(
+        lire_generaux_territoire(territory, configuration), configuration
+    )
+
+
+def controle_forces(forces):
+    """Contrôle d'une collection de forces déjà regroupées par camp."""
+    presents = [camp for camp in forces if total_unites_joueur_generaux(forces, camp) > 0]
+    if not presents:
+        return "neutre"
+    if len(presents) == 1:
+        return presents[0]
+    return "conteste"
 
 
 def lire_blocs_general(chemin_general):
@@ -531,6 +608,7 @@ def total_unites_general(blocs_general):
 
 
 def total_unites_joueur_generaux(generaux_territoire, joueur):
+    # Accepte aussi une force regroupée par camp, sans modifier les généraux.
     # Calcule le nombre total d'unités d'un joueur sur un territoire,
     # en utilisant le nouveau système des généraux.
     #
@@ -552,29 +630,8 @@ def total_unites_joueur_generaux(generaux_territoire, joueur):
     return total
 
 
-def controle_territoire_generaux(generaux_territoire):
-    # Détermine qui contrôle un territoire avec le système des généraux.
-    #
-    # Pour l'instant, règle simple :
-    # - si j1 a des unités et j2 non : j1 contrôle
-    # - si j2 a des unités et j1 non : j2 contrôle
-    # - si personne n'a d'unités : neutre
-    # - si les deux ont des unités : contesté
-
-    total_j1 = total_unites_joueur_generaux(generaux_territoire, "j1")
-    total_j2 = total_unites_joueur_generaux(generaux_territoire, "j2")
-
-    if total_j1 > 0 and total_j2 == 0:
-        return "j1"
-
-    elif total_j2 > 0 and total_j1 == 0:
-        return "j2"
-
-    elif total_j1 == 0 and total_j2 == 0:
-        return "neutre"
-
-    else:
-        return "conteste"
+def controle_territoire_generaux(generaux_territoire, configuration=None):
+    return controle_forces(regrouper_forces_par_camp(generaux_territoire, configuration))
 
 
 def numero_general_depuis_nom(nom_general):
@@ -605,101 +662,22 @@ def numero_general_depuis_nom(nom_general):
         return None
 
 
-def trouver_position_general(joueur, nom_general):
-    # 1. Home
-    chemin_home = Path(f"/home/{joueur}") / nom_general
-
-    if chemin_home.is_dir():
-        return "home", chemin_home
-
-    # 2. Zone de repli
-    chemin_repli = config.repli_path / joueur / nom_general
-
-    if chemin_repli.is_dir():
-        return "repli", chemin_repli
-
-    # 3. Territoires
-    for territory in config.territoires:
-        for emplacement in config.emplacements:
-            chemin = (
-                territory
-                / joueur
-                / emplacement
-                / nom_general
-            )
-
-            if chemin.is_dir():
-                return territory.name, chemin
-
+def trouver_position_general(joueur, nom_general, configuration=None):
+    for zone in zones_generaux(joueur, configuration):
+        chemin = zone["chemin"] / nom_general
+        if chemin.is_dir():
+            return zone["position"], chemin
     return None, None
 
 
-def trouver_toutes_positions_general(joueur, nom_general):
-    # Recherche toutes les occurrences du même général.
-    #
-    # Normalement cette liste doit contenir exactement
-    # un seul élément.
-
+def trouver_toutes_positions_general(joueur, nom_general, configuration=None):
     positions = []
-
-    # ------------------------------------------
-    # Home
-    # ------------------------------------------
-
-    chemin_home = (
-        Path(f"/home/{joueur}")
-        / nom_general
-    )
-
-    if chemin_home.is_dir():
-        positions.append(
-            {
-                "position": "home",
-                "chemin": chemin_home,
-            }
-        )
-
-    # ------------------------------------------
-    # Repli
-    # ------------------------------------------
-
-    chemin_repli = (
-        config.repli_path
-        / joueur
-        / nom_general
-    )
-
-    if chemin_repli.is_dir():
-        positions.append(
-            {
-                "position": "repli",
-                "chemin": chemin_repli,
-            }
-        )
-
-    # ------------------------------------------
-    # Territoires
-    # ------------------------------------------
-
-    for territory in config.territoires:
-        for emplacement in config.emplacements:
-
-            chemin = (
-                territory
-                / joueur
-                / emplacement
-                / nom_general
-            )
-
-            if chemin.is_dir():
-                positions.append(
-                    {
-                        "position": territory.name,
-                        "chemin": chemin,
-                        "emplacement": emplacement,
-                    }
-                )
-
+    for zone in zones_generaux(joueur, configuration):
+        chemin = zone["chemin"] / nom_general
+        if chemin.is_dir():
+            occurrence = dict(zone)
+            occurrence["chemin"] = chemin
+            positions.append(occurrence)
     return positions
 
 
@@ -713,6 +691,7 @@ def general_a_des_unites(general):
 
 
 def generaux_actifs_joueur(generaux_territoire, joueur):
+    # La clé peut être un propriétaire ou un camp ; l'ordre reste 1 -> 4.
     # Retourne la liste des généraux d'un joueur qui ont encore des unités.
     #
     # Un général vide n'est pas considéré comme actif.
@@ -733,6 +712,7 @@ def joueur_possede_ordre_armee(
     joueur,
     identifiant_ordre
 ):
+    # Une force de camp réutilise cette même recherche d'ordre parmi ses généraux.
     # Vérifie si au moins un général actif du joueur
     # possède l'ordre d'armée demandé.
 

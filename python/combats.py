@@ -5,8 +5,21 @@ import shutil
 import config
 import etat
 import generaux
-import mouvements
 import rapports
+
+
+def adversaire_du_duel(armee, joueur):
+    """Le duel fournit ses deux participants, indépendamment de leurs noms."""
+    if len(armee) != 2 or joueur not in armee:
+        raise ValueError("Un duel doit contenir exactement deux adversaires.")
+    return next(adversaire for adversaire in armee if adversaire != joueur)
+
+
+def camps_du_combat(configuration):
+    camps = tuple(dict.fromkeys(acteur["camp"] for acteur in configuration["acteurs"].values()))
+    if len(camps) != 2:
+        raise ValueError("Une bataille doit opposer exactement deux camps.")
+    return camps
 
 
 def combat_entre_generaux(general_1, general_2):
@@ -18,6 +31,10 @@ def combat_entre_generaux(general_1, general_2):
 
     joueur_1 = general_1["joueur"]
     joueur_2 = general_2["joueur"]
+    camp_1 = general_1.get("camp", joueur_1)
+    camp_2 = general_2.get("camp", joueur_2)
+    if camp_1 == camp_2 or joueur_1 == joueur_2:
+        raise ValueError("Un duel doit opposer deux généraux de camps différents.")
 
     chemin_1 = general_1["chemin"]
     chemin_2 = general_2["chemin"]
@@ -42,6 +59,8 @@ def combat_entre_generaux(general_1, general_2):
     if not chemin_1.exists() or not chemin_2.exists():
         return {
             "joueur_1": joueur_1,
+            "camp_1": camp_1,
+            "camp_2": camp_2,
             "general_1": general_1["nom"],
             "initial_1": initial_1,
             "final_1": generaux.total_general_depuis_chemin(chemin_1),
@@ -146,6 +165,8 @@ def combat_entre_generaux(general_1, general_2):
 
     return {
         "joueur_1": joueur_1,
+        "camp_1": camp_1,
+        "camp_2": camp_2,
         "general_1": general_1["nom"],
         "initial_1": initial_1,
         "final_1": generaux.total_general_depuis_chemin(chemin_1),
@@ -160,8 +181,13 @@ def combat_entre_generaux(general_1, general_2):
 
 def resoudre_attaque_frontale(
     territory,
-    mode_combat
+    mode_combat,
+    configuration=None
 ):
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
+    camp_1, camp_2 = camps_du_combat(configuration)
+
     # Ordre 1-2 : attaque frontale.
     #
     # Les généraux placés dans les mêmes
@@ -182,28 +208,28 @@ def resoudre_attaque_frontale(
     engagement_effectue = False
     resultats = []
 
-    for emplacement in config.emplacements:
+    for emplacement in configuration["emplacements"]:
 
         # Relire entièrement le territoire avant
         # chaque duel, car le duel précédent peut
         # avoir supprimé un général.
         generaux_territoire = (
-            generaux.lire_generaux_territoire(
-                territory
+            generaux.lire_forces_territoire(
+                territory, configuration
             )
         )
 
-        general_j1 = (
+        general_camp_1 = (
             generaux_territoire[
-                "j1"
+                camp_1
             ][
                 emplacement
             ]
         )
 
-        general_j2 = (
+        general_camp_2 = (
             generaux_territoire[
-                "j2"
+                camp_2
             ][
                 emplacement
             ]
@@ -212,21 +238,21 @@ def resoudre_attaque_frontale(
         # Il faut un général actif dans les deux camps
         # au même emplacement.
         if not generaux.general_a_des_unites(
-            general_j1
+            general_camp_1
         ):
             rapports.afficher_et_ecrire(
                 f"Emplacement {emplacement} : "
-                f"aucun général actif pour j1."
+                f"aucun général actif pour {camp_1}."
             )
 
             continue
 
         if not generaux.general_a_des_unites(
-            general_j2
+            general_camp_2
         ):
             rapports.afficher_et_ecrire(
                 f"Emplacement {emplacement} : "
-                f"aucun général actif pour j2."
+                f"aucun général actif pour {camp_2}."
             )
 
             continue
@@ -240,14 +266,14 @@ def resoudre_attaque_frontale(
         )
 
         rapports.afficher_et_ecrire(
-            f"{general_j1['nom']} "
+            f"{general_camp_1['nom']} "
             f"contre "
-            f"{general_j2['nom']}"
+            f"{general_camp_2['nom']}"
         )
 
         resultat_duel = combat_entre_generaux(
-            general_j1,
-            general_j2
+            general_camp_1,
+            general_camp_2
         )
 
         rapports.ecrire_ligne_affrontement_territoire(
@@ -268,8 +294,13 @@ def resoudre_attaque_frontale(
 
 def resoudre_combat_range(
     territory,
-    mode_combat
+    mode_combat,
+    configuration=None
 ):
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
+    camp_1, camp_2 = camps_du_combat(configuration)
+
     # Moteur commun de résolution.
     #
     # Première étape éventuelle :
@@ -282,23 +313,23 @@ def resoudre_combat_range(
     # - le combat s'arrête lorsqu'un camp disparaît.
 
     generaux_depart = (
-        generaux.lire_generaux_territoire(
-            territory
+        generaux.lire_forces_territoire(
+            territory, configuration
         )
     )
 
-    ordre_frontal_j1 = (
+    ordre_frontal_camp_1 = (
         generaux.joueur_possede_ordre_armee(
             generaux_depart,
-            "j1",
+            camp_1,
             "1-2"
         )
     )
 
-    ordre_frontal_j2 = (
+    ordre_frontal_camp_2 = (
         generaux.joueur_possede_ordre_armee(
             generaux_depart,
-            "j2",
+            camp_2,
             "1-2"
         )
     )
@@ -306,15 +337,15 @@ def resoudre_combat_range(
     # Pour cette première version,
     # un seul des deux camps suffit pour provoquer
     # l'organisation frontale du combat.
-    if ordre_frontal_j1 or ordre_frontal_j2:
+    if ordre_frontal_camp_1 or ordre_frontal_camp_2:
 
         camps = []
 
-        if ordre_frontal_j1:
-            camps.append("j1")
+        if ordre_frontal_camp_1:
+            camps.append(camp_1)
 
-        if ordre_frontal_j2:
-            camps.append("j2")
+        if ordre_frontal_camp_2:
+            camps.append(camp_2)
 
         rapports.afficher_et_ecrire(
             "Ordre frontal demandé par : "
@@ -335,12 +366,12 @@ def resoudre_combat_range(
         )
         rapports.ecrire_entete_tableau_affrontements(
             territory,
-            "Pos"
+            "Pos", (camp_1, camp_2)
         )
 
         engagements_frontaux = resoudre_attaque_frontale(
             territory,
-            mode_combat
+            mode_combat, configuration
         )
 
         rapports.ecrire_fin_tableau_affrontements(
@@ -364,13 +395,13 @@ def resoudre_combat_range(
         round_combat += 1
 
         generaux_territoire = (
-            generaux.lire_generaux_territoire(
-                territory
+            generaux.lire_forces_territoire(
+                territory, configuration
             )
         )
 
         controle = (
-            generaux.controle_territoire_generaux(
+            generaux.controle_forces(
                 generaux_territoire
             )
         )
@@ -402,22 +433,22 @@ def resoudre_combat_range(
 
             return
 
-        actifs_j1 = generaux.generaux_actifs_joueur(
+        actifs_camp_1 = generaux.generaux_actifs_joueur(
             generaux_territoire,
-            "j1"
+            camp_1
         )
 
-        actifs_j2 = generaux.generaux_actifs_joueur(
+        actifs_camp_2 = generaux.generaux_actifs_joueur(
             generaux_territoire,
-            "j2"
+            camp_2
         )
 
         if (
-            len(actifs_j1) == 0
-            or len(actifs_j2) == 0
+            len(actifs_camp_1) == 0
+            or len(actifs_camp_2) == 0
         ):
             controle = (
-                generaux.controle_territoire_generaux(
+                generaux.controle_forces(
                     generaux_territoire
                 )
             )
@@ -448,8 +479,8 @@ def resoudre_combat_range(
 
             return
 
-        general_j1 = actifs_j1[0]
-        general_j2 = actifs_j2[0]
+        general_camp_1 = actifs_camp_1[0]
+        general_camp_2 = actifs_camp_2[0]
 
         rapports.afficher_et_ecrire(
             f"\n--- Combat rangé "
@@ -458,8 +489,8 @@ def resoudre_combat_range(
         )
 
         resultat_combat_range = combat_entre_generaux(
-            general_j1,
-            general_j2
+            general_camp_1,
+            general_camp_2
         )
 
         if round_combat == 1:
@@ -477,7 +508,7 @@ def resoudre_combat_range(
             )
             rapports.ecrire_entete_tableau_affrontements(
                 territory,
-                "Tour"
+                "Tour", (camp_1, camp_2)
             )
             tableau_combat_range_ouvert = True
 
@@ -510,13 +541,13 @@ def resoudre_combat_range(
         )
 
     generaux_territoire = (
-        generaux.lire_generaux_territoire(
-            territory
+        generaux.lire_forces_territoire(
+            territory, configuration
         )
     )
 
     controle = (
-        generaux.controle_territoire_generaux(
+        generaux.controle_forces(
             generaux_territoire
         )
     )
@@ -528,7 +559,7 @@ def resoudre_combat_range(
     )
 
 
-def resoudre_combat_v15(territory):
+def resoudre_combat_v15(territory, configuration=None):
     # Résolution OFF/OFF.
 
     rapports.afficher_et_ecrire(
@@ -537,18 +568,23 @@ def resoudre_combat_v15(territory):
 
     resoudre_combat_range(
         territory,
-        "OFF/OFF"
+        "OFF/OFF", configuration
     )
 
 
-def resoudre_combat_off_def(territory, defenseur):
+def resoudre_combat_off_def(territory, defenseur, configuration=None):
     # Résolution OFF/DEF.
     #
     # Pour l'instant, le moteur de combat est le même que OFF/OFF.
     # Mais on garde la distinction défenseur / attaquant pour les règles futures :
     # terrain, fortification, ravitaillement, avant-poste, brouillard de guerre, etc.
 
-    attaquant = mouvements.ennemi_de(defenseur)
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
+    camps = camps_du_combat(configuration)
+    if defenseur not in camps:
+        raise ValueError("Le défenseur doit être un camp du combat.")
+    attaquant = next(camp for camp in camps if camp != defenseur)
 
     rapports.afficher_et_ecrire(
         f"\n=== Combat OFF/DEF sur {territory.name} ==="
@@ -557,7 +593,7 @@ def resoudre_combat_off_def(territory, defenseur):
         f"Défenseur : {defenseur} | Attaquant : {attaquant}"
     )
 
-    resoudre_combat_range(territory, "OFF/DEF")
+    resoudre_combat_range(territory, "OFF/DEF", configuration)
 
 
 def cible_facile(type_unite):
@@ -645,7 +681,7 @@ def combat_bloc(
 
 
 def trouver_cible_facile(armee, joueur_attaquant, type_attaquant):
-    joueur_ennemi = mouvements.ennemi_de(joueur_attaquant)
+    joueur_ennemi = adversaire_du_duel(armee, joueur_attaquant)
     type_cible = cible_facile(type_attaquant)
 
     for bloc in config.ordre_blocs:
@@ -974,7 +1010,7 @@ def choisir_flanc_attaquant(armee, joueur):
 
 
 def choisir_cible(armee, joueur_attaquant, type_attaquant):
-    joueur_ennemi = mouvements.ennemi_de(joueur_attaquant)
+    joueur_ennemi = adversaire_du_duel(armee, joueur_attaquant)
 
     cible = trouver_cible_facile(armee, joueur_attaquant, type_attaquant)
 

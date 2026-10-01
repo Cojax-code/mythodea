@@ -182,14 +182,15 @@ def symbole_survie(nombre_unites):
 
 def ecrire_entete_tableau_affrontements(
     territoire,
-    colonne_numero
+    colonne_numero,
+    camps=("j1", "j2")
 ):
     bordure = "+------+--------------------------+-----+--------------------------+"
 
     ecrire_rapport_territoire(territoire, bordure)
     ecrire_rapport_territoire(
         territoire,
-        f"| {colonne_numero:<4} | {'j1':<24} | {'':^3} | {'j2':<24} |"
+        f"| {colonne_numero:<4} | {camps[0]:<24} | {'':^3} | {camps[1]:<24} |"
     )
     ecrire_rapport_territoire(territoire, bordure)
 
@@ -208,13 +209,19 @@ def ecrire_ligne_affrontement_territoire(
 ):
     symbole_1 = symbole_survie(resultat["final_1"])
     symbole_2 = symbole_survie(resultat["final_2"])
+    nom_1 = resultat["general_1"]
+    nom_2 = resultat["general_2"]
+    if resultat.get("camp_1", resultat["joueur_1"]) != resultat["joueur_1"]:
+        nom_1 = f"{resultat['joueur_1']} {nom_1}"
+    if resultat.get("camp_2", resultat["joueur_2"]) != resultat["joueur_2"]:
+        nom_2 = f"{resultat['joueur_2']} {nom_2}"
 
     gauche = (
-        f"{resultat['general_1']} {symbole_1} "
+        f"{nom_1} {symbole_1} "
         f"{resultat['initial_1']} → {resultat['final_1']}"
     )
     droite = (
-        f"{resultat['general_2']} {symbole_2} "
+        f"{nom_2} {symbole_2} "
         f"{resultat['initial_2']} → {resultat['final_2']}"
     )
 
@@ -247,14 +254,15 @@ def formater_force_rapport(nombre, type_unite):
     return f"{nombre} {nom_type_unite(type_unite, nombre)}"
 
 
-def ecrire_entete_detail_blocs(territoire):
+def ecrire_entete_detail_blocs(territoire, joueurs=("j1", "j2")):
     bordure = (
         "+--------+-----------+---------------+-----+-----------+---------------+----------------+"
     )
     ecrire_rapport_territoire(territoire, bordure)
     ecrire_rapport_territoire(
         territoire,
-        "| Moment | Bloc j1   | Unités j1     |     | Bloc j2   | Unités j2     | Résultat       |"
+        f"| Moment | {('Bloc ' + joueurs[0]):<9} | {('Unités ' + joueurs[0]):<13} "
+        f"|     | {('Bloc ' + joueurs[1]):<9} | {('Unités ' + joueurs[1]):<13} | Résultat       |"
     )
     ecrire_rapport_territoire(territoire, bordure)
 
@@ -266,10 +274,10 @@ def ecrire_fin_detail_blocs(territoire):
     )
 
 
-def ecrire_detail_choc(territoire, detail):
+def ecrire_detail_choc(territoire, detail, joueurs=("j1", "j2")):
     force_1 = formater_force_rapport(detail["initial_1"], detail["type_1"])
     force_2 = formater_force_rapport(detail["initial_2"], detail["type_2"])
-    resultat = f"j1 ({detail['final_1']}) / j2 ({detail['final_2']})"
+    resultat = f"{joueurs[0]} ({detail['final_1']}) / {joueurs[1]} ({detail['final_2']})"
 
     ecrire_rapport_territoire(
         territoire,
@@ -320,8 +328,8 @@ def ecrire_detail_manoeuvre(territoire, resultat_engagement, detail):
         normalise["type_2"]
     )
     resultat = (
-        f"j1 ({normalise['final_1']}) / "
-        f"j2 ({normalise['final_2']})"
+        f"{resultat_engagement['joueur_1']} ({normalise['final_1']}) / "
+        f"{resultat_engagement['joueur_2']} ({normalise['final_2']})"
     )
 
     ecrire_rapport_territoire(
@@ -335,11 +343,12 @@ def ecrire_detail_manoeuvre(territoire, resultat_engagement, detail):
 
 
 def ecrire_detail_engagement(territoire, etiquette, resultat):
+    joueurs = (resultat["joueur_1"], resultat["joueur_2"])
     ecrire_rapport_territoire(territoire, "")
     ecrire_rapport_territoire(
         territoire,
         f"--- Engagement {etiquette} : "
-        f"j1 {resultat['general_1']} <-> j2 {resultat['general_2']} ---"
+        f"{joueurs[0]} {resultat['general_1']} <-> {joueurs[1]} {resultat['general_2']} ---"
     )
 
     ecrire_rapport_territoire(territoire, "")
@@ -347,9 +356,9 @@ def ecrire_detail_engagement(territoire, etiquette, resultat):
     ecrire_rapport_territoire(territoire, "")
 
     if resultat["chocs"]:
-        ecrire_entete_detail_blocs(territoire)
+        ecrire_entete_detail_blocs(territoire, joueurs)
         for detail in resultat["chocs"]:
-            ecrire_detail_choc(territoire, detail)
+            ecrire_detail_choc(territoire, detail, joueurs)
         ecrire_fin_detail_blocs(territoire)
     else:
         ecrire_rapport_territoire(territoire, "Aucun choc direct entre blocs.")
@@ -359,7 +368,7 @@ def ecrire_detail_engagement(territoire, etiquette, resultat):
     ecrire_rapport_territoire(territoire, "")
 
     if resultat["manoeuvres"]:
-        ecrire_entete_detail_blocs(territoire)
+        ecrire_entete_detail_blocs(territoire, joueurs)
         for detail in resultat["manoeuvres"]:
             ecrire_detail_manoeuvre(territoire, resultat, detail)
         ecrire_fin_detail_blocs(territoire)
@@ -369,9 +378,9 @@ def ecrire_detail_engagement(territoire, etiquette, resultat):
     ecrire_rapport_territoire(territoire, "")
     ecrire_rapport_territoire(
         territoire,
-        f"Résultat : j1 {resultat['general_1']} "
+        f"Résultat : {joueurs[0]} {resultat['general_1']} "
         f"{resultat['initial_1']} → {resultat['final_1']} | "
-        f"j2 {resultat['general_2']} "
+        f"{joueurs[1]} {resultat['general_2']} "
         f"{resultat['initial_2']} → {resultat['final_2']}"
     )
 

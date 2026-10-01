@@ -37,17 +37,19 @@ def territoires_ravitailles(joueur, controle_territoires):
     return ravitailles
 
 
-def sauvegarder_controle_territoires():
+def sauvegarder_controle_territoires(configuration=None):
     # Sauvegarde le contrôle des territoires après la résolution.
     #
     # Ce fichier servira au prochain tour pour savoir
     # qui défend un territoire.
 
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
     lignes = []
 
-    for territory in config.territoires:
-        generaux_territoire = generaux.lire_generaux_territoire(territory)
-        controle = generaux.controle_territoire_generaux(generaux_territoire)
+    for territory in configuration["territoires"]:
+        generaux_territoire = generaux.lire_generaux_territoire(territory, configuration)
+        controle = generaux.controle_territoire_generaux(generaux_territoire, configuration)
 
         lignes.append(f"{territory.name}={controle}")
 
@@ -479,34 +481,37 @@ def lancer_bataille_v15():
         )
 
 
-def reparer_structure():
-    """Répare les dossiers classiques et leurs droits, sans générer de général."""
-    # 1. Créer les emplacements dans les territoires
-    for territory in config.territoires:
-        for joueur in config.joueurs:
+def reparer_structure(configuration=None):
+    """Répare les zones des joueurs et leurs droits, sans générer de général."""
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
+
+    for territory in configuration["territoires"]:
+        if configuration["mode"] == "survie":
+            territory.mkdir(parents=True, exist_ok=True)
+        for joueur in configuration["joueurs"]:
             joueur_dir = territory / joueur
-            joueur_dir.mkdir(exist_ok=True)
+            dossiers = [joueur_dir]
+            for zone in generaux.zones_generaux_territoire(territory, joueur, configuration):
+                # Inclure garnison/ avant ses emplacements, une seule fois.
+                parent = zone["chemin"].parent
+                if parent not in dossiers:
+                    dossiers.append(parent)
+                dossiers.append(zone["chemin"])
 
-            uid = pwd.getpwnam(joueur).pw_uid
-            gid = grp.getgrnam(joueur).gr_gid
+            acteur = configuration["acteurs"][joueur]
+            uid = pwd.getpwnam(acteur["proprietaire_linux"]).pw_uid
+            gid = grp.getgrnam(acteur["groupe_linux"]).gr_gid
+            for dossier in dossiers:
+                dossier.mkdir(exist_ok=True)
+                os.chown(dossier, uid, gid)
+                os.chmod(dossier, 0o700)
 
-            os.chown(joueur_dir, uid, gid)
-            os.chmod(joueur_dir, 0o700)
-
-            for emplacement in config.emplacements:
-                emplacement_dir = joueur_dir / emplacement
-                emplacement_dir.mkdir(exist_ok=True)
-
-                os.chown(emplacement_dir, uid, gid)
-                os.chmod(emplacement_dir, 0o700)
-
-    # Créer les zones de repli.
-    for joueur in config.joueurs:
-        repli_joueur = config.repli_path / joueur
+    for joueur in configuration["joueurs"]:
+        repli_joueur = configuration["repli_path"] / joueur
         repli_joueur.mkdir(parents=True, exist_ok=True)
-
-        uid = pwd.getpwnam(joueur).pw_uid
-        gid = grp.getgrnam(joueur).gr_gid
-
+        acteur = configuration["acteurs"][joueur]
+        uid = pwd.getpwnam(acteur["proprietaire_linux"]).pw_uid
+        gid = grp.getgrnam(acteur["groupe_linux"]).gr_gid
         os.chown(repli_joueur, uid, gid)
         os.chmod(repli_joueur, 0o700)

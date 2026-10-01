@@ -32,7 +32,7 @@ def sauvegarder_compteur_general(joueur, numero):
     compteur_path.write_text(str(numero), encoding="utf-8")
 
 
-def charger_controle_territoires():
+def charger_controle_territoires(configuration=None):
     # Charge le contrôle des territoires au tour précédent.
     #
     # Exemple du fichier :
@@ -43,7 +43,8 @@ def charger_controle_territoires():
     controle = {}
 
     # Par défaut, tous les territoires sont neutres.
-    for territory in config.territoires:
+    territoires = config.territoires if configuration is None else configuration["territoires"]
+    for territory in territoires:
         controle[territory.name] = "neutre"
 
     if not config.controle_territoires_path.exists():

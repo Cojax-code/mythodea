@@ -198,6 +198,31 @@ comme un mouvement**. Un général peut donc être placé depuis la réserve dan
 garnison puis effectuer son déplacement normal hors du village pendant le même tour,
 si les autres règles de déplacement l'autorisent.
 
+### Prise en charge des zones militaires
+
+`plateau.reparer_structure(configuration)` crée ou répare la garnison et la réserve
+de chaque joueur avec son propriétaire Linux et des permissions `700`, ainsi que
+les emplacements extérieurs et les espaces de repli séparés. La réparation ne crée
+aucun général et ne touche pas à sa composition. Les fonctions du Forum, de la Poste
+et du Clocher restent pour les étapes suivantes.
+
+La découverte et la sécurité utilisent les mêmes descriptions de zones dans
+`generaux.py`. La réserve est inspectée pour l'identité officielle, les propriétaires
+et les duplications, mais elle ne figure pas parmi les forces engagées.
+
+Les positions persistantes conservent le format `joueur:generalN=territoire`.
+Un général en réserve comme en garnison a la position logique `village` ; son
+chemin réel permet de retrouver sa zone. Ainsi, la réorganisation interne ne crée
+ni mouvement supplémentaire ni fatigue. Les restrictions communes de déploiement,
+de retour du repli et de distance restent applicables au déplacement territorial.
+
+Les appels utilisent explicitement le profil retourné par
+`config.configuration_mode("survie")`, sans remplacer la configuration globale
+classique. Par exemple, `securite.verifier_tous_les_deplacements(configuration)`
+audite les joueurs du profil et enregistre positions et fatigue dans les fichiers
+communs sous `/home/game/systeme`. Cet audit correspond à la validation des actions
+d'un tour ; il ne constitue pas encore un cycle Survie ni un scan périodique.
+
 ### Forum
 
 Le forum reçoit les informations générales de la partie, notamment :
@@ -368,8 +393,10 @@ des zones spéciales (`home`, `repli`). Le lien `repli <-> village` reste prése
 dans le graphe sans autoriser un mouvement volontaire vers le repli.
 
 À ce stade, `--mode survie --afficher-configuration` permet de consulter ce profil
-sans modifier le plateau. `--mode survie` seul refuse l'exécution : la création du
-plateau Survie, les vagues et la résolution coopérative restent à implémenter.
+sans modifier le plateau. `--mode survie` seul refuse toujours l'exécution : les
+fonctions de préparation et d'audit des zones militaires sont disponibles, mais les
+vagues et le cycle Survie restent à implémenter. Des batailles coopératives isolées
+peuvent être résolues avec le moteur commun sur des forces déjà préparées.
 
 Pour ce premier prototype, les ennemis de l'Est utilisent uniquement les généraux,
 unités, blocs et règles de combat classiques. Aucun comportement tactique ou ordre
@@ -612,3 +639,42 @@ positions communes.
 Au village, `j1` et `j2` possèdent chacun une `reserve/` séparée. La réserve
 n'est pas une position de combat et n'entre pas dans la règle des quatre emplacements
 partagés.
+
+### Forces communes et combat
+
+`generaux.lire_generaux_territoire(territoire, configuration)` conserve une lecture
+par propriétaire de jeu (`j1`, `j2`, `bot`). Chaque général garde son champ `joueur`,
+son nom technique, son chemin réel, son emplacement, sa fiche, ses ordres et ses blocs.
+Son champ `camp`, ajouté uniquement en mémoire, vient du profil.
+
+`regrouper_forces_par_camp()` puis `lire_forces_territoire()` fournissent une vue
+commune des quatre positions alliées, indépendante du propriétaire. Un emplacement
+déjà occupé n'est jamais écrasé pendant ce regroupement : une collision encore
+présente signale que l'audit préalable n'a pas été réalisé.
+
+Pour les batailles préparées à cette étape, les emplacements ennemis sont lus dans
+`territoire/bot/1` à `territoire/bot/4`, y compris au village. Les garnisons et
+réserves spécifiques aux joueurs restent sous leurs dossiers séparés. Aucune
+génération de bot ni gestion des renforts en surnombre n'est effectuée par ces appels.
+Les forces ennemies préparées doivent conserver leur propriétaire Linux `root`.
+
+Les fonctions communes `resoudre_attaque_frontale()`, `resoudre_combat_range()`,
+`resoudre_combat_v15()` (OFF/OFF) et `resoudre_combat_off_def()` acceptent le profil
+Survie. Elles choisissent les généraux dans l'ordre des positions, relisent les
+forces après les pertes et transmettent les généraux réels au même moteur de duel.
+La fatigue et la destruction restent rattachées à `joueur:generalN`, jamais à
+`allies:generalN`. Les données de résultat conservent propriétaires et camps ; les
+libellés des rapports identifient les propriétaires réels des généraux alliés.
+
+Le contrôle territorial est calculé selon les unités des forces engagées :
+
+| Présence | Contrôle |
+| --- | --- |
+| Alliés seuls | `allies` |
+| Bot seul | `bot` |
+| Aucune unité | `neutre` |
+| Alliés et bot | `conteste` |
+
+La réserve reste exclue de ces forces. La sauvegarde conserve le format
+`territoire=controle`. Ces fonctions ne déclenchent ni défaite globale, ni nouvelle
+vague, ni nouveau tour ; le cycle complet reste une étape ultérieure.

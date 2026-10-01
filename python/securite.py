@@ -1,5 +1,4 @@
 """Audit des généraux et validation des actions avant les combats."""
-from pathlib import Path
 import pwd
 import shutil
 
@@ -33,7 +32,7 @@ def joueur_proprietaire_chemin(chemin):
 
 
 def securiser_generaux_mauvais_joueur(
-    positions_avant
+    positions_avant, configuration=None
 ):
     # Vérifie qu'un général se trouve bien dans
     # l'arborescence de son véritable propriétaire.
@@ -47,33 +46,14 @@ def securiser_generaux_mauvais_joueur(
     #
     # La fonction retourne les identifiants punis.
 
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
     generaux_punis = set()
 
-    for joueur_zone in config.joueurs:
-
-        zones = [
-            (
-                "home",
-                Path(f"/home/{joueur_zone}")
-            ),
-            (
-                "repli",
-                config.repli_path / joueur_zone
-            ),
-        ]
-
-        for territory in config.territoires:
-            for emplacement in config.emplacements:
-                zones.append(
-                    (
-                        territory.name,
-                        territory
-                        / joueur_zone
-                        / emplacement
-                    )
-                )
-
-        for nom_zone, chemin_zone in zones:
+    for joueur_zone in configuration["joueurs"]:
+        for zone in generaux.zones_generaux(joueur_zone, configuration):
+            nom_zone = zone["position"]
+            chemin_zone = zone["chemin"]
 
             if not chemin_zone.exists():
                 continue
@@ -153,7 +133,8 @@ def securiser_generaux_mauvais_joueur(
                 occurrences_correctes = (
                     generaux.trouver_toutes_positions_general(
                         proprietaire_reel,
-                        chemin_general.name
+                        chemin_general.name,
+                        configuration
                     )
                 )
 
@@ -163,7 +144,7 @@ def securiser_generaux_mauvais_joueur(
 
                 if len(occurrences_correctes) == 0:
                     destination = (
-                        config.repli_path
+                        configuration["repli_path"]
                         / proprietaire_reel
                         / chemin_general.name
                     )
@@ -233,7 +214,8 @@ def securiser_generaux_mauvais_joueur(
                         mouvements.envoyer_general_au_repli(
                             proprietaire_reel,
                             chemin_general.name,
-                            occurrence_reelle["chemin"]
+                            occurrence_reelle["chemin"],
+                            configuration
                         )
 
                     generaux_punis.add(
@@ -249,102 +231,33 @@ def securiser_generaux_mauvais_joueur(
     return generaux_punis
 
 
-def supprimer_generaux_non_autorises():
-    # Supprime les dossiers generalX qui ne correspondent
-    # à aucun général généré et encore officiellement actif.
-
+def supprimer_generaux_non_autorises(configuration=None):
+    # Même contrôle d'identité dans toutes les zones, y compris les réserves.
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
     positions = etat.charger_positions_generaux()
-
-    for joueur in config.joueurs:
+    for joueur in configuration["joueurs"]:
         dernier_numero = etat.lire_compteur_general(joueur)
-
-        # ------------------------------------------
-        # Home
-        # ------------------------------------------
-
-        zones_a_verifier = [
-            Path(f"/home/{joueur}"),
-            config.repli_path / joueur,
-        ]
-
-        for zone in zones_a_verifier:
-
-            if not zone.exists():
+        for zone in generaux.zones_generaux(joueur, configuration):
+            chemin = zone["chemin"]
+            if not chemin.exists():
                 continue
-
-            for element in list(zone.iterdir()):
-
-                if not element.is_dir():
+            for element in list(chemin.iterdir()):
+                if not element.is_dir() or not element.name.startswith("general"):
                     continue
-
-                if not element.name.startswith("general"):
-                    continue
-
-                numero = generaux.numero_general_depuis_nom(
-                    element.name
-                )
-
-                if (
-                    numero is None
-                    or numero < 1
-                    or numero > dernier_numero
-                    or f"{joueur}:{element.name}" not in positions
-                ):
+                numero = generaux.numero_general_depuis_nom(element.name)
+                if (numero is None or numero < 1 or numero > dernier_numero
+                        or f"{joueur}:{element.name}" not in positions):
+                    suffixe = ""
+                    if zone["position"] not in ("home", "repli"):
+                        suffixe = f" sur {zone['position']}"
                     rapports.afficher_et_ecrire(
-                        f"Général non autorisé supprimé : "
-                        f"{joueur} {element.name}"
+                        f"Général non autorisé supprimé : {joueur} {element.name}{suffixe}"
                     )
-
                     shutil.rmtree(element)
 
-        # ------------------------------------------
-        # Territoires
-        # ------------------------------------------
 
-        for territory in config.territoires:
-            for emplacement in config.emplacements:
-
-                emplacement_dir = (
-                    territory
-                    / joueur
-                    / emplacement
-                )
-
-                if not emplacement_dir.exists():
-                    continue
-
-                for element in list(
-                    emplacement_dir.iterdir()
-                ):
-
-                    if not element.is_dir():
-                        continue
-
-                    if not element.name.startswith(
-                        "general"
-                    ):
-                        continue
-
-                    numero = generaux.numero_general_depuis_nom(
-                        element.name
-                    )
-
-                    if (
-                        numero is None
-                        or numero < 1
-                        or numero > dernier_numero
-                        or f"{joueur}:{element.name}" not in positions
-                    ):
-                        rapports.afficher_et_ecrire(
-                            f"Général non autorisé supprimé : "
-                            f"{joueur} {element.name} "
-                            f"sur {territory.name}"
-                        )
-
-                        shutil.rmtree(element)
-
-
-def securiser_generaux_dupliques(positions_avant):
+def securiser_generaux_dupliques(positions_avant, configuration=None):
     # Détecte les généraux présents plusieurs fois.
     #
     # En cas de duplication :
@@ -354,9 +267,11 @@ def securiser_generaux_dupliques(positions_avant):
     #
     # La fonction retourne les identifiants punis.
 
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
     generaux_punis = set()
 
-    for joueur in config.joueurs:
+    for joueur in configuration["joueurs"]:
         dernier_numero = etat.lire_compteur_general(joueur)
 
         for numero in range(
@@ -371,7 +286,8 @@ def securiser_generaux_dupliques(positions_avant):
             occurrences = (
                 generaux.trouver_toutes_positions_general(
                     joueur,
-                    nom_general
+                    nom_general,
+                    configuration
                 )
             )
 
@@ -440,7 +356,8 @@ def securiser_generaux_dupliques(positions_avant):
                 mouvements.envoyer_general_au_repli(
                     joueur,
                     nom_general,
-                    chemin_garde
+                    chemin_garde,
+                    configuration
                 )
 
             generaux_punis.add(
@@ -455,82 +372,47 @@ def securiser_generaux_dupliques(positions_avant):
     return generaux_punis
 
 
-def securiser_emplacements_generaux():
-    # Un emplacement ne peut contenir qu'un général.
-    #
-    # Si plusieurs généraux sont placés dans le même
-    # emplacement, tous sont envoyés au repli.
-    #
-    # Cela empêche de choisir arbitrairement lequel
-    # serait autorisé à rester.
+def securiser_emplacements_generaux(configuration=None):
+    """Sanctionne tous les occupants d'une position en collision.
 
+    En classique, les positions sont propres à chaque joueur. En Survie,
+    elles sont communes aux joueurs du même camp. La réserve est exclue.
+    """
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
     generaux_punis = set()
-
-    for territory in config.territoires:
-        for joueur in config.joueurs:
-            for emplacement in config.emplacements:
-
-                emplacement_dir = (
-                    territory
-                    / joueur
-                    / emplacement
-                )
-
-                if not emplacement_dir.exists():
+    for territory in configuration["territoires"]:
+        positions = {}
+        for joueur in configuration["joueurs"]:
+            camp = configuration["acteurs"][joueur]["camp"]
+            groupe = camp if configuration["emplacements_partages"] else joueur
+            for zone in generaux.zones_generaux_territoire(territory, joueur, configuration):
+                if "emplacement" not in zone or not zone["chemin"].exists():
                     continue
+                cle = (groupe, zone["emplacement"])
+                occupants = positions.setdefault(cle, [])
+                for element in zone["chemin"].iterdir():
+                    if element.is_dir() and element.name.startswith("general"):
+                        occupants.append((joueur, element))
 
-                generaux_trouves = []
-
-                for element in (
-                    emplacement_dir.iterdir()
-                ):
-                    if (
-                        element.is_dir()
-                        and element.name.startswith(
-                            "general"
-                        )
-                    ):
-                        generaux_trouves.append(
-                            element
-                        )
-
-                if len(generaux_trouves) <= 1:
-                    continue
-
-                rapports.afficher_et_ecrire(
-                    f"Emplacement invalide : "
-                    f"{territory.name} "
-                    f"{joueur}/{emplacement} "
-                    f"contient plusieurs généraux."
+        for (groupe, emplacement), occupants in positions.items():
+            if len(occupants) <= 1:
+                continue
+            rapports.afficher_et_ecrire(
+                f"Emplacement invalide : {territory.name} "
+                f"{groupe}/{emplacement} contient plusieurs généraux."
+            )
+            for joueur, chemin_general in occupants:
+                identifiant = f"{joueur}:{chemin_general.name}"
+                mouvements.envoyer_general_au_repli(
+                    joueur, chemin_general.name, chemin_general, configuration
                 )
-
-                for chemin_general in (
-                    generaux_trouves
-                ):
-                    identifiant = (
-                        f"{joueur}:"
-                        f"{chemin_general.name}"
-                    )
-
-                    mouvements.envoyer_general_au_repli(
-                        joueur,
-                        chemin_general.name,
-                        chemin_general
-                    )
-
-                    generaux_punis.add(
-                        identifiant
-                    )
-
-                    rapports.afficher_et_ecrire(
-                        f"{identifiant} envoyé "
-                        f"au repli."
-                    )
-
+                generaux_punis.add(identifiant)
+                rapports.afficher_et_ecrire(f"{identifiant} envoyé au repli.")
     return generaux_punis
 
 
-def verifier_tous_les_deplacements():
+def verifier_tous_les_deplacements(configuration=None):
     # Vérifie et sécurise tous les déplacements
     # avant la résolution des combats.
     #
@@ -543,12 +425,15 @@ def verifier_tous_les_deplacements():
     # 5. vérifier les déplacements ;
     # 6. enregistrer les marches forcées.
 
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
+
     rapports.afficher_et_ecrire(
         "\n=== Vérification des déplacements ==="
     )
 
     positions = etat.charger_positions_generaux()
-    controle_avant = etat.charger_controle_territoires()
+    controle_avant = etat.charger_controle_territoires(configuration)
 
     # ------------------------------------------
     # Sécurité générale
@@ -556,20 +441,20 @@ def verifier_tous_les_deplacements():
 
     punis_mauvais_joueur = (
         securiser_generaux_mauvais_joueur(
-            positions
+            positions, configuration
         )
     )
 
-    supprimer_generaux_non_autorises()
+    supprimer_generaux_non_autorises(configuration)
 
     punis_duplication = (
         securiser_generaux_dupliques(
-            positions
+            positions, configuration
         )
     )
 
     punis_emplacement = (
-        securiser_emplacements_generaux()
+        securiser_emplacements_generaux(configuration)
     )
 
     generaux_deja_punis = (
@@ -589,7 +474,7 @@ def verifier_tous_les_deplacements():
     # Vérification individuelle
     # ------------------------------------------
 
-    for joueur in config.joueurs:
+    for joueur in configuration["joueurs"]:
         dernier_numero = (
             etat.lire_compteur_general(joueur)
         )
@@ -607,7 +492,8 @@ def verifier_tous_les_deplacements():
             position_actuelle, chemin_actuel = (
                 generaux.trouver_position_general(
                     joueur,
-                    nom_general
+                    nom_general,
+                    configuration
                 )
             )
 
@@ -643,7 +529,8 @@ def verifier_tous_les_deplacements():
                     joueur,
                     origine,
                     position_actuelle,
-                    controle_avant
+                    controle_avant,
+                    configuration
                 )
             )
 
@@ -702,7 +589,8 @@ def verifier_tous_les_deplacements():
             mouvements.envoyer_general_au_repli(
                 joueur,
                 nom_general,
-                chemin_actuel
+                chemin_actuel,
+                configuration
             )
 
             nouvelles_positions[
