@@ -480,6 +480,7 @@ def lancer_bataille_v15():
 
 
 def reparer_structure():
+    """Répare les dossiers classiques et leurs droits, sans générer de général."""
     # 1. Créer les emplacements dans les territoires
     for territory in config.territoires:
         for joueur in config.joueurs:
@@ -499,7 +500,7 @@ def reparer_structure():
                 os.chown(emplacement_dir, uid, gid)
                 os.chmod(emplacement_dir, 0o700)
 
-        # Créer les zones de repli.
+    # Créer les zones de repli.
     for joueur in config.joueurs:
         repli_joueur = config.repli_path / joueur
         repli_joueur.mkdir(parents=True, exist_ok=True)
@@ -509,9 +510,3 @@ def reparer_structure():
 
         os.chown(repli_joueur, uid, gid)
         os.chmod(repli_joueur, 0o700)
-
-
-
-    # 2. Faire apparaître un général par joueur si possible.
-    for joueur in config.joueurs:
-        generaux.faire_apparaitre_general_si_possible(joueur)

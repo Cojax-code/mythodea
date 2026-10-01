@@ -339,8 +339,35 @@ leurs généraux selon les règles classiques : un général créé par tour, ci
 générés au maximum par joueur. Pendant ce tour 0, un général ne peut se déplacer que
 de son home vers le village.
 
-Le territoire `repli` fait partie du graphe Survie et est directement relié au
-`village`. Il conserve des espaces séparés pour les joueurs.
+La zone spéciale `repli` fait partie du graphe Survie et est directement reliée au
+`village`. Elle conserve des espaces séparés pour les joueurs. Ce n'est pas un
+territoire tactique accessible par déplacement volontaire : elle sert aux sanctions,
+aux retraites et aux replis prévus par les règles du moteur.
+
+### Configuration et propriétaires Linux
+
+Le profil `survie` de `config.configuration_mode()` décrit uniquement le front Est.
+Il conserve les racines Linux existantes et distingue :
+
+| Acteur de jeu | Propriétaire et groupe Linux | Camp militaire |
+| --- | --- | --- |
+| `j1` | `j1:j1` | `allies` |
+| `j2` | `j2:j2` | `allies` |
+| `bot` | `root:root` | `bot` |
+
+`allies` est un identifiant technique de camp, pas un nouveau compte Linux.
+Les joueurs humains restent `j1` et `j2` ; le bot n'est pas ajouté à leur liste de
+génération classique. Ses forces sont possédées par `root`, avec des dossiers en
+`700` et des fichiers en `600`. Les joueurs ne doivent pas pouvoir modifier les
+forces ennemies ; seul le moteur privilégié les crée et les modifie.
+
+Le profil distingue les territoires tactiques (`village`, `est_1`, `est_2`, `est_3`)
+des zones spéciales (`home`, `repli`). Le lien `repli <-> village` reste présent
+dans le graphe sans autoriser un mouvement volontaire vers le repli.
+
+À ce stade, `--mode survie --afficher-configuration` permet de consulter ce profil
+sans modifier le plateau. `--mode survie` seul refuse l'exécution : la création du
+plateau Survie, les vagues et la résolution coopérative restent à implémenter.
 
 Pour ce premier prototype, les ennemis de l'Est utilisent uniquement les généraux,
 unités, blocs et règles de combat classiques. Aucun comportement tactique ou ordre
@@ -402,8 +429,13 @@ Les généraux des joueurs ne possèdent pas ces champs.
 ## 12. Progression des vagues Est
 
 La vague 1 sert d'échauffement : un général de 5 unités apparaît sur chacun des trois
-territoires `est_1`, `est_2` et `est_3`. Les types d'unités et leur répartition
-dans les quatre blocs sont entièrement aléatoires.
+territoires `est_1`, `est_2` et `est_3`.
+
+Pour chaque général aléatoire, le nombre d'unités est réparti aléatoirement entre
+`avant`, `droite`, `gauche` et `arriere`. Chaque bloc non vide reçoit un seul type
+d'unité aléatoire, commun à toutes ses unités. Les blocs sont donc valides dès la
+création et les effectifs annoncés sont conservés, sans nettoyage de blocs mixtes.
+Les compositions imposées (mono-type ou cavalerie à l'avant) restent respectées.
 
 Ensuite :
 
@@ -431,8 +463,10 @@ Les vagues suivantes reprennent le pattern 6 à 10 par groupes de cinq :
 Ainsi, par exemple, la vague 13 correspond au pattern de la vague 8 :
 deux généraux complets aléatoires de base + un général mono-type complet.
 
-Après cette progression, quatre généraux apparaissent sur tous les territoires
-concernés jusqu'à la fin du prototype.
+À partir de la vague 26, chaque nouvelle vague fait apparaître quatre généraux
+complets aléatoires sur **chacun** des territoires `est_1`, `est_2` et `est_3`,
+soit douze généraux par vague, jusqu'à la fin du prototype Est. Ce régime s'applique
+également aux numéros divisibles par cinq à partir de cette étape.
 
 Toute vague Boss, c'est-à-dire une vague dont le numéro est divisible par 5, apparaît
 sur tous les territoires Est prévus pour le front à ce stade. La présence d'ennemis
@@ -456,6 +490,10 @@ Un affrontement utilise d'abord au maximum le nombre de généraux actifs autori
 le territoire. Lorsque cet affrontement est terminé, les ennemis encore présents sur
 le territoire peuvent entrer comme renforts.
 
+Les ennemis déjà présents sur le territoire sont prioritaires. Les généraux des
+nouvelles vagues complètent les emplacements libres ; ceux qui ne peuvent pas entrer
+attendent comme renforts. Aucune troupe n'est supprimée pour résoudre le surnombre.
+
 Le joueur doit pouvoir choisir à l'avance s'il reste pour affronter ces renforts.
 
 Chaque général joueur possède donc un fichier séparé des ordres classiques :
@@ -475,6 +513,18 @@ Règle par défaut :
 
 - hors du village : `1` ;
 - au village : `2`.
+
+Hors du village, un général qui fuit rejoint le territoire adjacent valide qui le
+rapproche le plus du village. Pour le front Est :
+
+```text
+est_3 -> est_2
+est_2 -> est_1
+est_1 -> village
+```
+
+Au village, il n'y a pas de retraite automatique. Le départage entre plusieurs
+routes équivalentes sur une future carte reste à définir.
 
 Le fichier appartient au général. Son choix est conservé lorsque le général se
 déplace. S'il est supprimé, le moteur le recrée au scan suivant avec la valeur par

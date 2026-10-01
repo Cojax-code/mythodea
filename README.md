@@ -47,6 +47,21 @@ Le moteur peut aussi être lancé directement :
 sudo python3 python/mythodea_v_1_5.py
 ```
 
+Sans option, le lancement conserve le mode classique. Il peut aussi être explicite :
+
+```bash
+bash bash/start.sh --mode classique
+```
+
+La configuration du prototype Survie Est est consultable sans modifier le plateau :
+
+```bash
+python3 -B python/mythodea_v_1_5.py --mode survie --afficher-configuration
+```
+
+Le mode Survie n'est pas encore jouable : `--mode survie` seul est refusé avant
+toute modification de la partie. L'installation et le nettoyage restent classiques.
+
 ## Organisation
 
 ```text

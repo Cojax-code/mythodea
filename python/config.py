@@ -137,3 +137,65 @@ meteos_possibles = [
 ]
 
 controle_territoires_path = game_path / "systeme" / "controle_territoires.txt"
+
+
+modes_disponibles = ("classique", "survie")
+
+
+def configuration_mode(mode):
+    """Décrit un mode sans modifier la configuration globale V1.5 ni le disque.
+
+    Les acteurs sont des identités de jeu, distinctes des comptes Linux et
+    des camps militaires. Chaque appel retourne des données indépendantes.
+    Le profil Survie prépare le moteur futur ; il n'active pas ses règles.
+    """
+    if mode not in modes_disponibles:
+        raise ValueError(f"Mode inconnu : {mode}")
+
+    acteurs = {
+        joueur: {
+            "proprietaire_linux": joueur,
+            "groupe_linux": joueur,
+            "camp": joueur if mode == "classique" else "allies",
+        }
+        for joueur in joueurs
+    }
+
+    if mode == "classique":
+        carte = {nom: list(voisins) for nom, voisins in carte_territoires.items()}
+        bases = dict(bases_joueurs)
+        territoires_mode = list(territoires)
+        duree_action = None  # Le lancement classique résout un seul tour.
+    else:
+        carte = {
+            "repli": ["village"],
+            "village": ["repli", "est_1"],
+            "est_1": ["village", "est_2"],
+            "est_2": ["est_1", "est_3"],
+            "est_3": ["est_2"],
+        }
+        bases = {joueur: "village" for joueur in joueurs}
+        # Le repli est relié au village mais reste une zone spéciale.
+        territoires_mode = [game_path / nom for nom in carte if nom != "repli"]
+        acteurs["bot"] = {
+            "proprietaire_linux": "root",
+            "groupe_linux": "root",
+            "camp": "bot",
+        }
+        duree_action = 120
+
+    return {
+        "mode": mode,
+        "game_path": game_path,
+        "territoires": territoires_mode,
+        "carte_territoires": carte,
+        "bases_joueurs": bases,
+        "repli_path": repli_path,
+        "zones_speciales": ["home", "repli"],
+        "joueurs": list(joueurs),
+        "acteurs": acteurs,
+        "emplacements": list(emplacements),
+        "emplacements_partages": mode == "survie",
+        "permissions_generaux": {"dossiers": 0o700, "fichiers": 0o600},
+        "duree_phase_action_secondes": duree_action,
+    }

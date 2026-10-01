@@ -54,7 +54,8 @@ mythodea/
 │   ├── plateau.py
 │   ├── victoire.py
 │   └── tests/
-│       └── test_mythodea.py
+│       ├── test_mythodea.py
+│       └── test_modes.py
 ├── README.md
 ├── TESTS.md
 └── MYTHODEA_SPEC.md
@@ -64,8 +65,8 @@ Responsabilités :
 
 | Module | Rôle |
 | --- | --- |
-| `mythodea_v_1_5.py` | point d'entrée et ordre général d'un tour |
-| `config.py` | chemins, carte, constantes, légende des ordres |
+| `mythodea_v_1_5.py` | sélection du mode et orchestration du tour classique |
+| `config.py` | chemins, carte, constantes, légende des ordres et profils des modes |
 | `etat.py` | compteurs, positions, fatigue, météo et lecture d'état |
 | `generaux.py` | généraux, fiches, ordres, blocs, unités, permissions |
 | `mouvements.py` | règles de déplacement et repli |
@@ -78,6 +79,17 @@ Responsabilités :
 Les dépendances sont orientées de manière à éviter les imports circulaires.
 Importer les modules ne doit jamais lancer un tour. Seul le point d'entrée appelle
 `main()`.
+
+`config.configuration_mode(mode)` retourne un profil indépendant pour `classique`
+ou `survie`, sans écriture sur disque ni remplacement des variables globales
+classiques. Le profil distingue les acteurs de jeu, leurs comptes et groupes Linux,
+et leurs camps militaires. Les modules V1.5 continuent d'utiliser leur configuration
+classique ; le profil Survie n'est pas encore raccordé à une résolution jouable.
+
+Le point d'entrée accepte `--mode classique` (valeur par défaut) et `--mode survie`.
+L'option `--afficher-configuration` affiche le profil sans lancer de tour ni importer
+les modules dépendant d'Unix. L'exécution Survie est refusée tant que son cycle
+n'est pas implémenté. `bash/start.sh` transmet les options au point d'entrée.
 
 ---
 
@@ -667,6 +679,8 @@ préparer rapports et météo
         ↓
 réparer / compléter la structure du plateau
         ↓
+faire apparaître un général par joueur si possible
+        ↓
 vérifier sécurité et déplacements
         ↓
 vérifier victoire
@@ -681,6 +695,13 @@ afficher le rapport court
 Le point d'entrée `python/mythodea_v_1_5.py` orchestre ce cycle ; la logique
 métier reste dans les modules spécialisés.
 
+`plateau.reparer_structure()` répare uniquement les dossiers classiques et leurs
+permissions. Le point d'entrée appelle ensuite une fois par joueur
+`generaux.faire_apparaitre_general_si_possible()`. La génération conserve sa place
+avant l'audit : un seul général par joueur et par tour, aucun si le home contient
+déjà un général ou si cinq généraux ont déjà été générés. Réparer plusieurs fois
+la structure ne provoque aucune génération.
+
 ---
 
 ## 18. Tests
@@ -691,7 +712,7 @@ Suite actuelle :
 python3 -B -m unittest discover -s python/tests -v
 ```
 
-La suite contient 32 tests de régression couvrant notamment :
+La suite conserve les 32 tests de régression V1.5 couvrant notamment :
 
 - priorité globale de la manœuvre ;
 - avant libre et flancs ;
@@ -707,6 +728,10 @@ La suite contient 32 tests de régression couvrant notamment :
 - limite de 20 unités ;
 - OFF/OFF et OFF/DEF ;
 - rapports de bataille.
+
+`test_modes.py` vérifie en complément les profils classique et Survie, la séparation
+entre propriétaires Linux et camps, la sélection du mode, le cycle classique et la
+réparation du plateau sans génération.
 
 Les tests utilisent un plateau temporaire et peuvent simuler les dépendances Unix.
 Ils ne remplacent pas un test réel sur Linux avec vrais UID/GID, `chown`, `chmod`
