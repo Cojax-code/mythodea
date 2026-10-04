@@ -256,6 +256,43 @@ class CombatsCamps(unittest.TestCase):
         self.assertIn("j1 general1 <-> j2 general1", rapport)
         self.assertNotIn("allies", rapport)
 
+    def test_reserve_armee_ne_conteste_pas_le_controle_du_bot(self):
+        self.territoire = self.config.game_path / "village"
+        general = self.general("j1", blocs={"avant": (5, "arc")}, ordre="1-2")
+        reserve = self.territoire / "j1/reserve/general1"
+        reserve.parent.mkdir(parents=True)
+        general.rename(reserve)
+        self.assertEqual(self.generaux.controle_forces(self.forces()), "neutre")
+
+        bot = self.general("bot", blocs={"avant": (2, "pique")})
+        positions = self.etat.charger_positions_generaux()
+        self.combats.resoudre_combat_v15(self.territoire, self.profil)
+        self.assertEqual(self.engagements(), [])
+        self.assertEqual(self.generaux.total_general_depuis_chemin(reserve), 5)
+        self.assertEqual(self.generaux.total_general_depuis_chemin(bot), 2)
+        self.assertEqual(self.etat.charger_positions_generaux(), positions)
+        self.plateau.sauvegarder_controle_territoires(self.profil)
+        self.assertEqual(self.etat.charger_controle_territoires(self.profil)["village"], "bot")
+
+    def test_bot_defenseur_et_rapport_manoeuvre_contre_j2(self):
+        self.general("j2", blocs={"gauche": (5, "arc")})
+        self.general("bot", blocs={"arriere": (5, "arc")})
+        self.etat.sauvegarder_generaux_fatigues({"j2:general1"})
+        self.combats.resoudre_combat_off_def(self.territoire, "bot", self.profil)
+        journal = self.config.rapport_long_path.read_text(encoding="utf-8")
+        self.assertIn("Défenseur : bot | Attaquant : allies", journal)
+        self.assertEqual(self.generaux.controle_forces(self.forces()), "bot")
+        rapport = (self.config.rapports_territoires_dir / "est_1.txt").read_text(encoding="utf-8")
+        self.assertIn("j2 general1 <-> bot general1", rapport)
+        self.assertIn("Bloc j2", rapport)
+        self.assertIn("Bloc bot", rapport)
+        self.assertIn("j2 (0) / bot (3)", rapport)
+        manoeuvre = next(ligne for ligne in rapport.splitlines() if ligne.startswith("| M1"))
+        self.assertIn("gauche", manoeuvre)
+        self.assertIn("arriere", manoeuvre)
+        self.assertIn("<-", manoeuvre)
+        self.assertNotIn("j1", rapport)
+
 
 if __name__ == "__main__":
     unittest.main()
