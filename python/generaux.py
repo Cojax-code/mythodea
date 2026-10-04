@@ -180,6 +180,49 @@ def lire_fiche_general(chemin_general):
     return fiche
 
 
+def assurer_ordre_surnombre(chemin_general, joueur, position, configuration):
+    """Crée seulement le fichier manquant, selon la position au moment du scan."""
+    if configuration["mode"] != "survie" or joueur not in configuration["joueurs"]:
+        return None
+    chemin = chemin_general / "ordre_surnombre.txt"
+    if not chemin.exists():
+        valeur = 2 if position in configuration["villages"] else 1
+        chemin.write_text(f"{valeur}\n", encoding="utf-8")
+        acteur = configuration["acteurs"][joueur]
+        os.chown(chemin, pwd.getpwnam(acteur["proprietaire_linux"]).pw_uid,
+                 grp.getgrnam(acteur["groupe_linux"]).gr_gid)
+        os.chmod(chemin, 0o600)
+    return chemin
+
+
+def lire_ordre_surnombre(general, position, configuration):
+    chemin = assurer_ordre_surnombre(
+        general["chemin"], general["joueur"], position, configuration)
+    if chemin is None:
+        raise ValueError("L'ordre de surnombre appartient aux joueurs du mode Survie.")
+    texte = chemin.read_text(encoding="utf-8").strip()
+    if texte not in ("1", "2"):
+        valeur = 2 if position in configuration["villages"] else 1
+        rapports.afficher_et_ecrire(
+            f"Ordre de surnombre invalide : {chemin}. Défaut du lieu utilisé : {valeur}."
+        )
+        return valeur
+    return int(texte)
+
+
+def scanner_ordres_surnombre(configuration):
+    """Complète les généraux joueurs officiels, y compris home, réserve et repli."""
+    if configuration["mode"] != "survie":
+        return
+    for identifiant in etat.charger_positions_generaux():
+        joueur, nom = identifiant.split(":", 1)
+        if joueur not in configuration["joueurs"] or numero_general_depuis_nom(nom) is None:
+            continue
+        position, chemin = trouver_position_general(joueur, nom, configuration)
+        if chemin is not None:
+            assurer_ordre_surnombre(chemin, joueur, position, configuration)
+
+
 def lire_ordres_general(chemin_general):
     # Lit et valide les ordres présents dans ordre.txt.
     #
@@ -333,7 +376,71 @@ def zones_generaux_territoire(territory, joueur, configuration=None):
     ]
     if village:
         zones.append({"position": territory.name, "chemin": joueur_dir / "reserve"})
+    if configuration["mode"] == "survie" and joueur == "bot":
+        zones.append({"position": territory.name, "chemin": joueur_dir / "renforts"})
     return zones
+
+
+def lire_renforts_bot(territoire):
+    """Queue physique des renforts dans leur ordre d'arrivée, sans mutation."""
+    dossier = territoire / "bot" / "renforts"
+    if not dossier.exists():
+        return []
+    presents = {chemin.name: chemin for chemin in dossier.iterdir()
+                if chemin.is_dir() and numero_general_depuis_nom(chemin.name) is not None}
+    ordre = dossier / "ordre_arrivee.txt"
+    noms = ordre.read_text(encoding="utf-8").splitlines() if ordre.exists() else []
+    resultat = []
+    for nom in noms:
+        if nom in presents:
+            resultat.append(presents.pop(nom))
+    # Compatibilité avec les forces préparées avant l'enregistrement de la queue.
+    resultat.extend(sorted(presents.values(), key=lambda p: numero_general_depuis_nom(p.name)))
+    return resultat
+
+
+def sauvegarder_ordre_renforts_bot(territoire, chemins, configuration):
+    """Un nom canonique par ligne ; le fichier reste privé au compte du bot."""
+    ordre = territoire / "bot" / "renforts" / "ordre_arrivee.txt"
+    ordre.write_text("".join(f"{chemin.name}\n" for chemin in chemins), encoding="utf-8")
+    acteur = configuration["acteurs"]["bot"]
+    os.chown(ordre, pwd.getpwnam(acteur["proprietaire_linux"]).pw_uid,
+             grp.getgrnam(acteur["groupe_linux"]).gr_gid)
+    os.chmod(ordre, 0o600)
+
+
+def remonter_renforts_bot(territoire, configuration=None):
+    """Remplit les places libres après un affrontement, sans lancer de combat.
+
+    Les survivants actifs gardent leur place. Les premiers renforts vivants
+    occupent les trous dans l'ordre 1 à 4. Aucun déplacement territorial.
+    """
+    if configuration is None or configuration["mode"] != "survie":
+        return []
+    if "bot" not in configuration["acteurs"]:
+        return []
+    renforts = lire_renforts_bot(territoire)
+    if not renforts:
+        return []
+    vivants = []
+    for chemin in renforts:
+        general = {"chemin": chemin, "nom": chemin.name, "joueur": "bot",
+                   "fiche": lire_fiche_general(chemin)}
+        if not supprimer_general_si_vide(general):
+            vivants.append(chemin)
+    promus = []
+    for zone in zones_generaux_territoire(territoire, "bot", configuration):
+        if "emplacement" not in zone or not vivants:
+            continue
+        zone["chemin"].mkdir(mode=0o700, exist_ok=True)
+        if any(zone["chemin"].iterdir()):
+            continue
+        chemin = vivants.pop(0)
+        destination = zone["chemin"] / chemin.name
+        chemin.rename(destination)
+        promus.append(destination)
+    sauvegarder_ordre_renforts_bot(territoire, vivants, configuration)
+    return promus
 
 
 def zones_generaux(joueur, configuration=None):
@@ -755,7 +862,7 @@ def supprimer_general_si_vide(general):
         return False
 
     rapports.afficher_et_ecrire(
-        f"{general['joueur']} {general['nom']} "
+        f"{general['joueur']} {rapports.nom_affichage_general(general)} "
         f"n'a plus d'unités. Général supprimé."
     )
 

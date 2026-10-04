@@ -372,7 +372,7 @@ def securiser_generaux_dupliques(positions_avant, configuration=None):
     return generaux_punis
 
 
-def securiser_emplacements_generaux(configuration=None):
+def securiser_emplacements_generaux(configuration=None, territoire=None):
     """Sanctionne tous les occupants d'une position en collision.
 
     En classique, les positions sont propres à chaque joueur. En Survie,
@@ -381,7 +381,8 @@ def securiser_emplacements_generaux(configuration=None):
     if configuration is None:
         configuration = config.configuration_mode("classique")
     generaux_punis = set()
-    for territory in configuration["territoires"]:
+    territoires = configuration["territoires"] if territoire is None else [territoire]
+    for territory in territoires:
         positions = {}
         for joueur in configuration["joueurs"]:
             camp = configuration["acteurs"][joueur]["camp"]
@@ -468,7 +469,12 @@ def verifier_tous_les_deplacements(configuration=None):
     # ------------------------------------------
 
     generaux_fatigues = set()
-    nouvelles_positions = {}
+    # Les acteurs pilotés par le moteur ne sont pas audités comme des joueurs.
+    acteurs_automatiques = set(configuration["acteurs"]) - set(configuration["joueurs"])
+    nouvelles_positions = {
+        identifiant: position for identifiant, position in positions.items()
+        if identifiant.split(":", 1)[0] in acteurs_automatiques
+    }
 
     # ------------------------------------------
     # Vérification individuelle
@@ -612,3 +618,4 @@ def verifier_tous_les_deplacements(configuration=None):
     etat.sauvegarder_generaux_fatigues(
         generaux_fatigues
     )
+    generaux.scanner_ordres_surnombre(configuration)

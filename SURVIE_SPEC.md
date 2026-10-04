@@ -394,9 +394,10 @@ dans le graphe sans autoriser un mouvement volontaire vers le repli.
 
 À ce stade, `--mode survie --afficher-configuration` permet de consulter ce profil
 sans modifier le plateau. `--mode survie` seul refuse toujours l'exécution : les
-fonctions de préparation et d'audit des zones militaires sont disponibles, mais les
-vagues et le cycle Survie restent à implémenter. Des batailles coopératives isolées
-peuvent être résolues avec le moteur commun sur des forces déjà préparées.
+fonctions de préparation et d'audit des zones militaires et les vagues sont
+appelables séparément. Le cycle Survie reste à implémenter. Des batailles
+coopératives isolées peuvent être résolues avec le moteur commun sur des forces
+déjà préparées.
 
 Pour ce premier prototype, les ennemis de l'Est utilisent uniquement les généraux,
 unités, blocs et règles de combat classiques. Aucun comportement tactique ou ordre
@@ -449,9 +450,49 @@ La `fiche.txt` d'un général ennemi contient en plus :
 ```text
 faction=est
 vague=<numero>
+nom_affichage=general<vague>_<numero_dans_la_vague>
 ```
 
 Les généraux des joueurs ne possèdent pas ces champs.
+
+`nom` dans la fiche et le nom du dossier restent `generalN`. Le compteur commun
+`systeme/compteur_general_bot.txt` réserve des numéros techniques jamais réutilisés.
+Les positions gardent le format `bot:generalN=territoire`. Le rang d'affichage est
+unique dans toute la vague, tous territoires confondus, et reste conservé après
+déplacement ou destruction d'autres généraux de cette vague.
+
+### Fonctions disponibles pour la phase ennemie
+
+`vagues.composer_vague_est(numero, aleatoire)` décrit une vague par une liste de
+généraux : territoire d'apparition, numéro de vague, nom d'affichage et composition
+des quatre blocs (`nombre`, `type`). Cette fonction ne touche pas au plateau.
+La source aléatoire peut être fournie pour rendre les tests reproductibles.
+
+`survie.preparer_phase_ennemie(numero_vague, configuration, aleatoire)` réalise
+uniquement la progression puis l'apparition. L'appelant fournit le numéro et doit
+l'appeler une seule fois pour cette phase. Elle ne gère pas encore le tour 0,
+le chronomètre, les combats, le contrôle final, la défaite ou le tour suivant.
+`avancer_ennemis()` et `creer_vague_est()` sont également appelables séparément.
+Les ennemis déjà au village y restent ; les autres avancent d'une seule case,
+y compris ceux conservés parmi les renforts.
+
+`survie.inventorier_ennemis()` lit toutes les présences dans les zones communes du
+bot, sans nettoyage ni suppression. Les quatre places sont remplies dans l'ordre
+à l'arrivée ; les ennemis supplémentaires vont dans `territoire/bot/renforts/`.
+Cette zone reste privée (`root:root`, dossiers `700`, fichiers `600`) et fait partie
+de la recherche des identités. Elle contient la suite mobile de la colonne ennemie.
+Après l'affrontement territorial (frontal puis rangé), les premiers renforts vivants
+remplissent immédiatement les places libres, avant le choix de retraite.
+Cette remontée ne lance pas elle-même un nouvel affrontement.
+`survie.resoudre_cascade()` enchaîne les affrontements communs selon les choix
+individuels des alliés, sans lancer de cycle de partie.
+L'audit des joueurs conserve les positions officielles du bot.
+
+Le fichier privé `bot/renforts/ordre_arrivee.txt` conserve l'ordre d'arrivée des
+renforts, un nom technique `generalN` par ligne. Un général arrivé plus tard rejoint
+la fin, même si son numéro technique est plus petit. En l'absence d'historique
+(anciennes forces préparées sans ce fichier), les noms non enregistrés sont repris
+par numéro technique croissant. Ce fichier n'est pas un ordre de joueur.
 
 ---
 
@@ -534,6 +575,19 @@ sur le territoire** comme renforts. La limite de quatre concerne donc l'engageme
 simultané, pas la présence totale sur le territoire. Aucune troupe n'est supprimée
 pour résoudre le surnombre.
 
+`bot/renforts/` représente la suite de la colonne présente sur le même territoire.
+Son ordre logique est : positions actives `1 -> 2 -> 3 -> 4`, puis renforts dans
+leur ordre d'arrivée. Quand des places sont libérées après un affrontement, les
+premiers renforts encore vivants y remontent immédiatement dans l'ordre des places
+libres. Les survivants actifs conservent leurs emplacements.
+
+Exemple : quatre actifs et six renforts ; les quatre actifs sont détruits, puis le
+joueur fuit. Les quatre premiers renforts deviennent actifs et les deux derniers
+restent dans `renforts/`. Au tour suivant, les six généraux avancent ensemble.
+Aucun renfort n'est laissé sur le territoire précédent. Une colonne non réduite
+peut ainsi atteindre le village avec de nombreux renforts ; les affrontements
+successifs sont pris en charge par la résolution en cascade.
+
 Le joueur doit pouvoir choisir à l'avance s'il reste pour affronter ces renforts.
 
 Chaque général joueur possède donc un fichier séparé des ordres classiques :
@@ -545,8 +599,8 @@ ordre_surnombre.txt
 Valeurs :
 
 ```text
-1 = battre en retraite si des renforts ennemis doivent entrer
-2 = continuer l'affrontement
+1 = battre en retraite avant un nouvel affrontement contre les renforts
+2 = continuer le combat
 ```
 
 Règle par défaut :
@@ -569,6 +623,45 @@ routes équivalentes sur une future carte reste à définir.
 Le fichier appartient au général. Son choix est conservé lorsque le général se
 déplace. S'il est supprimé, le moteur le recrée au scan suivant avec la valeur par
 défaut appropriée à sa situation de création.
+
+Le scan utilise la **position actuelle** au moment de recréer le fichier : `2`
+dans la réserve ou la garnison du village, `1` dans toute autre zone (home et repli
+compris). Il ne remplace pas un choix existant. Une valeur vide ou invalide est
+signalée dans le rapport long et utilise le défaut du lieu, sans réécrire le fichier.
+Le fichier appartient au joueur, en `600`, et ne modifie jamais `ordre.txt`.
+
+La retraite conserve le numéro de l'emplacement. Au village, l'arrivée se fait
+dans la garnison du propriétaire. Une collision alliée à l'arrivée réutilise la
+règle commune : les deux occupants sont envoyés au repli. Aucune troupe n'est
+écrasée ou supprimée. Les positions officielles sont immédiatement mises à jour ;
+la retraite n'ajoute pas de fatigue et ne réinitialise pas celle du général.
+
+### Séquence d'une cascade
+
+1. Résoudre l'affrontement initial avec le moteur commun, sans consulter le choix
+   de surnombre pour interrompre cet affrontement.
+2. Remonter les premiers renforts vivants dans les places libres, dans leur ordre.
+3. Relire les forces ; s'il reste des alliés et des ennemis, et que des renforts
+   viennent de remonter, lire le fichier de chaque général allié survivant.
+4. Hors village, déplacer ceux qui ont choisi `1` vers le voisin rapprochant le
+   plus du village. Ceux qui ont choisi `2` restent. Au village, aucun général
+   ne part automatiquement, même si son fichier contient `1`.
+5. Relire les alliés réellement présents, puis relancer le même moteur si les
+   deux camps sont encore présents. Les pertes précédentes restent sur disque.
+6. Répéter la remontée et la consultation avant chaque nouvel affrontement.
+
+La cascade s'arrête si les ennemis ou les alliés sont éliminés, si tous les alliés
+survivants ont quitté le territoire, ou si aucun renfort n'a été promu pour un
+affrontement supplémentaire. Elle ne contourne pas les limites de sécurité du
+moteur commun. Les identités techniques, vagues, noms d'affichage et ordre de
+colonne sont conservés. Le départage de routes équivalentes reste non défini et
+provoque un refus explicite au lieu d'un choix arbitraire.
+
+L'API est `survie.resoudre_cascade(territoire, configuration, mode_combat="OFF/OFF")`.
+Elle accepte aussi `OFF/DEF`, renvoie le nombre d'affrontements, les retraites et
+le contrôle local final. Elle n'avance aucun bot, ne génère aucune vague et ne
+sauvegarde pas le contrôle global d'une partie. Les fonctions communes de combat
+restent appelables pour un affrontement isolé.
 
 Si la valeur `2` est choisie, des ordres spécifiques au combat en surnombre pourront
 être ajoutés ultérieurement. Ils ne font pas partie du premier prototype.
@@ -655,7 +748,8 @@ présente signale que l'audit préalable n'a pas été réalisé.
 Pour les batailles préparées à cette étape, les emplacements ennemis sont lus dans
 `territoire/bot/1` à `territoire/bot/4`, y compris au village. Les garnisons et
 réserves spécifiques aux joueurs restent sous leurs dossiers séparés. Aucune
-génération de bot ni gestion des renforts en surnombre n'est effectuée par ces appels.
+génération de bot n'est effectuée par ces appels. La résolution territoriale remonte
+les renforts après l'affrontement, sans les engager dans un combat supplémentaire.
 Les forces ennemies préparées doivent conserver leur propriétaire Linux `root`.
 
 Les fonctions communes `resoudre_attaque_frontale()`, `resoudre_combat_range()`,

@@ -44,8 +44,8 @@ def combat_entre_generaux(general_1, general_2):
 
     rapports.afficher_et_ecrire(
         f"\nEngagement : "
-        f"{joueur_1} {general_1['nom']} VS "
-        f"{joueur_2} {general_2['nom']}"
+        f"{joueur_1} {rapports.nom_affichage_general(general_1)} VS "
+        f"{joueur_2} {rapports.nom_affichage_general(general_2)}"
     )
 
     initiative_avant, details_choc = phase_engagement_initial(
@@ -62,10 +62,12 @@ def combat_entre_generaux(general_1, general_2):
             "camp_1": camp_1,
             "camp_2": camp_2,
             "general_1": general_1["nom"],
+            "affichage_1": rapports.nom_affichage_general(general_1),
             "initial_1": initial_1,
             "final_1": generaux.total_general_depuis_chemin(chemin_1),
             "joueur_2": joueur_2,
             "general_2": general_2["nom"],
+            "affichage_2": rapports.nom_affichage_general(general_2),
             "initial_2": initial_2,
             "final_2": generaux.total_general_depuis_chemin(chemin_2),
             "chocs": details_choc,
@@ -168,10 +170,12 @@ def combat_entre_generaux(general_1, general_2):
         "camp_1": camp_1,
         "camp_2": camp_2,
         "general_1": general_1["nom"],
+        "affichage_1": rapports.nom_affichage_general(general_1),
         "initial_1": initial_1,
         "final_1": generaux.total_general_depuis_chemin(chemin_1),
         "joueur_2": joueur_2,
         "general_2": general_2["nom"],
+        "affichage_2": rapports.nom_affichage_general(general_2),
         "initial_2": initial_2,
         "final_2": generaux.total_general_depuis_chemin(chemin_2),
         "chocs": details_choc,
@@ -266,9 +270,9 @@ def resoudre_attaque_frontale(
         )
 
         rapports.afficher_et_ecrire(
-            f"{general_camp_1['nom']} "
+            f"{rapports.nom_affichage_general(general_camp_1)} "
             f"contre "
-            f"{general_camp_2['nom']}"
+            f"{rapports.nom_affichage_general(general_camp_2)}"
         )
 
         resultat_duel = combat_entre_generaux(
@@ -293,6 +297,26 @@ def resoudre_attaque_frontale(
 
 
 def resoudre_combat_range(
+    territory,
+    mode_combat,
+    configuration=None
+):
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
+    resoudre_affrontement_actif(territory, mode_combat, configuration)
+    # L'affrontement est terminé : préparer la tête de colonne avant le choix
+    # de retraite, sans engager les nouveaux actifs dans cette bataille.
+    promus = generaux.remonter_renforts_bot(territory, configuration)
+    if promus:
+        forces = generaux.lire_forces_territoire(territory, configuration)
+        rapports.afficher_et_ecrire(
+            f"Colonne ennemie : {len(promus)} renfort(s) remonté(s). "
+            f"Contrôle après remontée : {generaux.controle_forces(forces)}"
+        )
+    return promus
+
+
+def resoudre_affrontement_actif(
     territory,
     mode_combat,
     configuration=None
@@ -740,8 +764,8 @@ def confrontation_directe(
     joueur_1 = general_1["joueur"]
     joueur_2 = general_2["joueur"]
 
-    nom_1 = f"{joueur_1} {general_1['nom']}"
-    nom_2 = f"{joueur_2} {general_2['nom']}"
+    nom_1 = f"{joueur_1} {rapports.nom_affichage_general(general_1)}"
+    nom_2 = f"{joueur_2} {rapports.nom_affichage_general(general_2)}"
 
     infos_1 = armee[joueur_1][bloc]
     infos_2 = armee[joueur_2][bloc]
@@ -854,9 +878,9 @@ def phase_engagement_initial(general_1, general_2):
 
         rapports.afficher_et_ecrire(
             f"- {bloc} : "
-            f"{joueur_1} {general_1['nom']} {rapports.formater_force(infos_1)} "
+            f"{joueur_1} {rapports.nom_affichage_general(general_1)} {rapports.formater_force(infos_1)} "
             f"VS "
-            f"{joueur_2} {general_2['nom']} {rapports.formater_force(infos_2)}"
+            f"{joueur_2} {rapports.nom_affichage_general(general_2)} {rapports.formater_force(infos_2)}"
         )
 
     rapports.afficher_et_ecrire("\n--- Résolution du choc initial ---")
@@ -902,8 +926,8 @@ def attaque_ciblee(
     joueur_attaquant = general_attaquant["joueur"]
     joueur_ennemi = general_defenseur["joueur"]
 
-    nom_attaquant = f"{joueur_attaquant} {general_attaquant['nom']}"
-    nom_defenseur = f"{joueur_ennemi} {general_defenseur['nom']}"
+    nom_attaquant = f"{joueur_attaquant} {rapports.nom_affichage_general(general_attaquant)}"
+    nom_defenseur = f"{joueur_ennemi} {rapports.nom_affichage_general(general_defenseur)}"
 
     infos_attaquant = armee[joueur_attaquant][bloc_attaquant]
     infos_defenseur = armee[joueur_ennemi][bloc_cible]

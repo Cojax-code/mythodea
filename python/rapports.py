@@ -9,6 +9,13 @@ territoire_rapport_actuel = None
 meteo_tour = None
 
 
+def nom_affichage_general(general):
+    """Le libellé ennemi ne remplace jamais son identité technique."""
+    if general["joueur"] == "bot":
+        return general.get("fiche", {}).get("nom_affichage", general["nom"])
+    return general["nom"]
+
+
 def formater_force(infos):
     # Transforme les informations d'un bloc en texte lisible.
     #
@@ -209,8 +216,8 @@ def ecrire_ligne_affrontement_territoire(
 ):
     symbole_1 = symbole_survie(resultat["final_1"])
     symbole_2 = symbole_survie(resultat["final_2"])
-    nom_1 = resultat["general_1"]
-    nom_2 = resultat["general_2"]
+    nom_1 = resultat.get("affichage_1", resultat["general_1"])
+    nom_2 = resultat.get("affichage_2", resultat["general_2"])
     if resultat.get("camp_1", resultat["joueur_1"]) != resultat["joueur_1"]:
         nom_1 = f"{resultat['joueur_1']} {nom_1}"
     if resultat.get("camp_2", resultat["joueur_2"]) != resultat["joueur_2"]:
@@ -344,11 +351,13 @@ def ecrire_detail_manoeuvre(territoire, resultat_engagement, detail):
 
 def ecrire_detail_engagement(territoire, etiquette, resultat):
     joueurs = (resultat["joueur_1"], resultat["joueur_2"])
+    nom_1 = resultat.get("affichage_1", resultat["general_1"])
+    nom_2 = resultat.get("affichage_2", resultat["general_2"])
     ecrire_rapport_territoire(territoire, "")
     ecrire_rapport_territoire(
         territoire,
         f"--- Engagement {etiquette} : "
-        f"{joueurs[0]} {resultat['general_1']} <-> {joueurs[1]} {resultat['general_2']} ---"
+        f"{joueurs[0]} {nom_1} <-> {joueurs[1]} {nom_2} ---"
     )
 
     ecrire_rapport_territoire(territoire, "")
@@ -378,9 +387,9 @@ def ecrire_detail_engagement(territoire, etiquette, resultat):
     ecrire_rapport_territoire(territoire, "")
     ecrire_rapport_territoire(
         territoire,
-        f"Résultat : {joueurs[0]} {resultat['general_1']} "
+        f"Résultat : {joueurs[0]} {nom_1} "
         f"{resultat['initial_1']} → {resultat['final_1']} | "
-        f"{joueurs[1]} {resultat['general_2']} "
+        f"{joueurs[1]} {nom_2} "
         f"{resultat['initial_2']} → {resultat['final_2']}"
     )
 

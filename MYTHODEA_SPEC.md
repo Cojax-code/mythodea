@@ -53,11 +53,15 @@ mythodea/
 │   ├── rapports.py
 │   ├── plateau.py
 │   ├── victoire.py
+│   ├── survie.py
+│   ├── vagues.py
 │   └── tests/
 │       ├── test_mythodea.py
 │       ├── test_modes.py
 │       ├── test_village.py
-│       └── test_combats_camps.py
+│       ├── test_combats_camps.py
+│       ├── test_vagues.py
+│       └── test_surnombre.py
 ├── README.md
 ├── TESTS.md
 └── MYTHODEA_SPEC.md
@@ -77,6 +81,8 @@ Responsabilités :
 | `rapports.py` | rapports et tableaux |
 | `plateau.py` | structure du plateau et coordination des territoires |
 | `victoire.py` | objectifs et victoire |
+| `vagues.py` | compositions des vagues Est, sans accès au disque |
+| `survie.py` | inventaire ennemi, progression Est, vagues et orchestration des cascades |
 
 Les dépendances sont orientées de manière à éviter les imports circulaires.
 Importer les modules ne doit jamais lancer un tour. Seul le point d'entrée appelle
@@ -98,6 +104,51 @@ communes sont utilisées par la recherche, l'audit et la préparation du plateau
 elles ne lisent ni ne modifient le disque. Une zone numérotée porte un champ
 `emplacement` ; une réserve n'en porte pas et ne participe pas aux collisions ni
 à la lecture des forces engagées.
+
+En Survie, ces descriptions incluent aussi `territoire/bot/renforts/`, sans
+emplacement de combat. L'inventaire de `survie.py` conserve tous les ennemis des
+places et des renforts. La lecture des forces engagées reste limitée aux quatre
+places et n'effectue pas de déplacement. À la fin d'un affrontement territorial
+(frontal puis rangé), `generaux.remonter_renforts_bot()` remplit immédiatement les
+places libres avec les premiers renforts vivants, sans lancer un nouvel affrontement.
+Les survivants actifs gardent leur emplacement. L'ordre de la colonne est celui des
+positions `1` à `4`, puis des renforts dans leur ordre d'arrivée. Toute la colonne
+avance ensemble lors de la progression automatique.
+
+Le fichier privé `territoire/bot/renforts/ordre_arrivee.txt` contient un nom
+canonique par ligne, dans l'ordre de la file. Il appartient à `root:root`, en `600`.
+Les arrivées s'ajoutent à la fin ; les noms absents du disque sont ignorés.
+Pour les forces préparées sans ce fichier, les renforts non enregistrés sont
+ajoutés par numéro canonique croissant : leur historique d'arrivée n'est pas connu.
+
+`survie.preparer_phase_ennemie(numero_vague, configuration, aleatoire)` avance les
+anciens ennemis avant de créer la vague demandée. Le numéro est fourni par
+l'appelant, une fois par phase ; aucun cycle complet de partie n'est lancé.
+Les fonctions communes de création, de lecture des blocs, de permissions,
+d'identité et de combat sont réutilisées. L'audit des déplacements des joueurs
+préserve les positions des acteurs automatiques gérés par le moteur.
+
+`survie.resoudre_cascade(territoire, configuration, mode_combat)` enchaîne des
+appels à `combats.resoudre_combat_range()`, qui continue à résoudre un seul
+affrontement et renvoie les renforts promus à son terme. La cascade consulte
+ensuite les choix individuels des survivants et relit les forces après les retraites.
+Les calculs, pertes, fatigue et priorités restent ceux du moteur commun.
+L'absence de nouvelles promotions arrête la cascade, y compris lorsqu'une limite
+de sécurité du moteur a laissé le territoire contesté.
+
+En Survie, `generaux.scanner_ordres_surnombre()` crée les fichiers manquants des
+généraux joueurs officiels, dans toutes leurs zones. Il est appelé à la fin de
+l'audit des déplacements. La cascade complète aussi les participants avant le
+premier affrontement. Le fichier `ordre_surnombre.txt` appartient au joueur (`600`),
+avec le défaut `1` hors village et `2` au village ; un choix existant suit le dossier.
+`ordre.txt` reste indépendant. Les comptes et fichiers classiques sont inchangés.
+
+`mouvements.destination_retraite_surnombre()` cherche l'unique voisin tactique
+rapprochant le plus du village ; un départage ambigu est refusé.
+`mouvements.retraite_surnombre()` conserve le numéro de place, les unités, les
+fichiers et la fatigue, et met à jour la position officielle. La cascade applique
+ensuite l'audit commun des collisions, limité au territoire d'arrivée, avec envoi
+au repli des occupants en collision et mise à jour de leurs positions.
 
 La lecture territoriale conserve les généraux par propriétaire de jeu (`joueur`)
 et ajoute leur `camp` en mémoire d'après le profil. Le compte Linux reste une
@@ -247,6 +298,10 @@ diminué.
 Créer manuellement un dossier portant le nom d'un ancien général ne le ressuscite
 pas.
 
+Le bot Survie utilise la même identité `bot:generalN`, le même fichier de positions
+et un compteur distinct `systeme/compteur_general_bot.txt`. Il n'est pas soumis
+à la limite de cinq généraux générés des joueurs humains.
+
 ### Fiche
 
 Format actuel :
@@ -269,6 +324,11 @@ hybride
 
 Les effets futurs de `strategie`, `force` et `experience` ne doivent pas être
 inventés tant qu'ils ne sont pas définis.
+
+Une fiche du bot Est ajoute `faction=est`, `vague=<numero>` et
+`nom_affichage=general<vague>_<numero_dans_la_vague>`. `nom` reste canonique.
+Les rapports utilisent ce libellé ; les données de combat conservent `general_1`
+et `general_2` techniques et ajoutent `affichage_1` et `affichage_2` pour le rendu.
 
 ---
 
@@ -773,6 +833,16 @@ V1.5 et de sélection du mode sont conservées sans modification.
 l'ordre des positions, les identités, la fatigue, les ordres, le contrôle par camp
 et la compatibilité classique. Les forces sont préparées dans un plateau temporaire,
 sans génération de vagues.
+
+`test_vagues.py` couvre les compositions Est, leur matérialisation, la progression,
+les noms d'affichage, les identités, les droits Unix simulés, la conservation des
+forces excédentaires et leur exclusion des quatre places de combat.
+Il vérifie aussi la remontée après affrontement, l'ordre d'arrivée persistant et
+le déplacement de la colonne entière jusqu'au village.
+
+`test_surnombre.py` vérifie le scan, les fichiers privés et leurs défauts, les
+choix individuels, les retraites et collisions à l'arrivée, les cascades avec
+pertes cumulées, l'ordre de la colonne et les conditions d'arrêt.
 
 Les tests utilisent un plateau temporaire et peuvent simuler les dépendances Unix.
 Ils ne remplacent pas un test réel sur Linux avec vrais UID/GID, `chown`, `chmod`
