@@ -461,7 +461,39 @@ j2 : home -> base2 uniquement
 
 ### Repli
 
-Retour autorisé uniquement vers sa propre base.
+Le `repli` est une zone de sanction du moteur commun, notamment pour les cas
+d'anti-triche et de déplacement invalide. Une retraite tactique normale d'un mode
+de jeu ne doit pas utiliser cette zone sauf règle explicite.
+
+Lorsqu'un général est envoyé au repli comme sanction, il reçoit un délai avant de
+pouvoir effectuer une nouvelle action :
+
+```text
+tours_attente = ceil(distance_de_retour / 2)
+```
+
+`distance_de_retour` est la distance minimale en territoires entre le lieu où la
+sanction a été constatée et le point normal de retour depuis le repli du mode
+concerné. Dans le mode classique, ce point reste la propre base du joueur.
+
+Exemples :
+
+```text
+distance 1 -> 1 tour
+distance 2 -> 1 tour
+distance 3 -> 2 tours
+distance 4 -> 2 tours
+distance 5 -> 3 tours
+```
+
+Tant que ce compteur est supérieur à zéro, le général ne peut effectuer aucune
+action. Le compteur doit être persistant et décrémenté une fois par tour. Le choix
+du fichier d'état exact reste une responsabilité d'implémentation, mais il ne doit
+pas modifier cette règle de gameplay.
+
+Une fois l'attente terminée, le retour autorisé reste uniquement vers le point de
+retour normal du mode (propre base en classique ; règle spécifique du mode dans les
+autres profils).
 
 ### Mouvement normal
 
