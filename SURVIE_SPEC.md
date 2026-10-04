@@ -630,11 +630,59 @@ compris). Il ne remplace pas un choix existant. Une valeur vide ou invalide est
 signalée dans le rapport long et utilise le défaut du lieu, sans réécrire le fichier.
 Le fichier appartient au joueur, en `600`, et ne modifie jamais `ordre.txt`.
 
-La retraite conserve le numéro de l'emplacement. Au village, l'arrivée se fait
-dans la garnison du propriétaire. Une collision alliée à l'arrivée réutilise la
-règle commune : les deux occupants sont envoyés au repli. Aucune troupe n'est
-écrasée ou supprimée. Les positions officielles sont immédiatement mises à jour ;
-la retraite n'ajoute pas de fatigue et ne réinitialise pas celle du général.
+La retraite tactique de surnombre ne doit pas devenir une téléportation punitive
+vers `repli`. Elle recule d'abord d'un territoire vers le village, puis réorganise
+les généraux alliés sur le territoire d'arrivée.
+
+Pour cette réorganisation, la colonne alliée utilise des positions logiques :
+
+```text
+1..4   = positions actives
+5      = renfort 1
+6      = renfort 2
+...
+20     = renfort 16
+```
+
+Physiquement, les positions actives restent dans les emplacements habituels. Les
+positions `5..20` sont stockées dans une zone `renforts/` propre à chaque joueur,
+par exemple `territoire/j1/renforts/5/`. Au village, cette zone reste distincte de
+`reserve/` : la réserve est une organisation interne volontaire du village, tandis
+que `renforts/` représente un débordement tactique après une retraite.
+
+La fiche d'un général joueur peut contenir le champ optionnel :
+
+```text
+position_surnombre=<1..20>
+```
+
+Ce champ n'est consulté que lorsqu'une réorganisation de surnombre/retraite est
+nécessaire.
+
+Ordre de placement :
+
+1. traiter d'abord les généraux qui possèdent `position_surnombre`, par valeur
+   demandée croissante ;
+2. pour chacun, essayer la position demandée ; si elle est occupée, essayer
+   successivement les positions supérieures jusqu'à trouver la première place libre ;
+3. traiter ensuite les généraux sans `position_surnombre`, dans l'ordre numérique
+   de leur position d'origine avant la retraite ;
+4. chacun de ces généraux cherche la première place libre en testant
+   `1 -> 2 -> 3 -> 4 -> 5 -> ... -> 20`.
+
+Exemple : un général sans préférence provenant de la position 1 est traité avant
+un général sans préférence provenant de la position 4. Un général peut aussi
+indiquer `position_surnombre=1` s'il souhaite être prioritaire pour une place active
+lorsqu'une retraite arrive sur un territoire peu occupé.
+
+Si deux préférences se chevauchent, le premier général traité prend la place ; le
+suivant continue vers la première position supérieure libre. Les positions actives
+`1..4` restent partagées logiquement entre `j1` et `j2`.
+
+La retraite n'ajoute pas de fatigue et ne réinitialise pas celle du général.
+Les positions officielles doivent rester cohérentes avec le territoire réel. Les
+détails de départage qui ne seraient pas couverts par ces règles ne doivent pas être
+inventés silencieusement.
 
 ### Séquence d'une cascade
 
@@ -644,8 +692,10 @@ la retraite n'ajoute pas de fatigue et ne réinitialise pas celle du général.
 3. Relire les forces ; s'il reste des alliés et des ennemis, et que des renforts
    viennent de remonter, lire le fichier de chaque général allié survivant.
 4. Hors village, déplacer ceux qui ont choisi `1` vers le voisin rapprochant le
-   plus du village. Ceux qui ont choisi `2` restent. Au village, aucun général
-   ne part automatiquement, même si son fichier contient `1`.
+   plus du village. Sur le territoire d'arrivée, appliquer la réorganisation
+   `1..20` décrite ci-dessus au lieu d'envoyer automatiquement un général au
+   `repli` parce qu'une place active est occupée. Ceux qui ont choisi `2` restent.
+   Au village, aucun général ne part automatiquement, même si son fichier contient `1`.
 5. Relire les alliés réellement présents, puis relancer le même moteur si les
    deux camps sont encore présents. Les pertes précédentes restent sur disque.
 6. Répéter la remontée et la consultation avant chaque nouvel affrontement.
@@ -676,6 +726,40 @@ vagues des nouveaux renforts.
 Certains territoires pourront plus tard limiter le nombre de généraux engagés
 simultanément, par exemple à un seul général. Cette capacité de combat est distincte
 du nombre total de forces ennemies physiquement présentes sur le territoire.
+
+### Repli comme sanction
+
+La zone globale `repli` n'est pas la destination normale d'une retraite tactique de
+surnombre. Elle reste une **sanction** pour les anomalies et infractions du moteur
+commun (duplication, déplacement illégal, collision interdite, placement chez le
+mauvais joueur, etc.).
+
+Pour éviter qu'une sanction de repli ne devienne un raccourci avantageux en Survie,
+un général envoyé au repli reçoit un temps d'attente avant de pouvoir effectuer une
+nouvelle action. La règle commune est :
+
+```text
+tours_attente = ceil(distance_de_retour / 2)
+```
+
+où `distance_de_retour` est le nombre minimal de territoires entre le lieu où la
+sanction a été constatée et le point normal de retour depuis le repli. Pour le
+prototype Survie Est, ce point est le village. Le moteur commun doit conserver cette
+règle de façon réutilisable pour le mode classique/JcJ.
+
+Exemples :
+
+```text
+distance 1 -> 1 tour d'attente
+distance 2 -> 1 tour
+distance 3 -> 2 tours
+distance 4 -> 2 tours
+distance 5 -> 3 tours
+```
+
+Pendant cette attente, le général ne peut effectuer aucune action. Le détail du
+stockage persistant de ce compteur peut être choisi simplement par l'implémentation,
+mais la durée et l'interdiction d'agir sont des règles de gameplay.
 
 ---
 
