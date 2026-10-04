@@ -69,11 +69,21 @@ Pour le premier prototype Survie :
 - garder les délais visuels de combat configurables et neutralisables dans les tests ;
 - considérer les positions `1` à `4` comme partagées logiquement entre `j1` et
   `j2`, tout en conservant leurs dossiers Linux séparés ;
-- en cas de collision alliée sur le même numéro d'emplacement, envoyer les deux
-  généraux au territoire `repli` ;
+- en cas de collision alliée volontaire/illégale sur le même numéro d'emplacement,
+  conserver la sanction commune de `repli` ; en revanche, une **retraite tactique
+  de surnombre** ne doit pas téléporter un général au repli simplement parce que
+  son emplacement d'arrivée est occupé ;
+- pour les retraites tactiques Survie, utiliser la file alliée documentée dans
+  `SURVIE_SPEC.md` : positions logiques actives `1..4`, puis positions de renfort
+  `5..20` ; respecter `position_surnombre` lorsqu'elle est présente et ne pas
+  inventer d'autre règle de placement ;
+- garder `repli` comme zone de **sanction** (anti-triche, duplication, déplacement
+  illégal, collision interdite). La sanction de repli comporte un délai d'attente
+  calculé selon la règle commune documentée dans `MYTHODEA_SPEC.md` ;
 - au village, conserver une `reserve/` séparée pour chaque joueur ; le passage
   `reserve <-> garnison` est une réorganisation interne et ne consomme pas le
-  mouvement normal du général.
+  mouvement normal du général. La `reserve/` ne doit pas être confondue avec la
+  zone tactique `renforts/`.
 
 ## Tests
 
