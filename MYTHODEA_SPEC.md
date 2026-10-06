@@ -54,6 +54,7 @@ mythodea/
 │   ├── plateau.py
 │   ├── victoire.py
 │   ├── survie.py
+│   ├── minuterie.py
 │   ├── vagues.py
 │   └── tests/
 │       ├── test_mythodea.py
@@ -61,7 +62,8 @@ mythodea/
 │       ├── test_village.py
 │       ├── test_combats_camps.py
 │       ├── test_vagues.py
-│       └── test_surnombre.py
+│       ├── test_surnombre.py
+│       └── test_cycle_survie.py
 ├── README.md
 ├── TESTS.md
 └── MYTHODEA_SPEC.md
@@ -73,16 +75,17 @@ Responsabilités :
 | --- | --- |
 | `mythodea_v_1_5.py` | sélection du mode et orchestration du tour classique |
 | `config.py` | chemins, carte, constantes, légende des ordres et profils des modes |
-| `etat.py` | compteurs, positions, fatigue, météo et lecture d'état |
+| `etat.py` | compteurs, positions, fatigue, météo, état persistant et verrou du cycle Survie |
 | `generaux.py` | généraux, fiches, ordres, blocs, unités, permissions |
 | `mouvements.py` | règles de déplacement et repli |
-| `securite.py` | anti-triche et validation des déplacements |
+| `securite.py` | anti-triche, audit des déplacements et contrôles territoriaux sans effets secondaires |
 | `combats.py` | résolution des combats |
 | `rapports.py` | rapports et tableaux |
 | `plateau.py` | structure du plateau et coordination des territoires |
 | `victoire.py` | objectifs et victoire |
 | `vagues.py` | compositions des vagues Est, sans accès au disque |
-| `survie.py` | inventaire ennemi, progression Est, vagues et orchestration des cascades |
+| `survie.py` | cycle Survie Est, progression ennemie, vagues, cascades et retraites différées |
+| `minuterie.py` | validation de la durée et attente jusqu'à une échéance, sans logique métier |
 
 Les dépendances sont orientées de manière à éviter les imports circulaires.
 Importer les modules ne doit jamais lancer un tour. Seul le point d'entrée appelle
@@ -94,9 +97,9 @@ classiques. Le profil distingue les acteurs de jeu, leurs comptes et groupes Lin
 et leurs camps militaires. Les fonctions de préparation du plateau, de découverte
 des généraux et d'audit des déplacements acceptent un argument `configuration`
 optionnel. Sans cet argument, elles conservent la configuration classique.
-Le profil Survie permet de préparer et contrôler les zones militaires des joueurs,
-et de résoudre une bataille entre des forces déjà préparées. Il n'est pas encore
-raccordé à un cycle de jeu Survie complet.
+Le profil Survie est utilisé par le cycle jouable du front Est : préparation des
+zones militaires, fenêtres d'action, déplacements ennemis, vagues, combats et
+retraites. Les fonctions isolées restent appelables séparément.
 
 `generaux.zones_generaux_territoire()` décrit les emplacements et les éventuelles
 réserves. `generaux.zones_generaux()` ajoute les homes et le repli. Ces descriptions
@@ -124,18 +127,22 @@ Pour les forces préparées sans ce fichier, les renforts non enregistrés sont
 ajoutés par numéro canonique croissant : leur historique d'arrivée n'est pas connu.
 
 `survie.preparer_phase_ennemie(numero_vague, configuration, aleatoire)` avance les
-anciens ennemis avant de créer la vague demandée. Dans le cycle Survie,
-l'orchestrateur l'appelle après l'audit unique et fournit
-`numero_vague = numero_tour + 1`. Aucun cycle complet de partie n'est lancé par
-cette fonction seule.
+anciens ennemis avant de créer la vague demandée. Le cycle complet appelle
+séparément `avancer_ennemis()` puis `creer_vague_est(numero_tour + 1, ...)`, pour
+intercaler un contrôle de cohérence. Il n'appelle donc pas en plus ce wrapper,
+qui ferait avancer les anciennes forces une deuxième fois.
 Les fonctions communes de création, de lecture des blocs, de permissions,
 d'identité et de combat sont réutilisées. L'audit des déplacements des joueurs
 préserve les positions des acteurs automatiques gérés par le moteur.
 
-`survie.resoudre_cascade(territoire, configuration, mode_combat)` enchaîne des
-appels à `combats.resoudre_combat_range()`, qui continue à résoudre un seul
+`survie.resoudre_cascade(territoire, configuration, mode_combat, en_cours_de_fuite=None)`
+enchaîne des appels à `combats.resoudre_combat_range()`, qui continue à résoudre un seul
 affrontement et renvoie les renforts promus à son terme. La cascade consulte
-ensuite les choix individuels des survivants et relit les forces après les retraites.
+ensuite les choix individuels des survivants. Dans le cycle complet, la collection
+`en_cours_de_fuite` conserve les destinations et places réservées. Les généraux
+acceptés sont exclus des relectures de combat avant leur déplacement physique,
+effectué seulement après tous les combats du tour. Sans cette collection, l'API
+isolée conserve les retraites immédiates.
 Les calculs, pertes, fatigue et priorités restent ceux du moteur commun.
 L'absence de nouvelles promotions arrête la cascade, y compris lorsqu'une limite
 de sécurité du moteur a laissé le territoire contesté.
@@ -149,18 +156,21 @@ avec le défaut `1` hors village et `2` au village ; un choix existant suit le d
 
 `mouvements.destination_retraite_surnombre()` cherche l'unique voisin tactique
 rapprochant le plus du village ; un départage ambigu est refusé.
-`mouvements.retraites_surnombre()` prépare ensemble le placement des arrivants
-dans la file alliée `1..20`, selon `position_surnombre` puis leur position d'origine.
+`mouvements.preparer_retraites_surnombre()` prépare sans déplacement le placement
+des arrivants dans la file alliée `1..20`, selon `position_surnombre` puis leur
+position d'origine.
 À préférence égale, l'origine logique croissante départage les généraux, sans
 priorité liée à `j1` ou `j2`. Une préférence vide, invalide ou hors de `1..20`
 produit un avertissement et est traitée comme absente, sans réécrire la fiche.
-Les places déjà occupées à l'arrivée restent indisponibles. La réserve n'entre pas
-dans ce placement. Un général sans place libre entre son début de recherche et `20`
+Les places déjà occupées ou réservées à l'arrivée restent indisponibles. La réserve
+n'entre pas dans ce placement. Un général sans place libre entre son début de recherche et `20`
 reste sur son territoire d'origine avec un avertissement, sans suppression ni
 repli ; les autres retraites possibles continuent. Les unités, fichiers et fatigue sont
 conservés ; les positions officielles sont mises à jour après chaque déplacement.
-La cascade n'applique pas de sanction de collision aux retraites tactiques.
-`retraite_surnombre()` conserve l'API pour un seul général.
+`mouvements.appliquer_retraites_surnombre()` déplace les dossiers aux places
+réservées. La cascade n'applique pas de sanction de collision aux retraites tactiques.
+`retraites_surnombre()` conserve l'API immédiate pour un groupe et
+`retraite_surnombre()` celle pour un seul général.
 
 En Survie, la priorité des arrivées simultanées est : occupants déjà présents
 sur le territoire, puis forces déjà sur la carte arrivant ce tour, puis nouvelles
@@ -186,8 +196,11 @@ acceptent le profil pour conserver les camps dans le contrôle. La boucle
 
 Le point d'entrée accepte `--mode classique` (valeur par défaut) et `--mode survie`.
 L'option `--afficher-configuration` affiche le profil sans lancer de tour ni importer
-les modules dépendant d'Unix. L'exécution Survie est refusée tant que son cycle
-n'est pas implémenté. `bash/start.sh` transmet les options au point d'entrée.
+les modules dépendant d'Unix. `bash bash/start.sh --mode survie` lance le cycle Est.
+`--duree-action` configure la durée en secondes (120 par défaut, 0 pour supprimer
+l'attente) et `--tours` limite le nombre de résolutions de cet appel. Ces deux
+options sont réservées au mode Survie. `bash/start.sh` transmet les options au
+point d'entrée.
 
 ---
 
@@ -878,10 +891,33 @@ la structure ne provoque aucune génération.
 
 ### Mode Survie
 
-Le mode Survie sépare explicitement la **fenêtre d'action temporisée** de la
-**résolution d'un tour**. Le timer ne doit pas contenir la logique métier : il
-déclenche une fonction de résolution qui doit aussi pouvoir être appelée directement
-dans les tests sans attente réelle.
+Le mode Survie sépare la **fenêtre d'action temporisée** de la **résolution d'un
+tour**. La fenêtre dure **120 secondes** par défaut, y compris au tour 0. Le champ
+`duree_phase_action_secondes` du profil, ou l'option `--duree-action`, permet une
+durée finie positive ou nulle. Une durée de 0 supprime l'attente des nouvelles
+fenêtres ; elle ne réinitialise pas l'échéance d'une fenêtre déjà ouverte.
+
+Responsabilités des API :
+
+- `minuterie.valider_duree()` valide la durée ;
+  `minuterie.attendre_jusqua(echeance, horloge=None, dormir=None)` attend une
+  échéance absolue, avec `time.time` et `time.sleep` par défaut. Ce module n'importe
+  pas le moteur et ne déclenche aucune action de jeu. L'horloge et l'attente sont
+  injectables pour les tests ; une échéance déjà atteinte ne provoque aucune attente.
+- `survie.ouvrir_tour_survie(configuration=None, horloge=None)` prépare le plateau,
+  fait apparaître un général par joueur si possible selon les limites communes,
+  complète les ordres de surnombre et enregistre la fenêtre d'action. Si elle est
+  déjà ouverte, il conserve son échéance sans répéter la préparation. Il n'attend pas.
+- `survie.resoudre_tour_survie(configuration=None, aleatoire=None)` résout une
+  fenêtre ouverte, sauvegarde le résultat et prépare l'état du tour suivant, ou
+  celui de défaite. Il ne vérifie pas l'expiration du timer et ne lance aucune
+  attente : les tests peuvent l'appeler directement. Il n'ouvre pas lui-même la
+  prochaine fenêtre.
+- `survie.lancer_partie_survie(configuration=None, nombre_tours=None, horloge=None,
+  dormir=None)` pilote l'ouverture, l'attente, la résolution, l'affichage du rapport
+  et l'ouverture suivante. Il s'arrête à la défaite, à une interruption ou après le
+  nombre demandé de résolutions. Hors défaite, la fenêtre suivante est ouverte
+  même lorsque cette limite vient d'être atteinte.
 
 À la résolution du tour N, l'orchestrateur :
 
@@ -889,16 +925,18 @@ dans les tests sans attente réelle.
 2. prépare et applique les déplacements automatiques des forces ennemies déjà
    présentes ;
 3. effectue les contrôles supplémentaires sans rejouer les effets de l'audit ;
-4. matérialise ensuite la vague `N + 1` sans redéplacer les forces anciennes ;
-5. résout les combats et les retraites selon les règles du profil Survie ;
+4. matérialise entièrement la vague `N + 1` dans l'ordre `est_3 -> est_2 -> est_1`,
+   sans déplacement supplémentaire, puis détecte les conflits ;
+5. résout les cascades dans l'ordre `village -> est_1 -> est_2 -> est_3`, réserve
+   les retraites admissibles et les applique physiquement après tous les combats ;
 6. sauvegarde le contrôle final, les rapports et l'éventuelle défaite ;
-7. prépare le tour suivant et son nouveau timer.
+7. ouvre, en l'absence de défaite, le tour suivant avec un nouveau timer.
 
-L'orchestrateur peut déléguer les étapes 2 et 4 au wrapper
-`survie.preparer_phase_ennemie(numero_vague, ...)` avec
-`numero_vague = N + 1`, **ou** appeler séparément les fonctions de déplacement et
-de création de vague. Il ne doit jamais faire les deux, afin d'éviter un double
-déplacement des forces ennemies.
+Les déplacements automatiques sont préparés depuis un inventaire initial des
+actifs et renforts bots, en tenant compte des départs prévus, puis appliqués.
+Le cycle appelle séparément `avancer_ennemis()` et `creer_vague_est(N + 1, ...)`.
+Les contrôles intermédiaires utilisent `securite.controler_coherence_territoires()`
+sans rejouer l'audit, la fatigue, les sanctions ou l'attente de repli.
 
 Le tour 0 utilise le même principe : l'audit est exécuté, aucun ancien ennemi ne
 se déplace puisqu'il n'en existe pas encore, puis la vague 1 est créée et les
@@ -906,10 +944,50 @@ se déplace puisqu'il n'en existe pas encore, puis la vague 1 est créée et les
 
 `survie.preparer_phase_ennemie()` reste une fonction de phase ennemie et non un
 cycle complet : elle réalise la progression des anciennes forces puis l'apparition
-de la vague demandée. Si l'orchestrateur choisit ce wrapper, il ne doit pas avoir
-déjà appliqué séparément les déplacements automatiques. Elle ne gère ni le timer,
-ni l'audit joueur, ni les combats, ni le contrôle final, ni le passage au tour
-suivant.
+de la vague demandée. Un appel isolé ne doit pas être précédé d'une progression
+automatique des mêmes forces. Cette fonction ne gère ni le timer, ni l'audit joueur,
+ni les combats, ni le contrôle final, ni le passage au tour suivant.
+
+### État persistant et reprise du cycle Survie
+
+`etat.charger_cycle_survie()` et `etat.sauvegarder_cycle_survie()` utilisent
+`/home/game/systeme/cycle_survie.json`. Ce fichier privé appartient à `root:root`
+en `600`. L'écriture passe par `cycle_survie.tmp`, également privé, puis remplace
+atomiquement le fichier d'état. Celui-ci contient `tour` (entier à partir de 0),
+`phase` et, uniquement en phase `actions`, `echeance` (secondes depuis l'époque
+Unix). Le numéro de vague à créer est déduit de `tour + 1`, sans compteur de cycle
+supplémentaire.
+
+| Phase | Signification |
+| --- | --- |
+| `preparation` | Préparation du tour en cours, avant l'ouverture de sa fenêtre. |
+| `actions` | Fenêtre ouverte ; son échéance est enregistrée. |
+| `resolution` | Résolution commencée ; ses effets peuvent être partiellement appliqués. |
+| `a_preparer` | Résolution terminée sans défaite ; `tour` désigne le prochain tour à préparer. |
+| `defaite` | Partie arrêtée ; `tour` reste celui dont la résolution a provoqué la défaite. |
+
+Sans fichier d'état, l'ouverture commence au tour 0. Après une interruption pendant
+le timer, le pilote reprend la même phase `actions` et attend seulement le temps
+restant ; si l'échéance est dépassée, il résout immédiatement ce tour. Le temps
+écoulé pendant l'arrêt n'est pas ajouté à la fenêtre.
+
+Une phase `preparation` ou `resolution` laissée par une interruption bloque la
+reprise automatique. Une vérification manuelle du plateau et des états persistants
+est nécessaire : le moteur n'effectue ni retour arrière ni rejeu automatique des
+effets déjà appliqués, afin de ne pas répéter une génération, un audit ou une vague.
+
+`etat.verrou_cycle_survie()` crée exclusivement
+`/home/game/systeme/verrou_cycle_survie` (`root:root`, `600`), qui contient le PID.
+Le pilote le garde pendant toute son exécution, y compris l'attente ; les appels
+directs d'ouverture et de résolution prennent aussi ce verrou. Sa présence refuse
+un second moteur Survie. Il est retiré à la sortie, y compris sur exception ou
+`Ctrl+C`. Après un arrêt brutal empêchant ce nettoyage, il faut vérifier l'absence
+du processus avant de retirer manuellement le verrou résiduel.
+
+Ce verrou protège le moteur contre les exécutions concurrentes ; il ne bloque pas
+les écritures des joueurs ni leurs sessions Linux. Les joueurs doivent cesser leurs
+modifications pendant la résolution. Le verrouillage système de ces écritures n'est
+pas implémenté ; la validation des permissions réelles reste à effectuer sur Linux.
 
 ---
 
@@ -964,6 +1042,11 @@ pertes cumulées, l'ordre de la colonne et les conditions d'arrêt.
 `test_repli.py` couvre les distances de sanction, les délais persistants privés,
 l'interdiction de sortir pendant l'attente et le retour après son expiration.
 
+`test_cycle_survie.py` couvre la relation tour/vague, les déplacements planifiés,
+les ordres d'apparition et de combat, l'audit unique, les retraites réservées puis
+différées, le contrôle final, la défaite, le timer simulé, l'état persistant, la
+reprise et l'exclusion des moteurs concurrents.
+
 Les tests utilisent un plateau temporaire et peuvent simuler les dépendances Unix.
 Ils ne remplacent pas un test réel sur Linux avec vrais UID/GID, `chown`, `chmod`
 et comptes `j1` / `j2`.
@@ -1015,9 +1098,9 @@ La validation réelle sur Raspberry Pi reste nécessaire pour les comportements 
 aux vrais comptes Linux, UID/GID, propriétaires et permissions. Elle pourra se
 poursuivre pendant le développement du mode Survie, qui réutilise le même moteur.
 
-La prochaine étape majeure est la V2.0 :
+La V2.0 dispose du cycle jouable Survie Est et poursuit les objectifs suivants :
 
-1. créer le mode Survie sans dupliquer le moteur commun ;
+1. développer le mode Survie sans dupliquer le moteur commun ;
 2. utiliser ce mode comme environnement d'intégration et de jeu pour éprouver le moteur ;
 3. introduire progressivement les mécaniques propres au Survie ;
 4. intégrer dans ce mode les petits objectifs Linux aléatoires de type Bandit débutant.

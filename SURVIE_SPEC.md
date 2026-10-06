@@ -1,6 +1,8 @@
 # Mythodea V2.0 — Mode Survie
 
-Ce document prépare le développement du mode Survie.
+Ce document décrit le prototype jouable Survie Est et les règles de conception
+du mode Survie. Les fonctionnalités prévues au-delà de ce prototype restent
+distinctes du cycle actuellement implémenté.
 
 Il complète `MYTHODEA_SPEC.md`, qui reste la référence du moteur commun hérité de
 la V1.5. Les règles non définies ici ne doivent pas être inventées.
@@ -233,8 +235,9 @@ Les appels utilisent explicitement le profil retourné par
 `config.configuration_mode("survie")`, sans remplacer la configuration globale
 classique. Par exemple, `securite.verifier_tous_les_deplacements(configuration)`
 audite les joueurs du profil et enregistre positions et fatigue dans les fichiers
-communs sous `/home/game/systeme`. Cet audit correspond à la validation des actions
-d'un tour ; il ne constitue pas encore un cycle Survie ni un scan périodique.
+communs sous `/home/game/systeme`. Le cycle Survie appelle cet audit une seule fois
+après la fenêtre d'action ; les contrôles suivants n'en rejouent pas les effets.
+L'audit seul ne lance ni cycle de partie ni scan périodique.
 
 ### Forum
 
@@ -409,12 +412,19 @@ Le profil distingue les territoires tactiques (`village`, `est_1`, `est_2`, `est
 des zones spéciales (`home`, `repli`). Le lien `repli <-> village` reste présent
 dans le graphe sans autoriser un mouvement volontaire vers le repli.
 
-À ce stade, `--mode survie --afficher-configuration` permet de consulter ce profil
-sans modifier le plateau. `--mode survie` seul refuse toujours l'exécution : les
-fonctions de préparation et d'audit des zones militaires et les vagues sont
-appelables séparément. Le cycle Survie reste à implémenter. Des batailles
-coopératives isolées peuvent être résolues avec le moteur commun sur des forces
-déjà préparées.
+`--mode survie --afficher-configuration` permet de consulter ce profil sans
+modifier le plateau. Le cycle Survie Est est lançable sur un plateau dédié avec
+les comptes Linux `j1` et `j2` préparés par l'installation :
+
+```bash
+bash bash/start.sh --mode survie
+```
+
+`--duree-action` configure la fenêtre en secondes (120 par défaut, 0 pour supprimer
+l'attente des nouvelles fenêtres). `--tours` limite le nombre de résolutions de
+cet appel. Les fonctions de préparation, d'audit, de vague et de combat restent
+appelables séparément. Les identités et fichiers d'état étant communs aux deux
+modes, ne pas alterner classique et Survie sur une même partie.
 
 Pour ce premier prototype, les ennemis de l'Est utilisent uniquement les généraux,
 unités, blocs et règles de combat classiques. Aucun comportement tactique ou ordre
@@ -423,14 +433,15 @@ une version ultérieure.
 
 ### Cycle d'un tour
 
-La phase d'action dure actuellement **2 minutes**, y compris au tour 0.
+La phase d'action dure **120 secondes (2 minutes) par défaut**, y compris au tour 0.
 
 Un tour comprend une fenêtre d'action joueurs puis sa résolution automatique.
-Quand le timer expire, les actions tactiques sont closes pour cette résolution ;
+Quand le timer expire, la fenêtre d'action est clôturée logiquement ;
 les joueurs peuvent continuer à consulter les informations et rapports auxquels
-ils ont accès.
+ils ont accès, mais doivent cesser leurs écritures. Le moteur ne suspend pas leurs
+sessions Linux et n'implémente pas encore le blocage système de ces écritures.
 
-La résolution du tour N suit l'ordre de principe suivant :
+La résolution du tour N suit l'ordre suivant :
 
 1. effectuer l'audit complet des actions joueurs **une seule fois** ;
 2. préparer les déplacements des forces ennemies déjà présentes à partir d'un état
@@ -449,7 +460,7 @@ La résolution du tour N suit l'ordre de principe suivant :
    places réservées ;
 9. calculer et sauvegarder le contrôle final, finaliser les rapports et vérifier la
    défaite ;
-10. commencer le tour N+1 avec un nouveau timer.
+10. en l'absence de défaite, commencer le tour N+1 avec un nouveau timer.
 
 Au tour 0, l'étape 2 ne déplace personne parce qu'aucune force ennemie ancienne
 n'existe encore ; la vague 1 apparaît néanmoins à l'étape 4.
@@ -458,10 +469,43 @@ Une nouvelle vague ne se déplace jamais pendant la résolution où elle appara�
 Les priorités d'arrivée restent : occupants déjà présents, anciennes forces arrivant
 ce tour, puis nouvelles apparitions.
 
-Le timer et la résolution sont deux responsabilités séparées : le timer déclenche
-la clôture de la fenêtre d'action, tandis que la fonction de résolution doit rester
-appelable directement par les tests sans attente réelle. La durée doit donc rester
-configurable et neutralisable dans les tests.
+Le timer et la résolution sont deux responsabilités séparées : `minuterie.py`
+valide la durée et attend une échéance, sans logique métier. Le pilote appelle la
+résolution après cette attente. La durée est configurable par le champ
+`duree_phase_action_secondes` du profil ou par `--duree-action`. Les tests peuvent
+la neutraliser avec 0 et injecter une horloge ainsi qu'une attente simulées.
+
+### API du cycle, état et reprise
+
+- `survie.ouvrir_tour_survie()` prépare le plateau et les généraux selon les règles
+  communes, puis enregistre la fenêtre d'action et son échéance. Un nouvel appel
+  sur une fenêtre déjà ouverte conserve cette échéance sans répéter la préparation.
+- `survie.resoudre_tour_survie()` résout directement une fenêtre ouverte, sans
+  attente et sans exiger l'expiration du timer. Il sauvegarde le contrôle, les
+  rapports et l'état final du tour, mais n'ouvre pas la fenêtre suivante.
+- `survie.lancer_partie_survie()` pilote les ouvertures, l'attente via
+  `minuterie.attendre_jusqua()`, les résolutions et l'affichage des rapports jusqu'à
+  la défaite, une interruption ou la limite optionnelle `nombre_tours`. Hors défaite,
+  il ouvre la fenêtre suivante même si la limite de résolutions est atteinte.
+
+L'état privé `systeme/cycle_survie.json` contient `tour`, `phase` et, en phase
+`actions`, une `echeance` absolue. Les phases sont `preparation`, `actions`,
+`resolution`, `a_preparer` et `defaite`. Le fichier appartient à `root:root` en
+`600` et est remplacé atomiquement. Le format et les transitions sont détaillés
+dans `MYTHODEA_SPEC.md`, section 17.
+
+Le verrou privé `systeme/verrou_cycle_survie` contient le PID et empêche deux
+moteurs Survie concurrents, pendant l'attente comme pendant la résolution. Les
+API directes d'ouverture et de résolution sont également protégées. Ce verrou
+ne bloque pas les écritures des joueurs.
+
+Une interruption pendant le timer conserve l'échéance : la reprise attend
+seulement le temps restant, ou résout immédiatement si elle est déjà dépassée.
+Changer la durée configurée ne réinitialise pas cette fenêtre. Une interruption
+pendant `preparation` ou `resolution` exige une vérification manuelle du plateau
+et de l'état avant reprise ; le moteur refuse de rejouer automatiquement les
+opérations. Le verrou est libéré à la sortie, y compris sur `Ctrl+C` ; après un
+arrêt brutal, vérifier l'absence du processus avant de retirer un verrou résiduel.
 
 ### Identité des ennemis
 
@@ -511,11 +555,12 @@ La source aléatoire peut être fournie pour rendre les tests reproductibles.
 
 `survie.preparer_phase_ennemie(numero_vague, configuration, aleatoire)` réalise
 uniquement la progression des anciennes forces puis l'apparition de la vague
-demandée. L'orchestrateur l'appelle après l'audit unique et lui fournit
-`numero_vague = numero_tour + 1`. La fonction ne doit pas déplacer une vague qu'elle
-vient elle-même de créer. Elle ne gère pas le timer, les combats, le contrôle final,
-la défaite ou le passage au tour suivant.
-`avancer_ennemis()` et `creer_vague_est()` sont également appelables séparément.
+demandée, sans déplacer la vague qu'elle vient de créer. Elle ne gère pas le timer,
+les combats, le contrôle final, la défaite ou le passage au tour suivant.
+Le cycle complet appelle séparément `avancer_ennemis()` puis
+`creer_vague_est(numero_tour + 1, ...)`, après l'audit unique, pour intercaler un
+contrôle de cohérence. Il n'appelle pas en plus `preparer_phase_ennemie()`, afin
+de ne pas déplacer deux fois les anciennes forces.
 Les ennemis déjà au village y restent ; les autres avancent d'une seule case,
 y compris ceux conservés parmi les renforts.
 
@@ -788,9 +833,14 @@ du moteur commun. Les identités techniques, vagues, noms d'affichage et ordre d
 colonne sont conservés. Le départage de routes équivalentes reste non défini et
 provoque un refus explicite au lieu d'un choix arbitraire.
 
-L'API actuelle est `survie.resoudre_cascade(territoire, configuration, mode_combat="OFF/OFF")`.
-Son implémentation doit être adaptée pour prendre en charge les exclusions et les
-réservations différées sans modifier les calculs de combat communs.
+L'API est `survie.resoudre_cascade(territoire, configuration, mode_combat="OFF/OFF",
+en_cours_de_fuite=None)`. Le cycle complet lui transmet une collection commune de
+réservations ; les généraux acceptés sont exclus des relectures suivantes. Les
+fonctions communes `mouvements.preparer_retraites_surnombre()` et
+`mouvements.appliquer_retraites_surnombre()` séparent réservation et déplacement.
+Sans collection, l'appel isolé de cascade conserve les retraites immédiates ; le
+cycle complet utilise toujours les retraites différées. Les calculs de combat
+restent ceux du moteur commun.
 
 Si la valeur `2` est choisie, des ordres spécifiques au combat en surnombre pourront
 être ajoutés ultérieurement. Ils ne font pas partie du premier prototype.
@@ -945,4 +995,4 @@ Le contrôle territorial est calculé selon les unités des forces engagées :
 
 La réserve reste exclue de ces forces. La sauvegarde conserve le format
 `territoire=controle`. Ces fonctions ne déclenchent ni défaite globale, ni nouvelle
-vague, ni nouveau tour ; le cycle complet reste une étape ultérieure.
+vague, ni nouveau tour : ces responsabilités appartiennent au cycle de `survie.py`.

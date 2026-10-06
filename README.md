@@ -20,9 +20,8 @@ d'ordres n'est volontairement pas bloquant pour clôturer cette version : seuls 
 comportements déjà validés sont conservés, et les autres ordres seront affinés plus
 tard à partir de l'expérience de jeu.
 
-La prochaine étape majeure est la V2.0 : construire le mode Survie en réutilisant le
-même moteur que le mode multijoueur. La validation réelle sous Linux / Raspberry Pi
-continuera au fur et à mesure de ce développement.
+La V2.0 propose un prototype Survie Est jouable qui réutilise le moteur commun.
+La validation réelle sous Linux / Raspberry Pi se poursuit pendant son développement.
 
 ## Lancer le jeu
 
@@ -111,5 +110,5 @@ vrais comptes, UID/GID et permissions sur Linux.
 - `SURVIE_SPEC.md` : règles et décisions de conception propres au mode Survie V2.0.
 
 Mythodea est encore en développement : la V1.5 stabilise le moteur commun, et la
-V2.0 ouvre le développement du mode Survie. Les ordres supplémentaires seront
+V2.0 propose le cycle Survie du front Est. Les ordres supplémentaires seront
 introduits progressivement lorsqu'ils apporteront une vraie valeur au gameplay.
