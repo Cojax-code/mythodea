@@ -72,6 +72,9 @@ def verifier_deplacement_general(
     if origine == destination:
         return True, False, "immobile"
 
+    if configuration.get("tour_preparation", False) and not (origine == "home" and destination == base):
+        return False, False, "tour 0 : seul le déploiement home vers village est autorisé"
+
     # Première apparition :
     # home -> propre base uniquement.
     if origine == "home":
@@ -284,8 +287,8 @@ def planifier_positions_surnombre(arrivants, positions_occupees, territoire=None
     return placements
 
 
-def retraites_surnombre(arrivants, territoire, configuration):
-    """Recule un groupe d'un territoire et le place dans la file alliée.
+def preparer_retraites_surnombre(arrivants, territoire, configuration, reservations=()):
+    """Prépare les destinations d'une retraite dans la file alliée, sans déplacer.
 
     Les occupants déjà présents gardent leur place. La réserve est exclue.
     Toutes les destinations sont vérifiées avant le premier déplacement.
@@ -308,6 +311,10 @@ def retraites_surnombre(arrivants, territoire, configuration):
             identites.update((joueur, p.name) for p in presents)
             if presents and "emplacement" in zone:
                 occupees.add(zone["emplacement"])
+    for general, destination in reservations:
+        if destination.is_relative_to(territoire_arrivee):
+            occupees.add(destination.parent.name)
+            identites.add((general["joueur"], general["nom"]))
     for general in arrivants:
         if general["joueur"] not in configuration["joueurs"]:
             raise ValueError("La retraite de surnombre concerne uniquement les joueurs.")
@@ -326,8 +333,23 @@ def retraites_surnombre(arrivants, territoire, configuration):
             raise FileNotFoundError(general["chemin"])
         destinations.append((general, destination))
 
+    return destinations
+
+
+def appliquer_retraites_surnombre(destinations, configuration):
+    """Applique les places déjà vérifiées et réservées, sans refaire le placement."""
+    for general, destination in destinations:
+        if destination.exists():
+            raise FileExistsError(destination)
+        if not general["chemin"].is_dir():
+            raise FileNotFoundError(general["chemin"])
+
     positions = etat.charger_positions_generaux()
     for general, destination in destinations:
+        territoire_arrivee = next(t for t in configuration["territoires"]
+                                  if destination.is_relative_to(t))
+        arrivee = territoire_arrivee.name
+        origine = positions[f"{general['joueur']}:{general['nom']}"]
         joueur = general["joueur"]
         acteur = configuration["acteurs"][joueur]
         uid = pwd.getpwnam(acteur["proprietaire_linux"]).pw_uid
@@ -348,9 +370,17 @@ def retraites_surnombre(arrivants, territoire, configuration):
         etat.sauvegarder_positions_generaux(positions)
         rapports.afficher_et_ecrire(
             f"Retraite de surnombre : {joueur} {general['nom']} : "
-            f"{territoire.name} -> {arrivee}, position {destination.parent.name}."
+            f"{origine} -> {arrivee}, position {destination.parent.name}."
         )
     return destinations
+
+
+def retraites_surnombre(arrivants, territoire, configuration):
+    """API immédiate conservée pour les appels isolés."""
+    if territoire.name in configuration["villages"]:
+        return [(general, general["chemin"]) for general in arrivants]
+    return appliquer_retraites_surnombre(
+        preparer_retraites_surnombre(arrivants, territoire, configuration), configuration)
 
 
 def retraite_surnombre(general, territoire, configuration):

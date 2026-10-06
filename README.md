@@ -59,8 +59,29 @@ La configuration du prototype Survie Est est consultable sans modifier le platea
 python3 -B python/mythodea_v_1_5.py --mode survie --afficher-configuration
 ```
 
-Le mode Survie n'est pas encore jouable : `--mode survie` seul est refusé avant
-toute modification de la partie. L'installation et le nettoyage restent classiques.
+Le prototype Survie Est est jouable sur un plateau dédié, avec les comptes Linux
+`j1` et `j2` préparés par l'installation :
+
+```bash
+bash bash/start.sh --mode survie
+```
+
+Chaque fenêtre d'action dure 120 secondes, y compris le tour 0. À son expiration,
+les anciennes forces avancent, la vague suivante apparaît, puis les combats sont
+résolus. La vague 1 apparaît à la résolution du tour 0. Les joueurs doivent cesser
+leurs écritures pendant la résolution ; le moteur ne suspend pas leurs sessions Linux.
+
+Pour un essai borné sans attendre :
+
+```bash
+bash bash/start.sh --mode survie --duree-action 0 --tours 1
+```
+
+`Ctrl+C` pendant l'attente conserve l'échéance pour la reprise. Une interruption
+pendant la résolution exige de vérifier le plateau avant de reprendre, afin de ne
+pas rejouer un audit ou une vague. Ne pas alterner classique et Survie sur une même
+partie : les identités et fichiers d'état sont communs. L'installation et le
+nettoyage restent classiques.
 
 ## Organisation
 

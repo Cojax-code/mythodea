@@ -1,7 +1,8 @@
-"""Phase ennemie Est : progression puis apparition, sans cycle de partie."""
+"""Cycle Survie Est : fenêtres d'action, progression, vagues et cascades."""
 import grp
 import os
 import pwd
+import time
 
 import config
 import combats
@@ -10,6 +11,13 @@ import generaux
 import mouvements
 import rapports
 import vagues
+import plateau
+import securite
+import minuterie
+
+
+ORDRE_RESOLUTION_EST = ("village", "est_1", "est_2", "est_3")
+ORDRE_APPARITION_EST = ("est_3", "est_2", "est_1")
 
 
 def profil_survie(configuration=None):
@@ -84,26 +92,58 @@ def enregistrer_arrivee_ennemi(territoire, chemin, configuration):
     generaux.sauvegarder_ordre_renforts_bot(territoire, [*precedents, chemin], configuration)
 
 
+def preparer_deplacements_ennemis(configuration=None):
+    """Plan complet calculé sans mutation à partir d'un seul inventaire initial."""
+    configuration = profil_survie(configuration)
+    racine = configuration["game_path"]
+    initial = {nom: inventorier_ennemis(racine / nom, configuration)
+               for nom in ORDRE_RESOLUTION_EST}
+    mouvements_prepares = []
+    files = {}
+    for index, destination in enumerate(ORDRE_RESOLUTION_EST):
+        presents = initial[destination] if destination == "village" else []
+        arrivants = initial[ORDRE_RESOLUTION_EST[index + 1]] if index < 3 else []
+        occupees = {g["emplacement"] for g in presents if g["emplacement"] is not None}
+        files[destination] = []
+        for general in [*presents, *arrivants]:
+            if general in presents and general["emplacement"] is not None:
+                chemin = general["chemin"]
+            else:
+                place = next((p for p in configuration["emplacements"] if p not in occupees), None)
+                if place is None:
+                    chemin = racine / destination / "bot/renforts" / general["nom"]
+                    files[destination].append(chemin)
+                else:
+                    occupees.add(place)
+                    chemin = racine / destination / "bot" / place / general["nom"]
+            mouvements_prepares.append({"nom": general["nom"], "origine": general["territoire"],
+                                        "destination": destination, "source": general["chemin"],
+                                        "chemin": chemin})
+    return {"mouvements": mouvements_prepares, "files": files}
+
+
+def appliquer_deplacements_ennemis(plan, configuration):
+    for mouvement in plan["mouvements"]:
+        if not mouvement["source"].is_dir():
+            raise FileNotFoundError(mouvement["source"])
+        if mouvement["source"] != mouvement["chemin"] and mouvement["chemin"].exists():
+            raise FileExistsError(mouvement["chemin"])
+    positions = etat.charger_positions_generaux()
+    for mouvement in plan["mouvements"]:
+        if mouvement["source"] != mouvement["chemin"]:
+            mouvement["source"].rename(mouvement["chemin"])
+        positions[f"bot:{mouvement['nom']}"] = mouvement["destination"]
+    etat.sauvegarder_positions_generaux(positions)
+    for nom, file in plan["files"].items():
+        generaux.sauvegarder_ordre_renforts_bot(configuration["game_path"] / nom, file, configuration)
+    return [{k: v for k, v in m.items() if k != "source"} for m in plan["mouvements"]
+            if m["origine"] != m["destination"]]
+
+
 def avancer_ennemis(configuration=None):
-    """Avance chaque ancien ennemi d'une case ; ceux du village y restent."""
     configuration = profil_survie(configuration)
     preparer_zones_bot(configuration)
-    racine = configuration["game_path"]
-    deplacements = []
-    # Du village vers le fond : une arrivée n'est jamais déplacée une seconde fois.
-    for origine, destination in (("est_1", "village"), ("est_2", "est_1"),
-                                 ("est_3", "est_2")):
-        for general in inventorier_ennemis(racine / origine, configuration):
-            chemin = destination_ennemi(racine / destination, general["nom"], configuration)
-            general["chemin"].rename(chemin)
-            enregistrer_arrivee_ennemi(racine / destination, chemin, configuration)
-            positions = etat.charger_positions_generaux()
-            positions[f"bot:{general['nom']}"] = destination
-            etat.sauvegarder_positions_generaux(positions)
-            deplacements.append({"nom": general["nom"], "origine": origine,
-                                 "destination": destination, "chemin": chemin})
-        generaux.sauvegarder_ordre_renforts_bot(racine / origine, [], configuration)
-    return deplacements
+    return appliquer_deplacements_ennemis(preparer_deplacements_ennemis(configuration), configuration)
 
 
 def creer_vague_est(numero, configuration=None, aleatoire=None):
@@ -111,17 +151,20 @@ def creer_vague_est(numero, configuration=None, aleatoire=None):
     configuration = profil_survie(configuration)
     compositions = vagues.composer_vague_est(numero, aleatoire)
     preparer_zones_bot(configuration)
-    crees = []
+    crees = {}
+    # Attribuer les identités dans l'ordre canonique avant de matérialiser.
+    premier = etat.lire_compteur_general("bot") + 1
+    etiquetees = [(premier + index, composition) for index, composition in enumerate(compositions)]
+    etat.sauvegarder_compteur_general("bot", premier + len(compositions) - 1)
     equipements = {"archer": ("infanterie", "arc"),
                    "piquier": ("infanterie", "pique"),
                    "cavalier": ("cavalerie", "cheval")}
-    for composition in compositions:
-        identifiant = etat.lire_compteur_general("bot") + 1
+    for identifiant, composition in sorted(etiquetees, key=lambda item:
+            ORDRE_APPARITION_EST.index(item[1]["territoire"])):
         nom = f"general{identifiant}"
         territoire = configuration["game_path"] / composition["territoire"]
         chemin = destination_ennemi(territoire, nom, configuration)
         # Réserver le numéro avant l'écriture : un numéro ne sera jamais réutilisé.
-        etat.sauvegarder_compteur_general("bot", identifiant)
         generaux.creer_general(chemin, nom)
         fiche = chemin / "fiche.txt"
         with fiche.open("a", encoding="utf-8") as fichier:
@@ -141,14 +184,14 @@ def creer_vague_est(numero, configuration=None, aleatoire=None):
         positions = etat.charger_positions_generaux()
         positions[f"bot:{nom}"] = territoire.name
         etat.sauvegarder_positions_generaux(positions)
-        crees.append(chemin)
-    return crees
+        crees[identifiant] = chemin
+    return [crees[identifiant] for identifiant, _ in etiquetees]
 
 
 def preparer_phase_ennemie(numero_vague, configuration=None, aleatoire=None):
-    """À appeler une fois pour la vague demandée, avant l'audit et les combats.
+    """À appeler après l'audit joueur et avant les combats, avec la vague tour+1.
 
-    Le futur cycle fournira le numéro de vague. Aucun chronomètre, combat,
+    L'appelant fournit le numéro de vague. Aucun chronomètre, combat,
     contrôle territorial ou déclenchement de défaite n'est effectué ici.
     """
     configuration = profil_survie(configuration)
@@ -159,13 +202,17 @@ def preparer_phase_ennemie(numero_vague, configuration=None, aleatoire=None):
     return {"deplacements": deplacements, "nouveaux": nouveaux}
 
 
-def resoudre_cascade(territoire, configuration=None, mode_combat="OFF/OFF"):
+def resoudre_cascade(territoire, configuration=None, mode_combat="OFF/OFF", en_cours_de_fuite=None):
     """Enchaîne les affrontements communs, avec décisions entre deux seulement.
 
     L'appel ne déplace pas le bot, ne crée aucune vague et ne lance aucun tour.
     Chaque affrontement conserve les pertes sur disque et remonte la colonne.
     """
     configuration = profil_survie(configuration)
+    if en_cours_de_fuite is not None:
+        configuration = dict(configuration)
+        configuration["generaux_hors_combat"] = {
+            f"{g['joueur']}:{g['nom']}" for g, _ in en_cours_de_fuite}
     if mode_combat not in ("OFF/OFF", "OFF/DEF"):
         raise ValueError("Mode d'affrontement inconnu.")
     camp_bot = configuration["acteurs"]["bot"]["camp"]
@@ -194,13 +241,29 @@ def resoudre_cascade(territoire, configuration=None, mode_combat="OFF/OFF"):
         fuyards = [general for general in allies
                    if generaux.lire_ordre_surnombre(general, territoire.name, configuration) == 1
                    and territoire.name not in configuration["villages"]]
-        destinations = mouvements.retraites_surnombre(fuyards, territoire, configuration)
+        if en_cours_de_fuite is None:
+            destinations = mouvements.retraites_surnombre(fuyards, territoire, configuration)
+        else:
+            destinations = []
+            if fuyards:
+                arrivee = mouvements.destination_retraite_surnombre(territoire.name, configuration)
+                forces_arrivee = generaux.lire_forces_territoire(configuration["game_path"] / arrivee, configuration)
+                if generaux.generaux_actifs_joueur(forces_arrivee, camp_bot):
+                    rapports.afficher_et_ecrire(
+                        f"Retraite impossible depuis {territoire.name} : bot actif sur {arrivee}.")
+                else:
+                    destinations = mouvements.preparer_retraites_surnombre(
+                        fuyards, territoire, configuration, en_cours_de_fuite)
+                    en_cours_de_fuite.extend(destinations)
+                    configuration["generaux_hors_combat"].update(
+                        f"{g['joueur']}:{g['nom']}" for g, _ in destinations)
         for general, destination in destinations:
             retraites.append({"joueur": general["joueur"], "nom": general["nom"],
                               "origine": territoire.name, "chemin": destination})
             arrivee = mouvements.destination_retraite_surnombre(territoire.name, configuration)
             rapports.ecrire_rapport_territoire(
-                territoire, f"Retraite : {general['joueur']} {general['nom']} : "
+                territoire, f"Retraite {'réservée' if en_cours_de_fuite is not None else 'effectuée'} : "
+                f"{general['joueur']} {general['nom']} : "
                 f"{territoire.name} -> {arrivee}, position {destination.parent.name}."
             )
         # Relire après les départs : seuls les alliés encore présents combattront.
@@ -209,3 +272,113 @@ def resoudre_cascade(territoire, configuration=None, mode_combat="OFF/OFF"):
     controle = generaux.controle_forces(forces)
     rapports.ecrire_rapport_territoire(territoire, f"Fin de cascade : contrôle {controle}.")
     return {"affrontements": affrontements, "retraites": retraites, "controle": controle}
+
+
+def ouvrir_tour_survie(configuration=None, horloge=None):
+    configuration = profil_survie(configuration)
+    with etat.verrou_cycle_survie(configuration):
+        return _ouvrir_tour_survie(configuration, horloge)
+
+
+def _ouvrir_tour_survie(configuration, horloge=None):
+    """Prépare une seule fois les généraux et ouvre la fenêtre d'action."""
+    configuration = profil_survie(configuration)
+    horloge = time.time if horloge is None else horloge
+    duree = minuterie.valider_duree(configuration["duree_phase_action_secondes"])
+    cycle = etat.charger_cycle_survie(configuration)
+    if cycle is not None and cycle["phase"] in ("actions", "defaite"):
+        return cycle
+    if cycle is not None and cycle["phase"] != "a_preparer":
+        raise RuntimeError("Cycle interrompu : vérifier le plateau avant de reprendre.")
+    tour = 0 if cycle is None else cycle["tour"]
+    etat.sauvegarder_cycle_survie({"tour": tour, "phase": "preparation"}, configuration)
+    plateau.reparer_structure(configuration)
+    preparer_zones_bot(configuration)
+    for joueur in configuration["joueurs"]:
+        generaux.faire_apparaitre_general_si_possible(joueur)
+    generaux.scanner_ordres_surnombre(configuration)
+    cycle = {"tour": tour, "phase": "actions", "echeance": horloge() + duree}
+    etat.sauvegarder_cycle_survie(cycle, configuration)
+    rapports.afficher_et_ecrire(f"Tour {tour} : fenêtre d'action de {duree:g} secondes.")
+    return cycle
+
+
+def resoudre_tour_survie(configuration=None, aleatoire=None):
+    """Point d'entrée direct sans timer, protégé contre les appels concurrents."""
+    configuration = profil_survie(configuration)
+    with etat.verrou_cycle_survie(configuration):
+        return _resoudre_tour_survie(configuration, aleatoire)
+
+
+def _resoudre_tour_survie(configuration, aleatoire=None):
+    """Résout une fenêtre d'action ouverte, sans attendre et sans lancer de timer."""
+    configuration = profil_survie(configuration)
+    cycle = etat.charger_cycle_survie(configuration)
+    if cycle is None or cycle["phase"] != "actions":
+        raise RuntimeError("Aucune fenêtre d'action Survie ouverte à résoudre.")
+    tour = cycle["tour"]
+    etat.sauvegarder_cycle_survie({"tour": tour, "phase": "resolution"}, configuration)
+    rapports.preparer_rapports(configuration)
+    rapports.afficher_et_ecrire(f"=== RÉSOLUTION TOUR {tour} / VAGUE {tour + 1} ===")
+    controle_avant = etat.charger_controle_territoires(configuration)
+    profil_audit = dict(configuration, tour_preparation=(tour == 0))
+    securite.verifier_tous_les_deplacements(profil_audit)
+    deplacements = avancer_ennemis(configuration)
+    securite.controler_coherence_territoires(configuration)
+    nouveaux = creer_vague_est(tour + 1, configuration, aleatoire)
+    # Assurer une tête de colonne même sur les territoires sans alliés.
+    for nom in ORDRE_RESOLUTION_EST:
+        generaux.remonter_renforts_bot(configuration["game_path"] / nom, configuration)
+    presences = securite.controler_coherence_territoires(configuration)
+    conflits = [nom for nom in ORDRE_RESOLUTION_EST if len(presences[nom]) > 1]
+    en_cours_de_fuite = []
+    batailles = {}
+    try:
+        for nom in conflits:
+            territoire = configuration["game_path"] / nom
+            rapports.definir_territoire_rapport(territoire)
+            mode = "OFF/DEF" if controle_avant.get(nom) in ("allies", "bot") else "OFF/OFF"
+            batailles[nom] = resoudre_cascade(territoire, configuration, mode, en_cours_de_fuite)
+    finally:
+        rapports.definir_territoire_rapport(None)
+    mouvements.appliquer_retraites_surnombre(en_cours_de_fuite, configuration)
+    securite.controler_coherence_territoires(configuration)
+    plateau.sauvegarder_controle_territoires(configuration)
+    controle = etat.charger_controle_territoires(configuration)
+    defaite = controle["village"] == "bot"
+    for nom in ORDRE_RESOLUTION_EST:
+        rapports.ecrire_rapport_court(f"{nom} : contrôle final = {controle[nom]}")
+    if defaite:
+        rapports.afficher_et_ecrire("DÉFAITE : le bot contrôle le village.")
+        rapports.ecrire_rapport_court("DÉFAITE : le bot contrôle le village.")
+    rapports.ecrire_rapport_court(f"Fin du tour {tour} — vague {tour + 1}.")
+    etat.sauvegarder_cycle_survie(
+        {"tour": tour if defaite else tour + 1, "phase": "defaite" if defaite else "a_preparer"},
+        configuration)
+    return {"tour": tour, "vague": tour + 1, "deplacements": deplacements,
+            "nouveaux": nouveaux, "batailles": batailles, "retraites": en_cours_de_fuite,
+            "controle": controle, "defaite": defaite}
+
+
+def lancer_partie_survie(configuration=None, nombre_tours=None, horloge=None, dormir=None):
+    configuration = profil_survie(configuration)
+    with etat.verrou_cycle_survie(configuration):
+        return _lancer_partie_survie(configuration, nombre_tours, horloge, dormir)
+
+
+def _lancer_partie_survie(configuration, nombre_tours, horloge, dormir):
+    """Pilote les fenêtres et la résolution ; l'attente ne connaît aucune règle."""
+    configuration = profil_survie(configuration)
+    if nombre_tours is not None and (type(nombre_tours) is not int or nombre_tours < 1):
+        raise ValueError("Le nombre de tours doit être positif.")
+    resultats = []
+    cycle = _ouvrir_tour_survie(configuration, horloge)
+    while cycle["phase"] != "defaite" and (nombre_tours is None or len(resultats) < nombre_tours):
+        minuterie.attendre_jusqua(cycle["echeance"], horloge, dormir)
+        resultat = _resoudre_tour_survie(configuration)
+        resultats.append(resultat)
+        rapports.afficher_fin_de_tour()
+        if resultat["defaite"]:
+            break
+        cycle = _ouvrir_tour_survie(configuration, horloge)
+    return resultats

@@ -113,13 +113,13 @@ class Modes(unittest.TestCase):
                 resoudre.assert_not_called()
                 self.assertNotIn("plateau", sys.modules)
 
-    def test_survie_non_jouable_ne_lance_pas_le_moteur_classique(self):
-        sortie = io.StringIO()
-        with contextlib.redirect_stderr(sortie), patch.object(self.entree, "resoudre_tour_classique") as resoudre:
-            with self.assertRaises(SystemExit) as erreur:
-                self.entree.main(["--mode", "survie"])
-        self.assertEqual(erreur.exception.code, 2)
-        self.assertIn("n'est pas encore jouable", sortie.getvalue())
+    def test_survie_jouable_ne_lance_pas_le_moteur_classique(self):
+        with patch.object(self.entree, "resoudre_tour_classique") as resoudre, \
+                patch.object(self.entree, "lancer_survie") as survie:
+            self.entree.main(["--mode", "survie", "--duree-action", "0", "--tours", "2"])
+        self.assertEqual(survie.call_args.args[0]["mode"], "survie")
+        self.assertEqual(survie.call_args.args[0]["duree_phase_action_secondes"], 0)
+        self.assertEqual(survie.call_args.args[1], 2)
         resoudre.assert_not_called()
         self.assertNotIn("plateau", sys.modules)
 

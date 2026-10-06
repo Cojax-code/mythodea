@@ -507,6 +507,12 @@ def lire_generaux_territoire(territory, configuration=None):
             if len(generaux_trouves) == 0:
                 continue
 
+            exclus = configuration.get("generaux_hors_combat", set())
+            generaux_trouves = [p for p in generaux_trouves
+                               if f"{joueur}:{p.name}" not in exclus]
+            if not generaux_trouves:
+                continue
+
             generaux_trouves = sorted(
                 generaux_trouves,
                 key=lambda chemin: (

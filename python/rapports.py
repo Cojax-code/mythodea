@@ -412,7 +412,7 @@ def ecrire_details_engagements(territoire, engagements):
         )
 
 
-def preparer_rapports():
+def preparer_rapports(configuration=None):
     # Prépare tous les rapports du nouveau tour.
     #
     # Les rapports du tour précédent sont effacés.
@@ -445,7 +445,8 @@ def preparer_rapports():
     )
 
     # Préparer un rapport pour chaque territoire.
-    for territory in config.territoires:
+    territoires = config.territoires if configuration is None else configuration["territoires"]
+    for territory in territoires:
         chemin = chemin_rapport_territoire(
             territory
         )

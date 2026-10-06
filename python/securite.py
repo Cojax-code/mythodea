@@ -9,6 +9,50 @@ import mouvements
 import rapports
 
 
+def controler_coherence_territoires(configuration):
+    """Inspecte les présences sans réparer, sanctionner ni modifier les compteurs."""
+    officielles = etat.charger_positions_generaux()
+    identites = set()
+    presences = {}
+    for territoire in configuration["territoires"]:
+        presences[territoire.name] = set()
+        places = set()
+        for joueur, acteur in configuration["acteurs"].items():
+            for zone in generaux.zones_generaux_territoire(territoire, joueur, configuration):
+                if not zone["chemin"].exists():
+                    continue
+                for chemin in zone["chemin"].iterdir():
+                    if not chemin.is_dir():
+                        continue
+                    identifiant = f"{joueur}:{chemin.name}"
+                    if (generaux.numero_general_depuis_nom(chemin.name) is None
+                            or identifiant in identites
+                            or officielles.get(identifiant) != territoire.name):
+                        raise ValueError(f"Présence incohérente : {chemin}")
+                    identites.add(identifiant)
+                    place = zone.get("emplacement")
+                    if place is not None:
+                        cle = (acteur["camp"], place)
+                        if cle in places:
+                            raise ValueError(f"Collision non résolue : {territoire.name}/{cle}")
+                        places.add(cle)
+                    if place in configuration["emplacements"]:
+                        vivant = False
+                        for bloc in config.ordre_blocs:
+                            dossier = chemin / bloc
+                            if dossier.exists() and any(generaux.identifier_unite(u) != "inconnu"
+                                                        for u in dossier.iterdir()):
+                                vivant = True
+                        if vivant:
+                            presences[territoire.name].add(acteur["camp"])
+    tactiques = {t.name for t in configuration["territoires"]}
+    manquantes = {i for i, position in officielles.items()
+                 if position in tactiques and i not in identites}
+    if manquantes:
+        raise ValueError(f"Identités absentes du plateau : {sorted(manquantes)}")
+    return presences
+
+
 def joueur_proprietaire_chemin(chemin):
     # Retrouve le joueur propriétaire d'un dossier
     # à partir de son UID Linux.

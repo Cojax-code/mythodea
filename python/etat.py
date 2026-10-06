@@ -1,8 +1,55 @@
 """Lecture et écriture des états persistants, fatigue et météo."""
 import random
 import os
+import json
+from contextlib import contextmanager
 
 import config
+
+
+@contextmanager
+def verrou_cycle_survie(configuration):
+    """Exclut deux pilotes/résolveurs concurrents, y compris pendant le timer."""
+    chemin = configuration["game_path"] / "systeme/verrou_cycle_survie"
+    chemin.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        descriptor = os.open(chemin, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError as erreur:
+        raise RuntimeError("Cycle Survie déjà verrouillé ; vérifier le processus avant toute reprise.") from erreur
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as fichier:
+            os.chown(chemin, 0, 0)
+            os.chmod(chemin, 0o600)
+            fichier.write(f"{os.getpid()}\n")
+        yield
+    finally:
+        chemin.unlink()
+
+
+def charger_cycle_survie(configuration):
+    chemin = configuration["game_path"] / "systeme/cycle_survie.json"
+    if not chemin.exists():
+        return None
+    cycle = json.loads(chemin.read_text(encoding="utf-8"))
+    if (type(cycle.get("tour")) is not int or cycle["tour"] < 0
+            or cycle.get("phase") not in ("preparation", "actions", "resolution", "a_preparer", "defaite")):
+        raise ValueError("État du cycle Survie invalide.")
+    return cycle
+
+
+def sauvegarder_cycle_survie(cycle, configuration):
+    """État privé remplacé atomiquement ; le numéro de vague vaut toujours tour+1."""
+    chemin = configuration["game_path"] / "systeme/cycle_survie.json"
+    chemin.parent.mkdir(parents=True, exist_ok=True)
+    temporaire = chemin.with_suffix(".tmp")
+    # Créer privé avant l'écriture, même si le umask du processus est permissif.
+    descriptor = os.open(temporaire, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as fichier:
+        os.chown(temporaire, 0, 0)
+        os.chmod(temporaire, 0o600)
+        json.dump(cycle, fichier, ensure_ascii=False)
+        fichier.write("\n")
+    temporaire.replace(chemin)
 
 
 def charger_attentes_repli(configuration=None):

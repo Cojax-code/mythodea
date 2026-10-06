@@ -5,6 +5,11 @@ import json
 import config
 
 
+def lancer_survie(configuration, nombre_tours=None):
+    import survie
+    return survie.lancer_partie_survie(configuration, nombre_tours)
+
+
 def resoudre_tour_classique():
     # Les imports Unix restent réservés à l'exécution réelle du moteur.
     import generaux
@@ -45,22 +50,34 @@ def resoudre_tour_classique():
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Mythodea : sélection du mode de jeu")
     parser.add_argument("--mode", choices=config.modes_disponibles, default="classique")
+    parser.add_argument("--duree-action", type=float, default=None,
+                        help="durée d'action Survie en secondes (défaut : 120, 0 sans attente)")
+    parser.add_argument("--tours", type=int, default=None,
+                        help="arrêter après ce nombre de résolutions Survie")
     parser.add_argument(
         "--afficher-configuration", action="store_true",
         help="afficher le profil sélectionné sans lancer de tour ni modifier le plateau",
     )
     arguments = parser.parse_args(argv)
     configuration = config.configuration_mode(arguments.mode)
+    if arguments.duree_action is not None:
+        import minuterie
+        try:
+            configuration["duree_phase_action_secondes"] = minuterie.valider_duree(arguments.duree_action)
+        except ValueError as erreur:
+            parser.error(str(erreur))
+    if arguments.tours is not None and arguments.tours < 1:
+        parser.error("--tours doit être positif")
+    if arguments.mode != "survie" and (arguments.duree_action is not None or arguments.tours is not None):
+        parser.error("--duree-action et --tours sont réservés au mode Survie")
 
     if arguments.afficher_configuration:
         print(json.dumps(configuration, ensure_ascii=False, indent=2, default=str))
         return
 
     if arguments.mode == "survie":
-        parser.error(
-            "Le mode Survie Est dispose de sa configuration mais n'est pas encore jouable. "
-            "Utilisez --mode survie --afficher-configuration pour la consulter."
-        )
+        lancer_survie(configuration, arguments.tours)
+        return
 
     resoudre_tour_classique()
 
