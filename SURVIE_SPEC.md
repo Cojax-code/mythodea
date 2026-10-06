@@ -77,11 +77,11 @@ Le village est le centre et l'objectif défensif de la partie.
 
 Condition de défaite :
 
-\u0060\u0060\u0060text
+```text
 controle(village) == bot
         ↓
       défaite
-\u0060\u0060\u0060
+```
 
 L'entrée d'un ennemi dans le village ne suffit donc pas à elle seule : le combat et
 la résolution du contrôle ont lieu normalement. La partie est perdue lorsque le
@@ -264,9 +264,9 @@ logique de résolution du tour.
 Le fichier associé doit être lisible par les joueurs et s'actualiser périodiquement.
 Il doit pouvoir être observé depuis le terminal, notamment avec :
 
-\u0060\u0060\u0060bash
+```bash
 tail -f <fichier_du_clocher>
-\u0060\u0060\u0060
+```
 
 Le format final et la fréquence exacte d'actualisation restent des détails
 d'implémentation, mais le fichier doit au minimum permettre d'identifier le tour
@@ -439,11 +439,11 @@ La résolution du tour N suit l'ordre de principe suivant :
 3. effectuer les contrôles de cohérence nécessaires sans nouvelle sanction, fatigue
    ou décrémentation d'attente ;
 4. créer entièrement la vague N+1 ; pour le front Est, lorsqu'une vague concerne
-   plusieurs territoires, sa matérialisation suit \u0060est_3 -> est_2 -> est_1\u0060 sans
-   modifier les compositions ni les noms d'affichage produits par \u0060vagues.py\u0060 ;
+   plusieurs territoires, sa matérialisation suit `est_3 -> est_2 -> est_1` sans
+   modifier les compositions ni les noms d'affichage produits par `vagues.py` ;
 5. identifier les territoires en conflit ;
 6. résoudre les combats dans l'ordre
-   \u0060village -> est_1 -> est_2 -> est_3\u0060 ;
+   `village -> est_1 -> est_2 -> est_3` ;
 7. pendant ces cascades, préparer et réserver les retraites tactiques admissibles ;
 8. après tous les combats, appliquer physiquement les retraites exactement aux
    places réservées ;
@@ -509,10 +509,10 @@ généraux : territoire d'apparition, numéro de vague, nom d'affichage et compo
 des quatre blocs (`nombre`, `type`). Cette fonction ne touche pas au plateau.
 La source aléatoire peut être fournie pour rendre les tests reproductibles.
 
-\u0060survie.preparer_phase_ennemie(numero_vague, configuration, aleatoire)\u0060 réalise
+`survie.preparer_phase_ennemie(numero_vague, configuration, aleatoire)` réalise
 uniquement la progression des anciennes forces puis l'apparition de la vague
 demandée. L'orchestrateur l'appelle après l'audit unique et lui fournit
-\u0060numero_vague = numero_tour + 1\u0060. La fonction ne doit pas déplacer une vague qu'elle
+`numero_vague = numero_tour + 1`. La fonction ne doit pas déplacer une vague qu'elle
 vient elle-même de créer. Elle ne gère pas le timer, les combats, le contrôle final,
 la défaite ou le passage au tour suivant.
 `avancer_ennemis()` et `creer_vague_est()` sont également appelables séparément.
@@ -746,7 +746,7 @@ inventés silencieusement.
 Pendant la résolution complète d'un tour, une retraite tactique admissible est
 **réservée puis appliquée plus tard**. Au moment du choix, le moteur vérifie la
 destination, l'absence de bot actif restant sur ce territoire déjà résolu et la
-première place disponible selon la règle \u00601..20\u0060. Les réservations déjà acceptées
+première place disponible selon la règle `1..20`. Les réservations déjà acceptées
 comptent comme des places occupées.
 
 Si aucune destination ou place valide n'existe, le général reste engagé normalement.
@@ -757,7 +757,7 @@ les retraites acceptées sont appliquées exactement aux places réservées, san
 un placement différent.
 
 Une retraite finale ne doit jamais recréer un territoire contesté ni déclencher un
-second combat. La remontée automatique des renforts **alliés** vers \u00601..4\u0060 n'est
+second combat. La remontée automatique des renforts **alliés** vers `1..4` n'est
 pas définie ici et n'est pas déclenchée implicitement par la lecture des forces ou
 la cascade.
 
@@ -768,12 +768,12 @@ la cascade.
 2. Remonter les premiers renforts vivants dans les places libres, dans leur ordre.
 3. Relire les forces ; s'il reste des alliés et des ennemis, et que des renforts
    viennent de remonter, lire le fichier de chaque général allié survivant.
-4. Hors village, pour ceux qui ont choisi \u00601\u0060, préparer la retraite vers le voisin
+4. Hors village, pour ceux qui ont choisi `1`, préparer la retraite vers le voisin
    rapprochant le plus du village. Le territoire de destination a déjà été résolu
-   grâce à l'ordre \u0060village -> est_1 -> est_2 -> est_3\u0060. La retraite n'est acceptée
-   que si aucun bot actif n'y reste et si une place \u00601..20\u0060 peut être réservée.
-   Ceux qui ont choisi \u00602\u0060 restent. Au village, aucun général ne part
-   automatiquement, même si son fichier contient \u00601\u0060.
+   grâce à l'ordre `village -> est_1 -> est_2 -> est_3`. La retraite n'est acceptée
+   que si aucun bot actif n'y reste et si une place `1..20` peut être réservée.
+   Ceux qui ont choisi `2` restent. Au village, aucun général ne part
+   automatiquement, même si son fichier contient `1`.
 5. Exclure les retraites acceptées des relectures de combat suivantes, sans encore
    les déplacer physiquement ; relancer le moteur si les deux camps ont encore des
    combattants non exclus. Les pertes précédentes restent sur disque.
@@ -788,11 +788,11 @@ du moteur commun. Les identités techniques, vagues, noms d'affichage et ordre d
 colonne sont conservés. Le départage de routes équivalentes reste non défini et
 provoque un refus explicite au lieu d'un choix arbitraire.
 
-L'API actuelle est \u0060survie.resoudre_cascade(territoire, configuration, mode_combat="OFF/OFF")\u0060.
+L'API actuelle est `survie.resoudre_cascade(territoire, configuration, mode_combat="OFF/OFF")`.
 Son implémentation doit être adaptée pour prendre en charge les exclusions et les
 réservations différées sans modifier les calculs de combat communs.
 
-Si la valeur \u00602\u0060 est choisie, des ordres spécifiques au combat en surnombre pourront
+Si la valeur `2` est choisie, des ordres spécifiques au combat en surnombre pourront
 être ajoutés ultérieurement. Ils ne font pas partie du premier prototype.
 
 Plusieurs affrontements successifs peuvent donc se produire sur le même territoire
