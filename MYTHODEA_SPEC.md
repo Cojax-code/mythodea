@@ -123,9 +123,11 @@ Les arrivées s'ajoutent à la fin ; les noms absents du disque sont ignorés.
 Pour les forces préparées sans ce fichier, les renforts non enregistrés sont
 ajoutés par numéro canonique croissant : leur historique d'arrivée n'est pas connu.
 
-`survie.preparer_phase_ennemie(numero_vague, configuration, aleatoire)` avance les
-anciens ennemis avant de créer la vague demandée. Le numéro est fourni par
-l'appelant, une fois par phase ; aucun cycle complet de partie n'est lancé.
+\u0060survie.preparer_phase_ennemie(numero_vague, configuration, aleatoire)\u0060 avance les
+anciens ennemis avant de créer la vague demandée. Dans le cycle Survie,
+l'orchestrateur l'appelle après l'audit unique et fournit
+\u0060numero_vague = numero_tour + 1\u0060. Aucun cycle complet de partie n'est lancé par
+cette fonction seule.
 Les fonctions communes de création, de lecture des blocs, de permissions,
 d'identité et de combat sont réutilisées. L'audit des déplacements des joueurs
 préserve les positions des acteurs automatiques gérés par le moteur.
@@ -524,8 +526,10 @@ dont le délai était positif au début, puis décrémente ces délais en fin d'
 Une nouvelle sanction n'est pas décrémentée pendant l'audit qui la prononce.
 Un délai de deux tours impose donc deux audits d'attente avant un retour autorisé
 au troisième. La réparation du plateau, le scan des ordres et les cascades ne
-décrémentent jamais ce compteur. Le futur cycle Survie devra appeler cet audit
-une seule fois par tour ; il n'est pas implémenté à cette étape.
+décrémentent jamais ce compteur. Le cycle Survie appelle cet audit **une seule fois par résolution de tour**, y
+compris pour le tour 0. Les contrôles supplémentaires effectués pendant la phase
+automatique ne doivent pas réappliquer les sanctions, recalculer la fatigue ni
+décrémenter une seconde fois les attentes de repli.
 
 Un général déjà au repli ne reçoit aucune nouvelle sanction ni aucun nouveau
 calcul de délai pour une nouvelle anomalie : un avertissement est produit et le
@@ -839,9 +843,14 @@ après vérification.
 
 ## 17. Cycle d'un tour
 
+Le point d'entrée \u0060python/mythodea_v_1_5.py\u0060 orchestre le cycle du mode sélectionné ;
+la logique métier reste dans les modules spécialisés.
+
+### Mode classique
+
 Ordre général actuel :
 
-```text
+\u0060\u0060\u0060text
 préparer rapports et météo
         ↓
 réparer / compléter la structure du plateau
@@ -857,18 +866,44 @@ si pas de victoire : résoudre les batailles
 sauvegarder le contrôle final
         ↓
 afficher le rapport court
-```
+\u0060\u0060\u0060
 
-Le point d'entrée `python/mythodea_v_1_5.py` orchestre ce cycle ; la logique
-métier reste dans les modules spécialisés.
-
-`plateau.reparer_structure()` répare uniquement les dossiers et leurs permissions,
+\u0060plateau.reparer_structure()\u0060 répare uniquement les dossiers et leurs permissions,
 selon le profil fourni (classique par défaut). Le point d'entrée classique appelle
 ensuite une fois par joueur
-`generaux.faire_apparaitre_general_si_possible()`. La génération conserve sa place
+\u0060generaux.faire_apparaitre_general_si_possible()\u0060. La génération conserve sa place
 avant l'audit : un seul général par joueur et par tour, aucun si le home contient
 déjà un général ou si cinq généraux ont déjà été générés. Réparer plusieurs fois
 la structure ne provoque aucune génération.
+
+### Mode Survie
+
+Le mode Survie sépare explicitement la **fenêtre d'action temporisée** de la
+**résolution d'un tour**. Le timer ne doit pas contenir la logique métier : il
+déclenche une fonction de résolution qui doit aussi pouvoir être appelée directement
+dans les tests sans attente réelle.
+
+À la résolution du tour N, l'orchestrateur :
+
+1. appelle l'audit commun une seule fois ;
+2. prépare et applique les déplacements automatiques des forces ennemies déjà
+   présentes ;
+3. effectue les contrôles supplémentaires sans rejouer les effets de l'audit ;
+4. appelle \u0060survie.preparer_phase_ennemie(numero_vague, ...)\u0060 avec
+   \u0060numero_vague = N + 1\u0060, de façon que les anciennes forces aient déjà avancé
+   avant la matérialisation de la nouvelle vague ;
+5. résout les combats et les retraites selon les règles du profil Survie ;
+6. sauvegarde le contrôle final, les rapports et l'éventuelle défaite ;
+7. prépare le tour suivant et son nouveau timer.
+
+Le tour 0 utilise le même principe : l'audit est exécuté, aucun ancien ennemi ne
+se déplace puisqu'il n'en existe pas encore, puis la vague 1 est créée et les
+éventuels combats sont résolus.
+
+\u0060survie.preparer_phase_ennemie()\u0060 reste une fonction de phase ennemie et non un
+cycle complet : elle réalise la progression des anciennes forces puis l'apparition
+de la vague demandée. Elle ne gère ni le timer, ni l'audit joueur, ni les combats,
+ni le contrôle final, ni le passage au tour suivant.
 
 ---
 
