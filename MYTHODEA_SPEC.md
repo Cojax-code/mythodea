@@ -123,10 +123,10 @@ Les arrivées s'ajoutent à la fin ; les noms absents du disque sont ignorés.
 Pour les forces préparées sans ce fichier, les renforts non enregistrés sont
 ajoutés par numéro canonique croissant : leur historique d'arrivée n'est pas connu.
 
-\u0060survie.preparer_phase_ennemie(numero_vague, configuration, aleatoire)\u0060 avance les
+`survie.preparer_phase_ennemie(numero_vague, configuration, aleatoire)` avance les
 anciens ennemis avant de créer la vague demandée. Dans le cycle Survie,
 l'orchestrateur l'appelle après l'audit unique et fournit
-\u0060numero_vague = numero_tour + 1\u0060. Aucun cycle complet de partie n'est lancé par
+`numero_vague = numero_tour + 1`. Aucun cycle complet de partie n'est lancé par
 cette fonction seule.
 Les fonctions communes de création, de lecture des blocs, de permissions,
 d'identité et de combat sont réutilisées. L'audit des déplacements des joueurs
@@ -843,14 +843,14 @@ après vérification.
 
 ## 17. Cycle d'un tour
 
-Le point d'entrée \u0060python/mythodea_v_1_5.py\u0060 orchestre le cycle du mode sélectionné ;
+Le point d'entrée `python/mythodea_v_1_5.py` orchestre le cycle du mode sélectionné ;
 la logique métier reste dans les modules spécialisés.
 
 ### Mode classique
 
 Ordre général actuel :
 
-\u0060\u0060\u0060text
+```text
 préparer rapports et météo
         ↓
 réparer / compléter la structure du plateau
@@ -866,12 +866,12 @@ si pas de victoire : résoudre les batailles
 sauvegarder le contrôle final
         ↓
 afficher le rapport court
-\u0060\u0060\u0060
+```
 
-\u0060plateau.reparer_structure()\u0060 répare uniquement les dossiers et leurs permissions,
+`plateau.reparer_structure()` répare uniquement les dossiers et leurs permissions,
 selon le profil fourni (classique par défaut). Le point d'entrée classique appelle
 ensuite une fois par joueur
-\u0060generaux.faire_apparaitre_general_si_possible()\u0060. La génération conserve sa place
+`generaux.faire_apparaitre_general_si_possible()`. La génération conserve sa place
 avant l'audit : un seul général par joueur et par tour, aucun si le home contient
 déjà un général ou si cinq généraux ont déjà été générés. Réparer plusieurs fois
 la structure ne provoque aucune génération.
@@ -889,21 +889,27 @@ dans les tests sans attente réelle.
 2. prépare et applique les déplacements automatiques des forces ennemies déjà
    présentes ;
 3. effectue les contrôles supplémentaires sans rejouer les effets de l'audit ;
-4. appelle \u0060survie.preparer_phase_ennemie(numero_vague, ...)\u0060 avec
-   \u0060numero_vague = N + 1\u0060, de façon que les anciennes forces aient déjà avancé
-   avant la matérialisation de la nouvelle vague ;
+4. matérialise ensuite la vague `N + 1` sans redéplacer les forces anciennes ;
 5. résout les combats et les retraites selon les règles du profil Survie ;
 6. sauvegarde le contrôle final, les rapports et l'éventuelle défaite ;
 7. prépare le tour suivant et son nouveau timer.
+
+L'orchestrateur peut déléguer les étapes 2 et 4 au wrapper
+`survie.preparer_phase_ennemie(numero_vague, ...)` avec
+`numero_vague = N + 1`, **ou** appeler séparément les fonctions de déplacement et
+de création de vague. Il ne doit jamais faire les deux, afin d'éviter un double
+déplacement des forces ennemies.
 
 Le tour 0 utilise le même principe : l'audit est exécuté, aucun ancien ennemi ne
 se déplace puisqu'il n'en existe pas encore, puis la vague 1 est créée et les
 éventuels combats sont résolus.
 
-\u0060survie.preparer_phase_ennemie()\u0060 reste une fonction de phase ennemie et non un
+`survie.preparer_phase_ennemie()` reste une fonction de phase ennemie et non un
 cycle complet : elle réalise la progression des anciennes forces puis l'apparition
-de la vague demandée. Elle ne gère ni le timer, ni l'audit joueur, ni les combats,
-ni le contrôle final, ni le passage au tour suivant.
+de la vague demandée. Si l'orchestrateur choisit ce wrapper, il ne doit pas avoir
+déjà appliqué séparément les déplacements automatiques. Elle ne gère ni le timer,
+ni l'audit joueur, ni les combats, ni le contrôle final, ni le passage au tour
+suivant.
 
 ---
 
