@@ -61,7 +61,9 @@ class Village(unittest.TestCase):
         if territoire == "repli":
             return self.config.repli_path / joueur / nom
         zone = self.config.game_path / territoire / joueur
-        if territoire == "village":
+        if not reserve and int(place) >= 5:
+            zone = zone / "renforts"
+        elif territoire == "village":
             zone = zone / ("reserve" if reserve else "garnison")
         if not reserve:
             zone = zone / place
@@ -100,6 +102,35 @@ class Village(unittest.TestCase):
         self.assertEqual(list(self.racine.rglob("general*")), [])
         self.assertEqual(list(self.racine.rglob("compteur*")), [])
         self.assertEqual(self.config.bases_joueurs, {"j1": "base1", "j2": "base2"})
+
+    def test_renforts_5_a_20_prives_decouverts_et_exclus_du_combat(self):
+        for territoire in ("village", "est_1", "est_2", "est_3"):
+            for joueur, uid in self.uids.items():
+                for place in range(5, 21):
+                    dossier = self.chemin(joueur, territoire=territoire, place=str(place)).parent
+                    self.assertTrue(dossier.is_dir())
+                    self.assertIn(call(dossier, uid, uid), self.chown.call_args_list)
+                    self.assertIn(call(dossier, 0o700), self.chmod.call_args_list)
+        renfort = self.general(place="20")
+        reserve = self.general("j2", reserve=True)
+        self.audit()
+        self.assertEqual(self.generaux.trouver_position_general("j1", "general1", self.profil),
+                         ("village", renfort))
+        self.assertEqual((renfort / "ordre_surnombre.txt").read_text().strip(), "2")
+        forces = self.generaux.lire_forces_territoire(self.config.game_path / "village", self.profil)
+        self.assertEqual(self.generaux.controle_forces(forces), "neutre")
+        self.assertTrue(reserve.exists())
+
+    def test_identite_et_duplication_controlees_dans_renforts(self):
+        renfort = self.general(territoire="est_2", place="5")
+        actif = self.general(territoire="est_2")
+        faux = self.chemin(nom="general2", territoire="est_2", place="20")
+        self.generaux.creer_general(faux, faux.name)
+        self.audit()
+        self.assertFalse(renfort.exists())
+        self.assertFalse(actif.exists())
+        self.assertFalse(faux.exists())
+        self.assertTrue(self.chemin(territoire="repli").exists())
 
     def test_reparation_repetee_preserve_generaux_reserve_et_garnison(self):
         reserve = self.general(reserve=True)

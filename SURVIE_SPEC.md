@@ -200,8 +200,9 @@ si les autres règles de déplacement l'autorisent.
 
 ### Prise en charge des zones militaires
 
-`plateau.reparer_structure(configuration)` crée ou répare la garnison et la réserve
-de chaque joueur avec son propriétaire Linux et des permissions `700`, ainsi que
+`plateau.reparer_structure(configuration)` crée ou répare la garnison, la réserve
+et les renforts tactiques `renforts/5..20` de chaque joueur avec son propriétaire
+Linux et des permissions `700`, ainsi que
 les emplacements extérieurs et les espaces de repli séparés. La réparation ne crée
 aucun général et ne touche pas à sa composition. Les fonctions du Forum, de la Poste
 et du Clocher restent pour les étapes suivantes.
@@ -683,6 +684,14 @@ La retraite n'ajoute pas de fatigue et ne réinitialise pas celle du général.
 Les positions officielles doivent rester cohérentes avec le territoire réel. Les
 détails de départage qui ne seraient pas couverts par ces règles ne doivent pas être
 inventés silencieusement.
+
+L'implémentation prépare le placement de tous les arrivants avant de les déplacer.
+Elle considère les places des occupants déjà présents comme occupées et ne déplace
+pas ces occupants. Une préférence invalide, une égalité de priorité sans départage
+ou l'absence de place libre jusqu'à `20` provoque un refus explicite avant de
+déplacer les arrivants. Le départage de ces cas reste à définir.
+La remontée automatique des renforts **alliés** vers `1..4` n'est pas définie ici
+et n'est pas déclenchée implicitement par la lecture des forces ou la cascade.
 
 ### Séquence d'une cascade
 

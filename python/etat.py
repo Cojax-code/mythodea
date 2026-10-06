@@ -1,7 +1,34 @@
 """Lecture et écriture des états persistants, fatigue et météo."""
 import random
+import os
 
 import config
+
+
+def charger_attentes_repli(configuration=None):
+    racine = config.game_path if configuration is None else configuration["game_path"]
+    chemin = racine / "systeme" / "attente_repli.txt"
+    if not chemin.exists():
+        return {}
+    attentes = {}
+    for ligne in chemin.read_text(encoding="utf-8").splitlines():
+        identifiant, valeur = ligne.split("=", 1)
+        if not valeur.isascii() or not valeur.isdecimal():
+            raise ValueError(f"Délai de repli invalide : {ligne}")
+        if int(valeur):
+            attentes[identifiant] = int(valeur)
+    return attentes
+
+
+def sauvegarder_attentes_repli(attentes, configuration=None):
+    """Compteurs privés du moteur, indépendants des fichiers des joueurs."""
+    racine = config.game_path if configuration is None else configuration["game_path"]
+    chemin = racine / "systeme" / "attente_repli.txt"
+    chemin.parent.mkdir(parents=True, exist_ok=True)
+    chemin.write_text("".join(f"{cle}={attentes[cle]}\n" for cle in sorted(attentes)
+                               if attentes[cle] > 0), encoding="utf-8")
+    os.chown(chemin, 0, 0)
+    os.chmod(chemin, 0o600)
 
 
 def lire_compteur_general(joueur):

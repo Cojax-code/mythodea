@@ -9,7 +9,6 @@ import etat
 import generaux
 import mouvements
 import rapports
-import securite
 import vagues
 
 
@@ -195,24 +194,14 @@ def resoudre_cascade(territoire, configuration=None, mode_combat="OFF/OFF"):
         fuyards = [general for general in allies
                    if generaux.lire_ordre_surnombre(general, territoire.name, configuration) == 1
                    and territoire.name not in configuration["villages"]]
-        for general in fuyards:
-            destination = mouvements.retraite_surnombre(general, territoire, configuration)
+        destinations = mouvements.retraites_surnombre(fuyards, territoire, configuration)
+        for general, destination in destinations:
             retraites.append({"joueur": general["joueur"], "nom": general["nom"],
                               "origine": territoire.name, "chemin": destination})
             arrivee = mouvements.destination_retraite_surnombre(territoire.name, configuration)
-            punis = securite.securiser_emplacements_generaux(
-                configuration, configuration["game_path"] / arrivee)
-            if punis:
-                positions = etat.charger_positions_generaux()
-                for identifiant in punis:
-                    positions[identifiant] = "repli"
-                etat.sauvegarder_positions_generaux(positions)
-                if f"{general['joueur']}:{general['nom']}" in punis:
-                    retraites[-1]["chemin"] = configuration["repli_path"] / general["joueur"] / general["nom"]
             rapports.ecrire_rapport_territoire(
                 territoire, f"Retraite : {general['joueur']} {general['nom']} : "
-                f"{territoire.name} -> {arrivee}"
-                + (" ; collision alliée, envoi au repli." if punis else ".")
+                f"{territoire.name} -> {arrivee}, position {destination.parent.name}."
             )
         # Relire après les départs : seuls les alliés encore présents combattront.
         forces = generaux.lire_forces_territoire(territoire, configuration)

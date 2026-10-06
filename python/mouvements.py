@@ -11,6 +11,25 @@ import generaux
 import rapports
 
 
+def delai_sanction_repli(joueur, lieu, configuration):
+    """Calcule ceil(distance / 2) sur le graphe du mode, sans déplacer de troupe."""
+    retour = configuration["bases_joueurs"][joueur]
+    tactiques = {territoire.name for territoire in configuration["territoires"]}
+    if lieu not in tactiques:
+        raise ValueError(f"Distance de sanction non définie depuis {lieu}.")
+    attente = deque([(lieu, 0)])
+    visites = {lieu}
+    while attente:
+        territoire, distance = attente.popleft()
+        if territoire == retour:
+            return (distance + 1) // 2
+        for voisin in configuration["carte_territoires"].get(territoire, []):
+            if voisin in tactiques and voisin not in visites:
+                visites.add(voisin)
+                attente.append((voisin, distance + 1))
+    raise ValueError(f"Aucun chemin de retour depuis {lieu} vers {retour}.")
+
+
 def territoires_adjacents(territoire_depart, territoire_arrivee):
     voisins = config.carte_territoires.get(territoire_depart, [])
     return territoire_arrivee in voisins
@@ -121,7 +140,9 @@ def envoyer_general_au_repli(
     joueur,
     nom_general,
     chemin_actuel,
-    configuration=None
+    configuration=None,
+    lieu_sanction=None,
+    appliquer_sanction=True,
 ):
     # Envoie le général et toutes ses unités
     # dans sa zone de repli.
@@ -129,7 +150,17 @@ def envoyer_general_au_repli(
     # La fonction refuse d'écraser un général
     # déjà présent dans le repli.
 
-    repli = config.repli_path if configuration is None else configuration["repli_path"]
+    if configuration is None:
+        configuration = config.configuration_mode("classique")
+    zone_actuelle = next((zone["position"]
+        for acteur in configuration["joueurs"]
+        for zone in generaux.zones_generaux(acteur, configuration)
+        if zone["chemin"] == chemin_actuel.parent), None)
+    if lieu_sanction == "home" or zone_actuelle == "home":
+        rapports.afficher_et_ecrire(
+            f"Avertissement dans le home : {joueur}:{nom_general}, aucune sanction de repli.")
+        return chemin_actuel
+    repli = configuration["repli_path"]
     destination = (
         repli
         / joueur
@@ -141,20 +172,11 @@ def envoyer_general_au_repli(
         exist_ok=True
     )
 
-    # Le général est déjà au repli.
-    if chemin_actuel == destination:
-        generaux.donner_permissions_general(
-            destination,
-            joueur
-        )
-
-        return destination
-
     # Une autre occurrence existe déjà au repli.
     # On ne supprime aucun dossier ici :
     # les fonctions de sécurisation doivent
     # résoudre la duplication auparavant.
-    if destination.exists():
+    if destination.exists() and chemin_actuel != destination:
         rapports.afficher_et_ecrire(
             f"Impossible d'envoyer "
             f"{joueur}:{nom_general} au repli : "
@@ -163,16 +185,32 @@ def envoyer_general_au_repli(
 
         return None
 
-    shutil.move(
-        str(chemin_actuel),
-        str(destination)
-    )
+    delai = None
+    identifiant = f"{joueur}:{nom_general}"
+    attentes = etat.charger_attentes_repli(configuration)
+    deja_repli = (zone_actuelle == "repli" or lieu_sanction == "repli"
+                  or etat.charger_positions_generaux().get(identifiant) == "repli"
+                  or identifiant in attentes)
+    if appliquer_sanction and not deja_repli:
+        delai = delai_sanction_repli(joueur, lieu_sanction or zone_actuelle, configuration)
+    elif deja_repli:
+        rapports.afficher_et_ecrire(
+            f"Anomalie au repli : {identifiant}, délai conservé sans nouvelle sanction.")
+
+    if chemin_actuel != destination:
+        shutil.move(str(chemin_actuel), str(destination))
 
     generaux.donner_permissions_general(
         destination,
         joueur
     )
 
+    if delai is not None:
+        attentes[identifiant] = delai
+        etat.sauvegarder_attentes_repli(attentes, configuration)
+        rapports.afficher_et_ecrire(
+            f"Sanction de repli : {joueur}:{nom_general}, {delai} tour(s) d'attente."
+        )
     return destination
 
 
@@ -207,46 +245,118 @@ def destination_retraite_surnombre(origine, configuration):
     return meilleurs[0]
 
 
-def retraite_surnombre(general, territoire, configuration):
-    """Déplace le général vers le village en conservant son numéro de place.
+def planifier_positions_surnombre(arrivants, positions_occupees, territoire=None):
+    """Calcule tout le placement avant de déplacer un seul général."""
+    priorites = []
+    cles = set()
+    for general in arrivants:
+        preference = generaux.lire_fiche_general(general["chemin"]).get("position_surnombre")
+        if preference is not None and preference not in {str(n) for n in range(1, 21)}:
+            message = (f"Avertissement : position_surnombre invalide pour "
+                       f"{general['joueur']}:{general['nom']} ; traité sans préférence.")
+            rapports.afficher_et_ecrire(message)
+            if territoire is not None:
+                rapports.ecrire_rapport_territoire(territoire, message)
+            preference = None
+        origine = int(general["emplacement"])
+        if preference is not None:
+            cle = (0, int(preference), origine)
+        else:
+            cle = (1, 1, origine)
+        if cle in cles:
+            raise ValueError("Le départage de priorités de surnombre égales reste à définir.")
+        cles.add(cle)
+        priorites.append((cle, general))
+    occupees = {int(place) for place in positions_occupees}
+    placements = []
+    for (categorie, rang, _), general in sorted(priorites, key=lambda item: item[0]):
+        debut = rang if categorie == 0 else 1
+        place = next((n for n in range(debut, 21) if n not in occupees), None)
+        if place is None:
+            message = (f"Retraite impossible : {general['joueur']}:{general['nom']}, "
+                       f"aucune place libre entre {debut} et 20 ; reste sur son territoire.")
+            rapports.afficher_et_ecrire(message)
+            if territoire is not None:
+                rapports.ecrire_rapport_territoire(territoire, message)
+            continue
+        occupees.add(place)
+        placements.append((general, str(place)))
+    return placements
 
-    L'orchestrateur applique ensuite l'audit commun des collisions à l'arrivée.
-    Le choix de surnombre et la fatigue restent attachés au général.
+
+def retraites_surnombre(arrivants, territoire, configuration):
+    """Recule un groupe d'un territoire et le place dans la file alliée.
+
+    Les occupants déjà présents gardent leur place. La réserve est exclue.
+    Toutes les destinations sont vérifiées avant le premier déplacement.
     """
-    joueur = general["joueur"]
-    if joueur not in configuration["joueurs"]:
-        raise ValueError("La retraite de surnombre concerne uniquement les joueurs.")
+    if not arrivants:
+        return []
     arrivee = destination_retraite_surnombre(territoire.name, configuration)
     if arrivee is None:
-        return general["chemin"]
+        return [(general, general["chemin"]) for general in arrivants]
     territoire_arrivee = configuration["game_path"] / arrivee
-    zone = next(z for z in generaux.zones_generaux_territoire(
-        territoire_arrivee, joueur, configuration)
-        if z.get("emplacement") == general["emplacement"])
-    destination = zone["chemin"] / general["nom"]
-    if destination.exists():
-        raise FileExistsError(f"Une identité existe déjà à l'arrivée : {destination}")
-    acteur = configuration["acteurs"][joueur]
-    uid = pwd.getpwnam(acteur["proprietaire_linux"]).pw_uid
-    gid = grp.getgrnam(acteur["groupe_linux"]).gr_gid
-    territoire_arrivee.mkdir(parents=True, exist_ok=True)
-    dossiers = [territoire_arrivee / joueur]
-    if zone["chemin"].parent != dossiers[0]:
-        dossiers.append(zone["chemin"].parent)
-    dossiers.append(zone["chemin"])
-    for dossier in dossiers:
-        dossier.mkdir(mode=0o700, exist_ok=True)
-        os.chown(dossier, uid, gid)
-        os.chmod(dossier, 0o700)
-    general["chemin"].rename(destination)
-    generaux.donner_permissions_general(destination, acteur["proprietaire_linux"])
+    zones = {joueur: generaux.zones_generaux_territoire(territoire_arrivee, joueur, configuration)
+             for joueur in configuration["joueurs"]}
+    occupees = set()
+    identites = set()
+    for joueur, zones_joueur in zones.items():
+        for zone in zones_joueur:
+            if not zone["chemin"].exists():
+                continue
+            presents = [p for p in zone["chemin"].iterdir() if p.is_dir()]
+            identites.update((joueur, p.name) for p in presents)
+            if presents and "emplacement" in zone:
+                occupees.add(zone["emplacement"])
+    for general in arrivants:
+        if general["joueur"] not in configuration["joueurs"]:
+            raise ValueError("La retraite de surnombre concerne uniquement les joueurs.")
+        identite = (general["joueur"], general["nom"])
+        if identite in identites:
+            raise FileExistsError(f"Une identité existe déjà à l'arrivée : {identite}")
+        identites.add(identite)
+    placements = planifier_positions_surnombre(arrivants, occupees, territoire)
+    destinations = []
+    for general, place in placements:
+        zone = next(z for z in zones[general["joueur"]] if z.get("emplacement") == place)
+        destination = zone["chemin"] / general["nom"]
+        if destination.exists():
+            raise FileExistsError(f"Une identité existe déjà à l'arrivée : {destination}")
+        if not general["chemin"].is_dir():
+            raise FileNotFoundError(general["chemin"])
+        destinations.append((general, destination))
+
     positions = etat.charger_positions_generaux()
-    positions[f"{joueur}:{general['nom']}"] = arrivee
-    etat.sauvegarder_positions_generaux(positions)
-    rapports.afficher_et_ecrire(
-        f"Retraite de surnombre : {joueur} {general['nom']} : {territoire.name} -> {arrivee}."
-    )
-    return destination
+    for general, destination in destinations:
+        joueur = general["joueur"]
+        acteur = configuration["acteurs"][joueur]
+        uid = pwd.getpwnam(acteur["proprietaire_linux"]).pw_uid
+        gid = grp.getgrnam(acteur["groupe_linux"]).gr_gid
+        territoire_arrivee.mkdir(parents=True, exist_ok=True)
+        joueur_dir = territoire_arrivee / joueur
+        dossiers = [joueur_dir]
+        if destination.parent.parent != joueur_dir:
+            dossiers.append(destination.parent.parent)
+        dossiers.append(destination.parent)
+        for dossier in dossiers:
+            dossier.mkdir(mode=0o700, exist_ok=True)
+            os.chown(dossier, uid, gid)
+            os.chmod(dossier, 0o700)
+        general["chemin"].rename(destination)
+        generaux.donner_permissions_general(destination, acteur["proprietaire_linux"])
+        positions[f"{joueur}:{general['nom']}"] = arrivee
+        etat.sauvegarder_positions_generaux(positions)
+        rapports.afficher_et_ecrire(
+            f"Retraite de surnombre : {joueur} {general['nom']} : "
+            f"{territoire.name} -> {arrivee}, position {destination.parent.name}."
+        )
+    return destinations
+
+
+def retraite_surnombre(general, territoire, configuration):
+    """Compatibilité pour la retraite isolée d'un général."""
+    destinations = retraites_surnombre([general], territoire, configuration)
+    return destinations[0][1] if destinations else general["chemin"]
 
 
 def ennemi_de(joueur):

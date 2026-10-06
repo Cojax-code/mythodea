@@ -195,6 +195,7 @@ def configuration_mode(mode):
         "joueurs": list(joueurs),
         "acteurs": acteurs,
         "emplacements": list(emplacements),
+        "positions_renforts_allies": [str(n) for n in range(5, 21)] if mode == "survie" else [],
         "emplacements_partages": mode == "survie",
         "villages": ["village"] if mode == "survie" else [],
         "permissions_generaux": {"dossiers": 0o700, "fichiers": 0o600},

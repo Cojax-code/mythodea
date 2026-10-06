@@ -225,7 +225,8 @@ class Surnombre(unittest.TestCase):
                 self.assertEqual(len(resultat["retraites"]), 1)
                 position, chemin = self.generaux.trouver_position_general("j1", f"general{numero}", self.profil)
                 self.assertEqual(position, arrivee)
-                self.assertEqual(chemin.parent.name, "3")
+                # Sans préférence, la nouvelle règle cherche la première place libre.
+                self.assertEqual(chemin.parent.name, "1")
                 self.assertEqual((chemin / "ordre_surnombre.txt").read_text().strip(), "1")
                 self.assertEqual(self.generaux.total_general_depuis_chemin(chemin), 16)
                 self.assertFalse(joueur.exists())
@@ -307,18 +308,117 @@ class Surnombre(unittest.TestCase):
             self.assertEqual((joueur / "ordre_surnombre.txt").read_text(encoding="utf-8"), texte)
         self.assertIn("Ordre de surnombre invalide", self.config.rapport_long_path.read_text(encoding="utf-8"))
 
-    def test_collision_arrivee_reutilise_repli_sans_pertes_ni_identites_oubliees(self):
+    def test_arrivee_occupee_reorganise_sans_repli_ni_pertes(self):
         self.general(ordre=1)
         occupant = self.general("j2", territoire="est_2", ordre=2)
         self.colonne(5)
         resultat = self.cascade()
         self.assertEqual(resultat["affrontements"], 1)
-        self.assertFalse(occupant.exists())
+        self.assertTrue(occupant.exists())
         for joueur, effectif in (("j1", 16), ("j2", 20)):
-            chemin = self.config.repli_path / joueur / "general1"
+            place = "2" if joueur == "j1" else "1"
+            chemin = self.config.game_path / "est_2" / joueur / place / "general1"
             self.assertEqual(self.generaux.total_general_depuis_chemin(chemin), effectif)
-            self.assertEqual(self.etat.charger_positions_generaux()[f"{joueur}:general1"], "repli")
-        self.assertEqual(resultat["retraites"][0]["chemin"], self.config.repli_path / "j1/general1")
+            self.assertEqual(self.etat.charger_positions_generaux()[f"{joueur}:general1"], "est_2")
+        self.assertEqual(resultat["retraites"][0]["chemin"], self.config.game_path / "est_2/j1/2/general1")
+        self.assertEqual(self.etat.charger_attentes_repli(self.profil), {})
+
+    def preference(self, chemin, valeur):
+        with (chemin / "fiche.txt").open("a", encoding="utf-8") as fichier:
+            fichier.write(f"\nposition_surnombre={valeur}\n")
+
+    def reculer(self, chemins, origine="est_3"):
+        forces = self.generaux.lire_forces_territoire(self.config.game_path / origine, self.profil)
+        arrivants = [g for g in self.generaux.generaux_actifs_joueur(forces, "allies")
+                     if g["chemin"] in chemins]
+        return self.mouvements.retraites_surnombre(
+            list(reversed(arrivants)), self.config.game_path / origine, self.profil)
+
+    def test_preferences_prioritaires_puis_origines_numeriques(self):
+        sans1 = self.general(place="1")
+        avec4 = self.general("j2", place="4")
+        sans3 = self.general(numero=2, place="3")
+        self.preference(avec4, 1)
+        resultat = self.reculer([sans1, avec4, sans3])
+        self.assertEqual([(g["joueur"], g["nom"], p.parent.name) for g, p in resultat],
+                         [("j2", "general1", "1"), ("j1", "general1", "2"), ("j1", "general2", "3")])
+
+    def test_cascade_place_les_fuyards_ensemble_selon_preferences(self):
+        sans = self.general(ordre=1)
+        prioritaire = self.general("j2", place="2", ordre=1)
+        self.preference(prioritaire, 1)
+        self.colonne(5)
+        resultat = self.cascade()
+        self.assertEqual(resultat["affrontements"], 1)
+        self.assertEqual([(r["joueur"], r["chemin"].parent.name) for r in resultat["retraites"]],
+                         [("j2", "1"), ("j1", "2")])
+        self.assertFalse(sans.exists())
+        self.assertFalse(prioritaire.exists())
+
+    def test_preferences_croissantes_et_chevauchement_vers_haut(self):
+        premier = self.general(place="4")
+        second = self.general("j2", place="1")
+        self.preference(premier, 5)
+        self.preference(second, 6)
+        self.general(numero=2, territoire="est_2", place="5")
+        resultat = self.reculer([premier, second])
+        self.assertEqual([p.parent.name for _, p in resultat], ["6", "7"])
+        self.assertTrue(all(p.parent.parent.name == "renforts" for _, p in resultat))
+
+    def test_debordement_village_renforts_distincts_reserve_fatigue_et_fichiers(self):
+        arrivant = self.general(territoire="est_1", ordre=1)
+        for numero in range(1, 5):
+            self.general("j2", numero=numero, territoire="village", place=str(numero))
+        reserve = self.general(numero=2, territoire="village", reserve=True)
+        self.etat.sauvegarder_generaux_fatigues({"j1:general1"})
+        fichiers = {p.name: p.read_bytes() for p in arrivant.iterdir() if p.is_file()}
+        resultat = self.reculer([arrivant], "est_1")
+        destination = self.config.game_path / "village/j1/renforts/5/general1"
+        self.assertEqual(resultat[0][1], destination)
+        self.assertTrue(reserve.exists())
+        self.assertEqual(self.etat.charger_positions_generaux()["j1:general1"], "village")
+        self.assertEqual(self.etat.charger_generaux_fatigues(), {"j1:general1"})
+        self.assertEqual(self.generaux.total_general_depuis_chemin(destination), 20)
+        self.assertEqual({p.name: p.read_bytes() for p in destination.iterdir() if p.is_file()}, fichiers)
+        forces = self.generaux.lire_forces_territoire(self.config.game_path / "village", self.profil)
+        self.assertEqual(len(self.generaux.generaux_actifs_joueur(forces, "allies")), 4)
+
+    def test_preference_20_acceptee_et_scan_renforts_hors_village(self):
+        arrivant = self.general()
+        self.preference(arrivant, 20)
+        destination = self.reculer([arrivant])[0][1]
+        self.scan()
+        self.assertEqual(destination.parent.name, "20")
+        self.assertEqual((destination / "ordre_surnombre.txt").read_text().strip(), "1")
+
+    def test_cas_indefinis_refuses_avant_tout_deplacement(self):
+        premier = self.general()
+        second = self.general("j2", place="2")
+        positions = self.etat.charger_positions_generaux()
+        for valeur in ("", "0", "21", "abc"):
+            self.preference(second, valeur)
+            with self.assertRaisesRegex(ValueError, "invalide"):
+                self.reculer([premier, second])
+            self.assertTrue(premier.exists())
+            self.assertTrue(second.exists())
+        self.preference(premier, 20)
+        self.preference(second, 20)
+        with self.assertRaisesRegex(ValueError, "départage"):
+            self.reculer([premier, second])
+        self.preference(second, 19)
+        self.general(numero=2, territoire="est_2", place="20")
+        with self.assertRaisesRegex(ValueError, "Aucune place"):
+            self.reculer([premier, second])
+        self.assertTrue(premier.exists())
+        self.assertTrue(second.exists())
+        self.assertEqual({k: v for k, v in self.etat.charger_positions_generaux().items()
+                          if k in positions}, positions)
+
+    def test_preference_non_consultee_sans_retraite(self):
+        general = self.general(ordre=2)
+        self.preference(general, "invalide")
+        self.colonne(5)
+        self.assertEqual(self.cascade()["affrontements"], 2)
 
 
 if __name__ == "__main__":

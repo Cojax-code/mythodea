@@ -143,34 +143,9 @@ def securiser_generaux_mauvais_joueur(
                 # --------------------------------------
 
                 if len(occurrences_correctes) == 0:
-                    destination = (
-                        configuration["repli_path"]
-                        / proprietaire_reel
-                        / chemin_general.name
-                    )
-
-                    destination.parent.mkdir(
-                        parents=True,
-                        exist_ok=True
-                    )
-
-                    # Il ne devrait normalement pas déjà
-                    # exister de destination puisque
-                    # occurrences_correctes est vide.
-                    if destination.exists():
-                        shutil.rmtree(
-                            destination
-                        )
-
-                    shutil.move(
-                        str(chemin_general),
-                        str(destination)
-                    )
-
-                    generaux.donner_permissions_general(
-                        destination,
-                        proprietaire_reel
-                    )
+                    mouvements.envoyer_general_au_repli(
+                        proprietaire_reel, chemin_general.name, chemin_general,
+                        configuration, lieu_sanction=nom_zone)
 
                     generaux_punis.add(
                         identifiant
@@ -187,6 +162,9 @@ def securiser_generaux_mauvais_joueur(
                 # Une occurrence correcte existe déjà
                 # --------------------------------------
 
+                # Vérifier la durée avant de supprimer la copie : home/repli
+                # ne possèdent pas encore de distance de sanction définie.
+                mouvements.delai_sanction_repli(proprietaire_reel, nom_zone, configuration)
                 shutil.rmtree(
                     chemin_general
                 )
@@ -207,16 +185,13 @@ def securiser_generaux_mauvais_joueur(
                         occurrences_correctes[0]
                     )
 
-                    if (
-                        occurrence_reelle["position"]
-                        != "repli"
-                    ):
-                        mouvements.envoyer_general_au_repli(
-                            proprietaire_reel,
-                            chemin_general.name,
-                            occurrence_reelle["chemin"],
-                            configuration
-                        )
+                    mouvements.envoyer_general_au_repli(
+                        proprietaire_reel,
+                        chemin_general.name,
+                        occurrence_reelle["chemin"],
+                        configuration,
+                        lieu_sanction=nom_zone,
+                    )
 
                     generaux_punis.add(
                         identifiant
@@ -325,6 +300,11 @@ def securiser_generaux_dupliques(positions_avant, configuration=None):
                 )
 
                 copie_a_garder = occurrences[0]
+
+            # Valider le délai avant les suppressions ; une zone spéciale
+            # sans règle de distance doit être signalée sans perte de dossiers.
+            if copie_a_garder["position"] != "repli":
+                mouvements.delai_sanction_repli(joueur, copie_a_garder["position"], configuration)
 
             # Supprimer toutes les autres copies.
             for occurrence in occurrences:
@@ -435,6 +415,7 @@ def verifier_tous_les_deplacements(configuration=None):
 
     positions = etat.charger_positions_generaux()
     controle_avant = etat.charger_controle_territoires(configuration)
+    attentes_avant = etat.charger_attentes_repli(configuration)
 
     # ------------------------------------------
     # Sécurité générale
@@ -453,6 +434,23 @@ def verifier_tous_les_deplacements(configuration=None):
             positions, configuration
         )
     )
+
+    # Un général encore en attente ne peut pas entrer en combat ni occuper
+    # une place alliée. Le retour forcé n'ajoute pas une nouvelle sanction.
+    for identifiant in attentes_avant:
+        if identifiant in punis_mauvais_joueur | punis_duplication:
+            continue
+        joueur, nom = identifiant.split(":", 1)
+        if joueur not in configuration["joueurs"]:
+            continue
+        position, chemin = generaux.trouver_position_general(joueur, nom, configuration)
+        if chemin is not None and position != "repli":
+            mouvements.envoyer_general_au_repli(
+                joueur, nom, chemin, configuration, appliquer_sanction=False)
+        if chemin is not None:
+            rapports.afficher_et_ecrire(
+                f"{identifiant} : action interdite, attente au repli "
+                f"({attentes_avant[identifiant]} tour(s)).")
 
     punis_emplacement = (
         securiser_emplacements_generaux(configuration)
@@ -509,7 +507,7 @@ def verifier_tous_les_deplacements(configuration=None):
 
             # Un général sanctionné pendant l'audit
             # doit maintenant se trouver au repli.
-            if identifiant in generaux_deja_punis:
+            if identifiant in generaux_deja_punis or identifiant in attentes_avant:
                 nouvelles_positions[
                     identifiant
                 ] = "repli"
@@ -618,4 +616,14 @@ def verifier_tous_les_deplacements(configuration=None):
     etat.sauvegarder_generaux_fatigues(
         generaux_fatigues
     )
+    # Un appel d'audit valide les actions d'un tour. Seuls les délais déjà
+    # présents à son début diminuent ; une sanction nouvelle garde sa durée.
+    attentes = etat.charger_attentes_repli(configuration)
+    for identifiant in attentes_avant:
+        if identifiant not in nouvelles_positions:
+            attentes.pop(identifiant, None)
+        elif identifiant not in generaux_deja_punis:
+            attentes[identifiant] = max(0, attentes_avant[identifiant] - 1)
+    if attentes or attentes_avant:
+        etat.sauvegarder_attentes_repli(attentes, configuration)
     generaux.scanner_ordres_surnombre(configuration)

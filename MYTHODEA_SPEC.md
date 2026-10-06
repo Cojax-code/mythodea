@@ -102,8 +102,10 @@ raccordé à un cycle de jeu Survie complet.
 réserves. `generaux.zones_generaux()` ajoute les homes et le repli. Ces descriptions
 communes sont utilisées par la recherche, l'audit et la préparation du plateau ;
 elles ne lisent ni ne modifient le disque. Une zone numérotée porte un champ
-`emplacement` ; une réserve n'en porte pas et ne participe pas aux collisions ni
-à la lecture des forces engagées.
+`emplacement` ; une réserve n'en porte pas. Seules les places actives `1..4`
+participent à la lecture des forces engagées. En Survie, les renforts alliés
+`territoire/joueur/renforts/5..20` sont découverts et audités comme les autres
+généraux, avec leurs propriétaires séparés. Ils restent distincts de la réserve.
 
 En Survie, ces descriptions incluent aussi `territoire/bot/renforts/`, sans
 emplacement de combat. L'inventaire de `survie.py` conserve tous les ennemis des
@@ -145,10 +147,14 @@ avec le défaut `1` hors village et `2` au village ; un choix existant suit le d
 
 `mouvements.destination_retraite_surnombre()` cherche l'unique voisin tactique
 rapprochant le plus du village ; un départage ambigu est refusé.
-`mouvements.retraite_surnombre()` conserve le numéro de place, les unités, les
-fichiers et la fatigue, et met à jour la position officielle. La cascade applique
-ensuite l'audit commun des collisions, limité au territoire d'arrivée, avec envoi
-au repli des occupants en collision et mise à jour de leurs positions.
+`mouvements.retraites_surnombre()` prépare ensemble le placement des arrivants
+dans la file alliée `1..20`, selon `position_surnombre` puis leur position d'origine.
+Les places déjà occupées à l'arrivée restent indisponibles. La réserve n'entre pas
+dans ce placement. Les cas sans départage défini ou sans place disponible sont
+refusés avant tout déplacement du groupe. Les unités, fichiers et fatigue sont
+conservés ; les positions officielles sont mises à jour après chaque déplacement.
+La cascade n'applique pas de sanction de collision aux retraites tactiques.
+`retraite_surnombre()` conserve l'API pour un seul général.
 
 La lecture territoriale conserve les généraux par propriétaire de jeu (`joueur`)
 et ajoute leur `camp` en mémoire d'après le profil. Le compte Linux reste une
@@ -487,9 +493,20 @@ distance 5 -> 3 tours
 ```
 
 Tant que ce compteur est supérieur à zéro, le général ne peut effectuer aucune
-action. Le compteur doit être persistant et décrémenté une fois par tour. Le choix
-du fichier d'état exact reste une responsabilité d'implémentation, mais il ne doit
-pas modifier cette règle de gameplay.
+action. Le compteur est conservé dans `systeme/attente_repli.txt`, privé au moteur
+(`root:root`, `600`), au format `joueur:generalN=tours_restants`, une ligne par
+général. Un fichier absent signifie qu'aucun délai n'est enregistré.
+
+L'audit commun valide une seule phase d'action par appel : il bloque les généraux
+dont le délai était positif au début, puis décrémente ces délais en fin d'audit.
+Une nouvelle sanction n'est pas décrémentée pendant l'audit qui la prononce.
+Un délai de deux tours impose donc deux audits d'attente avant un retour autorisé
+au troisième. La réparation du plateau, le scan des ordres et les cascades ne
+décrémentent jamais ce compteur. Le futur cycle Survie devra appeler cet audit
+une seule fois par tour ; il n'est pas implémenté à cette étape.
+
+La distance d'une sanction constatée dans `home` ou `repli` reste à préciser ;
+le calcul refuse ces zones lorsqu'une nouvelle durée doit être déterminée.
 
 Une fois l'attente terminée, le retour autorisé reste uniquement vers le point de
 retour normal du mode (propre base en classique ; règle spécifique du mode dans les
@@ -873,8 +890,11 @@ Il vérifie aussi la remontée après affrontement, l'ordre d'arrivée persistan
 le déplacement de la colonne entière jusqu'au village.
 
 `test_surnombre.py` vérifie le scan, les fichiers privés et leurs défauts, les
-choix individuels, les retraites et collisions à l'arrivée, les cascades avec
+choix individuels, les retraites et placements `1..20` à l'arrivée, les cascades avec
 pertes cumulées, l'ordre de la colonne et les conditions d'arrêt.
+
+`test_repli.py` couvre les distances de sanction, les délais persistants privés,
+l'interdiction de sortir pendant l'attente et le retour après son expiration.
 
 Les tests utilisent un plateau temporaire et peuvent simuler les dépendances Unix.
 Ils ne remplacent pas un test réel sur Linux avec vrais UID/GID, `chown`, `chmod`

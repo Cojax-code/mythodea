@@ -361,7 +361,7 @@ def zones_generaux_territoire(territory, joueur, configuration=None):
     """Décrit les zones militaires, sans lire ni modifier le disque.
 
     La réserve et la garnison ont la même position logique. Seules les zones
-    possédant un emplacement participent aux combats et aux collisions.
+    actives participent aux combats. Les renforts numérotés sont aussi audités.
     """
     if configuration is None:
         configuration = config.configuration_mode("classique")
@@ -376,6 +376,12 @@ def zones_generaux_territoire(territory, joueur, configuration=None):
     ]
     if village:
         zones.append({"position": territory.name, "chemin": joueur_dir / "reserve"})
+    if configuration["mode"] == "survie" and joueur in configuration["joueurs"]:
+        zones.extend(
+            {"position": territory.name, "chemin": joueur_dir / "renforts" / place,
+             "emplacement": place}
+            for place in configuration["positions_renforts_allies"]
+        )
     if configuration["mode"] == "survie" and joueur == "bot":
         zones.append({"position": territory.name, "chemin": joueur_dir / "renforts"})
     return zones
@@ -477,8 +483,8 @@ def lire_generaux_territoire(territory, configuration=None):
         resultat[joueur] = {}
 
         for zone in zones_generaux_territoire(territory, joueur, configuration):
-            if "emplacement" not in zone:
-                continue  # La réserve n'est pas une force engagée.
+            if zone.get("emplacement") not in configuration["emplacements"]:
+                continue  # Réserve et renforts ne sont pas des forces engagées.
             emplacement = zone["emplacement"]
             resultat[joueur][emplacement] = None
 

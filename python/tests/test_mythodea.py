@@ -82,6 +82,11 @@ class Regressions(unittest.TestCase):
                 for emplacement in self.config.emplacements:
                     (territoire / joueur / emplacement).mkdir(parents=True)
         self.generaux.donner_permissions_general = lambda *args: None
+        # Les nouveaux compteurs privés du moteur utilisent aussi les droits Unix.
+        for fonction in ("chown", "chmod"):
+            droits = patch.object(self.etat.os, fonction, create=True)
+            droits.start()
+            self.addCleanup(droits.stop)
         self.securite.joueur_proprietaire_chemin = lambda chemin: next(
             joueur for joueur in self.config.joueurs if joueur in chemin.parts
         )
@@ -348,6 +353,14 @@ class Regressions(unittest.TestCase):
         self.assertTrue((repli / "avant/infanterie1/arc").is_file())
         self.assertEqual(self.etat.charger_positions_generaux(), {"j1:general1": "repli"})
         self.assertEqual(self.etat.charger_generaux_fatigues(), set())
+        # Nouvelle règle commune : terrain3 est à trois pas de base1,
+        # donc deux tours complets d'attente avant le retour.
+        self.assertEqual(self.etat.charger_attentes_repli(), {"j1:general1": 2})
+        for restant in (1, 0):
+            repli.rename(general)
+            self.tour_sans_generation()
+            self.assertTrue(repli.exists())
+            self.assertEqual(self.etat.charger_attentes_repli().get("j1:general1", 0), restant)
         repli.rename(general)
         self.tour_sans_generation()
         self.assertEqual(self.etat.charger_positions_generaux(), {"j1:general1": "base1"})
