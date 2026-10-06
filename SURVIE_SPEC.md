@@ -47,29 +47,41 @@ commun lorsque cela est approprié, et non contourné uniquement dans le mode Su
 
 ## 3. Boucle initiale du mode Survie
 
-Une nouvelle partie commence par un **tour 0 à blanc** servant de préparation.
+Une nouvelle partie commence par un **tour 0 de préparation**. Ce tour est une
+fenêtre d'action normale : les joueurs disposent de la même durée que pendant les
+tours suivants, mais aucune force ennemie ancienne n'est encore présente à déplacer.
 
 À terme, un tutoriel guidé sera proposé avant ou pendant cette préparation. Le
 joueur pourra le passer.
 
-Après le tour de préparation, les ennemis apparaissent sur des territoires éloignés
-du village.
+À l'expiration du tour 0, la résolution normale a lieu : audit unique des actions
+joueurs, absence de déplacement ennemi ancien, apparition de la vague 1, combats et
+retraites éventuels, calcul du contrôle, rapports et défaite éventuelle. Le tour 1
+commence seulement après cette résolution.
+
+La relation entre tour et vague est volontairement décalée : à la résolution du
+tour N, les forces ennemies déjà présentes avancent d'abord, puis la vague N+1
+apparaît. Une vague nouvellement apparue ne se déplace jamais pendant la résolution
+où elle est créée.
 
 Règle de déplacement de base du bot :
 
-- une force ennemie avance d'un territoire vers le village à chaque tour ;
-- si elle rencontre une force joueuse, le moteur commun résout le combat ;
-- les survivants ennemis reprennent leur progression au tour suivant.
+- une force ennemie déjà présente avance d'un territoire vers le village à chaque
+  résolution de tour ;
+- les ennemis déjà au village y restent ;
+- si une force ennemie rencontre une force joueuse, le moteur commun résout le
+  combat ;
+- les survivants ennemis reprennent leur progression à la résolution suivante.
 
 Le village est le centre et l'objectif défensif de la partie.
 
 Condition de défaite :
 
-```text
+\u0060\u0060\u0060text
 controle(village) == bot
         ↓
       défaite
-```
+\u0060\u0060\u0060
 
 L'entrée d'un ennemi dans le village ne suffit donc pas à elle seule : le combat et
 la résolution du contrôle ont lieu normalement. La partie est perdue lorsque le
@@ -245,16 +257,20 @@ exemple ne signifie pas que le système complet d'argent est déjà défini en V
 
 ### Clocher
 
-Le clocher permet de consulter le temps restant avant les prochaines vagues.
+Le clocher permet de consulter le temps restant de la fenêtre d'action du tour
+courant. Le timer clôt cette fenêtre ; le clocher ne contient pas lui-même la
+logique de résolution du tour.
 
-Le fichier associé doit pouvoir être observé depuis le terminal pendant qu'il
-s'actualise, notamment avec :
+Le fichier associé doit être lisible par les joueurs et s'actualiser périodiquement.
+Il doit pouvoir être observé depuis le terminal, notamment avec :
 
-```bash
+\u0060\u0060\u0060bash
 tail -f <fichier_du_clocher>
-```
+\u0060\u0060\u0060
 
-Le format exact du fichier et la fréquence d'actualisation restent à définir.
+Le format final et la fréquence exacte d'actualisation restent des détails
+d'implémentation, mais le fichier doit au minimum permettre d'identifier le tour
+courant et le temps restant avant sa résolution.
 
 ---
 
@@ -407,21 +423,45 @@ une version ultérieure.
 
 ### Cycle d'un tour
 
-La phase d'action dure actuellement **2 minutes**.
+La phase d'action dure actuellement **2 minutes**, y compris au tour 0.
 
-À la fin de la phase d'action :
+Un tour comprend une fenêtre d'action joueurs puis sa résolution automatique.
+Quand le timer expire, les actions tactiques sont closes pour cette résolution ;
+les joueurs peuvent continuer à consulter les informations et rapports auxquels
+ils ont accès.
 
-1. les forces ennemies déjà présentes avancent d'un territoire vers le village ;
-2. la nouvelle vague est créée sur les territoires prévus par son pattern ;
-3. les mouvements, présences et combats sont résolus ;
-4. les renforts en surnombre peuvent provoquer des affrontements successifs ;
-5. le contrôle final des territoires est calculé ;
-6. si le bot contrôle le village, la partie est perdue ;
-7. les rapports sont finalisés et le tour suivant commence.
+La résolution du tour N suit l'ordre de principe suivant :
 
-Une nouvelle vague n'effectue pas immédiatement un deuxième déplacement après son
-apparition. Il n'y a pas de résolution intermédiaire entre le déplacement des anciens
-ennemis et l'apparition de la nouvelle vague.
+1. effectuer l'audit complet des actions joueurs **une seule fois** ;
+2. préparer les déplacements des forces ennemies déjà présentes à partir d'un état
+   initial, puis appliquer ces déplacements sans qu'une unité puisse avancer deux
+   fois à cause de l'ordre du parcours ;
+3. effectuer les contrôles de cohérence nécessaires sans nouvelle sanction, fatigue
+   ou décrémentation d'attente ;
+4. créer entièrement la vague N+1 ; pour le front Est, lorsqu'une vague concerne
+   plusieurs territoires, sa matérialisation suit \u0060est_3 -> est_2 -> est_1\u0060 sans
+   modifier les compositions ni les noms d'affichage produits par \u0060vagues.py\u0060 ;
+5. identifier les territoires en conflit ;
+6. résoudre les combats dans l'ordre
+   \u0060village -> est_1 -> est_2 -> est_3\u0060 ;
+7. pendant ces cascades, préparer et réserver les retraites tactiques admissibles ;
+8. après tous les combats, appliquer physiquement les retraites exactement aux
+   places réservées ;
+9. calculer et sauvegarder le contrôle final, finaliser les rapports et vérifier la
+   défaite ;
+10. commencer le tour N+1 avec un nouveau timer.
+
+Au tour 0, l'étape 2 ne déplace personne parce qu'aucune force ennemie ancienne
+n'existe encore ; la vague 1 apparaît néanmoins à l'étape 4.
+
+Une nouvelle vague ne se déplace jamais pendant la résolution où elle apparaît.
+Les priorités d'arrivée restent : occupants déjà présents, anciennes forces arrivant
+ce tour, puis nouvelles apparitions.
+
+Le timer et la résolution sont deux responsabilités séparées : le timer déclenche
+la clôture de la fenêtre d'action, tandis que la fonction de résolution doit rester
+appelable directement par les tests sans attente réelle. La durée doit donc rester
+configurable et neutralisable dans les tests.
 
 ### Identité des ennemis
 
@@ -469,10 +509,12 @@ généraux : territoire d'apparition, numéro de vague, nom d'affichage et compo
 des quatre blocs (`nombre`, `type`). Cette fonction ne touche pas au plateau.
 La source aléatoire peut être fournie pour rendre les tests reproductibles.
 
-`survie.preparer_phase_ennemie(numero_vague, configuration, aleatoire)` réalise
-uniquement la progression puis l'apparition. L'appelant fournit le numéro et doit
-l'appeler une seule fois pour cette phase. Elle ne gère pas encore le tour 0,
-le chronomètre, les combats, le contrôle final, la défaite ou le tour suivant.
+\u0060survie.preparer_phase_ennemie(numero_vague, configuration, aleatoire)\u0060 réalise
+uniquement la progression des anciennes forces puis l'apparition de la vague
+demandée. L'orchestrateur l'appelle après l'audit unique et lui fournit
+\u0060numero_vague = numero_tour + 1\u0060. La fonction ne doit pas déplacer une vague qu'elle
+vient elle-même de créer. Elle ne gère pas le timer, les combats, le contrôle final,
+la défaite ou le passage au tour suivant.
 `avancer_ennemis()` et `creer_vague_est()` sont également appelables séparément.
 Les ennemis déjà au village y restent ; les autres avancent d'une seule case,
 y compris ceux conservés parmi les renforts.
@@ -701,15 +743,23 @@ Les positions officielles doivent rester cohérentes avec le territoire réel. L
 détails de départage qui ne seraient pas couverts par ces règles ne doivent pas être
 inventés silencieusement.
 
-L'implémentation prépare le placement de tous les arrivants avant de les déplacer.
-Elle considère les places des occupants déjà présents comme occupées et ne déplace
-pas ces occupants. Si un général ne trouve aucune place libre entre son point de
-départ de recherche et `20`, il reste sur son territoire d'origine avec un
-avertissement dans le rapport, sans suppression ni repli. Les autres généraux
-dont le placement est possible continuent leur retraite : le groupe n'est pas
-annulé. Il n'y a pas de reprise de la recherche en dessous du point de départ.
-La remontée automatique des renforts **alliés** vers `1..4` n'est pas définie ici
-et n'est pas déclenchée implicitement par la lecture des forces ou la cascade.
+Pendant la résolution complète d'un tour, une retraite tactique admissible est
+**réservée puis appliquée plus tard**. Au moment du choix, le moteur vérifie la
+destination, l'absence de bot actif restant sur ce territoire déjà résolu et la
+première place disponible selon la règle \u00601..20\u0060. Les réservations déjà acceptées
+comptent comme des places occupées.
+
+Si aucune destination ou place valide n'existe, le général reste engagé normalement.
+Si la retraite est acceptée, le général est considéré comme en cours de fuite et
+doit être exclu de toutes les relectures de combat suivantes, même si son dossier
+physique n'a pas encore été déplacé. Après la résolution de tous les territoires,
+les retraites acceptées sont appliquées exactement aux places réservées, sans refaire
+un placement différent.
+
+Une retraite finale ne doit jamais recréer un territoire contesté ni déclencher un
+second combat. La remontée automatique des renforts **alliés** vers \u00601..4\u0060 n'est
+pas définie ici et n'est pas déclenchée implicitement par la lecture des forces ou
+la cascade.
 
 ### Séquence d'une cascade
 
@@ -718,29 +768,31 @@ et n'est pas déclenchée implicitement par la lecture des forces ou la cascade.
 2. Remonter les premiers renforts vivants dans les places libres, dans leur ordre.
 3. Relire les forces ; s'il reste des alliés et des ennemis, et que des renforts
    viennent de remonter, lire le fichier de chaque général allié survivant.
-4. Hors village, déplacer ceux qui ont choisi `1` vers le voisin rapprochant le
-   plus du village. Sur le territoire d'arrivée, appliquer la réorganisation
-   `1..20` décrite ci-dessus au lieu d'envoyer automatiquement un général au
-   `repli` parce qu'une place active est occupée. Ceux qui ont choisi `2` restent.
-   Au village, aucun général ne part automatiquement, même si son fichier contient `1`.
-5. Relire les alliés réellement présents, puis relancer le même moteur si les
-   deux camps sont encore présents. Les pertes précédentes restent sur disque.
+4. Hors village, pour ceux qui ont choisi \u00601\u0060, préparer la retraite vers le voisin
+   rapprochant le plus du village. Le territoire de destination a déjà été résolu
+   grâce à l'ordre \u0060village -> est_1 -> est_2 -> est_3\u0060. La retraite n'est acceptée
+   que si aucun bot actif n'y reste et si une place \u00601..20\u0060 peut être réservée.
+   Ceux qui ont choisi \u00602\u0060 restent. Au village, aucun général ne part
+   automatiquement, même si son fichier contient \u00601\u0060.
+5. Exclure les retraites acceptées des relectures de combat suivantes, sans encore
+   les déplacer physiquement ; relancer le moteur si les deux camps ont encore des
+   combattants non exclus. Les pertes précédentes restent sur disque.
 6. Répéter la remontée et la consultation avant chaque nouvel affrontement.
+7. Après la résolution de tous les territoires du tour, appliquer physiquement les
+   retraites réservées aux destinations et places déjà décidées.
 
-La cascade s'arrête si les ennemis ou les alliés sont éliminés, si tous les alliés
-survivants ont quitté le territoire, ou si aucun renfort n'a été promu pour un
-affrontement supplémentaire. Elle ne contourne pas les limites de sécurité du
-moteur commun. Les identités techniques, vagues, noms d'affichage et ordre de
+La cascade s'arrête si les ennemis ou les alliés non exclus sont éliminés, si tous
+les alliés survivants ont une retraite acceptée, ou si aucun renfort n'a été promu
+pour un affrontement supplémentaire. Elle ne contourne pas les limites de sécurité
+du moteur commun. Les identités techniques, vagues, noms d'affichage et ordre de
 colonne sont conservés. Le départage de routes équivalentes reste non défini et
 provoque un refus explicite au lieu d'un choix arbitraire.
 
-L'API est `survie.resoudre_cascade(territoire, configuration, mode_combat="OFF/OFF")`.
-Elle accepte aussi `OFF/DEF`, renvoie le nombre d'affrontements, les retraites et
-le contrôle local final. Elle n'avance aucun bot, ne génère aucune vague et ne
-sauvegarde pas le contrôle global d'une partie. Les fonctions communes de combat
-restent appelables pour un affrontement isolé.
+L'API actuelle est \u0060survie.resoudre_cascade(territoire, configuration, mode_combat="OFF/OFF")\u0060.
+Son implémentation doit être adaptée pour prendre en charge les exclusions et les
+réservations différées sans modifier les calculs de combat communs.
 
-Si la valeur `2` est choisie, des ordres spécifiques au combat en surnombre pourront
+Si la valeur \u00602\u0060 est choisie, des ordres spécifiques au combat en surnombre pourront
 être ajoutés ultérieurement. Ils ne font pas partie du premier prototype.
 
 Plusieurs affrontements successifs peuvent donc se produire sur le même territoire
