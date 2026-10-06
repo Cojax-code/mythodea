@@ -776,7 +776,10 @@ def numero_general_depuis_nom(nom_general):
 
 
 def trouver_position_general(joueur, nom_general, configuration=None):
-    for zone in zones_generaux(joueur, configuration):
+    # Une copie dans le bac à sable ne doit pas masquer le général sur la carte.
+    zones = sorted(zones_generaux(joueur, configuration),
+                   key=lambda zone: zone["position"] == "home")
+    for zone in zones:
         chemin = zone["chemin"] / nom_general
         if chemin.is_dir():
             return zone["position"], chemin

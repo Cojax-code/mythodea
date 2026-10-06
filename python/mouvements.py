@@ -273,7 +273,7 @@ def planifier_positions_surnombre(arrivants, positions_occupees, territoire=None
         debut = rang if categorie == 0 else 1
         place = next((n for n in range(debut, 21) if n not in occupees), None)
         if place is None:
-            message = (f"Retraite impossible : {general['joueur']}:{general['nom']}, "
+            message = (f"Avertissement : retraite impossible pour {general['joueur']}:{general['nom']}, "
                        f"aucune place libre entre {debut} et 20 ; reste sur son territoire.")
             rapports.afficher_et_ecrire(message)
             if territoire is not None:

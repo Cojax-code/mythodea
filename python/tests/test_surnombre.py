@@ -391,28 +391,58 @@ class Surnombre(unittest.TestCase):
         self.assertEqual(destination.parent.name, "20")
         self.assertEqual((destination / "ordre_surnombre.txt").read_text().strip(), "1")
 
-    def test_cas_indefinis_refuses_avant_tout_deplacement(self):
-        premier = self.general()
-        second = self.general("j2", place="2")
+    def test_preferences_invalides_sans_preference_avertissement_fiche_intacte(self):
+        for numero, valeur in enumerate(("", "0", "21", "abc", "-1", "1.5"), 1):
+            with self.subTest(valeur=valeur):
+                arrivant = self.general(numero=numero, place="3")
+                self.preference(arrivant, valeur)
+                fiche = (arrivant / "fiche.txt").read_bytes()
+                destination = self.reculer([arrivant])[0][1]
+                self.assertEqual(destination.parent.name, str(numero))
+                self.assertEqual((destination / "fiche.txt").read_bytes(), fiche)
+                self.assertEqual(self.etat.charger_positions_generaux()[f"j1:general{numero}"], "est_2")
+        self.assertEqual(self.etat.charger_attentes_repli(self.profil), {})
+        journal = self.config.rapport_long_path.read_text(encoding="utf-8")
+        self.assertEqual(journal.count("position_surnombre invalide"), 6)
+
+    def test_preferences_egales_departage_origines_independant_des_joueurs(self):
+        for numero, joueurs in enumerate((("j2", "j1"), ("j1", "j2")), 1):
+            with self.subTest(joueurs=joueurs):
+                premier = self.general(joueurs[0], numero=numero, place="1")
+                second = self.general(joueurs[1], numero=numero, place="3")
+                self.preference(premier, 5)
+                self.preference(second, 5)
+                resultat = self.reculer([second, premier])
+                self.assertEqual([(g["joueur"], p.parent.name) for g, p in resultat],
+                                 [(joueurs[0], str(3 + 2 * numero)),
+                                  (joueurs[1], str(4 + 2 * numero))])
+
+    def test_sans_place_reste_mais_les_autres_partent(self):
+        bloque = self.general(place="1")
+        libre = self.general("j2", place="3")
+        self.preference(bloque, 20)
+        occupant = self.general(numero=2, territoire="est_2", place="20")
+        fiche = (bloque / "fiche.txt").read_bytes()
+        resultat = self.reculer([bloque, libre])
+        self.assertEqual([(g["joueur"], p.parent.name) for g, p in resultat], [("j2", "1")])
+        self.assertTrue(bloque.exists())
+        self.assertTrue(occupant.exists())
+        self.assertEqual((bloque / "fiche.txt").read_bytes(), fiche)
+        self.assertEqual(self.generaux.total_general_depuis_chemin(bloque), 20)
+        self.assertEqual(self.etat.charger_positions_generaux(),
+                         {"j1:general1": "est_3", "j2:general1": "est_2", "j1:general2": "est_2"})
+        self.assertEqual(self.etat.charger_attentes_repli(self.profil), {})
+        self.assertIn("aucune place libre entre 20 et 20", self.config.rapport_long_path.read_text(encoding="utf-8"))
+
+    def test_file_pleine_sans_preference_reste_sans_repli(self):
+        arrivant = self.general()
+        for numero in range(1, 21):
+            self.general("j2", numero=numero, territoire="est_2", place=str(numero))
         positions = self.etat.charger_positions_generaux()
-        for valeur in ("", "0", "21", "abc"):
-            self.preference(second, valeur)
-            with self.assertRaisesRegex(ValueError, "invalide"):
-                self.reculer([premier, second])
-            self.assertTrue(premier.exists())
-            self.assertTrue(second.exists())
-        self.preference(premier, 20)
-        self.preference(second, 20)
-        with self.assertRaisesRegex(ValueError, "départage"):
-            self.reculer([premier, second])
-        self.preference(second, 19)
-        self.general(numero=2, territoire="est_2", place="20")
-        with self.assertRaisesRegex(ValueError, "Aucune place"):
-            self.reculer([premier, second])
-        self.assertTrue(premier.exists())
-        self.assertTrue(second.exists())
-        self.assertEqual({k: v for k, v in self.etat.charger_positions_generaux().items()
-                          if k in positions}, positions)
+        self.assertEqual(self.reculer([arrivant]), [])
+        self.assertTrue(arrivant.exists())
+        self.assertEqual(self.etat.charger_positions_generaux(), positions)
+        self.assertEqual(self.etat.charger_attentes_repli(self.profil), {})
 
     def test_preference_non_consultee_sans_retraite(self):
         general = self.general(ordre=2)

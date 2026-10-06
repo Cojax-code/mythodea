@@ -369,8 +369,8 @@ de son home vers le village.
 
 La zone spéciale `repli` fait partie du graphe Survie et est directement reliée au
 `village`. Elle conserve des espaces séparés pour les joueurs. Ce n'est pas un
-territoire tactique accessible par déplacement volontaire : elle sert aux sanctions,
-aux retraites et aux replis prévus par les règles du moteur.
+territoire tactique accessible par déplacement volontaire : elle sert aux sanctions
+du moteur. Une retraite tactique de surnombre reste sur les territoires tactiques.
 
 ### Configuration et propriétaires Linux
 
@@ -569,8 +569,15 @@ Un affrontement utilise d'abord au maximum le nombre de généraux actifs autori
 le territoire. Lorsque cet affrontement est terminé, les ennemis encore présents sur
 le territoire peuvent entrer comme renforts.
 
-Les ennemis déjà présents sur le territoire sont prioritaires pour les places
-d'engagement. Les généraux des nouvelles vagues sont sélectionnés ensuite. Les
+La priorité générale lors d'événements simultanés est :
+
+1. forces déjà présentes sur le territoire ;
+2. forces déjà présentes sur la carte et arrivant ce tour ;
+3. nouvelles apparitions / nouveaux spawns.
+
+Cette priorité ne dépend jamais de l'ordre de lecture `j1` / `j2`. Les occupants
+déjà présents gardent leur position. Les renforts ennemis présents remontent dans
+les places libres avant les nouveaux arrivants. Les
 généraux qui ne peuvent pas être engagés immédiatement restent **physiquement présents
 sur le territoire** comme renforts. La limite de quatre concerne donc l'engagement
 simultané, pas la présence totale sur le territoire. Aucune troupe n'est supprimée
@@ -660,10 +667,15 @@ position_surnombre=<1..20>
 Ce champ n'est consulté que lorsqu'une réorganisation de surnombre/retraite est
 nécessaire.
 
+Une valeur vide, invalide ou hors de `1..20` produit un avertissement dans le
+rapport et est traitée comme une absence de préférence. La fiche n'est pas
+réécrite et cette valeur ne provoque pas de `ValueError`.
+
 Ordre de placement :
 
 1. traiter d'abord les généraux qui possèdent `position_surnombre`, par valeur
-   demandée croissante ;
+   valide demandée croissante ; à valeur égale, les départager par leur position
+   logique d'origine croissante ;
 2. pour chacun, essayer la position demandée ; si elle est occupée, essayer
    successivement les positions supérieures jusqu'à trouver la première place libre ;
 3. traiter ensuite les généraux sans `position_surnombre`, dans l'ordre numérique
@@ -680,6 +692,10 @@ Si deux préférences se chevauchent, le premier général traité prend la plac
 suivant continue vers la première position supérieure libre. Les positions actives
 `1..4` restent partagées logiquement entre `j1` et `j2`.
 
+Par exemple, deux généraux venant de `1` et `3` demandent `5` : celui venant de `1`
+essaie `5` en premier ; celui venant de `3` essaie ensuite `5`, puis `6`, `7`, etc.
+Une égalité de préférence n'est pas une ambiguïté bloquante.
+
 La retraite n'ajoute pas de fatigue et ne réinitialise pas celle du général.
 Les positions officielles doivent rester cohérentes avec le territoire réel. Les
 détails de départage qui ne seraient pas couverts par ces règles ne doivent pas être
@@ -687,9 +703,11 @@ inventés silencieusement.
 
 L'implémentation prépare le placement de tous les arrivants avant de les déplacer.
 Elle considère les places des occupants déjà présents comme occupées et ne déplace
-pas ces occupants. Une préférence invalide, une égalité de priorité sans départage
-ou l'absence de place libre jusqu'à `20` provoque un refus explicite avant de
-déplacer les arrivants. Le départage de ces cas reste à définir.
+pas ces occupants. Si un général ne trouve aucune place libre entre son point de
+départ de recherche et `20`, il reste sur son territoire d'origine avec un
+avertissement dans le rapport, sans suppression ni repli. Les autres généraux
+dont le placement est possible continuent leur retraite : le groupe n'est pas
+annulé. Il n'y a pas de reprise de la recherche en dessous du point de départ.
 La remontée automatique des renforts **alliés** vers `1..4` n'est pas définie ici
 et n'est pas déclenchée implicitement par la lecture des forces ou la cascade.
 
@@ -767,8 +785,19 @@ distance 5 -> 3 tours
 ```
 
 Pendant cette attente, le général ne peut effectuer aucune action. Le détail du
-stockage persistant de ce compteur peut être choisi simplement par l'implémentation,
-mais la durée et l'interdiction d'agir sont des règles de gameplay.
+stockage et de la décrémentation est défini dans `MYTHODEA_SPEC.md` : le fichier
+privé `systeme/attente_repli.txt` conserve les tours restants par identité.
+
+Le home est un bac à sable. Une anomalie qui y est détectée produit uniquement
+un avertissement dans le rapport, sans suppression, envoi au repli, nouveau délai
+ni calcul de distance de sanction depuis `home`. Ses copies ne masquent pas les
+occurrences présentes sur la carte et ne les sanctionnent pas. La sortie du home
+reste soumise aux règles communes de déploiement et d'identité.
+
+Pour un général déjà au repli, une nouvelle anomalie produit un avertissement,
+sans nouvelle sanction ni nouveau calcul de délai ; son compteur existant est
+conservé. Les copies illégales hors home restent nettoyées selon le moteur commun.
+La décrémentation normale reste applicable aux tours sans nouvelle anomalie.
 
 ---
 

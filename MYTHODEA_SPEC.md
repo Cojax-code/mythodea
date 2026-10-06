@@ -149,12 +149,20 @@ avec le défaut `1` hors village et `2` au village ; un choix existant suit le d
 rapprochant le plus du village ; un départage ambigu est refusé.
 `mouvements.retraites_surnombre()` prépare ensemble le placement des arrivants
 dans la file alliée `1..20`, selon `position_surnombre` puis leur position d'origine.
+À préférence égale, l'origine logique croissante départage les généraux, sans
+priorité liée à `j1` ou `j2`. Une préférence vide, invalide ou hors de `1..20`
+produit un avertissement et est traitée comme absente, sans réécrire la fiche.
 Les places déjà occupées à l'arrivée restent indisponibles. La réserve n'entre pas
-dans ce placement. Les cas sans départage défini ou sans place disponible sont
-refusés avant tout déplacement du groupe. Les unités, fichiers et fatigue sont
+dans ce placement. Un général sans place libre entre son début de recherche et `20`
+reste sur son territoire d'origine avec un avertissement, sans suppression ni
+repli ; les autres retraites possibles continuent. Les unités, fichiers et fatigue sont
 conservés ; les positions officielles sont mises à jour après chaque déplacement.
 La cascade n'applique pas de sanction de collision aux retraites tactiques.
 `retraite_surnombre()` conserve l'API pour un seul général.
+
+En Survie, la priorité des arrivées simultanées est : occupants déjà présents
+sur le territoire, puis forces déjà sur la carte arrivant ce tour, puis nouvelles
+apparitions. Elle ne dépend pas de l'ordre de lecture des joueurs `j1` et `j2`.
 
 La lecture territoriale conserve les généraux par propriétaire de jeu (`joueur`)
 et ajoute leur `camp` en mémoire d'après le profil. Le compte Linux reste une
@@ -426,11 +434,18 @@ Avant les combats, le moteur vérifie notamment :
 
 ### Duplication
 
-Si un même général existe plusieurs fois :
+Hors du home, si un même général existe plusieurs fois :
 
 - une seule occurrence est conservée ;
 - les autres sont supprimées ;
 - le général réel est envoyé au repli comme sanction.
+
+Le home est un bac à sable : les anomalies qui y sont détectées produisent
+uniquement un avertissement dans le rapport. Ses copies restent intactes et ne
+déclenchent pas de sanction de duplication sur la carte. La recherche d'un général
+privilégie son occurrence hors home afin qu'une copie du bac à sable ne la masque
+pas. Une identité non autorisée dans le home n'est pas enregistrée implicitement.
+Les règles d'identité et de déplacement restent contrôlées hors home.
 
 ### Conflit d'emplacement
 
@@ -457,6 +472,13 @@ origine == destination
 Valide.
 
 ### Home
+
+Une anomalie constatée dans le home (propriétaire, identité, duplication ou
+déplacement vers le home) produit uniquement un avertissement : aucun envoi au
+repli, aucun nouveau délai et aucun calcul de distance de sanction depuis `home`.
+Le home n'est pas un emplacement tactique soumis aux collisions de positions.
+Un compteur de repli déjà existant est conservé si le général est retrouvé dans
+le home ; il n'est ni renouvelé ni décrémenté pour cette anomalie.
 
 Première sortie :
 
@@ -505,8 +527,13 @@ au troisième. La réparation du plateau, le scan des ordres et les cascades ne
 décrémentent jamais ce compteur. Le futur cycle Survie devra appeler cet audit
 une seule fois par tour ; il n'est pas implémenté à cette étape.
 
-La distance d'une sanction constatée dans `home` ou `repli` reste à préciser ;
-le calcul refuse ces zones lorsqu'une nouvelle durée doit être déterminée.
+Un général déjà au repli ne reçoit aucune nouvelle sanction ni aucun nouveau
+calcul de délai pour une nouvelle anomalie : un avertissement est produit et le
+compteur existant est conservé. Le nettoyage des copies illégales hors home reste
+applicable. L'audit qui constate cette duplication ou ce placement chez le mauvais
+joueur ne décrémente pas son compteur. Sans nouvelle anomalie, la décrémentation
+normale du tour reste applicable. Le calcul de distance est réservé aux territoires
+tactiques ; il n'est jamais appelé pour sanctionner depuis `home` ou `repli`.
 
 Une fois l'attente terminée, le retour autorisé reste uniquement vers le point de
 retour normal du mode (propre base en classique ; règle spécifique du mode dans les

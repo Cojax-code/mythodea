@@ -81,6 +81,12 @@ def securiser_generaux_mauvais_joueur(
                 if proprietaire_reel == joueur_zone:
                     continue
 
+                if nom_zone == "home":
+                    rapports.afficher_et_ecrire(
+                        f"Avertissement dans le home : propriétaire incorrect pour "
+                        f"{chemin_general}, aucune sanction.")
+                    continue
+
                 # Propriétaire Linux inconnu :
                 # le dossier ne peut pas être considéré
                 # comme un véritable général.
@@ -137,6 +143,8 @@ def securiser_generaux_mauvais_joueur(
                         configuration
                     )
                 )
+                occurrences_correctes = [o for o in occurrences_correctes
+                                          if o["position"] != "home"]
 
                 # --------------------------------------
                 # Aucune autre occurrence
@@ -162,9 +170,6 @@ def securiser_generaux_mauvais_joueur(
                 # Une occurrence correcte existe déjà
                 # --------------------------------------
 
-                # Vérifier la durée avant de supprimer la copie : home/repli
-                # ne possèdent pas encore de distance de sanction définie.
-                mouvements.delai_sanction_repli(proprietaire_reel, nom_zone, configuration)
                 shutil.rmtree(
                     chemin_general
                 )
@@ -223,6 +228,11 @@ def supprimer_generaux_non_autorises(configuration=None):
                 numero = generaux.numero_general_depuis_nom(element.name)
                 if (numero is None or numero < 1 or numero > dernier_numero
                         or f"{joueur}:{element.name}" not in positions):
+                    if zone["position"] == "home":
+                        rapports.afficher_et_ecrire(
+                            f"Avertissement dans le home : général non autorisé "
+                            f"{joueur}:{element.name}, aucune sanction.")
+                        continue
                     suffixe = ""
                     if zone["position"] not in ("home", "repli"):
                         suffixe = f" sur {zone['position']}"
@@ -269,6 +279,16 @@ def securiser_generaux_dupliques(positions_avant, configuration=None):
             if len(occurrences) <= 1:
                 continue
 
+            # Les copies du bac à sable restent intactes et ne sanctionnent
+            # pas l'occurrence officielle sur la carte ou au repli.
+            if any(o["position"] == "home" for o in occurrences):
+                rapports.afficher_et_ecrire(
+                    f"Avertissement dans le home : copie de {identifiant}, "
+                    f"aucune sanction pour cette copie.")
+                occurrences = [o for o in occurrences if o["position"] != "home"]
+                if len(occurrences) <= 1:
+                    continue
+
             rapports.afficher_et_ecrire(
                 f"{identifiant} est présent "
                 f"{len(occurrences)} fois."
@@ -300,11 +320,6 @@ def securiser_generaux_dupliques(positions_avant, configuration=None):
                 )
 
                 copie_a_garder = occurrences[0]
-
-            # Valider le délai avant les suppressions ; une zone spéciale
-            # sans règle de distance doit être signalée sans perte de dossiers.
-            if copie_a_garder["position"] != "repli":
-                mouvements.delai_sanction_repli(joueur, copie_a_garder["position"], configuration)
 
             # Supprimer toutes les autres copies.
             for occurrence in occurrences:
@@ -339,15 +354,19 @@ def securiser_generaux_dupliques(positions_avant, configuration=None):
                     chemin_garde,
                     configuration
                 )
+            else:
+                rapports.afficher_et_ecrire(
+                    f"Avertissement au repli : duplication de {identifiant}, "
+                    f"délai conservé sans nouvelle sanction.")
 
             generaux_punis.add(
                 identifiant
             )
 
-            rapports.afficher_et_ecrire(
-                f"{identifiant} envoyé au repli "
-                f"pour duplication."
-            )
+            if copie_a_garder["position"] != "repli":
+                rapports.afficher_et_ecrire(
+                    f"{identifiant} envoyé au repli pour duplication."
+                )
 
     return generaux_punis
 
@@ -444,6 +463,8 @@ def verifier_tous_les_deplacements(configuration=None):
         if joueur not in configuration["joueurs"]:
             continue
         position, chemin = generaux.trouver_position_general(joueur, nom, configuration)
+        if position == "home":
+            continue
         if chemin is not None and position != "repli":
             mouvements.envoyer_general_au_repli(
                 joueur, nom, chemin, configuration, appliquer_sanction=False)
@@ -474,6 +495,18 @@ def verifier_tous_les_deplacements(configuration=None):
         if identifiant.split(":", 1)[0] in acteurs_automatiques
     }
 
+    # Un général déplacé dans le home de l'autre joueur reste identifiable
+    # par son propriétaire ; l'avertissement ne doit pas effacer son identité.
+    generaux_home = {}
+    for joueur in configuration["joueurs"]:
+        home = next(z["chemin"] for z in generaux.zones_generaux(joueur, configuration)
+                    if z["position"] == "home")
+        if home.exists():
+            for chemin in home.iterdir():
+                if chemin.is_dir() and generaux.numero_general_depuis_nom(chemin.name) is not None:
+                    proprietaire = joueur_proprietaire_chemin(chemin)
+                    generaux_home[f"{proprietaire}:{chemin.name}"] = chemin
+
     # ------------------------------------------
     # Vérification individuelle
     # ------------------------------------------
@@ -503,6 +536,19 @@ def verifier_tous_les_deplacements(configuration=None):
 
             # Général détruit ou absent.
             if position_actuelle is None:
+                if identifiant in generaux_home:
+                    position_actuelle = "home"
+                else:
+                    continue
+
+            if position_actuelle == "home":
+                if positions.get(identifiant) != "home" or identifiant in attentes_avant:
+                    rapports.afficher_et_ecrire(
+                        f"Avertissement dans le home : position anormale de "
+                        f"{identifiant}, aucune sanction.")
+                # Ne pas autoriser implicitement une identité créée à la main.
+                if identifiant in positions:
+                    nouvelles_positions[identifiant] = "home"
                 continue
 
             # Un général sanctionné pendant l'audit
@@ -622,7 +668,7 @@ def verifier_tous_les_deplacements(configuration=None):
     for identifiant in attentes_avant:
         if identifiant not in nouvelles_positions:
             attentes.pop(identifiant, None)
-        elif identifiant not in generaux_deja_punis:
+        elif identifiant not in generaux_deja_punis and nouvelles_positions[identifiant] != "home":
             attentes[identifiant] = max(0, attentes_avant[identifiant] - 1)
     if attentes or attentes_avant:
         etat.sauvegarder_attentes_repli(attentes, configuration)

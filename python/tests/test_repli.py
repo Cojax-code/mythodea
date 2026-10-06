@@ -1,8 +1,9 @@
 """Sanctions du moteur commun, sur plateau isolé et avec droits Unix simulés."""
 import contextlib
 import io
+import shutil
 import unittest
-from unittest.mock import call
+from unittest.mock import call, patch
 
 import test_village
 
@@ -95,6 +96,132 @@ class SanctionsRepli(unittest.TestCase):
         self.profil["carte_territoires"]["est_3"] = []
         with self.assertRaisesRegex(ValueError, "Aucun chemin"):
             self.mouvements.delai_sanction_repli("j1", "est_3", self.profil)
+
+    def verifier_home_sans_sanction(self, chemins):
+        with patch.object(self.mouvements, "delai_sanction_repli") as calcul, \
+                patch.object(self.mouvements, "envoyer_general_au_repli") as envoi:
+            self.audit()
+        calcul.assert_not_called()
+        envoi.assert_not_called()
+        for chemin in chemins:
+            self.assertTrue((chemin / "avant/infanterie1/arc").is_file())
+        self.assertEqual(self.etat.charger_attentes_repli(self.profil), {})
+        self.assertFalse(list(self.config.repli_path.rglob("general*")))
+        self.assertIn("Avertissement dans le home", self.config.rapport_long_path.read_text(encoding="utf-8"))
+
+    def test_home_mauvais_proprietaire_sans_occurrence_correcte(self):
+        general = self.general(territoire="home")
+        mauvais = self.chemin("j2", territoire="home")
+        general.rename(mauvais)
+        self.proprietaires[mauvais] = "j1"
+        self.verifier_home_sans_sanction([mauvais])
+        self.assertEqual(self.etat.charger_positions_generaux(), {"j1:general1": "home"})
+
+    def test_home_mauvais_proprietaire_avec_occurrence_correcte(self):
+        general = self.general(territoire="est_3")
+        mauvais = self.chemin("j2", territoire="home")
+        shutil.copytree(general, mauvais)
+        self.proprietaires[mauvais] = "j1"
+        self.verifier_home_sans_sanction([general, mauvais])
+        self.assertEqual(self.etat.charger_positions_generaux(), {"j1:general1": "est_3"})
+
+    def test_home_proprietaire_inconnu_avertissement_uniquement(self):
+        general = self.general(territoire="home")
+        self.proprietaires[general] = None
+        self.verifier_home_sans_sanction([general])
+
+    def test_home_duplication_ne_masque_pas_occurrence_sur_carte(self):
+        general = self.general(territoire="est_3")
+        copie = self.chemin(territoire="home")
+        shutil.copytree(general, copie)
+        self.verifier_home_sans_sanction([general, copie])
+        self.assertEqual(self.etat.charger_positions_generaux(), {"j1:general1": "est_3"})
+
+    def test_home_sans_identite_officielle_reste_non_autorise(self):
+        general = self.general(territoire="home")
+        self.etat.sauvegarder_positions_generaux({})
+        self.verifier_home_sans_sanction([general])
+        self.assertEqual(self.etat.charger_positions_generaux(), {})
+
+    def test_deplacement_vers_home_avertissement_et_position_reelle(self):
+        general = self.general(territoire="est_3")
+        home = self.chemin(territoire="home")
+        general.rename(home)
+        self.verifier_home_sans_sanction([home])
+        self.assertEqual(self.etat.charger_positions_generaux(), {"j1:general1": "home"})
+
+    def test_home_plusieurs_generaux_ne_sont_pas_un_conflit_emplacement(self):
+        premier = self.general(territoire="home")
+        second = self.general(nom="general2", territoire="home")
+        with patch.object(self.mouvements, "envoyer_general_au_repli") as envoi:
+            self.assertEqual(self.securite.securiser_emplacements_generaux(self.profil), set())
+            self.audit()
+        envoi.assert_not_called()
+        self.assertTrue(premier.exists())
+        self.assertTrue(second.exists())
+
+    def test_home_general_en_attente_sans_envoi_ni_modification_delai(self):
+        general = self.general(territoire="repli")
+        home = self.chemin(territoire="home")
+        general.rename(home)
+        attentes = {"j1:general1": 2}
+        self.etat.sauvegarder_attentes_repli(attentes, self.profil)
+        with patch.object(self.mouvements, "envoyer_general_au_repli") as envoi, \
+                patch.object(self.mouvements, "delai_sanction_repli") as calcul:
+            self.audit()
+        envoi.assert_not_called()
+        calcul.assert_not_called()
+        self.assertTrue(home.exists())
+        self.assertEqual(self.etat.charger_attentes_repli(self.profil), attentes)
+        self.assertEqual(self.etat.charger_positions_generaux(), {"j1:general1": "home"})
+
+    def test_envoi_direct_depuis_home_ne_calcule_aucun_delai(self):
+        general = self.general(territoire="home")
+        with patch.object(self.mouvements, "delai_sanction_repli") as calcul:
+            self.assertEqual(self.mouvements.envoyer_general_au_repli(
+                "j1", "general1", general, self.profil), general)
+        calcul.assert_not_called()
+        self.assertTrue(general.exists())
+        self.assertEqual(self.etat.charger_attentes_repli(self.profil), {})
+
+    def test_deja_repli_duplication_conserve_compteur_sans_calcul(self):
+        general = self.general(territoire="repli")
+        copie = self.chemin(territoire="est_3")
+        shutil.copytree(general, copie)
+        attentes = {"j1:general1": 2}
+        self.etat.sauvegarder_attentes_repli(attentes, self.profil)
+        with patch.object(self.mouvements, "delai_sanction_repli") as calcul:
+            self.audit()
+        calcul.assert_not_called()
+        self.assertEqual(self.etat.charger_attentes_repli(self.profil), attentes)
+        self.assertTrue(general.exists())
+        self.assertFalse(copie.exists())
+        self.assertIn("délai conservé", self.config.rapport_long_path.read_text(encoding="utf-8"))
+
+    def test_deja_repli_copie_chez_autre_joueur_conserve_compteur(self):
+        general = self.general(territoire="repli")
+        copie = self.chemin("j2", territoire="repli")
+        shutil.copytree(general, copie)
+        self.proprietaires[copie] = "j1"
+        attentes = {"j1:general1": 2}
+        self.etat.sauvegarder_attentes_repli(attentes, self.profil)
+        with patch.object(self.mouvements, "delai_sanction_repli") as calcul:
+            self.audit()
+        calcul.assert_not_called()
+        self.assertEqual(self.etat.charger_attentes_repli(self.profil), attentes)
+        self.assertTrue(general.exists())
+        self.assertFalse(copie.exists())
+
+    def test_deja_repli_envoi_direct_conserve_compteur(self):
+        general = self.general(territoire="repli")
+        for compteur in (None, 2):
+            with self.subTest(compteur=compteur):
+                attentes = {} if compteur is None else {"j1:general1": compteur}
+                self.etat.sauvegarder_attentes_repli(attentes, self.profil)
+                with patch.object(self.mouvements, "delai_sanction_repli") as calcul:
+                    self.mouvements.envoyer_general_au_repli("j1", "general1", general, self.profil)
+                calcul.assert_not_called()
+                self.assertEqual(self.etat.charger_attentes_repli(self.profil), attentes)
 
 
 if __name__ == "__main__":

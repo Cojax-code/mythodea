@@ -458,17 +458,21 @@ class Regressions(unittest.TestCase):
         self.assertEqual(self.generaux.numero_general_depuis_nom("general1"), 1)
         self.assertEqual(self.generaux.numero_general_depuis_nom("general15"), 15)
 
-    def test_alias_supprimes_dans_toutes_les_zones(self):
+    def test_alias_supprimes_hors_home_et_signales_dans_home(self):
         self.autoriser()
         vrai = self.general()
         faux = [self.general(nom="general01", emplacement="2")]
-        for zone in [self.chemin("/home/j1"), self.config.repli_path / "j1"]:
+        for zone in [self.config.repli_path / "j1"]:
             chemin = zone / "general001"
             self.generaux.creer_general(chemin, chemin.name)
             faux.append(chemin)
+        home = self.chemin("/home/j1/general001")
+        self.generaux.creer_general(home, home.name)
         self.securite.supprimer_generaux_non_autorises()
         self.assertTrue(vrai.exists())
         self.assertTrue(all(not chemin.exists() for chemin in faux))
+        self.assertTrue(home.exists())
+        self.assertIn("Avertissement dans le home", self.config.rapport_long_path.read_text(encoding="utf-8"))
 
     def test_general_detruit_ne_revient_pas_au_tour_suivant(self):
         self.autoriser()
