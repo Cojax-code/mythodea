@@ -346,6 +346,7 @@ def _clore_tour_survie(configuration, gestion, aleatoire=None):
         raise RuntimeError('Aucune fenêtre ACTIONS à clôturer ; vérifier la récupération.')
     tour = cycle['tour']
     try:
+        crypte.verifier_collecteur(configuration)
         prive, homes = gestion.capturer(tour)
         gestion.marquer(tour, 'resolution')
         gestion.afficher(tour, 'resolution', detail='JOUEURS DEGELÉS')

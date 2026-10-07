@@ -6,6 +6,7 @@
 _crypte_active=0
 _crypte_pending=0
 _crypte_sequence=0
+_crypte_ouverture=0
 
 _crypte_event() {
     # Enregistre huit champs séparés par NUL, sans eval ni échappement ambigu.
@@ -35,7 +36,7 @@ _crypte_before() {
     _crypte_history
     # DEBUG peut aussi précéder un trap de signal avec un BASH_COMMAND périmé.
     # Une ligne complète n'est enregistrée qu'une fois (y compris les listes ;).
-    if (( _crypte_history_ok )) && [[ $_crypte_hid == $_crypte_last_hid ]]; then
+    if (( _crypte_history_ok && ! _crypte_ouverture )) && [[ $_crypte_hid == $_crypte_last_hid ]]; then
         return 0
     fi
     _crypte_last_hid=$_crypte_hid
@@ -64,6 +65,7 @@ _crypte_prompt() {
         _crypte_event interrupt '' '' "$result" "$(builtin pwd -P)"
     fi
     _crypte_pending=0
+    _crypte_ouverture=0
 }
 
 _crypte_interrupt() {
@@ -98,6 +100,9 @@ crypte_commence() {
     set +o histexpand
     _crypte_active=1
     _crypte_pending=0
+    # Toute commande avant le premier retour à l'invite appartient encore à la
+    # ligne de démarrage (ex. crypte_commence; ls) et doit être observée.
+    _crypte_ouverture=1
     _crypte_history
     _crypte_last_hid=$_crypte_hid
     ((_crypte_sequence+=1))
@@ -105,15 +110,17 @@ crypte_commence() {
 }
 
 crypte_fin() {
+    local resultat
     if (( ! _crypte_active )); then
         _crypte_event refused 'aucune tentative'
         return 1
     fi
     _crypte_event end '' '' '' "$(builtin pwd -P)"
+    resultat=$?
     _crypte_active=0
     _crypte_pending=0
     _crypte_restaurer_historique
-    return 0
+    return "$resultat"
 }
 
 _crypte_restaurer_historique() {

@@ -88,6 +88,9 @@ Responsabilités :
 | `minuterie.py` | validation de la durée et attente jusqu'à une échéance, sans logique métier |
 | `cycle_linux.py` | gel Linux, capture privée, publication de générations et permissions des phases Survie |
 | `survie_admin.py` | diagnostic, dégel de secours et republication explicitement autorisée, sans rejeu métier |
+| `crypte.py` | collecteur privé Survie, recette pédagogique, cooldown et attribution différée |
+| `crypte_client.py` | transport non privilégié des observations Bash vers le socket local |
+| `crypte_installer.py` | installation administrative des fonctions et hooks Bash officiels |
 
 Les dépendances sont orientées de manière à éviter les imports circulaires.
 Importer les modules ne doit jamais lancer un tour. Seul le point d'entrée appelle
@@ -296,7 +299,7 @@ Limites actuelles :
 
 ```text
 20 unités maximum par général
-5 généraux générés maximum par joueur
+5 créations normales maximum par joueur
 ```
 
 Noms valides :
@@ -332,6 +335,20 @@ Les positions actives sont stockées dans :
 Un numéro déjà généré ne doit jamais être réutilisé. Lorsqu'un général est
 entièrement détruit, son entrée de position disparaît mais le compteur n'est pas
 diminué.
+
+En Survie, les récompenses Crypte sont hors quota normal. Les compteurs privés
+`compteur_creation_normale_j1.txt` et `compteur_creation_normale_j2.txt` comptent
+uniquement les créations normales. À leur première initialisation, ils reprennent
+le compteur technique existant : avant la Crypte, toutes les créations étaient
+normales. Ensuite, `compteur_general_<joueur>.txt` augmente pour toute création,
+normale ou récompense. Le mode classique conserve son fonctionnement antérieur.
+
+Une récompense est créée dans `village/<joueur>/crypte/recompense/generalN`,
+avec la position officielle `village`. Cette zone sans emplacement est découverte
+et auditée par le moteur commun, mais exclue du contrôle et du combat. La fiche
+porte `nom_affichage=ame_et_lie_poulin` ; les affichages utilisent ce nom seulement
+pour une identité réellement attribuée par la Crypte. L'identité technique reste
+`joueur:generalN`, y compris pour les sanctions, la fatigue et la destruction.
 
 Créer manuellement un dossier portant le nom d'un ancien général ne le ressuscite
 pas.
@@ -952,6 +969,22 @@ la génération privée. L'orchestrateur :
 6. sauvegarde le contrôle final, les rapports et l'éventuelle défaite ;
 7. publie de nouveaux inodes puis, en l'absence de défaite, ouvre la consultation
    de 60 secondes et ensuite le tour suivant avec un nouveau timer de 120 secondes.
+
+Le pilote Survie héberge aussi le collecteur Crypte pendant les fenêtres d'action.
+Il reçoit des observations Bash, authentifie l'UID par le noyau et conserve les
+décisions dans `systeme/crypte.json`, privé `root:root 600`. Une réussite acceptée
+enregistre ensemble son tour, son identifiant et le cooldown, sans créer de général
+sur le plateau vivant. À la clôture, les nouvelles demandes sont refusées ; sous
+gel, les tentatives inachevées sont invalidées et les ateliers nettoyés avant copie.
+Les récompenses acceptées sont matérialisées à la fin de la résolution privée,
+puis publiées avec les autres états métier. La récupération administrative republie
+les résultats terminés et ne réexécute pas la recette ni son attribution.
+
+`crypte.json` et les deux compteurs de créations normales font partie de
+`config.ETATS_METIER`. La configuration `crypte_config.json`, le socket et les
+tentatives en mémoire restent attachés au moteur vivant et ne sont pas publiés.
+Les règles de recette, permissions et récupération sont définies dans
+`SURVIE_SPEC.md`, section « Crypte V0.1 ».
 
 Les déplacements automatiques sont préparés depuis un inventaire initial des
 actifs et renforts bots, en tenant compte des départs prévus, puis appliqués.

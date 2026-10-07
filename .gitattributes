@@ -1,3 +1,2 @@
-# Ce prototype est exécuté par Bash Linux, y compris depuis un checkout Windows.
-bash/prototype_crypte_scan.sh text eol=lf
-bash/crypte_transport.sh text eol=lf
+# Les scripts restent exécutables sous Linux depuis un checkout Windows.
+bash/*.sh text eol=lf

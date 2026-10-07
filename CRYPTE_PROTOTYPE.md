@@ -1,5 +1,11 @@
 # Prototype du scanner Bash de la Crypte
 
+Ce document conserve le périmètre des essais isolés du scanner. L'intégration
+actuelle au moteur est décrite dans `SURVIE_SPEC.md`, section « Crypte V0.1 ».
+L'installation officielle réutilise ce scanner et remplace uniquement son journal
+de test par `bash/crypte_transport.sh`, vers le collecteur privé. Les éléments
+décrits plus bas comme restant à intégrer concernent la portée du prototype seul.
+
 Ce prototype évalue l'observation d'un Bash interactif normal. Il n'est pas
 branché au jeu : aucun cooldown, compteur, général ou fichier de partie n'est
 modifié. Les marqueurs ont leurs noms provisoires fixes ; la configuration
@@ -76,6 +82,8 @@ Les six tests supplémentaires vérifient :
 - la conservation de `HISTSIZE` grand, illimité ou initialement nul ;
 - Ctrl+C après les quatre étapes, avant la fin : toujours échec ;
 - la déconnexion après les quatre étapes : toujours inachevée sans `crypte_fin`.
+- une commande supplémentaire sur la ligne de démarrage (`crypte_commence; ls`),
+  avec historique initialement actif ou désactivé : échec.
 
 ## Portée et limites
 
@@ -115,10 +123,10 @@ automatique de l'atelier en cours de partie n'est pas implémenté ici.
 Depuis la racine du dépôt sous Linux :
 
 ```bash
-# 19 réussites, un test de propriété root ignoré si lancé sans root.
+# 20 réussites, un test de propriété root ignoré si lancé sans root.
 python3 -B -m unittest discover -s python/tests -p test_crypte_scanner.py -v
 
-# Les 20 tests, avec de vrais refus de permissions sous UID nobody.
+# Les 21 tests, avec de vrais refus de permissions sous UID nobody.
 sudo python3 -B -m unittest discover -s python/tests -p test_crypte_scanner.py -v
 
 # Export facultatif des événements (un objet JSON par scénario/sous-cas).
@@ -131,7 +139,8 @@ bash -n bash/prototype_crypte_scan.sh
 git diff --check
 ```
 
-Validation effectuée : 205 tests de la suite Linux réussis, dont 20 tests du
-prototype. Les sous-cas alias/fonction et historique sont inclus dans ce nombre,
+Validation initiale du prototype : 205 tests de la suite Linux réussis, dont
+20 tests du prototype. Le scanner comporte désormais un 21e test couvrant la
+ligne de démarrage composée. Les sous-cas alias/fonction et historique sont inclus,
 pas comptés comme des tests unitaires supplémentaires. Aucun test SSH Raspberry Pi
 réel n'a encore été exécuté pour ce scanner.

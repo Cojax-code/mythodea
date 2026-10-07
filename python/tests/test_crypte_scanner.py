@@ -371,6 +371,17 @@ class ScannerCrypte(unittest.TestCase):
         self.assertNotEqual(verdict(shell.events(), shell.atelier), 'succes')
         self.report(shell, verdict(shell.events(), shell.atelier))
 
+    def test_21_commande_sur_ligne_de_demarrage(self):
+        for setup in ('', 'set +o history'):
+            with self.subTest(setup=setup):
+                shell = self.session(setup)
+                shell.command('crypte_commence; ls')
+                for ligne in RECIPE:
+                    shell.command(ligne)
+                shell.command('crypte_fin')
+                self.assertNotEqual(verdict(shell.events(), shell.atelier), 'succes',
+                                    json.dumps(shell.events(), indent=2))
+
 
 if __name__ == '__main__':
     unittest.main()

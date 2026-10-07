@@ -574,7 +574,8 @@ Un hardlink source est copié comme un fichier indépendant.
 
 La liste blanche `config.ETATS_METIER` est : `compteur_general_j1.txt`,
 `compteur_general_j2.txt`, `compteur_general_bot.txt`, `positions_generaux.txt`,
-`fatigue_generaux.txt`, `controle_territoires.txt`, `attente_repli.txt`, `meteo.txt`.
+`fatigue_generaux.txt`, `controle_territoires.txt`, `attente_repli.txt`, `meteo.txt`,
+`crypte.json`, `compteur_creation_normale_j1.txt`, `compteur_creation_normale_j2.txt`.
 Le cycle vivant, les verrous, générations, journaux de récupération, rapports et
 Clocher sont exclus. Le marqueur local du résolveur dans `travail/systeme/` n'est
 jamais publié. Le moteur commun utilise le contexte privé `config.racines_generation()`.
@@ -1117,3 +1118,142 @@ Le contrôle territorial est calculé selon les unités des forces engagées :
 La réserve reste exclue de ces forces. La sauvegarde conserve le format
 `territoire=controle`. Ces fonctions ne déclenchent ni défaite globale, ni nouvelle
 vague, ni nouveau tour : ces responsabilités appartiennent au cycle de `survie.py`.
+
+---
+
+## 16. Crypte V0.1
+
+La Crypte est une mécanique pédagogique Linux du mode Survie, avec une seule
+recette : `ame_et_lie_poulin`. Elle ne dépend pas des futurs dieux ou manuscrits.
+Chaque joueur dispose de :
+
+```text
+village/<joueur>/crypte/
+├── grimoire/
+│   └── recette1.pdf
+├── atelier/
+└── recompense/
+```
+
+Le grimoire contient un PDF téléchargeable par SCP/SFTP, à lire sur l'ordinateur
+du joueur. L'atelier est entièrement jetable : aucun document personnel ne doit
+y être conservé. `recompense/` est une zone de récupération inactive, distincte
+de la garnison, de la réserve et des renforts tactiques.
+
+### Recette et observation
+
+Dans son Bash normal, pendant ACTIONS, le joueur exécute une commande par ligne :
+
+```bash
+cd /home/game/village/j1/crypte/atelier
+crypte_commence
+mkdir appel
+touch appel/cavalerie
+chmod 600 appel/cavalerie
+mv appel/cavalerie appel/offrande
+crypte_fin
+```
+
+Pour j2, le chemin contient `j2`. Les quatre opérations agissent réellement sur
+le disque. Aucune commande supplémentaire entre les marqueurs n'est admise :
+`ls`, `clear`, `cd`, pipeline, liste avec `;` ou sous-shell invalident la tentative.
+Un alias ou une fonction remplaçant une commande attendue est refusé. Chaque
+étape requiert la ligne attendue et un code retour nul. La fin prématurée, Ctrl+C
+et une erreur de syntaxe ne donnent aucune récompense.
+
+Le scanner officiel utilise `DEBUG`, la ligne complète de l'historique Bash en
+mémoire et `PROMPT_COMMAND`. Ce dernier relève aussi les erreurs de syntaxe qui
+ne déclenchent pas `DEBUG`. Les filtres d'historique sont neutralisés temporairement
+et restaurés à la fin ; un historique personnel grand ou illimité n'est pas réduit.
+La configuration privée `systeme/crypte_config.json` contient `debut` et `fin`, par
+défaut `crypte_commence` et `crypte_fin`. Ces noms doivent être distincts et respecter
+`crypte_[a-zA-Z0-9_]+`. Ils ne viennent pas de l'environnement du joueur. Après une
+modification administrative, réinstaller les hooks et reconnecter les joueurs ;
+le grimoire est actualisé par la préparation du cycle.
+
+`crypte_installer.py` fournit les hooks et le client depuis
+`/usr/local/lib/mythodea/` (`root:root`, dossiers `755`, fichiers `644`) et leur
+chargement depuis `/etc/profile.d/mythodea-crypte.sh`. Le `.bashrc` joueur n'est
+pas la source officielle. Les fonctions sont chargées dans le shell existant,
+sans mini-shell ni interprétation de commandes par le moteur.
+
+Le scanner est volontairement contournable par modification du shell ou du PATH.
+Il n'est pas une frontière anti-triche. Une observation envoyée au moteur ne
+permet jamais de choisir un numéro de général, d'écrire son cooldown ou de rejouer
+une attribution. Les fichiers et variables du joueur ne déclarent pas une réussite
+officielle : seul le collecteur valide et persiste cette décision.
+
+### Collecteur et persistance
+
+Le pilote `lancer_partie_survie()` héberge un collecteur local en parallèle de
+l'attente. Le timer reste indépendant de la logique métier. Les tests peuvent
+désactiver uniquement le service socket avec `collecteur_crypte=False` et appeler
+directement le collecteur ou la résolution sans attendre.
+
+Le socket est `/home/game/communication/crypte.sock` : dossier
+`root:mythodea_allies 750`, socket `root:mythodea_allies 660`. Il reçoit des messages
+JSON bornés en taille ; il n'exécute jamais leur texte. L'UID est obtenu par
+`SO_PEERCRED`. Le collecteur vérifie aussi l'ascendance du client, l'UID de sa session,
+son PID et son instant de démarrage dans `/proc`, ainsi que son répertoire réel.
+Une tentative est liée au joueur, à cette session et au tour. Son identifiant
+aléatoire et le numéro croissant de chaque événement empêchent le rejeu.
+
+La progression reste en mémoire du moteur ; aucune tentative ouverte n'est reprise
+après redémarrage. Une nouvelle tentative remplace l'ancienne sans pouvoir la
+continuer. La disparition du processus de session est observée sans dépendre des
+hooks EXIT/HUP de Bash. Elle invalide la tentative et nettoie l'atelier.
+
+`systeme/crypte.json` est un état atomique privé `root:root 600`, avec une entrée
+par joueur :
+
+- `dernier_tour` : tour de la dernière réussite acceptée, ou `null` ;
+- `a_creer` : identifiant et tour d'une réussite attendant sa matérialisation ;
+- `en_attente` : identité technique de la récompense non encore récupérée ;
+- `attributions` : historique des identifiants, tours et généraux attribués.
+
+Au début et à la validation finale, le moteur contrôle ACTIONS et son échéance,
+le cooldown et l'absence de récompense en attente. La condition est
+`dernier_tour is None` ou `tour >= dernier_tour + 5`, indépendamment pour j1 et j2.
+Erreur, refus, abandon et déconnexion ne consomment pas ce délai. Le cooldown est
+enregistré atomiquement avec la réussite acceptée, pas avec une déclaration locale.
+Une seule récompense, déjà publiée ou encore `a_creer`, est autorisée par joueur.
+
+### Récompense et cycle sécurisé
+
+Après acceptation pendant ACTIONS : fermeture des demandes, gel, invalidation des
+tentatives inachevées, nettoyage, capture privée, résolution, matérialisation privée,
+puis publication. Le nettoyage utilise des descripteurs de dossiers et ne suit
+pas les symlinks vers l'extérieur. Il ne parcourt jamais grimoire ou recompense.
+Après une commande erronée, le nettoyage attend son retour avant de vider l'atelier.
+Une anomalie empêchant un nettoyage sûr bloque la clôture pour vérification.
+
+La récompense est `generalN`, avec `nom_affichage=ame_et_lie_poulin` et exactement
+20 cavaliers : avant 10, droite 5, gauche 5, arrière 0. Elle est créée uniquement
+dans la génération privée à `village/<joueur>/crypte/recompense/generalN`, puis
+publiée. Elle ne participe ni au contrôle ni au combat tant qu'elle attend là.
+Elle ne consomme aucune des cinq créations normales ; le compteur technique
+commun continue à croître et ne réutilise jamais un numéro.
+
+Pendant ACTIONS, le joueur choisit une destination légale et utilise un vrai `mv` :
+
+```bash
+mv /home/game/village/j1/crypte/recompense/general7 /home/game/village/j1/garnison/1/
+```
+
+La position logique d'origine est le village. Les limites, identités, collisions,
+déplacements, fatigue, combats et destructions utilisent le moteur commun.
+L'audit unique constate la récupération et ferme la zone à ce général. Un retour
+ultérieur dans `recompense/` est une infraction, sanctionnée par le repli commun.
+Comme les autres déplacements de dossiers, cette règle s'applique aux positions
+constatées lors de l'audit ; les allers-retours entre deux observations ne constituent
+pas un historique de mouvements enregistré par le moteur.
+
+Grimoire : dossier `root:<groupe_joueur> 750`, PDF `640`. Atelier, zone de récupération
+et généraux sont privés au joueur (`700`/`600`), avec le retrait d'écriture prévu
+pendant CONSULTATION. Les états, compteurs et configuration restent privés root.
+
+Une interruption pendant capture/résolution/publication conserve les règles de
+récupération du cycle. Une republication administrative utilise le résultat terminé
+sans réexécuter ni audit, ni recette, ni création de récompense. Une socket résiduelle
+reste bloquante : son retrait est une décision administrative explicite après
+vérification de l'arrêt du moteur. Les commandes sont dans `TESTS_LINUX_SURVIE.md`.

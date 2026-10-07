@@ -210,6 +210,12 @@ def clore(c):
             nettoyer(c, j)
 
 
+def verifier_collecteur(c):
+    service = SERVICES.get(str(c['game_path']))
+    if service and service.erreur is not None:
+        raise RuntimeError(f'Collecteur Crypte interrompu : {service.erreur}')
+
+
 def auditer_recuperations(c):
     """La zone d'attente est inactive et à sens unique, audit commun ensuite."""
     if c['mode'] != 'survie':
@@ -288,6 +294,7 @@ class Collecteur:
         self.c, self.horloge = c, horloge
         self.tentatives = {}
         self.arret = threading.Event()
+        self.erreur = None
         self.marqueurs = configuration(c)
         self.uids = {pwd.getpwnam(c['acteurs'][j]['proprietaire_linux']).pw_uid: j for j in c['joueurs']}
 
@@ -348,6 +355,8 @@ class Collecteur:
                     if t['erreur'] or t['pending'] or t['etape'] != 4:
                         raise ValueError(t['erreur'] or 'Recette incomplète.')
                     verifier_offrande(self.c, j)
+                    if self.horloge() >= cycle['echeance']:
+                        raise ValueError('La fenêtre ACTIONS est fermée.')
                     d = charger(self.c)
                     f = d[j]
                     if f['a_creer'] or any((zone(self.c, j) / 'recompense').iterdir()):
@@ -408,6 +417,11 @@ class Collecteur:
                         if len(ligne) > 16384 or not ligne.endswith(b'\n'):
                             raise ValueError('Message incomplet ou trop long.')
                         m = json.loads(ligne)
+                        if (not isinstance(m, dict)
+                                or any(not isinstance(m.get(k), str) for k in
+                                       ('event', 'line', 'command', 'status', 'cwd', 'history', 'kind', 'token'))
+                                or type(m.get('seq')) is not int or type(m.get('session')) is not int):
+                            raise ValueError('Format de message Crypte invalide.')
                         session = self.verifier_session(pid, uid, int(m['session']))
                         # Le cwd provient du processus réel, pas de sa déclaration.
                         m['cwd'] = str(Path(f'/proc/{session[0]}/cwd').resolve(strict=True))
@@ -419,8 +433,9 @@ class Collecteur:
                         connexion.sendall((json.dumps(reponse) + '\n').encode())
                     except OSError:
                         pass
-            except OSError:
-                # Ne jamais continuer silencieusement après un échec de nettoyage.
+            except Exception as erreur:
+                # La prochaine clôture refuse la résolution et exige une vérification.
+                self.erreur = str(erreur)
                 self.arret.set()
 
     def __enter__(self):
@@ -432,7 +447,7 @@ class Collecteur:
         os.chown(racine, 0, gid)
         os.chmod(racine, 0o750)
         self.chemin = racine / 'crypte.sock'
-        if self.chemin.exists():
+        if self.chemin.exists() or self.chemin.is_symlink():
             raise RuntimeError('Socket Crypte résiduelle : vérifier l’ancien moteur avant retrait administratif.')
         self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.socket.bind(str(self.chemin))

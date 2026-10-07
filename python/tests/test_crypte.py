@@ -221,6 +221,34 @@ class Crypte(unittest.TestCase):
             self.assertEqual([p.name for p in grimoire.iterdir()], ['recette1.pdf'])
             self.assertTrue((grimoire / 'recette1.pdf').read_bytes().startswith(b'%PDF-1.4'))
 
+    def test_echeance_refusee_sans_consommation(self):
+        self.collecteur.horloge = lambda: 100
+        with self.assertRaisesRegex(ValueError, 'fermée'):
+            self.message('start')
+        self.assertIsNone(self.crypte.charger(self.profil)['j1']['dernier_tour'])
+
+    def test_collecteur_defaillant_interdit_resolution(self):
+        self.collecteur.erreur = 'nettoyage interrompu'
+        with patch.dict(self.crypte.SERVICES, {str(self.profil['game_path']): self.collecteur}):
+            with patch.object(self.securite, 'verifier_tous_les_deplacements') as audit:
+                with self.assertRaisesRegex(RuntimeError, 'Collecteur Crypte'):
+                    self.survie.resoudre_tour_survie(self.profil, gestion=self.gestion())
+                audit.assert_not_called()
+        self.assertEqual(self.etat.charger_cycle_survie(self.profil)['phase'], 'recuperation')
+
+    def test_nom_affichage_non_attribue_reste_technique(self):
+        general = {'joueur': 'j1', 'nom': 'general9', 'fiche': {'nom_affichage': self.crypte.NOM}}
+        self.assertEqual(self.rapports.nom_affichage_general(general), 'general9')
+
+    def test_marqueurs_configures_et_pdf_actualise(self):
+        self.etat.ecrire_prive(self.profil['game_path'] / 'systeme/crypte_config.json',
+                               json.dumps({'debut': 'crypte_ouvre', 'fin': 'crypte_ferme'}))
+        self.crypte.preparer(self.profil)
+        pdf = self.crypte.zone(self.profil, 'j1') / 'grimoire/recette1.pdf'
+        self.assertIn(b'crypte_ouvre', pdf.read_bytes())
+        self.assertIn(b'crypte_ferme', pdf.read_bytes())
+        self.assertNotIn(b'crypte_commence', pdf.read_bytes())
+
     @unittest.skipUnless(os.name == 'posix', 'Liens réels Unix requis')
     def test_nettoyage_liens_ne_touche_pas_exterieur(self):
         atelier = self.crypte.zone(self.profil, 'j1') / 'atelier'

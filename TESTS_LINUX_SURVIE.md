@@ -9,6 +9,7 @@ jetable, démarrée avec systemd, avec Python 3, `wall` et les outils de comptes
 
 ```bash
 sudo python3 -B python/tests_linux/test_permissions_reelles.py
+sudo python3 -B -m unittest discover -s python/tests_linux -v
 python3 -B -m unittest discover -s python/tests -v
 ```
 
@@ -38,6 +39,7 @@ sudo usermod -aG mythodea_allies j2
 sudo install -d -o root -g root -m 755 /home/game
 sudo install -d -o root -g root -m 700 /home/game/systeme
 sudo install -d -o root -g root -m 700 /home/.mythodea-publication
+sudo python3 python/crypte_installer.py
 ls -ld /home /home/game /home/j1 /home/j2
 ```
 
@@ -242,6 +244,92 @@ administrateur distincte et la commande de dégel ci-dessus sont indispensables.
 Surveiller l'espace disque : les générations et archives de publication ne sont
 pas purgées automatiquement. Sauvegarder avant toute purge, moteur arrêté ; garder
 la génération active et celle de toute récupération en cours.
+
+## Crypte V0.1
+
+Python 3.11 ou supérieur est requis pour le nettoyage Unix avec `dir_fd`.
+L'installation administrative ci-dessus copie les hooks et le client dans
+`/usr/local/lib/mythodea` et crée `/etc/profile.d/mythodea-crypte.sh`. Reconnecter
+les sessions joueurs après installation. Elle ne modifie aucun `.bashrc` personnel.
+Ne pas sourcer `bash/prototype_crypte_scan.sh` directement dans une partie : ce
+fichier seul écrit le journal du prototype, sans collecteur moteur.
+
+Depuis l'administrateur, après préparation du plateau par le lancement Survie :
+
+```bash
+ls -ld /home/game/communication /home/game/systeme
+ls -ld /home/game/village/j1/crypte/{grimoire,atelier,recompense}
+sudo stat -c '%U:%G %a %n' /home/game/systeme/crypte*.json
+sudo stat -c '%U:%G %a %n' /home/game/systeme/compteur_creation_normale_*.txt
+stat -c '%U:%G %a %n' /usr/local/lib/mythodea/crypte.bash
+sudo -u j1 cat /home/game/systeme/crypte.json
+sudo -u j2 cat /home/game/systeme/crypte.json
+sudo -u j1 test -w /usr/local/lib/mythodea/crypte.bash
+```
+
+Les lectures privées et le test d'écriture doivent échouer. Les états sont
+`root:root 600` ; le script officiel est `root:root 644` sous dossier `755`.
+Le socket, pendant l'exécution du moteur, est `root:mythodea_allies 660`, son
+parent `750`. Le moteur obtient l'identité par le noyau, pas par un champ joueur.
+
+Depuis le PC du joueur (remplacer l'adresse), télécharger le PDF :
+
+```bash
+scp j1@ADRESSE_DU_PI:/home/game/village/j1/crypte/grimoire/recette1.pdf .
+```
+
+Dans sa session SSH principale, pendant ACTIONS, après avoir lu le PDF :
+
+```bash
+type crypte_commence crypte_fin
+cd /home/game/village/j1/crypte/atelier
+crypte_commence
+mkdir appel
+touch appel/cavalerie
+chmod 600 appel/cavalerie
+mv appel/cavalerie appel/offrande
+crypte_fin
+```
+
+Résultat attendu : « Réussite enregistrée », atelier vide, aucune récompense avant
+publication. Après publication, faire `cd ~`, puis revenir consulter
+`/home/game/village/j1/crypte/recompense`. Un seul `generalN` doit apparaître, avec
+`nom_affichage=ame_et_lie_poulin` et 20 équipements `cheval`, répartis 10/5/5/0.
+Lors des prochaines ACTIONS, déplacer ce dossier avec `mv` vers une place légale
+libre de la garnison. Remplacer `generalN` par le nom réellement attribué.
+
+Vérifier séparément, sur une partie de démonstration :
+
+- `ls` après `mkdir appel` invalide la tentative et nettoie l'atelier au retour
+  de la commande ; `crypte_fin` annonce l'échec, sans consommation du cooldown ;
+- fermer la connexion avant la fin ne produit aucune récompense ; la disparition
+  de la session est détectée même sans hook de sortie Bash ;
+- laisser une tentative ouverte à l'expiration du timer : aucune attribution,
+  atelier propre après publication ;
+- j2 utilise sa propre Crypte sans modifier le cooldown de j1 ;
+- après une réussite au tour N, les tours N+1 à N+4 sont refusés ; N+5 est accepté
+  seulement après récupération de la récompense précédente ;
+- un retour dans `recompense/` après récupération constatée par l'audit est refusé
+  au prochain audit et utilise le repli commun.
+
+Ces essais matériels restent à effectuer sur Raspberry Pi. Les tests automatisés
+de `test_crypte_reelle.py` utilisent des comptes temporaires, de vrais Bash avec PTY,
+le socket, les permissions, les cgroups et la republication dans `/tmp`.
+
+En cas d'arrêt brutal, la présence de `communication/crypte.sock` est bloquante.
+Après le diagnostic administratif du cycle et **vérification de l'absence du moteur** :
+
+```bash
+sudo python3 python/survie_admin.py diagnostic
+sudo ss -xlpn | grep '/home/game/communication/crypte.sock'
+# Seulement si aucun moteur ni collecteur n'est actif :
+sudo rm -- /home/game/communication/crypte.sock
+```
+
+Le retrait de cette socket ne retire pas le verrou moteur, ne dégèle pas les
+joueurs et ne valide pas une résolution interrompue. Suivre les procédures de
+récupération ci-dessus. Une republication terminée conserve la même récompense et
+le même numéro ; ne pas remettre manuellement `a_creer` pour demander un rejeu.
 
 ## Portée de la validation
 

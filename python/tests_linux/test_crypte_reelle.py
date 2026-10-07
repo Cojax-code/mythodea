@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import pwd
+import socket
 import sys
 import time
 import unittest
@@ -78,6 +79,8 @@ class CrypteReelle(unittest.TestCase):
         self.assertIn('invalidée', shell.command('ls'))
         self.assertFalse(list((crypte.zone(self.c, 'j1') / 'atelier').iterdir()))
         self.assertNotIn('Réussite enregistrée', shell.command('crypte_fin'))
+        self.assertIn('invalidée', shell.command('crypte_commence; ls'))
+        self.assertNotIn('Réussite enregistrée', shell.command('crypte_fin'))
         self.assertIsNone(crypte.charger(self.c)['j1']['dernier_tour'])
 
     def test_deconnexion_detectee_hors_hook(self):
@@ -133,6 +136,30 @@ class CrypteReelle(unittest.TestCase):
         for p in (pdf, self.application / 'crypte.bash', self.application / 'crypte_client.py'):
             self.assertNotEqual(self.en_joueur('j1', code, p).returncode, 0)
         self.assertNotEqual(self.en_joueur('j2', code, pdf).returncode, 0)
+
+    def test_message_malforme_ne_tue_pas_collecteur(self):
+        shell = self.shell()
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.connect(str(self.collecteur.chemin))
+            s.sendall(b'{"event":"before","line":null}\n')
+            with s.makefile('rb') as f:
+                reponse = json.loads(f.readline())
+        self.assertFalse(reponse['ok'])
+        self.assertIn('Format', reponse['erreur'])
+        self.reussir(shell)
+
+    def test_marqueurs_administrateur_reellement_utilises(self):
+        reel.etat.ecrire_prive(self.c['game_path'] / 'systeme/crypte_config.json',
+                              json.dumps({'debut': 'crypte_ouvre', 'fin': 'crypte_ferme'}))
+        crypte.preparer(self.c)
+        crypte_installer.installer(self.c, self.application, self.root / 'profil.sh')
+        self.collecteur = crypte.Collecteur(self.c)
+        shell = self.shell()
+        self.assertIn('tentative ouverte', shell.command('crypte_ouvre'))
+        for ligne in crypte.RECETTE:
+            shell.command(ligne)
+        self.assertIn('Réussite enregistrée', shell.command('crypte_ferme'))
+        self.assertIsNotNone(crypte.charger(self.c)['j1']['a_creer'])
 
 
 if __name__ == '__main__':
