@@ -1,6 +1,7 @@
 """Générations sur disque isolé ; noyau simulé ici, testé séparément sous Linux."""
 import json
 import builtins
+import contextlib
 import io
 import os
 from pathlib import Path
@@ -211,6 +212,56 @@ class GenerationsSurvie(unittest.TestCase):
                 return original(prive, aleatoire)
         with patch.object(self.survie, '_resoudre_tour_capture', side_effect=resoudre):
             self.survie.resoudre_tour_survie(self.profil, random.Random(4), g)
+
+    def test_partie_survie_sans_territoire_classique_dans_sorties_et_fichiers(self):
+        self.general(territoire='village')
+        self.profil.update(duree_phase_action_secondes=0, duree_consultation_secondes=0)
+        self.etat.sauvegarder_cycle_survie({'tour': 0, 'phase': 'a_preparer'}, self.profil)
+        sortie = io.StringIO()
+        with contextlib.redirect_stdout(sortie):
+            resultats = self.survie.lancer_partie_survie(self.profil, 2, lambda: 100)
+        self.assertEqual([r['tour'] for r in resultats], [0, 1])
+        self.assertTrue(resultats[1]['batailles'])
+        interdits = ('terrain1', 'terrain2', 'terrain3', 'base1', 'base2')
+        for nom in interdits:
+            self.assertNotIn(nom, sortie.getvalue().lower())
+        for chemin in self.racine.rglob('*'):
+            for nom in interdits:
+                self.assertNotIn(nom, str(chemin.relative_to(self.racine)).lower())
+                if chemin.is_file():
+                    self.assertNotIn(nom, chemin.read_text(encoding='utf-8').lower(), str(chemin))
+        self.assertEqual({p.stem for p in self.config.rapports_territoires_dir.glob('*.txt')},
+                         {'village', 'est_1', 'est_2', 'est_3'})
+        for nom in ('etat_tour.txt', 'suivi_tour.log'):
+            self.assertTrue((self.config.game_path / 'clocher' / nom).is_file())
+
+    def test_plateau_ou_rapports_classiques_refuses_sans_modification(self):
+        for nom in ('terrain1', 'terrain2', 'terrain3', 'base1', 'base2'):
+            for ancien in (self.config.game_path / nom,
+                           self.config.rapports_territoires_dir / (nom + '.txt')):
+                ancien.parent.mkdir(parents=True, exist_ok=True)
+                if ancien.suffix:
+                    ancien.write_text('partie à conserver', encoding='utf-8')
+                else:
+                    ancien.mkdir()
+                try:
+                    for lancer in (self.survie.ouvrir_tour_survie,
+                                   self.survie.resoudre_tour_survie,
+                                   self.survie.lancer_partie_survie):
+                        with self.subTest(ancien=ancien, api=lancer.__name__):
+                            avant = test_cycle_survie.CycleSurvie.photo(self)
+                            with self.assertRaisesRegex(RuntimeError, 'plateau dédié'):
+                                lancer(self.profil)
+                            self.assertEqual(test_cycle_survie.CycleSurvie.photo(self), avant)
+                            self.assertTrue(ancien.exists())
+                finally:
+                    ancien.unlink() if ancien.is_file() else ancien.rmdir()
+
+    def test_exemple_fin_de_tour_classique_inchange(self):
+        sortie = io.StringIO()
+        with contextlib.redirect_stdout(sortie):
+            self.rapports.afficher_fin_de_tour()
+        self.assertIn(str(self.config.rapports_territoires_dir / 'terrain1.txt'), sortie.getvalue())
 
 
 if __name__ == '__main__':

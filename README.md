@@ -27,7 +27,7 @@ La validation réelle sous Linux / Raspberry Pi se poursuit pendant son dévelop
 
 Mythodea est prévu pour Linux / Raspberry Pi OS.
 
-Depuis la racine du dépôt :
+Pour installer et lancer le **mode classique**, depuis la racine du dépôt :
 
 ```bash
 sudo bash bash/instal.sh
@@ -65,6 +65,11 @@ Le prototype Survie Est est jouable sur un plateau dédié, avec les comptes Lin
 ```bash
 bash bash/start.sh --mode survie
 ```
+
+Pour Survie, ne pas utiliser les scripts d'installation/nettoyage classiques :
+ils créent une autre carte. Le moteur crée les zones Survie sur un plateau dédié
+et refuse de démarrer si des territoires ou rapports territoriaux classiques
+subsistent. Une ancienne partie doit être archivée séparément par l'administrateur.
 
 Chaque fenêtre d'action dure 120 secondes, y compris le tour 0. Une annonce `wall`
 précède un gel d'au moins 10 secondes pour capturer les actions. Les sessions

@@ -28,6 +28,17 @@ def profil_survie(configuration=None):
     return configuration
 
 
+def verifier_plateau_dedie(configuration):
+    """Refuse un mélange avec une partie classique, sans effacer ses données."""
+    for nom in config.configuration_mode('classique')['carte_territoires']:
+        for chemin in (configuration['game_path'] / nom,
+                       config.rapports_territoires_dir / (nom + '.txt')):
+            if chemin.exists() or chemin.is_symlink():
+                raise RuntimeError(
+                    'Le mode Survie exige un plateau dédié sans vestiges du mode classique. '
+                    'Faire archiver le plateau et ses rapports par un administrateur avant le lancement.')
+
+
 def preparer_zones_bot(configuration):
     """Crée les zones privées du bot, sans toucher aux forces présentes."""
     acteur = configuration["acteurs"]["bot"]
@@ -276,6 +287,7 @@ def resoudre_cascade(territoire, configuration=None, mode_combat="OFF/OFF", en_c
 
 def ouvrir_tour_survie(configuration=None, horloge=None):
     configuration = profil_survie(configuration)
+    verifier_plateau_dedie(configuration)
     with etat.verrou_cycle_survie(configuration):
         return _ouvrir_tour_survie(configuration, horloge)
 
@@ -318,6 +330,7 @@ def creer_gestion(configuration, horloge=None, dormir=None):
 def resoudre_tour_survie(configuration=None, aleatoire=None, gestion=None):
     """Clôture et résout un tour ; backend/horloges injectables sans attente en test."""
     configuration = profil_survie(configuration)
+    verifier_plateau_dedie(configuration)
     with etat.verrou_cycle_survie(configuration):
         gestion = gestion or creer_gestion(configuration)
         gestion.preparer()
@@ -403,6 +416,7 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
 
 def lancer_partie_survie(configuration=None, nombre_tours=None, horloge=None, dormir=None):
     configuration = profil_survie(configuration)
+    verifier_plateau_dedie(configuration)
     with etat.verrou_cycle_survie(configuration):
         return _lancer_partie_survie(configuration, nombre_tours, horloge, dormir)
 
@@ -434,6 +448,6 @@ def _lancer_partie_survie(configuration, nombre_tours, horloge, dormir):
             gestion.attendre(cycle)
             resultat = _clore_tour_survie(configuration, gestion)
             resultats.append(resultat)
-            rapports.afficher_fin_de_tour()
+            rapports.afficher_fin_de_tour(configuration)
             cycle = etat.charger_cycle_survie(configuration)
     return resultats

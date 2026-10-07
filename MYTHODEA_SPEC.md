@@ -504,12 +504,14 @@ Le home n'est pas un emplacement tactique soumis aux collisions de positions.
 Un compteur de repli déjà existant est conservé si le général est retrouvé dans
 le home ; il n'est ni renouvelé ni décrémenté pour cette anomalie.
 
-Première sortie :
+Première sortie en mode classique :
 
 ```text
 j1 : home -> base1 uniquement
 j2 : home -> base2 uniquement
 ```
+
+En mode Survie, les deux joueurs se déploient depuis `home` vers `village`.
 
 ### Repli
 
@@ -842,7 +844,7 @@ a réellement subi des pertes.
 
 ---
 
-## 16. Victoire
+## 16. Victoire classique
 
 Chaque base contient un objectif secret :
 
@@ -906,6 +908,12 @@ tour**. La fenêtre dure **120 secondes** par défaut, y compris au tour 0. Le c
 durée finie positive ou nulle. Une durée de 0 supprime l'attente des nouvelles
 fenêtres ; elle ne réinitialise pas l'échéance d'une fenêtre déjà ouverte.
 
+Les API du cycle vérifient d'abord l'absence de territoires et de rapports
+territoriaux classiques sur le plateau dédié. Un mélange est refusé sans supprimer
+de données. `rapports.afficher_fin_de_tour(configuration=None)` reçoit le profil
+Survie pour produire son exemple de consultation ; sans profil, le comportement
+classique est conservé. Aucun chemin ou exemple classique n'est produit en Survie.
+
 Responsabilités des API :
 
 - `minuterie.valider_duree()` valide la durée ;
@@ -942,8 +950,8 @@ la génération privée. L'orchestrateur :
 5. résout les cascades dans l'ordre `village -> est_1 -> est_2 -> est_3`, réserve
    les retraites admissibles et les applique physiquement après tous les combats ;
 6. sauvegarde le contrôle final, les rapports et l'éventuelle défaite ;
-7. publie de nouveaux inodes, ouvre la consultation de 60 secondes puis, en
-   l'absence de défaite, le tour suivant avec un nouveau timer de 120 secondes.
+7. publie de nouveaux inodes puis, en l'absence de défaite, ouvre la consultation
+   de 60 secondes et ensuite le tour suivant avec un nouveau timer de 120 secondes.
 
 Les déplacements automatiques sont préparés depuis un inventaire initial des
 actifs et renforts bots, en tenant compte des départs prévus, puis appliqués.

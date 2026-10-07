@@ -17,12 +17,16 @@ efface les homes entiers. Ces scripts ne servent pas à migrer une partie Survie
 
 ## Préparation du serveur de jeu
 
-Les commandes suivantes concernent le serveur de démonstration, avec j1/j2 déjà
-créés et un plateau dédié. Garder une session administrateur distincte ouverte.
+Les commandes suivantes concernent le serveur de démonstration, avec un plateau
+dédié sans ancienne partie classique ni anciens rapports territoriaux classiques.
+Le moteur refuse ce mélange sans le nettoyer : faire archiver séparément l'ancienne
+partie par l'administrateur. Garder une session administrateur distincte ouverte.
 Les joueurs utilisent chacun une seule session SSH principale. Le moteur doit
 être lancé depuis l'administrateur, jamais depuis un `sudo` dans la session j1/j2.
 
 ```bash
+id j1 >/dev/null 2>&1 || sudo useradd --create-home --shell /bin/bash j1
+id j2 >/dev/null 2>&1 || sudo useradd --create-home --shell /bin/bash j2
 id j1
 id j2
 stat -fc %T /sys/fs/cgroup

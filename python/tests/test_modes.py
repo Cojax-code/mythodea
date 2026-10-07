@@ -110,6 +110,9 @@ class Modes(unittest.TestCase):
                 with contextlib.redirect_stdout(sortie), patch.object(self.entree, "resoudre_tour_classique") as resoudre:
                     self.entree.main(["--mode", mode, "--afficher-configuration"])
                 self.assertEqual(json.loads(sortie.getvalue())["mode"], mode)
+                if mode == 'survie':
+                    for nom in self.config.carte_territoires:
+                        self.assertNotIn(nom, sortie.getvalue())
                 resoudre.assert_not_called()
                 self.assertNotIn("plateau", sys.modules)
 

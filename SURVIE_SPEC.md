@@ -435,6 +435,13 @@ Les fonctions de préparation, d'audit, de vague et de combat restent
 appelables séparément. Les identités et fichiers d'état étant communs aux deux
 modes, ne pas alterner classique et Survie sur une même partie.
 
+L'ouverture, la résolution directe et le pilote refusent un plateau contenant
+encore des territoires ou rapports territoriaux classiques, sans supprimer ces
+données. La préparation Survie utilise un plateau dédié, hors des scripts
+d'installation/nettoyage classiques. Les chemins, rapports, messages et exemples
+produits par le cycle utilisent uniquement les zones du profil Survie ; l'exemple
+de consultation en fin de tour pointe vers le rapport du village.
+
 Pour ce premier prototype, les ennemis de l'Est utilisent uniquement les généraux,
 unités, blocs et règles de combat classiques. Aucun comportement tactique ou ordre
 spécial de bot n'est ajouté. Des ordres propres aux bots pourront être étudiés dans

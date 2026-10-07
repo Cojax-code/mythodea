@@ -551,7 +551,7 @@ def preparer_rapports(configuration=None):
         )
 
 
-def afficher_fin_de_tour():
+def afficher_fin_de_tour(configuration=None):
     # Affiche automatiquement le rapport court
     # dans le terminal.
     #
@@ -590,9 +590,11 @@ def afficher_fin_de_tour():
     print()
 
     print("Exemple de rapport territorial :")
+    exemple = ('terrain1' if configuration is None or configuration['mode'] == 'classique'
+               else configuration['territoires'][0].name)
     print(
         "cat "
-        f"{config.rapports_territoires_dir / 'terrain1.txt'}"
+        f"{config.rapports_territoires_dir / (exemple + '.txt')}"
     )
 
     print()
