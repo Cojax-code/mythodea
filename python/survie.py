@@ -14,6 +14,7 @@ import vagues
 import plateau
 import securite
 import minuterie
+import crypte
 
 
 ORDRE_RESOLUTION_EST = ("village", "est_1", "est_2", "est_3")
@@ -310,6 +311,7 @@ def _ouvrir_tour_survie(configuration, horloge=None):
     etat.sauvegarder_cycle_survie(preparation, configuration)
     plateau.reparer_structure(configuration)
     preparer_zones_bot(configuration)
+    crypte.preparer(configuration)
     for joueur in configuration["joueurs"]:
         generaux.faire_apparaitre_general_si_possible(joueur, configuration)
     generaux.scanner_ordres_surnombre(configuration)
@@ -405,6 +407,7 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
     if defaite:
         rapports.afficher_et_ecrire("DÉFAITE : le bot contrôle le village.")
         rapports.ecrire_rapport_court("DÉFAITE : le bot contrôle le village.")
+    crypte.materialiser(configuration, tour)
     rapports.ecrire_rapport_court(f"Fin du tour {tour} — vague {tour + 1}.")
     etat.sauvegarder_cycle_survie(
         {"tour": tour if defaite else tour + 1, "phase": "defaite" if defaite else "a_preparer"},
@@ -418,7 +421,8 @@ def lancer_partie_survie(configuration=None, nombre_tours=None, horloge=None, do
     configuration = profil_survie(configuration)
     verifier_plateau_dedie(configuration)
     with etat.verrou_cycle_survie(configuration):
-        return _lancer_partie_survie(configuration, nombre_tours, horloge, dormir)
+        with crypte.service(configuration):
+            return _lancer_partie_survie(configuration, nombre_tours, horloge, dormir)
 
 
 def _lancer_partie_survie(configuration, nombre_tours, horloge, dormir):
@@ -445,6 +449,8 @@ def _lancer_partie_survie(configuration, nombre_tours, horloge, dormir):
                 cycle = _ouvrir_tour_survie(configuration, horloge)
             if cycle['phase'] != 'actions':
                 raise RuntimeError('Cycle interrompu : récupération administrative requise.')
+            # Migration d'une partie étape 7 reprise au milieu de sa fenêtre.
+            crypte.preparer(configuration)
             gestion.attendre(cycle)
             resultat = _clore_tour_survie(configuration, gestion)
             resultats.append(resultat)

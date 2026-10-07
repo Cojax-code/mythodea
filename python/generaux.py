@@ -105,8 +105,9 @@ def faire_apparaitre_general_si_possible(joueur, configuration=None):
         return
 
     dernier_numero = etat.lire_compteur_general(joueur)
-
-    if dernier_numero >= config.max_generaux_par_joueur:
+    survie = configuration is not None and configuration['mode'] == 'survie'
+    creations_normales = etat.initialiser_quota_normal(joueur) if survie else dernier_numero
+    if creations_normales >= config.max_generaux_par_joueur:
         rapports.afficher_et_ecrire(
             f"{joueur} a déjà atteint la limite de {config.max_generaux_par_joueur} généraux."
         )
@@ -123,6 +124,8 @@ def faire_apparaitre_general_si_possible(joueur, configuration=None):
     proprietaire = joueur if configuration is None else configuration['acteurs'][joueur]['proprietaire_linux']
     donner_permissions_general(chemin_general, proprietaire)
     etat.sauvegarder_compteur_general(joueur, nouveau_numero)
+    if survie:
+        etat.sauvegarder_quota_normal(joueur, creations_normales + 1)
 
     etat.enregistrer_position_nouveau_general(
     joueur,
@@ -382,6 +385,9 @@ def zones_generaux_territoire(territory, joueur, configuration=None):
     ]
     if village:
         zones.append({"position": territory.name, "chemin": joueur_dir / "reserve"})
+        if configuration['mode'] == 'survie':
+            zones.append({'position': territory.name, 'chemin': joueur_dir / 'crypte/recompense',
+                          'crypte': True})
     if configuration["mode"] == "survie" and joueur in configuration["joueurs"]:
         zones.extend(
             {"position": territory.name, "chemin": joueur_dir / "renforts" / place,

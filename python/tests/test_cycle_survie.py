@@ -21,6 +21,7 @@ class CycleSurvie(unittest.TestCase):
                                                 side_effect=AssertionError("Attente réelle interdite")))
         self.activer(1)
         self.profil['duree_gel_secondes'] = 0
+        self.profil['collecteur_crypte'] = False  # Le socket réel a sa suite Linux dédiée.
         self.profil['publication_homes_path'] = self.racine / 'staging_homes'
         self.contextes.enter_context(patch.object(self.survie, 'creer_gestion',
             lambda c, horloge=None, dormir=None: self.cycle_linux.Generations(

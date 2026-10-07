@@ -130,6 +130,18 @@ def sauvegarder_compteur_general(joueur, numero):
     ecrire_prive(compteur_path, str(numero))
 
 
+def initialiser_quota_normal(joueur):
+    chemin = config.racine_metier() / 'systeme' / f'compteur_creation_normale_{joueur}.txt'
+    if not chemin.exists():
+        # Migration : avant la Crypte, tous les numéros étaient des créations normales.
+        ecrire_prive(chemin, str(lire_compteur_general(joueur)))
+    return int(chemin.read_text(encoding='utf-8'))
+
+
+def sauvegarder_quota_normal(joueur, nombre):
+    ecrire_prive(config.racine_metier() / 'systeme' / f'compteur_creation_normale_{joueur}.txt', str(nombre))
+
+
 def charger_controle_territoires(configuration=None):
     # Charge le contrôle des territoires au tour précédent.
     #

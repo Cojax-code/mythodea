@@ -279,9 +279,11 @@ class Generations:
         return cycle
 
     def capturer(self, tour):
+        import crypte
         self.generation = self.game / 'systeme/generations' / f'g{tour:06}-{uuid.uuid4().hex[:12]}'
         dossier_prive(self.generation)
-        self.marquer(tour, 'capture')
+        with crypte.VERROU:
+            self.marquer(tour, 'capture')
         self.backend.annoncer(f'FIN DU TOUR {tour}\nRÉSOLUTION EN COURS\nPAUSE : 10 secondes minimum')
         self.afficher(tour, 'capture', detail='FIN DU TOUR\nRESOLUTION EN COURS\nGEL DEMANDE')
         self.backend.geler()
@@ -298,6 +300,7 @@ class Generations:
                                  else 'PAUSE : 10 secondes'))
                 derniere[0] = int(ecoule)
         try:
+            crypte.clore(self.c)
             capture = self.generation / 'capture'
             dossier_prive(capture)
             dossier_prive(capture / 'game')
@@ -412,6 +415,9 @@ class Generations:
                 for p in [racine, *racine.rglob('*')]:
                     sans_liens(p)
                     os.chmod(p, 0o700 if p.is_dir() else 0o600)
+        # Les documents administrateur doivent rester lisibles par leur joueur.
+        import crypte
+        crypte.preparer(self.c)
 
     def erreur(self, tour, erreur):
         self.marquer(tour, 'recuperation', erreur=str(erreur))

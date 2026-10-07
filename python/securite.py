@@ -498,6 +498,9 @@ def verifier_tous_les_deplacements(configuration=None):
         )
     )
 
+    import crypte
+    punis_crypte = crypte.auditer_recuperations(configuration)
+
     # Un général encore en attente ne peut pas entrer en combat ni occuper
     # une place alliée. Le retour forcé n'ajoute pas une nouvelle sanction.
     for identifiant in attentes_avant:
@@ -525,6 +528,7 @@ def verifier_tous_les_deplacements(configuration=None):
         punis_mauvais_joueur
         | punis_duplication
         | punis_emplacement
+        | punis_crypte
     )
 
     # ------------------------------------------
