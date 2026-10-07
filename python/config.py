@@ -1,5 +1,40 @@
 """Configuration, carte et chemins du jeu."""
 from pathlib import Path
+from contextlib import contextmanager
+from contextvars import ContextVar
+
+
+_generation = ContextVar("generation_metier", default=None)
+ETATS_METIER = (
+    "compteur_general_j1.txt", "compteur_general_j2.txt", "compteur_general_bot.txt",
+    "positions_generaux.txt", "fatigue_generaux.txt", "controle_territoires.txt",
+    "attente_repli.txt", "meteo.txt",
+)
+
+
+@contextmanager
+def racines_generation(plateau, homes):
+    """Redirige explicitement les accès métier, sans modifier les globaux classiques."""
+    jeton = _generation.set((plateau, homes))
+    try:
+        yield
+    finally:
+        _generation.reset(jeton)
+
+
+def racine_metier():
+    courant = _generation.get()
+    return courant[0] if courant else game_path
+
+
+def home_generation(joueur):
+    courant = _generation.get()
+    return courant[1][joueur] if courant else None
+
+
+def chemin_etat(nom):
+    courant = _generation.get()
+    return courant[0] / "systeme" / globals()[nom].name if courant else globals()[nom]
 
 game_path = Path("/home/game")
 
@@ -200,4 +235,8 @@ def configuration_mode(mode):
         "villages": ["village"] if mode == "survie" else [],
         "permissions_generaux": {"dossiers": 0o700, "fichiers": 0o600},
         "duree_phase_action_secondes": duree_action,
+        "duree_consultation_secondes": 60,
+        "duree_gel_secondes": 10,
+        "seuil_capture_secondes": 120,
+        "groupe_allie": "mythodea_allies",
     }

@@ -291,26 +291,67 @@ def _ouvrir_tour_survie(configuration, horloge=None):
     if cycle is not None and cycle["phase"] != "a_preparer":
         raise RuntimeError("Cycle interrompu : vérifier le plateau avant de reprendre.")
     tour = 0 if cycle is None else cycle["tour"]
-    etat.sauvegarder_cycle_survie({"tour": tour, "phase": "preparation"}, configuration)
+    precedent = cycle or {}
+    preparation = {'tour': tour, 'phase': 'preparation'}
+    if 'generation_active' in precedent:
+        preparation['generation_active'] = precedent['generation_active']
+    etat.sauvegarder_cycle_survie(preparation, configuration)
     plateau.reparer_structure(configuration)
     preparer_zones_bot(configuration)
     for joueur in configuration["joueurs"]:
-        generaux.faire_apparaitre_general_si_possible(joueur)
+        generaux.faire_apparaitre_general_si_possible(joueur, configuration)
     generaux.scanner_ordres_surnombre(configuration)
     cycle = {"tour": tour, "phase": "actions", "echeance": horloge() + duree}
+    precedent = etat.charger_cycle_survie(configuration) or {}
+    if 'generation_active' in precedent:
+        cycle['generation_active'] = precedent['generation_active']
     etat.sauvegarder_cycle_survie(cycle, configuration)
     rapports.afficher_et_ecrire(f"Tour {tour} : fenêtre d'action de {duree:g} secondes.")
     return cycle
 
 
-def resoudre_tour_survie(configuration=None, aleatoire=None):
-    """Point d'entrée direct sans timer, protégé contre les appels concurrents."""
+def creer_gestion(configuration, horloge=None, dormir=None):
+    from cycle_linux import Generations
+    return Generations(configuration, horloge=horloge, dormir=dormir)
+
+
+def resoudre_tour_survie(configuration=None, aleatoire=None, gestion=None):
+    """Clôture et résout un tour ; backend/horloges injectables sans attente en test."""
     configuration = profil_survie(configuration)
     with etat.verrou_cycle_survie(configuration):
-        return _resoudre_tour_survie(configuration, aleatoire)
+        gestion = gestion or creer_gestion(configuration)
+        gestion.preparer()
+        with rapports.droits_allies(gestion.gid):
+            return _clore_tour_survie(configuration, gestion, aleatoire)
 
 
-def _resoudre_tour_survie(configuration, aleatoire=None):
+def _clore_tour_survie(configuration, gestion, aleatoire=None):
+    cycle = etat.charger_cycle_survie(configuration)
+    if cycle is None or cycle['phase'] != 'actions':
+        raise RuntimeError('Aucune fenêtre ACTIONS à clôturer ; vérifier la récupération.')
+    tour = cycle['tour']
+    try:
+        prive, homes = gestion.capturer(tour)
+        gestion.marquer(tour, 'resolution')
+        gestion.afficher(tour, 'resolution', detail='JOUEURS DEGELÉS')
+        etat.sauvegarder_cycle_survie({'tour': tour, 'phase': 'actions'}, prive)
+        with config.racines_generation(prive['game_path'], homes):
+            resultat = _resoudre_tour_capture(prive, aleatoire)
+        from cycle_linux import ecrire_json
+        ecrire_json(gestion.generation / 'resultat.json',
+                    {'tour': tour, 'resolution_terminee': True, 'defaite': resultat['defaite']})
+        public, stage = gestion.preparer_publication()
+        gestion.publier(tour, public, stage, resultat['defaite'])
+        gestion.afficher(tour, 'defaite' if resultat['defaite'] else 'consultation',
+                         None if resultat['defaite'] else configuration['duree_consultation_secondes'],
+                         'Publication terminée. Faire cd ~ puis revenir sur la carte.')
+        return resultat
+    except BaseException as erreur:
+        gestion.erreur(tour, erreur)
+        raise
+
+
+def _resoudre_tour_capture(configuration, aleatoire=None):
     """Résout une fenêtre d'action ouverte, sans attendre et sans lancer de timer."""
     configuration = profil_survie(configuration)
     cycle = etat.charger_cycle_survie(configuration)
@@ -371,14 +412,28 @@ def _lancer_partie_survie(configuration, nombre_tours, horloge, dormir):
     configuration = profil_survie(configuration)
     if nombre_tours is not None and (type(nombre_tours) is not int or nombre_tours < 1):
         raise ValueError("Le nombre de tours doit être positif.")
+    gestion = creer_gestion(configuration, horloge, dormir)
+    gestion.preparer()
     resultats = []
-    cycle = _ouvrir_tour_survie(configuration, horloge)
-    while cycle["phase"] != "defaite" and (nombre_tours is None or len(resultats) < nombre_tours):
-        minuterie.attendre_jusqua(cycle["echeance"], horloge, dormir)
-        resultat = _resoudre_tour_survie(configuration)
-        resultats.append(resultat)
-        rapports.afficher_fin_de_tour()
-        if resultat["defaite"]:
-            break
-        cycle = _ouvrir_tour_survie(configuration, horloge)
+    with rapports.droits_allies(gestion.gid):
+        cycle = etat.charger_cycle_survie(configuration)
+        if cycle is None or cycle['phase'] == 'a_preparer':
+            cycle = _ouvrir_tour_survie(configuration, horloge)
+        while cycle['phase'] != 'defaite' and (nombre_tours is None or len(resultats) < nombre_tours):
+            if cycle['phase'] == 'consultation':
+                gestion.attendre(cycle)
+                try:
+                    gestion.permissions_actions()
+                except BaseException as erreur:
+                    gestion.erreur(cycle['tour'], erreur)
+                    raise
+                gestion.marquer(cycle['tour'] + 1, 'a_preparer')
+                cycle = _ouvrir_tour_survie(configuration, horloge)
+            if cycle['phase'] != 'actions':
+                raise RuntimeError('Cycle interrompu : récupération administrative requise.')
+            gestion.attendre(cycle)
+            resultat = _clore_tour_survie(configuration, gestion)
+            resultats.append(resultat)
+            rapports.afficher_fin_de_tour()
+            cycle = etat.charger_cycle_survie(configuration)
     return resultats

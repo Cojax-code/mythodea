@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import call, patch
 
 import test_surnombre
+from support_cycle import GelSimule
 
 
 class CycleSurvie(unittest.TestCase):
@@ -19,6 +20,11 @@ class CycleSurvie(unittest.TestCase):
         self.contextes.enter_context(patch.object(self.minuterie.time, "sleep",
                                                 side_effect=AssertionError("Attente réelle interdite")))
         self.activer(1)
+        self.profil['duree_gel_secondes'] = 0
+        self.profil['publication_homes_path'] = self.racine / 'staging_homes'
+        self.contextes.enter_context(patch.object(self.survie, 'creer_gestion',
+            lambda c, horloge=None, dormir=None: self.cycle_linux.Generations(
+                c, GelSimule(), horloge=horloge, dormir=dormir)))
 
     general = test_surnombre.Surnombre.general
     colonne = test_surnombre.Surnombre.colonne
@@ -28,10 +34,13 @@ class CycleSurvie(unittest.TestCase):
         self.etat.sauvegarder_cycle_survie({"tour": tour, "phase": "actions", "echeance": 100}, self.profil)
 
     def resoudre(self, apparitions=True):
-        if apparitions:
-            return self.survie.resoudre_tour_survie(self.profil, random.Random(5))
-        with patch.object(self.survie, "creer_vague_est", return_value=[]):
-            return self.survie.resoudre_tour_survie(self.profil, random.Random(5))
+        # Ces régressions éprouvent le moteur sur leur plateau isolé. L'enveloppe
+        # capture/publication est exercée séparément par test_generations_survie.
+        with self.etat.verrou_cycle_survie(self.profil):
+            if apparitions:
+                return self.survie._resoudre_tour_capture(self.profil, random.Random(5))
+            with patch.object(self.survie, "creer_vague_est", return_value=[]):
+                return self.survie._resoudre_tour_capture(self.profil, random.Random(5))
 
     def photo(self):
         return {str(p.relative_to(self.racine)): p.read_bytes()
@@ -269,9 +278,9 @@ class CycleSurvie(unittest.TestCase):
         with patch.object(self.survie, "creer_vague_est", return_value=[]):
             resultats = self.survie.lancer_partie_survie(self.profil, 2, lambda: maintenant[0], dormir)
         self.assertEqual([r["tour"] for r in resultats], [0, 1])
-        self.assertEqual(sum(attentes), 240)
-        self.assertEqual(self.etat.charger_cycle_survie(self.profil),
-                         {"tour": 2, "phase": "actions", "echeance": 860})
+        self.assertEqual(sum(attentes), 300)  # 120 + consultation 60 + 120
+        cycle = self.etat.charger_cycle_survie(self.profil)
+        self.assertEqual((cycle['tour'], cycle['phase'], cycle['echeance']), (1, 'consultation', 860))
 
     def test_timer_zero_et_reprise_apres_expiration_sans_sleep(self):
         self.minuterie.attendre_jusqua(100, lambda: 100)

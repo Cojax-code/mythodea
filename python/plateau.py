@@ -53,8 +53,8 @@ def sauvegarder_controle_territoires(configuration=None):
 
         lignes.append(f"{territory.name}={controle}")
 
-    config.controle_territoires_path.parent.mkdir(exist_ok=True)
-    config.controle_territoires_path.write_text("\n".join(lignes), encoding="utf-8")
+    config.chemin_etat("controle_territoires_path").parent.mkdir(exist_ok=True)
+    etat.ecrire_prive(config.chemin_etat("controle_territoires_path"), "\n".join(lignes))
 
 
 def lancer_bataille_v15():

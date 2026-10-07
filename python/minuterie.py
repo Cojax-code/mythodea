@@ -9,7 +9,7 @@ def valider_duree(duree):
     return duree
 
 
-def attendre_jusqua(echeance, horloge=None, dormir=None):
+def attendre_jusqua(echeance, horloge=None, dormir=None, observer=None):
     """Horloge et attente injectables pour ne jamais attendre dans les tests."""
     if not math.isfinite(echeance):
         raise ValueError("Échéance invalide.")
@@ -17,6 +17,8 @@ def attendre_jusqua(echeance, horloge=None, dormir=None):
     dormir = time.sleep if dormir is None else dormir
     while True:
         restant = echeance - horloge()
+        if observer is not None:
+            observer(max(0, restant))
         if restant <= 0:
             return
         dormir(min(restant, 1.0))

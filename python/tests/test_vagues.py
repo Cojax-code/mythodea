@@ -19,13 +19,13 @@ class VaguesEst(unittest.TestCase):
         self.contextes.enter_context(patch.object(sys, "path", [
             str(Path(__file__).resolve().parents[1]), *sys.path]))
         self.contextes.enter_context(patch.dict(sys.modules))
-        uids = {"root": 0, "j1": 1001, "j2": 1002}
+        uids = {"root": 0, "j1": 1001, "j2": 1002, "mythodea_allies": 1003}
         sys.modules["pwd"] = SimpleNamespace(
             getpwnam=lambda nom: SimpleNamespace(pw_uid=uids[nom]))
         sys.modules["grp"] = SimpleNamespace(
             getgrnam=lambda nom: SimpleNamespace(gr_gid=uids[nom]))
         noms = ("config", "etat", "rapports", "generaux", "mouvements",
-                "securite", "combats", "plateau", "vagues", "survie")
+                "securite", "combats", "plateau", "vagues", "survie", "cycle_linux")
         for nom in noms:
             sys.modules.pop(nom, None)
         for nom in noms:

@@ -54,12 +54,31 @@ def main(argv=None):
                         help="durée d'action Survie en secondes (défaut : 120, 0 sans attente)")
     parser.add_argument("--tours", type=int, default=None,
                         help="arrêter après ce nombre de résolutions Survie")
+    parser.add_argument('--duree-consultation', type=float, default=None,
+                        help='consultation en secondes (défaut : 60)')
+    parser.add_argument('--duree-gel', type=float, default=None,
+                        help='gel minimum de capture (défaut : 10)')
+    parser.add_argument('--seuil-capture', type=float, default=None,
+                        help='seuil de sécurité de capture, provisoirement 120 secondes')
     parser.add_argument(
         "--afficher-configuration", action="store_true",
         help="afficher le profil sélectionné sans lancer de tour ni modifier le plateau",
     )
     arguments = parser.parse_args(argv)
     configuration = config.configuration_mode(arguments.mode)
+    for option, cle in ((arguments.duree_consultation, 'duree_consultation_secondes'),
+                        (arguments.duree_gel, 'duree_gel_secondes'),
+                        (arguments.seuil_capture, 'seuil_capture_secondes')):
+        if option is not None:
+            if arguments.mode != 'survie':
+                parser.error('Les durées de phase sont réservées au mode Survie.')
+            import minuterie
+            try:
+                configuration[cle] = minuterie.valider_duree(option)
+            except ValueError as erreur:
+                parser.error(str(erreur))
+    if configuration['seuil_capture_secondes'] <= configuration['duree_gel_secondes']:
+        parser.error('Le seuil de capture doit dépasser le gel minimum.')
     if arguments.duree_action is not None:
         import minuterie
         try:

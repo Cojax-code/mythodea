@@ -1,5 +1,8 @@
 """Écriture, formatage et affichage des rapports du tour."""
 from pathlib import Path
+import os
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 import config
 import etat
@@ -7,6 +10,34 @@ import etat
 
 territoire_rapport_actuel = None
 meteo_tour = None
+_groupe_lecture = ContextVar('groupe_lecture_rapports', default=None)
+
+
+@contextmanager
+def droits_allies(gid):
+    jeton = _groupe_lecture.set(gid)
+    try:
+        yield
+    finally:
+        _groupe_lecture.reset(jeton)
+
+
+def proteger_rapport(chemin):
+    gid = _groupe_lecture.get()
+    if gid is not None:
+        technique = chemin == config.rapport_long_path
+        os.chown(chemin, 0, 0 if technique else gid)
+        os.chmod(chemin, 0o600 if technique else 0o640)
+
+
+def vider_rapport(chemin):
+    """Garde l'inode pour les lecteurs tail ; privé dès la création."""
+    mode = 0o600 if _groupe_lecture.get() is not None else 0o666
+    fd = os.open(chemin, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, 'O_NOFOLLOW', 0), mode)
+    try:
+        proteger_rapport(chemin)
+    finally:
+        os.close(fd)
 
 
 def nom_affichage_general(general):
@@ -86,6 +117,7 @@ def ajouter_ligne_fichier(chemin, texte):
         "a",
         encoding="utf-8"
     ) as fichier:
+        proteger_rapport(chemin)
         fichier.write(
             str(texte) + "\n"
         )
@@ -434,15 +466,9 @@ def preparer_rapports(configuration=None):
     )
 
     # Effacer les rapports généraux.
-    config.rapport_court_path.write_text(
-        "",
-        encoding="utf-8"
-    )
+    vider_rapport(config.rapport_court_path)
 
-    config.rapport_long_path.write_text(
-        "",
-        encoding="utf-8"
-    )
+    vider_rapport(config.rapport_long_path)
 
     # Préparer un rapport pour chaque territoire.
     territoires = config.territoires if configuration is None else configuration["territoires"]
@@ -451,10 +477,7 @@ def preparer_rapports(configuration=None):
             territory
         )
 
-        chemin.write_text(
-            "",
-            encoding="utf-8"
-        )
+        vider_rapport(chemin)
 
     # Générer la météo commune au tour.
     meteo_tour = etat.choisir_meteo_tour()
@@ -503,7 +526,7 @@ def preparer_rapports(configuration=None):
     # Rapports territoriaux
     # ------------------------------------------
 
-    for territory in config.territoires:
+    for territory in territoires:
         ecrire_rapport_territoire(
             territory,
             (

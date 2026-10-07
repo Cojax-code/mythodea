@@ -218,8 +218,8 @@ si les autres règles de déplacement l'autorisent.
 et les renforts tactiques `renforts/5..20` de chaque joueur avec son propriétaire
 Linux et des permissions `700`, ainsi que
 les emplacements extérieurs et les espaces de repli séparés. La réparation ne crée
-aucun général et ne touche pas à sa composition. Les fonctions du Forum, de la Poste
-et du Clocher restent pour les étapes suivantes.
+aucun général et ne touche pas à sa composition. Le Forum et la Poste restent pour
+les étapes suivantes ; le Clocher expose seulement l'état et le temps du cycle.
 
 La découverte et la sécurité utilisent les mêmes descriptions de zones dans
 `generaux.py`. La réserve est inspectée pour l'identité officielle, les propriétaires
@@ -264,16 +264,23 @@ Le clocher permet de consulter le temps restant de la fenêtre d'action du tour
 courant. Le timer clôt cette fenêtre ; le clocher ne contient pas lui-même la
 logique de résolution du tour.
 
-Le fichier associé doit être lisible par les joueurs et s'actualiser périodiquement.
-Il doit pouvoir être observé depuis le terminal, notamment avec :
+Deux fichiers sous `/home/game/clocher/` sont lisibles par le groupe allié :
+
+- `etat_tour.txt` : photographie courante remplacée atomiquement, pour `cat` ;
+- `suivi_tour.log` : inode stable alimenté par append, pour `tail -f`.
+
+Ils indiquent `TOUR`, `PHASE` et `TEMPS RESTANT` pendant les fenêtres temporisées,
+avec une actualisation par seconde. Pendant la capture, ils annoncent
+`FIN DU TOUR`, `RESOLUTION EN COURS`, `JOUEURS GELES`, `PAUSE : 10 secondes`, puis
+`PROLONGATION TECHNIQUE` si nécessaire. Le log n'est pas remplacé entre les tours.
 
 ```bash
-tail -f <fichier_du_clocher>
+cat /home/game/clocher/etat_tour.txt
+tail -f /home/game/clocher/suivi_tour.log
 ```
 
-Le format final et la fréquence exacte d'actualisation restent des détails
-d'implémentation, mais le fichier doit au minimum permettre d'identifier le tour
-courant et le temps restant avant sa résolution.
+Le Clocher complète l'annonce `wall` envoyée avant le gel. Une seule session SSH
+principale par joueur suffit ; aucune autre fonctionnalité de bâtiment n'est requise.
 
 ---
 
@@ -422,7 +429,9 @@ bash bash/start.sh --mode survie
 
 `--duree-action` configure la fenêtre en secondes (120 par défaut, 0 pour supprimer
 l'attente des nouvelles fenêtres). `--tours` limite le nombre de résolutions de
-cet appel. Les fonctions de préparation, d'audit, de vague et de combat restent
+cet appel. Le groupe `mythodea_allies`, systemd et cgroup v2 sont requis ; la
+préparation et les vérifications Linux figurent dans `TESTS_LINUX_SURVIE.md`.
+Les fonctions de préparation, d'audit, de vague et de combat restent
 appelables séparément. Les identités et fichiers d'état étant communs aux deux
 modes, ne pas alterner classique et Survie sur une même partie.
 
@@ -436,12 +445,16 @@ une version ultérieure.
 La phase d'action dure **120 secondes (2 minutes) par défaut**, y compris au tour 0.
 
 Un tour comprend une fenêtre d'action joueurs puis sa résolution automatique.
-Quand le timer expire, la fenêtre d'action est clôturée logiquement ;
-les joueurs peuvent continuer à consulter les informations et rapports auxquels
-ils ont accès, mais doivent cesser leurs écritures. Le moteur ne suspend pas leurs
-sessions Linux et n'implémente pas encore le blocage système de ces écritures.
+À son expiration : `wall`, annonce au Clocher, gel réel confirmé de j1/j2,
+capture cohérente, puis dégel. Le gel dure **au moins 10 secondes**, même si la
+copie finit avant. Une capture plus longue prolonge le gel et l'annonce au Clocher.
+Le seuil de sécurité est configurable (`--seuil-capture`), avec une valeur
+**provisoire de 120 secondes**, à mesurer sur Raspberry Pi avant validation définitive.
+Son dépassement abandonne la capture et exige une récupération administrative.
+Le seuil est contrôlé entre les opérations d'E/S ; il ne peut interrompre un appel
+noyau bloqué. Les joueurs restent dégelés pendant la résolution privée.
 
-La résolution du tour N suit l'ordre suivant :
+Dans la copie privée, la résolution du tour N suit l'ordre suivant :
 
 1. effectuer l'audit complet des actions joueurs **une seule fois** ;
 2. préparer les déplacements des forces ennemies déjà présentes à partir d'un état
@@ -460,7 +473,8 @@ La résolution du tour N suit l'ordre suivant :
    places réservées ;
 9. calculer et sauvegarder le contrôle final, finaliser les rapports et vérifier la
    défaite ;
-10. en l'absence de défaite, commencer le tour N+1 avec un nouveau timer.
+10. publier les nouveaux inodes sous un second gel court ; en l'absence de défaite,
+    ouvrir **CONSULTATION 60 secondes**, puis le tour N+1 avec **ACTIONS 120 secondes**.
 
 Au tour 0, l'étape 2 ne déplace personne parce qu'aucune force ennemie ancienne
 n'existe encore ; la vague 1 apparaît néanmoins à l'étape 4.
@@ -474,38 +488,138 @@ valide la durée et attend une échéance, sans logique métier. Le pilote appel
 résolution après cette attente. La durée est configurable par le champ
 `duree_phase_action_secondes` du profil ou par `--duree-action`. Les tests peuvent
 la neutraliser avec 0 et injecter une horloge ainsi qu'une attente simulées.
+`--duree-consultation`/`duree_consultation_secondes` et
+`--duree-gel`/`duree_gel_secondes` configurent les deux autres durées, neutralisables
+en test. `seuil_capture_secondes` doit rester supérieur au minimum de gel.
 
 ### API du cycle, état et reprise
 
 - `survie.ouvrir_tour_survie()` prépare le plateau et les généraux selon les règles
   communes, puis enregistre la fenêtre d'action et son échéance. Un nouvel appel
   sur une fenêtre déjà ouverte conserve cette échéance sans répéter la préparation.
-- `survie.resoudre_tour_survie()` résout directement une fenêtre ouverte, sans
-  attente et sans exiger l'expiration du timer. Il sauvegarde le contrôle, les
-  rapports et l'état final du tour, mais n'ouvre pas la fenêtre suivante.
+- `survie.resoudre_tour_survie()` capture, résout et publie directement une fenêtre
+  ouverte, sans exiger l'expiration du timer d'action. Le gel reste effectif en
+  production ; un gestionnaire et des horloges injectés rendent les tests sans
+  attente. Il ouvre la consultation, mais pas la prochaine fenêtre d'action.
 - `survie.lancer_partie_survie()` pilote les ouvertures, l'attente via
   `minuterie.attendre_jusqua()`, les résolutions et l'affichage des rapports jusqu'à
   la défaite, une interruption ou la limite optionnelle `nombre_tours`. Hors défaite,
-  il ouvre la fenêtre suivante même si la limite de résolutions est atteinte.
+  il attend la consultation puis ouvre la fenêtre suivante. À la limite de
+  résolutions, la consultation reste persistée pour le prochain appel.
 
 L'état privé `systeme/cycle_survie.json` contient `tour`, `phase` et, en phase
-`actions`, une `echeance` absolue. Les phases sont `preparation`, `actions`,
-`resolution`, `a_preparer` et `defaite`. Le fichier appartient à `root:root` en
+`actions` ou `consultation`, une `echeance` absolue. Les phases sont `preparation`,
+`actions`, `capture`, `resolution`, `publication`, `consultation`, `recuperation`,
+`a_preparer` et `defaite`. `generation` identifie la clôture en cours et
+`generation_active` la dernière publication validée. Le fichier appartient à `root:root` en
 `600` et est remplacé atomiquement. Le format et les transitions sont détaillés
 dans `MYTHODEA_SPEC.md`, section 17.
 
 Le verrou privé `systeme/verrou_cycle_survie` contient le PID et empêche deux
 moteurs Survie concurrents, pendant l'attente comme pendant la résolution. Les
 API directes d'ouverture et de résolution sont également protégées. Ce verrou
-ne bloque pas les écritures des joueurs.
+ne remplace pas le gel ni l'isolation par générations.
 
 Une interruption pendant le timer conserve l'échéance : la reprise attend
-seulement le temps restant, ou résout immédiatement si elle est déjà dépassée.
-Changer la durée configurée ne réinitialise pas cette fenêtre. Une interruption
-pendant `preparation` ou `resolution` exige une vérification manuelle du plateau
-et de l'état avant reprise ; le moteur refuse de rejouer automatiquement les
-opérations. Le verrou est libéré à la sortie, y compris sur `Ctrl+C` ; après un
-arrêt brutal, vérifier l'absence du processus avant de retirer un verrou résiduel.
+seulement le temps restant en `actions` ou `consultation`, puis poursuit la
+transition prévue. Changer la durée ne réinitialise pas une échéance enregistrée.
+Les autres phases interrompues exigent une vérification administrative. Le verrou
+est libéré normalement, y compris sur `Ctrl+C` ; après un arrêt brutal, sa présence
+reste bloquante jusqu'à vérification et retrait explicite.
+
+### Clôture Linux et générations privées
+
+`cycle_linux.py` contrôle les slices `user-<UID>.slice` de j1/j2 sous `user.slice`
+avec le freezer cgroup v2. Il démarre leurs gestionnaires systemd utilisateur afin
+que ces slices existent aussi sans session ouverte, vérifie le confinement des
+processus et attend `frozen 1` avant copie. Le moteur root doit être lancé depuis
+un administrateur distinct, hors de ces slices. Un processus joueur hors de sa
+slice, un gel extérieur ou un journal de gel résiduel fait refuser la clôture.
+Les comptes joueurs ne doivent pas avoir de privilèges ni de services autorisés
+à créer des producteurs hors de ces slices ; voir les prérequis Linux.
+
+Le gel seul bloquerait inutilement les terminaux durant les combats. Les modes
+Unix ou ACL seuls laisseraient les anciens descripteurs écrire. Le gel bref permet
+la capture cohérente ; les copies indépendantes assurent ensuite la séparation.
+Aucun montage, namespace, ACL supplémentaire ou partitionnement automatique n'est utilisé.
+
+```text
+/home/game/systeme/generations/g<tour>-<identifiant>/
+  manifeste.json              capture validée, tour, liste blanche des états
+  capture/game/               territoires, repli et états métier
+  capture/homes/j1/           entrées general* du home uniquement
+  capture/homes/j2/
+  travail/                    copie indépendante, modifiée par le moteur commun
+  resultat.json               présent seulement après résolution complète
+  publication/game/           nouveaux inodes prêts à installer
+  publication/anciens/        anciennes entrées retirées du plateau
+  publication.json            journal durable de chaque remplacement
+/home/.mythodea-publication/g<tour>-<identifiant>/
+  nouveaux/j1/ et nouveaux/j2/
+  anciens/j1/ et anciens/j2/
+```
+
+Ces parents sont `root:root 700`. Les dossiers/fichiers tactiques copiés conservent
+leurs UID/GID réels et leurs modes ; l'audit détecte donc encore un mauvais
+propriétaire. La copie est physique, vérifiée par SHA-256 et synchronisée sur disque.
+Aucun hardlink ni symlink n'est créé ; un symlink ou objet spécial source est refusé.
+Un hardlink source est copié comme un fichier indépendant.
+
+La liste blanche `config.ETATS_METIER` est : `compteur_general_j1.txt`,
+`compteur_general_j2.txt`, `compteur_general_bot.txt`, `positions_generaux.txt`,
+`fatigue_generaux.txt`, `controle_territoires.txt`, `attente_repli.txt`, `meteo.txt`.
+Le cycle vivant, les verrous, générations, journaux de récupération, rapports et
+Clocher sont exclus. Le marqueur local du résolveur dans `travail/systeme/` n'est
+jamais publié. Le moteur commun utilise le contexte privé `config.racines_generation()`.
+
+La publication prépare les copies avant le second gel, journalise chaque retrait
+et installation, puis valide `generation_active` seulement après toutes les
+opérations. Elle n'est pas une transaction atomique couvrant plusieurs dossiers :
+le gel empêche les joueurs d'observer les remplacements partiels, et une panne
+laisse un journal à examiner. Chaque renommage reste sur un même système de
+fichiers ; le staging des homes est séparé pour permettre une partition dédiée
+montée sur `/home/game`, sans automatiser sa création.
+
+Les homes `/home/j1` et `/home/j2` eux-mêmes restent aux joueurs. Seules les
+entrées réservées au jeu `general*` sont remplacées ; `.ssh`, les fichiers personnels,
+le shell et l'historique ne sont pas touchés. Un ancien FD ou cwd continue de viser
+les anciens inodes, sans effet sur la capture ou la nouvelle génération.
+Après publication : **faire `cd ~`, puis revenir sur la carte**. Un éditeur qui
+réouvre un chemin absolu vise, lui, la nouvelle génération : consultation n'est
+pas une frontière anti-triche absolue.
+
+Pendant consultation, les bits d'écriture des entrées tactiques alliées sont retirés.
+À l'ouverture des actions, les modes normaux `700`/`600` sont restaurés sans changer
+les propriétaires constatés. Les homes eux-mêmes restent inchangés. Les joueurs
+propriétaires peuvent rétablir leurs modes : cette mesure facilite la lecture seule,
+mais la protection du tour clôturé repose sur la copie privée.
+
+Rapports alliés et Clocher : dossiers `root:mythodea_allies 750`, fichiers `640`.
+Le journal technique reste `root:root 600`, comme compteurs, cycle, manifestes,
+résultats, verrous et journaux de publication. Les rapports restent hors des
+arborescences remplacées, lisibles avec `cat`, `tail -f` et `grep`.
+
+### Récupération administrative
+
+Les sorties interceptables dégèlent les joueurs dans un `finally`. Après `SIGKILL`
+ou une panne, `systeme/gel_survie.json` indique le PID et les slices concernées.
+`survie_admin.py diagnostic` affiche les marqueurs. Après vérification de l'arrêt
+du processus, `degeler --confirmer` libère les sessions sans valider le jeu,
+sans rétablir les permissions tactiques et sans supprimer le verrou. Le retrait
+du verrou est une autre commande explicite ; un PID encore présent bloque ces opérations.
+
+Une publication interrompue peut être reprise par `republier --generation ...
+--confirmer` après examen du résultat terminé et du journal. L'outil accepte
+uniquement la génération interrompue, conserve les traces précédentes et recrée
+la publication depuis `travail/`, sans audit, vague ou combat supplémentaire.
+Une capture ou résolution incomplète n'a pas ce chemin de reprise : conserver les
+preuves, réparer/restaurer explicitement avec l'administrateur, sans modifier
+aveuglément la phase pour forcer une relance. Aucun merge des écritures tardives.
+Les commandes et contrôles exacts sont dans `TESTS_LINUX_SURVIE.md`.
+
+Les générations sont conservées pour diagnostic ; leur purge est administrative,
+moteur arrêté, après sauvegarde. Aucun nettoyage automatique ni partitionnement
+n'est déclenché par le cycle.
 
 ### Identité des ennemis
 

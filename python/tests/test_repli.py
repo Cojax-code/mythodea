@@ -37,8 +37,9 @@ class SanctionsRepli(unittest.TestCase):
         self.assertEqual(self.etat.charger_attentes_repli(self.profil),
                          {"j1:general1": 2, "j2:general1": 2})
         fichier = self.config.game_path / "systeme/attente_repli.txt"
-        self.assertIn(call(fichier, 0, 0), self.chown.call_args_list)
-        self.assertIn(call(fichier, 0o600), self.chmod.call_args_list)
+        # Le nouvel inode est privé avant son installation atomique.
+        self.assertIn(call(fichier.with_suffix('.tmp'), 0, 0), self.chown.call_args_list)
+        self.assertIn(call(fichier.with_suffix('.tmp'), 0o600), self.chmod.call_args_list)
         for restant in (1, 0):
             # Même un retour à la bonne destination reste interdit pendant l'attente.
             self.chemin(territoire="repli").rename(self.chemin())

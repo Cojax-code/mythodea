@@ -28,6 +28,7 @@ class CombatsCamps(unittest.TestCase):
             sys.modules.pop(nom, None)
         for nom in noms:
             setattr(self, nom, importlib.import_module(nom))
+        self.contextes.enter_context(patch.object(self.etat.os, 'chown', create=True))
         self.config.game_path = self.racine / "game"
         self.config.territoires = [self.config.game_path / nom for nom in self.config.carte_territoires]
         for nom, relatif in {

@@ -59,26 +59,33 @@ python3 -B python/mythodea_v_1_5.py --mode survie --afficher-configuration
 ```
 
 Le prototype Survie Est est jouable sur un plateau dédié, avec les comptes Linux
-`j1` et `j2` préparés par l'installation :
+`j1` et `j2`. Préparer aussi le groupe allié et vérifier systemd/cgroup v2 selon
+[la procédure Linux](TESTS_LINUX_SURVIE.md), puis lancer depuis le compte administrateur :
 
 ```bash
 bash bash/start.sh --mode survie
 ```
 
-Chaque fenêtre d'action dure 120 secondes, y compris le tour 0. À son expiration,
-les anciennes forces avancent, la vague suivante apparaît, puis les combats sont
-résolus. La vague 1 apparaît à la résolution du tour 0. Les joueurs doivent cesser
-leurs écritures pendant la résolution ; le moteur ne suspend pas leurs sessions Linux.
+Chaque fenêtre d'action dure 120 secondes, y compris le tour 0. Une annonce `wall`
+précède un gel d'au moins 10 secondes pour capturer les actions. Les sessions
+reprennent pendant la résolution privée : anciennes forces, vague suivante,
+combats. La vague 1 apparaît à la résolution du tour 0. Un second gel court publie
+le résultat, puis une consultation de 60 secondes précède les nouvelles actions.
+Après publication, faire `cd ~` puis revenir sur la carte.
+
+Le temps est lisible avec `cat /home/game/clocher/etat_tour.txt` ou
+`tail -f /home/game/clocher/suivi_tour.log`.
 
 Pour un essai borné sans attendre :
 
 ```bash
-bash bash/start.sh --mode survie --duree-action 0 --tours 1
+bash bash/start.sh --mode survie --duree-action 0 --duree-gel 0 --duree-consultation 0 --tours 1
 ```
 
-`Ctrl+C` pendant l'attente conserve l'échéance pour la reprise. Une interruption
-pendant la résolution exige de vérifier le plateau avant de reprendre, afin de ne
-pas rejouer un audit ou une vague. Ne pas alterner classique et Survie sur une même
+`Ctrl+C` pendant l'attente conserve l'échéance pour la reprise. Une capture,
+résolution ou publication interrompue exige une récupération administrative ; les
+[commandes de diagnostic et de dégel](TESTS_LINUX_SURVIE.md#récupération-administrative)
+ne rejouent aucun audit ou combat. Ne pas alterner classique et Survie sur une même
 partie : les identités et fichiers d'état sont communs. L'installation et le
 nettoyage restent classiques.
 

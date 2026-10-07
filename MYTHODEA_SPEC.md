@@ -86,6 +86,8 @@ Responsabilités :
 | `vagues.py` | compositions des vagues Est, sans accès au disque |
 | `survie.py` | cycle Survie Est, progression ennemie, vagues, cascades et retraites différées |
 | `minuterie.py` | validation de la durée et attente jusqu'à une échéance, sans logique métier |
+| `cycle_linux.py` | gel Linux, capture privée, publication de générations et permissions des phases Survie |
+| `survie_admin.py` | diagnostic, dégel de secours et republication explicitement autorisée, sans rejeu métier |
 
 Les dépendances sont orientées de manière à éviter les imports circulaires.
 Importer les modules ne doit jamais lancer un tour. Seul le point d'entrée appelle
@@ -197,10 +199,13 @@ acceptent le profil pour conserver les camps dans le contrôle. La boucle
 Le point d'entrée accepte `--mode classique` (valeur par défaut) et `--mode survie`.
 L'option `--afficher-configuration` affiche le profil sans lancer de tour ni importer
 les modules dépendant d'Unix. `bash bash/start.sh --mode survie` lance le cycle Est.
-`--duree-action` configure la durée en secondes (120 par défaut, 0 pour supprimer
-l'attente) et `--tours` limite le nombre de résolutions de cet appel. Ces deux
-options sont réservées au mode Survie. `bash/start.sh` transmet les options au
-point d'entrée.
+`--duree-action` configure la durée en secondes (120 par défaut),
+`--duree-consultation` la consultation (60), `--duree-gel` le minimum de gel (10),
+et `--seuil-capture` le seuil de sécurité (120, provisoire à mesurer sur Raspberry Pi).
+Le seuil doit dépasser le minimum de gel. Les trois durées de phase peuvent être
+neutralisées avec 0 en test. `--tours` limite les résolutions ; ces options sont
+réservées au mode Survie. `bash/start.sh` les transmet au point d'entrée.
+La préparation Linux requise est décrite dans `TESTS_LINUX_SURVIE.md`.
 
 ---
 
@@ -313,6 +318,10 @@ Les compteurs sont stockés dans :
 /home/game/systeme/compteur_general_j1.txt
 /home/game/systeme/compteur_general_j2.txt
 ```
+
+Les compteurs et états moteur sont privés : fichiers `root:root 600`, sous
+`systeme/` en `root:root 700`. Leur remplacement atomique prépare un inode privé
+avant publication ; un fichier temporaire n'est jamais exposé aux joueurs.
 
 Les positions actives sont stockées dans :
 
@@ -900,26 +909,29 @@ fenêtres ; elle ne réinitialise pas l'échéance d'une fenêtre déjà ouverte
 Responsabilités des API :
 
 - `minuterie.valider_duree()` valide la durée ;
-  `minuterie.attendre_jusqua(echeance, horloge=None, dormir=None)` attend une
+  `minuterie.attendre_jusqua(echeance, horloge=None, dormir=None, observer=None)` attend une
   échéance absolue, avec `time.time` et `time.sleep` par défaut. Ce module n'importe
   pas le moteur et ne déclenche aucune action de jeu. L'horloge et l'attente sont
   injectables pour les tests ; une échéance déjà atteinte ne provoque aucune attente.
+  L'observateur facultatif reçoit le temps restant, sans introduire de règle de jeu.
 - `survie.ouvrir_tour_survie(configuration=None, horloge=None)` prépare le plateau,
   fait apparaître un général par joueur si possible selon les limites communes,
   complète les ordres de surnombre et enregistre la fenêtre d'action. Si elle est
   déjà ouverte, il conserve son échéance sans répéter la préparation. Il n'attend pas.
-- `survie.resoudre_tour_survie(configuration=None, aleatoire=None)` résout une
-  fenêtre ouverte, sauvegarde le résultat et prépare l'état du tour suivant, ou
-  celui de défaite. Il ne vérifie pas l'expiration du timer et ne lance aucune
-  attente : les tests peuvent l'appeler directement. Il n'ouvre pas lui-même la
-  prochaine fenêtre.
+- `survie.resoudre_tour_survie(configuration=None, aleatoire=None, gestion=None)`
+  clôture une fenêtre ouverte : capture sous gel, résolution privée par le moteur
+  commun, puis publication sous un second gel. Il ouvre la consultation ou constate
+  la défaite. Il n'attend pas l'expiration du timer d'action ; les tests l'appellent
+  directement avec un contrôleur de gel et des horloges injectés, sans attente réelle.
+  Le minimum de gel réel reste appliqué en production. Il n'ouvre pas les actions suivantes.
 - `survie.lancer_partie_survie(configuration=None, nombre_tours=None, horloge=None,
   dormir=None)` pilote l'ouverture, l'attente, la résolution, l'affichage du rapport
   et l'ouverture suivante. Il s'arrête à la défaite, à une interruption ou après le
-  nombre demandé de résolutions. Hors défaite, la fenêtre suivante est ouverte
-  même lorsque cette limite vient d'être atteinte.
+  nombre demandé de résolutions. À cette limite, il laisse la phase `consultation`
+  persistée ; le prochain appel attend son échéance puis prépare le tour suivant.
 
-À la résolution du tour N, l'orchestrateur :
+Après clôture par capture, la résolution du tour N travaille exclusivement dans
+la génération privée. L'orchestrateur :
 
 1. appelle l'audit commun une seule fois ;
 2. prépare et applique les déplacements automatiques des forces ennemies déjà
@@ -930,7 +942,8 @@ Responsabilités des API :
 5. résout les cascades dans l'ordre `village -> est_1 -> est_2 -> est_3`, réserve
    les retraites admissibles et les applique physiquement après tous les combats ;
 6. sauvegarde le contrôle final, les rapports et l'éventuelle défaite ;
-7. ouvre, en l'absence de défaite, le tour suivant avec un nouveau timer.
+7. publie de nouveaux inodes, ouvre la consultation de 60 secondes puis, en
+   l'absence de défaite, le tour suivant avec un nouveau timer de 120 secondes.
 
 Les déplacements automatiques sont préparés depuis un inventaire initial des
 actifs et renforts bots, en tenant compte des départs prévus, puis appliqués.
@@ -954,27 +967,32 @@ ni les combats, ni le contrôle final, ni le passage au tour suivant.
 `/home/game/systeme/cycle_survie.json`. Ce fichier privé appartient à `root:root`
 en `600`. L'écriture passe par `cycle_survie.tmp`, également privé, puis remplace
 atomiquement le fichier d'état. Celui-ci contient `tour` (entier à partir de 0),
-`phase` et, uniquement en phase `actions`, `echeance` (secondes depuis l'époque
-Unix). Le numéro de vague à créer est déduit de `tour + 1`, sans compteur de cycle
-supplémentaire.
+`phase` et, en phase `actions` ou `consultation`, `echeance` (secondes depuis
+l'époque Unix). `generation` identifie la clôture en cours ; `generation_active`
+identifie la dernière publication validée. `erreur` explique une récupération.
+Le numéro de vague est déduit de `tour + 1`, sans compteur supplémentaire.
 
 | Phase | Signification |
 | --- | --- |
 | `preparation` | Préparation du tour en cours, avant l'ouverture de sa fenêtre. |
 | `actions` | Fenêtre ouverte ; son échéance est enregistrée. |
-| `resolution` | Résolution commencée ; ses effets peuvent être partiellement appliqués. |
-| `a_preparer` | Résolution terminée sans défaite ; `tour` désigne le prochain tour à préparer. |
+| `capture` | Clôture commencée ; gel et copie des entrées, pas encore de résolution. |
+| `resolution` | Moteur commun actif exclusivement dans `travail/`, joueurs dégelés. |
+| `publication` | Installation journalisée des nouveaux inodes sous gel court. |
+| `consultation` | Publication validée ; lecture pendant 60 secondes, `tour` reste le tour résolu. |
+| `a_preparer` | Consultation terminée ; `tour` désigne le prochain tour à préparer. |
+| `recuperation` | Incident bloquant ; intervention administrative requise. |
 | `defaite` | Partie arrêtée ; `tour` reste celui dont la résolution a provoqué la défaite. |
 
 Sans fichier d'état, l'ouverture commence au tour 0. Après une interruption pendant
-le timer, le pilote reprend la même phase `actions` et attend seulement le temps
-restant ; si l'échéance est dépassée, il résout immédiatement ce tour. Le temps
-écoulé pendant l'arrêt n'est pas ajouté à la fenêtre.
+un timer, le pilote reprend `actions` ou `consultation` et attend seulement le
+temps restant ; si l'échéance est dépassée, il poursuit la transition correspondante.
+Le temps écoulé pendant l'arrêt n'est pas ajouté à la fenêtre.
 
-Une phase `preparation` ou `resolution` laissée par une interruption bloque la
-reprise automatique. Une vérification manuelle du plateau et des états persistants
-est nécessaire : le moteur n'effectue ni retour arrière ni rejeu automatique des
-effets déjà appliqués, afin de ne pas répéter une génération, un audit ou une vague.
+Une phase `preparation`, `capture`, `resolution`, `publication` ou `recuperation`
+bloque la reprise automatique. Le journal de gel est aussi bloquant. Une vérification
+administrative est nécessaire : aucun retour arrière, audit, vague ou combat n'est
+rejoué automatiquement. Les journaux et générations sont conservés pour l'examen.
 
 `etat.verrou_cycle_survie()` crée exclusivement
 `/home/game/systeme/verrou_cycle_survie` (`root:root`, `600`), qui contient le PID.
@@ -984,10 +1002,24 @@ un second moteur Survie. Il est retiré à la sortie, y compris sur exception ou
 `Ctrl+C`. Après un arrêt brutal empêchant ce nettoyage, il faut vérifier l'absence
 du processus avant de retirer manuellement le verrou résiduel.
 
-Ce verrou protège le moteur contre les exécutions concurrentes ; il ne bloque pas
-les écritures des joueurs ni leurs sessions Linux. Les joueurs doivent cesser leurs
-modifications pendant la résolution. Le verrouillage système de ces écritures n'est
-pas implémenté ; la validation des permissions réelles reste à effectuer sur Linux.
+Ce verrou exclut les autres moteurs. La protection contre les écritures joueurs
+repose sur `cycle_linux.py` : gel confirmé des slices systemd des deux UID pendant
+la capture, copies physiques indépendantes, résolution privée, puis publication
+sous un second gel. `chmod` et les ACL seuls ne révoquent pas un descripteur déjà
+ouvert ; ils ne suffisent donc pas à clôturer le tour.
+
+`config.racines_generation()` borne les accès métier du moteur commun à la racine
+de travail et aux homes capturés, sans modifier les variables globales classiques.
+Les états passent par `config.chemin_etat()`/`racine_metier()` ; la découverte des
+homes passe par `home_generation()`. Rapports, verrou, Clocher et récupération
+restent attachés au moteur vivant. Aucune lecture métier ne revient au plateau public.
+
+Les données capturées gardent leurs UID/GID réels pour l'audit, sous un ancêtre
+`root:root 700`. Les métadonnées moteur sont `root:root 600`. Les rapports alliés
+et le Clocher utilisent `root:mythodea_allies`, dossiers `750`, fichiers `640` ;
+le journal technique reste `root:root 600`. Les homes eux-mêmes restent aux joueurs.
+Le format des générations, la publication et la procédure de récupération sont
+décrits dans `SURVIE_SPEC.md` et `TESTS_LINUX_SURVIE.md`.
 
 ---
 

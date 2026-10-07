@@ -70,13 +70,15 @@ def donner_permissions_general(chemin_general, joueur):
             os.chmod(element, 0o600)
 
 
-def home_contient_general(joueur):
+def home_contient_general(joueur, configuration=None):
     # Vérifie si le home du joueur contient déjà un général.
     #
     # Règle V1.5 :
     # si un général est déjà dans le home, aucun nouveau général n'apparaît.
 
-    home_joueur = Path(f"/home/{joueur}")
+    home_joueur = (config.home_generation(joueur)
+                   or (configuration or {}).get('homes', {}).get(joueur)
+                   or Path(f"/home/{joueur}"))
 
     if not home_joueur.exists():
         return False
@@ -88,7 +90,7 @@ def home_contient_general(joueur):
     return False
 
 
-def faire_apparaitre_general_si_possible(joueur):
+def faire_apparaitre_general_si_possible(joueur, configuration=None):
     # Fait apparaître un seul général dans le home du joueur si possible.
     #
     # Règles :
@@ -96,7 +98,7 @@ def faire_apparaitre_general_si_possible(joueur):
     # - si le joueur a déjà atteint la limite : rien n'apparaît
     # - sinon, le prochain generalX apparaît dans /home/joueur/
 
-    if home_contient_general(joueur):
+    if home_contient_general(joueur, configuration):
         rapports.afficher_et_ecrire(
             f"{joueur} a déjà un général dans son home. Aucun nouveau général."
         )
@@ -112,10 +114,14 @@ def faire_apparaitre_general_si_possible(joueur):
 
     nouveau_numero = dernier_numero + 1
     nom_general = f"general{nouveau_numero}"
-    chemin_general = Path(f"/home/{joueur}") / nom_general
+    home = (config.home_generation(joueur)
+            or (configuration or {}).get('homes', {}).get(joueur)
+            or Path(f"/home/{joueur}"))
+    chemin_general = home / nom_general
 
     creer_general(chemin_general, nom_general)
-    donner_permissions_general(chemin_general, joueur)
+    proprietaire = joueur if configuration is None else configuration['acteurs'][joueur]['proprietaire_linux']
+    donner_permissions_general(chemin_general, proprietaire)
     etat.sauvegarder_compteur_general(joueur, nouveau_numero)
 
     etat.enregistrer_position_nouveau_general(
@@ -454,7 +460,8 @@ def zones_generaux(joueur, configuration=None):
     if configuration is None:
         configuration = config.configuration_mode("classique")
     zones = [
-        {"position": "home", "chemin": Path(f"/home/{joueur}")},
+        {"position": "home", "chemin": (config.home_generation(joueur)
+            or configuration.get('homes', {}).get(joueur) or Path(f"/home/{joueur}"))},
         {"position": "repli", "chemin": configuration["repli_path"] / joueur},
     ]
     for territory in configuration["territoires"]:
