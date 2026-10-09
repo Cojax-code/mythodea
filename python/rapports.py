@@ -44,12 +44,14 @@ def nom_affichage_general(general):
     """Un libellé de vague ou de récompense ne remplace jamais generalN."""
     if general["joueur"] == "bot":
         return general.get("fiche", {}).get("nom_affichage", general["nom"])
-    if general.get('fiche', {}).get('nom_affichage') == 'ame_et_lie_poulin':
+    if general.get('fiche', {}).get('nom_affichage'):
         import crypte
         d = crypte.charger({'game_path': config.racine_metier(), 'joueurs': []})
-        if any(a['general'] == general['nom']
-               for a in d.get(general['joueur'], {}).get('attributions', [])):
-            return 'ame_et_lie_poulin'
+        for attribution in d.get(general['joueur'], {}).get('attributions', []):
+            recette = crypte.RECETTES.get(attribution.get('recette', 'recette1'))
+            if (attribution['general'] == general['nom'] and recette
+                    and general['fiche']['nom_affichage'] == recette['nom']):
+                return recette['nom']
     return general["nom"]
 
 

@@ -346,8 +346,9 @@ normale ou récompense. Le mode classique conserve son fonctionnement antérieur
 Une récompense est créée dans `village/<joueur>/crypte/recompense/generalN`,
 avec la position officielle `village`. Cette zone sans emplacement est découverte
 et auditée par le moteur commun, mais exclue du contrôle et du combat. La fiche
-porte `nom_affichage=ame_et_lie_poulin` ; les affichages utilisent ce nom seulement
-pour une identité réellement attribuée par la Crypte. L'identité technique reste
+porte le `nom_affichage` de la recette (`ame_et_lie_poulin`, `har-chez-moi` ou `pic-nic`) ;
+les affichages utilisent ce nom seulement pour une identité réellement attribuée
+par cette recette dans l'état privé Crypte. L'identité technique reste
 `joueur:generalN`, y compris pour les sanctions, la fatigue et la destruction.
 
 Créer manuellement un dossier portant le nom d'un ancien général ne le ressuscite

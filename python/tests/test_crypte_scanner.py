@@ -19,8 +19,8 @@ if sys.platform == 'linux':
 
 
 SCRIPT = Path(__file__).resolve().parents[2] / 'bash/prototype_crypte_scan.sh'
-RECIPE = ('mkdir appel', 'touch appel/cavalerie', 'chmod 600 appel/cavalerie',
-          'mv appel/cavalerie appel/offrande')
+RECIPE = ('mkdir appel', 'touch appel/cavalerie', 'cp appel/cavalerie appel/offrande',
+          'mv appel/offrande appel/poulin')
 PROMPT = b'CRYPTE_TEST> '
 FIELDS = ('event', 'line', 'command', 'status', 'cwd', 'history', 'kind', 'pid')
 
@@ -65,6 +65,8 @@ def verdict(events, atelier):
             step += 1
         elif kind in ('interrupt', 'close', 'refused', 'unobserved'):
             failure = failure or kind
+        elif kind == 'component':
+            failure = failure or 'commande supplementaire'
         elif kind == 'end':
             if ended or not started or pending or step != len(RECIPE):
                 failure = failure or 'fin prematuree ou repetee'
@@ -135,7 +137,8 @@ class BashSession:
             if os.waitpid(self.pid, os.WNOHANG)[0]:
                 self.pid = None
                 return
-            time.sleep(.01)
+            # Attente du processus de test, indépendante du timer moteur simulé.
+            select.select([], [], [], .01)
         os.kill(self.pid, signal.SIGKILL)
         os.waitpid(self.pid, 0)
         self.pid = None
@@ -169,9 +172,10 @@ class ScannerCrypte(unittest.TestCase):
             shell.command(line)
         shell.command('crypte_fin')
         self.check(shell, 'succes')
-        offering = shell.atelier / 'appel/offrande'
-        self.assertTrue(offering.is_file())
-        self.assertEqual(offering.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(sorted(p.name for p in (shell.atelier / 'appel').iterdir()),
+                         ['cavalerie', 'poulin'])
+        for nom in ('cavalerie', 'poulin'):
+            self.assertEqual((shell.atelier / 'appel' / nom).read_bytes(), b'')
 
     def test_02_commande_supplementaire(self):
         shell = self.session()
@@ -381,6 +385,47 @@ class ScannerCrypte(unittest.TestCase):
                 shell.command('crypte_fin')
                 self.assertNotEqual(verdict(shell.events(), shell.atelier), 'succes',
                                     json.dumps(shell.events(), indent=2))
+
+    def test_pipeline_une_etape_deux_commandes_et_deux_codes(self):
+        shell = self.session()
+        shell.command('crypte_commence')
+        shell.command('lsblk > a.txt')
+        sortie = shell.command('cat a.txt | grep "NAME"')
+        self.assertRegex(sortie, r'NAME\s+MAJ:MIN')
+        shell.command('crypte_fin')
+        pipeline = [e for e in shell.events() if e['line'] == 'cat a.txt | grep "NAME"']
+        self.assertEqual([(e['event'], e['command'], e['kind']) for e in pipeline],
+                         [('before', 'cat a.txt', 'file'), ('component', 'grep "NAME"', 'file')])
+        self.assertEqual([e['command'] for e in shell.events() if e['event'] == 'after'], ['0', '0 0'])
+
+    def test_pipeline_code_cat_non_masque_par_grep(self):
+        shell = self.session()
+        binary = shell.atelier.parent / 'bin'
+        binary.mkdir()
+        faux_cat = binary / 'cat'
+        faux_cat.write_text('#!/bin/bash\nprintf "NAME\\n"\nexit 7\n')
+        faux_cat.chmod(0o755)
+        shell.command(f'PATH={binary}:$PATH')
+        shell.command('crypte_commence')
+        shell.command('cat a.txt | grep "NAME"')
+        shell.command('crypte_fin')
+        apres = [e for e in shell.events() if e['event'] == 'after']
+        self.assertEqual([(e['status'], e['command']) for e in apres], [('0', '7 0')])
+
+    def test_pipeline_remplacement_grep_observe(self):
+        for setup, genre in (("alias grep='grep -v'", 'alias'),
+                              ('grep() { command grep "$@"; }', 'function')):
+            with self.subTest(setup=setup):
+                shell = self.session(setup)
+                shell.command('crypte_commence')
+                shell.command('lsblk > a.txt')
+                shell.command('cat a.txt | grep "NAME"')
+                shell.command('crypte_fin')
+                composants = [e for e in shell.events() if e['event'] == 'component']
+                self.assertEqual(len(composants), 1)
+                self.assertEqual(composants[0]['kind'], genre)
+                if genre == 'alias':
+                    self.assertNotEqual(composants[0]['command'], 'grep "NAME"')
 
 
 if __name__ == '__main__':

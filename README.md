@@ -81,18 +81,19 @@ Après publication, faire `cd ~` puis revenir sur la carte.
 Le temps est lisible avec `cat /home/game/clocher/etat_tour.txt` ou
 `tail -f /home/game/clocher/suivi_tour.log`.
 
-La Crypte V0.1 propose une recette Linux par joueur, documentée dans
-`village/<joueur>/crypte/grimoire/recette1.pdf` (téléchargeable par SCP/SFTP).
-L'administrateur installe les hooks Bash officiels une fois, puis les joueurs se
+La Crypte V0.1 propose trois recettes Linux, documentées dans les PDF
+`recette1.pdf`, `recette2.pdf` et `recette3.pdf` sous
+`village/<joueur>/crypte/grimoire/` (SCP/SFTP).
+L'administrateur installe ou met à jour les hooks Bash officiels, puis les joueurs se
 reconnectent :
 
 ```bash
 sudo python3 python/crypte_installer.py
 ```
 
-Une réussite pendant ACTIONS prépare un général bonus de 20 cavaliers, publié
+Une réussite pendant ACTIONS prépare un général bonus de 20 cavaliers, archers ou piquiers, publié
 après la résolution dans `crypte/recompense/`. Il reste à récupérer avec `mv`.
-Une réussite tous les cinq tours est permise par joueur, hors quota normal des
+Une réussite tous les cinq tours, partagée entre toutes les recettes, est permise par joueur, hors quota normal des
 cinq créations. Voir [les vérifications Linux de la Crypte](TESTS_LINUX_SURVIE.md#crypte-v01).
 
 Pour un essai borné sans attendre :

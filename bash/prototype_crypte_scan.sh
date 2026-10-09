@@ -29,26 +29,27 @@ _crypte_history() {
 }
 
 _crypte_before() {
-    local command=$1 previous=$2 kind name
+    local command=$1 previous=$2 kind name event=before
     # Les hooks ne doivent pas observer leur propre instrumentation.
-    [[ $command == '_crypte_prompt "$?"' ]] && return 0
+    [[ $command == '_crypte_prompt "$?" "${PIPESTATUS[*]}"' ]] && return 0
     (( _crypte_active )) || return 0
     _crypte_history
     # DEBUG peut aussi précéder un trap de signal avec un BASH_COMMAND périmé.
-    # Une ligne complète n'est enregistrée qu'une fois (y compris les listes ;).
+    # Une seule étape par ligne ; les autres composants restent observables.
     if (( _crypte_history_ok && ! _crypte_ouverture )) && [[ $_crypte_hid == $_crypte_last_hid ]]; then
-        return 0
+        (( _crypte_pending )) || return 0
+        event=component
     fi
     _crypte_last_hid=$_crypte_hid
     name=${command%% *}
     kind=$(builtin type -t -- "$name")
-    _crypte_event before "$_crypte_line" "$command" "$previous" \
+    _crypte_event "$event" "$_crypte_line" "$command" "$previous" \
         "$(builtin pwd -P)" "$_crypte_hid/$_crypte_history_ok" "$kind"
     _crypte_pending=1
 }
 
 _crypte_prompt() {
-    local result=$1
+    local result=$1 statuses=$2
     if (( _crypte_active && ! _crypte_pending )); then
         # Une erreur de syntaxe n'exécute aucune commande et ne déclenche pas
         # DEBUG. Ne pas perdre sa ligne au prochain retour à l'invite.
@@ -60,7 +61,7 @@ _crypte_prompt() {
         fi
     fi
     if (( _crypte_active && _crypte_pending )); then
-        _crypte_event after '' '' "$result" "$(builtin pwd -P)"
+        _crypte_event after '' "$statuses" "$result" "$(builtin pwd -P)"
     elif (( _crypte_active && result == 130 )); then
         _crypte_event interrupt '' '' "$result" "$(builtin pwd -P)"
     fi
@@ -133,7 +134,7 @@ _crypte_restaurer_historique() {
 }
 
 # Le prototype exige un rcfile dédié : ne remplace pas les hooks d'une vraie partie.
-PROMPT_COMMAND='_crypte_prompt "$?"'
+PROMPT_COMMAND='_crypte_prompt "$?" "${PIPESTATUS[*]}"'
 trap '_crypte_before "$BASH_COMMAND" "$?"' DEBUG
 trap '_crypte_interrupt' INT
 trap '_crypte_exit "$?"' EXIT

@@ -4,6 +4,9 @@ import json
 import os
 from pathlib import Path
 import random
+import shutil
+import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -43,18 +46,17 @@ class Crypte(unittest.TestCase):
             (atelier / 'appel').mkdir()
         elif ligne == 'touch appel/cavalerie':
             (atelier / 'appel/cavalerie').touch()
-        elif ligne == 'chmod 600 appel/cavalerie':
-            # Les fixtures historiques simulent os.chmod ; ici stat réel est vérifié.
-            (atelier / 'appel/cavalerie').write_bytes(b'')
-        elif ligne == 'mv appel/cavalerie appel/offrande':
-            (atelier / 'appel/cavalerie').rename(atelier / 'appel/offrande')
+        elif ligne == 'cp appel/cavalerie appel/offrande':
+            shutil.copyfile(atelier / 'appel/cavalerie', atelier / 'appel/offrande')
+        elif ligne == 'mv appel/offrande appel/poulin':
+            (atelier / 'appel/offrande').rename(atelier / 'appel/poulin')
         self.message('after', j, status=retour)
 
     def reussir(self, j='j1'):
         self.message('start', j)
         for ligne in self.crypte.RECETTE:
             self.commande(ligne, j)
-        # Le test du vrai chmod est dans la suite Linux, pas simulé ici.
+        # L'ouverture par descripteur Unix est exercée dans les tests Linux.
         with patch.object(self.crypte, 'verifier_offrande'):
             self.message('end', j)
 
@@ -62,6 +64,171 @@ class Crypte(unittest.TestCase):
         with self.config.racines_generation(self.config.game_path,
                 {j: self.racine / 'home' / j for j in self.profil['joueurs']}):
             self.crypte.materialiser(self.profil, tour)
+
+    def etapes_archers(self):
+        self.message('start')
+        for i, ligne in enumerate(self.crypte.RECETTE2):
+            commandes = ('cat a.txt', 'grep "NAME"') if i == 2 else (ligne,)
+            for k, commande in enumerate(commandes):
+                self.message('component' if k else 'before', line=ligne, command=commande,
+                             kind='file', history=f'{i + 1}/1')
+            self.message('after', status='0', command='0 0' if i == 2 else '0')
+
+    def reussir_archers(self):
+        self.etapes_archers()
+        with patch.object(self.crypte, 'verifier_lecture'):
+            self.message('end')
+
+    def test_archers_composition_quota_et_affichage(self):
+        self.etat.sauvegarder_compteur_general('j1', 5)
+        self.etat.sauvegarder_quota_normal('j1', 5)
+        self.reussir_archers()
+        self.creer()
+        p = self.crypte.zone(self.profil, 'j1') / 'recompense/general6'
+        self.assertEqual([len(list((p / b).iterdir())) for b in self.config.ordre_blocs], [0, 0, 0, 20])
+        self.assertEqual(len(list(p.glob('arriere/infanterie*/arc'))), 20)
+        self.assertFalse(list(p.glob('*/cavalerie*')))
+        self.assertFalse(list(p.glob('*/*/pique')))
+        self.assertEqual(self.etat.initialiser_quota_normal('j1'), 5)
+        fiche = self.generaux.lire_fiche_general(p)
+        self.assertEqual(fiche['nom'], 'general6')
+        self.assertEqual(fiche['nom_affichage'], 'har-chez-moi')
+        general = {'joueur': 'j1', 'nom': 'general6', 'fiche': fiche}
+        self.assertEqual(self.rapports.nom_affichage_general(general), 'har-chez-moi')
+        fiche['nom_affichage'] = self.crypte.NOM
+        self.assertEqual(self.rapports.nom_affichage_general(general), 'general6')
+
+    def test_cooldown_partage_dans_les_deux_sens(self):
+        self.reussir()
+        self.creer()
+        p = self.crypte.zone(self.profil, 'j1') / 'recompense'
+        (p / 'general1').rename(self.config.game_path / 'village/j1/reserve/general1')
+        self.activer(7)
+        with self.assertRaisesRegex(ValueError, 'tour 8'):
+            self.message('start')
+        self.activer(8)
+        self.reussir_archers()
+        self.assertEqual(self.crypte.charger(self.profil)['j1']['a_creer']['recette'], 'recette2')
+        self.creer(8)
+        self.activer(13)
+        with self.assertRaisesRegex(ValueError, 'attente'):
+            self.message('start')
+        (p / 'general2').rename(self.config.game_path / 'village/j1/reserve/general2')
+        self.activer(12)
+        with self.assertRaisesRegex(ValueError, 'tour 13'):
+            self.message('start')
+        self.activer(13)
+        self.reussir()
+
+    def test_attribution_historique_sans_recette(self):
+        self.reussir()
+        d = self.crypte.charger(self.profil)
+        del d['j1']['a_creer']['recette']
+        self.crypte.sauver(self.profil, d)
+        self.creer()
+        p = self.crypte.zone(self.profil, 'j1') / 'recompense/general1'
+        self.assertEqual(len(list(p.glob('*/cavalerie*/cheval'))), 20)
+        self.assertEqual(self.rapports.nom_affichage_general({
+            'joueur': 'j1', 'nom': 'general1', 'fiche': self.generaux.lire_fiche_general(p)}), self.crypte.NOM)
+
+    def test_pipeline_incomplet_ou_echec_masque(self):
+        for composants, codes in ((1, '0 0'), (2, '1 0'), (2, '0 1'), (2, ''), (3, '0 0 0')):
+            with self.subTest(composants=composants, codes=codes):
+                self.message('start')
+                for ligne in self.crypte.RECETTE2[:2]:
+                    self.message('before', line=ligne, command=ligne, kind='file', history='1/1')
+                    self.message('after', status='0')
+                for i in range(composants):
+                    self.message('before' if i == 0 else 'component', line=self.crypte.RECETTE2[2],
+                                 command='cat a.txt' if i == 0 else 'grep "NAME"', kind='file', history='2/1')
+                self.message('after', status='0', command=codes)
+                with self.assertRaises(ValueError):
+                    self.message('end')
+                self.assertIsNone(self.crypte.charger(self.profil)['j1']['dernier_tour'])
+
+    @unittest.skipUnless(sys.platform == 'linux', 'Bash et descripteurs Linux requis')
+    def test_bash_reel_deux_recettes_et_fichiers(self):
+        from test_crypte_scanner import BashSession
+        for j, lignes in (('j1', self.crypte.RECETTE), ('j2', self.crypte.RECETTE2)):
+            with self.subTest(joueur=j), tempfile.TemporaryDirectory() as tmp:
+                atelier = self.crypte.zone(self.profil, j) / 'atelier'
+                shell = BashSession(Path(tmp), atelier=atelier, uid=os.getuid(), gid=os.getgid())
+                try:
+                    self.message('start', j)
+                    shell.command('crypte_commence')
+                    sorties = [shell.command(ligne) for ligne in lignes]
+                    if j == 'j2':
+                        # La commande tapee ne suffit pas : le tableau doit etre affiche.
+                        for sortie in sorties[1:]:
+                            self.assertRegex(sortie, r'NAME\s+MAJ:MIN')
+                    shell.command('crypte_fin')
+                    evenements = shell.events()
+                    self.assertEqual(sum(e['event'] == 'after' for e in evenements), 4)
+                    for e in evenements:
+                        if e['event'] == 'start':
+                            continue
+                        self.message(e['event'], j, **{k: e[k] for k in
+                                     ('line', 'command', 'status', 'history', 'kind')})
+                    self.assertIsNotNone(self.crypte.charger(self.profil)[j]['a_creer'])
+                finally:
+                    shell.close()
+
+    @unittest.skipUnless(sys.platform == 'linux', 'Bash et descripteurs Linux requis')
+    def test_bash_reel_variantes_refusees(self):
+        from test_crypte_scanner import BashSession
+        r1, r2 = self.crypte.RECETTE, self.crypte.RECETTE2
+        variantes = [
+            (r1, 0, 'mkdir autre'), (r1, 1, 'touch appel/autre'),
+            (r1, 2, 'cp appel/cavalerie appel/autre'),
+            (r1, 3, 'mv appel/offrande appel/autre'),
+            (r1, 0, r1[1]), (r1, 2, 'chmod 600 appel/cavalerie'),
+            (r1, 4, 'ls'), (r2, 0, 'lsblk >> a.txt'),
+            (r2, 0, 'lsblk > b.txt'), (r2, 1, 'cat b.txt'),
+            (r2, 2, 'cat a.txt | grep "name"'),
+            (r2, 2, 'cat a.txt | grep NAME'),
+            (r2, 2, 'cat a.txt | grep "NAME" | cat'),
+            (r2, 2, 'cat a.txt; grep "NAME" a.txt'),
+            (r2, 3, 'grep "OTHER" a.txt'), (r2, 3, 'grep "NAME" b.txt'),
+            (r2, 1, r2[3]), (r2, 4, 'ls'),
+            (r2, 2, 'cat a.txt | grep "NAME"; true'),
+        ]
+        for recette, index, mauvaise in variantes:
+            with self.subTest(ligne=mauvaise, etape=index), tempfile.TemporaryDirectory() as tmp:
+                self.crypte.nettoyer(self.profil, 'j1')
+                atelier = self.crypte.zone(self.profil, 'j1') / 'atelier'
+                shell = BashSession(Path(tmp), atelier=atelier, uid=os.getuid(), gid=os.getgid())
+                try:
+                    self.message('start')
+                    shell.command('crypte_commence')
+                    lignes = list(recette)
+                    if index == 4:
+                        lignes.append(mauvaise)
+                    else:
+                        lignes[index] = mauvaise
+                    for ligne in lignes:
+                        shell.command(ligne)
+                    shell.command('crypte_fin')
+                    for e in shell.events():
+                        if e['event'] == 'start':
+                            continue
+                        champs = {k: e[k] for k in ('line', 'command', 'status', 'history', 'kind')}
+                        if e['event'] == 'end':
+                            with self.assertRaises(ValueError):
+                                self.message('end', **champs)
+                        else:
+                            self.message(e['event'], **champs)
+                    self.assertIsNone(self.crypte.charger(self.profil)['j1']['dernier_tour'])
+                finally:
+                    shell.close()
+
+    @unittest.skipUnless(os.name == 'posix', 'Descripteurs Unix requis')
+    def test_contenu_final_archers_incorrect(self):
+        for contenu in (b'', b'aucun entete\n'):
+            self.etapes_archers()
+            (self.crypte.zone(self.profil, 'j1') / 'atelier/a.txt').write_bytes(contenu)
+            with self.assertRaisesRegex(ValueError, 'NAME'):
+                self.message('end')
+            self.assertIsNone(self.crypte.charger(self.profil)['j1']['dernier_tour'])
 
     def test_reussite_persistante_sans_creation_vivante(self):
         self.reussir()
@@ -215,11 +382,17 @@ class Crypte(unittest.TestCase):
         self.assertFalse(source.exists())
         self.assertEqual(self.etat.charger_positions_generaux()['j1:general1'], 'repli')
 
-    def test_pdf_unique(self):
+    def test_trois_pdf(self):
         for j in ('j1', 'j2'):
             grimoire = self.crypte.zone(self.profil, j) / 'grimoire'
-            self.assertEqual([p.name for p in grimoire.iterdir()], ['recette1.pdf'])
-            self.assertTrue((grimoire / 'recette1.pdf').read_bytes().startswith(b'%PDF-1.4'))
+            self.assertEqual(sorted(p.name for p in grimoire.iterdir()),
+                             ['recette1.pdf', 'recette2.pdf', 'recette3.pdf'])
+            for identifiant, recette in self.crypte.RECETTES.items():
+                contenu = (grimoire / f'{identifiant}.pdf').read_bytes()
+                self.assertTrue(contenu.startswith(b'%PDF-1.4'))
+                for ligne in recette['lignes']:
+                    self.assertIn(ligne.encode(), contenu)
+            self.assertNotIn(b'chmod', (grimoire / 'recette1.pdf').read_bytes())
 
     def test_echeance_refusee_sans_consommation(self):
         self.collecteur.horloge = lambda: 100

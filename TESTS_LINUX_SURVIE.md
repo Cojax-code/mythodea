@@ -272,10 +272,14 @@ Les lectures privées et le test d'écriture doivent échouer. Les états sont
 Le socket, pendant l'exécution du moteur, est `root:mythodea_allies 660`, son
 parent `750`. Le moteur obtient l'identité par le noyau, pas par un champ joueur.
 
-Depuis le PC du joueur (remplacer l'adresse), télécharger le PDF :
+Après mise à jour des recettes, réinstaller les hooks avec
+`sudo python3 python/crypte_installer.py`, puis reconnecter les joueurs.
+Depuis le PC du joueur (remplacer l'adresse), télécharger les PDF :
 
 ```bash
 scp j1@ADRESSE_DU_PI:/home/game/village/j1/crypte/grimoire/recette1.pdf .
+scp j1@ADRESSE_DU_PI:/home/game/village/j1/crypte/grimoire/recette2.pdf .
+scp j1@ADRESSE_DU_PI:/home/game/village/j1/crypte/grimoire/recette3.pdf .
 ```
 
 Dans sa session SSH principale, pendant ACTIONS, après avoir lu le PDF :
@@ -286,8 +290,8 @@ cd /home/game/village/j1/crypte/atelier
 crypte_commence
 mkdir appel
 touch appel/cavalerie
-chmod 600 appel/cavalerie
-mv appel/cavalerie appel/offrande
+cp appel/cavalerie appel/offrande
+mv appel/offrande appel/poulin
 crypte_fin
 ```
 
@@ -297,6 +301,45 @@ publication. Après publication, faire `cd ~`, puis revenir consulter
 `nom_affichage=ame_et_lie_poulin` et 20 équipements `cheval`, répartis 10/5/5/0.
 Lors des prochaines ACTIONS, déplacer ce dossier avec `mv` vers une place légale
 libre de la garnison. Remplacer `generalN` par le nom réellement attribué.
+
+Pour recette2, après récupération et expiration du même cooldown (ou avec j2
+dans son propre atelier) :
+
+```bash
+crypte_commence
+lsblk > a.txt
+cat a.txt
+cat a.txt | grep "NAME"
+grep "NAME" a.txt
+crypte_fin
+```
+
+Le tableau complet apparaît avec `cat`, puis les lignes contenant `NAME` avec
+les deux formes de `grep`. Le pipeline compte pour une étape. Après publication,
+la récompense porte `nom_affichage=har-chez-moi`, avec 20 équipements `arc`
+dans le seul bloc `arriere` (0/0/0/20), sans consommer de création normale.
+Tester aussi `>>`, un motif différent, un troisième composant dans le pipeline
+et une commande supplémentaire : toutes ces variantes doivent échouer.
+
+Pour recette3, dans l'atelier et après expiration du même cooldown :
+
+```bash
+crypte_commence
+touch rempart
+ls -l rempart
+chmod 660 rempart
+ls -l rempart
+chmod 600 rempart
+ls -l rempart
+crypte_fin
+```
+
+Comparer les permissions initiales, puis `-rw-rw----`, puis `-rw-------`.
+Les trois affichages doivent être visibles. Après publication, vérifier le nom
+`pic-nic` et 20 équipements `pique`, répartis 6/7/7/0. Un `ls -l` absent ou
+supplémentaire, un autre mode chmod ou un fichier final différent doit échouer.
+Le délai de cinq tours et la récompense unique en attente restent communs aux
+trois recettes.
 
 Vérifier séparément, sur une partie de démonstration :
 

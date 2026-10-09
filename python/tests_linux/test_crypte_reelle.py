@@ -48,12 +48,45 @@ class CrypteReelle(unittest.TestCase):
             self.enterContext(self.collecteur)
         return shell
 
-    def reussir(self, shell):
+    def reussir(self, shell, recette=crypte.RECETTE):
         self.assertIn('tentative ouverte', shell.command('crypte_commence'))
-        for ligne in crypte.RECETTE:
+        for ligne in recette:
             sortie = shell.command(ligne)
             self.assertNotIn('Crypte indisponible', sortie)
         self.assertIn('Réussite enregistrée', shell.command('crypte_fin'))
+
+    def test_archers_scanner_socket_publication(self):
+        shell = self.shell()
+        self.reussir(shell, crypte.RECETTE2)
+        self.assertEqual(crypte.charger(self.c)['j1']['a_creer']['recette'], 'recette2')
+        reel.survie.resoudre_tour_survie(self.c, gestion=self.g)
+        p = crypte.zone(self.c, 'j1') / 'recompense/general2'
+        self.assertEqual(p.stat().st_uid, pwd.getpwnam('j1').pw_uid)
+        self.assertEqual([len(list((p / b).iterdir())) for b in reel.config.ordre_blocs], [0, 0, 0, 20])
+        self.assertEqual(len(list(p.glob('arriere/infanterie*/arc'))), 20)
+        self.assertEqual(reel.etat.initialiser_quota_normal('j1'), 1)
+
+    def test_pic_nic_scanner_socket_permissions_publication(self):
+        shell = self.shell()
+        self.assertIn('tentative ouverte', shell.command('crypte_commence'))
+        atelier = crypte.zone(self.c, 'j1') / 'atelier'
+        for i, ligne in enumerate(crypte.RECETTE3):
+            sortie = shell.command(ligne)
+            self.assertNotIn('invalidée', sortie)
+            if i in (2, 4):
+                self.assertEqual((atelier / 'rempart').stat().st_mode & 0o7777,
+                                 0o660 if i == 2 else 0o600)
+            if i in (3, 5):
+                self.assertIn('-rw-rw----' if i == 3 else '-rw-------', sortie)
+        self.assertIn('Réussite enregistrée', shell.command('crypte_fin'))
+        self.assertEqual(crypte.charger(self.c)['j1']['a_creer']['recette'], 'recette3')
+        reel.survie.resoudre_tour_survie(self.c, gestion=self.g)
+        p = crypte.zone(self.c, 'j1') / 'recompense/general2'
+        self.assertEqual(p.stat().st_uid, pwd.getpwnam('j1').pw_uid)
+        self.assertEqual([len(list((p / b).iterdir())) for b in reel.config.ordre_blocs], [6, 7, 7, 0])
+        self.assertEqual(len(list(p.glob('*/infanterie*/pique'))), 20)
+        self.assertEqual(reel.generaux.lire_fiche_general(p)['nom_affichage'], 'pic-nic')
+        self.assertEqual(reel.etat.initialiser_quota_normal('j1'), 1)
 
     def test_scanner_socket_uid_et_succes_prive(self):
         self.reussir(self.shell())
@@ -129,13 +162,15 @@ class CrypteReelle(unittest.TestCase):
         self.assertEqual(reel.etat.lire_compteur_general('j1'), 2)
 
     def test_pdf_et_script_lisibles_non_modifiables(self):
-        pdf = crypte.zone(self.c, 'j1') / 'grimoire/recette1.pdf'
+        pdfs = [crypte.zone(self.c, 'j1') / f'grimoire/recette{i}.pdf' for i in (1, 2, 3)]
         code = 'from pathlib import Path; import sys; print(Path(sys.argv[1]).read_bytes()[:8])'
-        self.assertEqual(self.en_joueur('j1', code, pdf).returncode, 0)
+        for pdf in pdfs:
+            self.assertEqual(self.en_joueur('j1', code, pdf).returncode, 0)
+            self.assertEqual(pdf.stat().st_mode & 0o777, 0o640)
+            self.assertNotEqual(self.en_joueur('j2', code, pdf).returncode, 0)
         code = "from pathlib import Path; import sys; Path(sys.argv[1]).write_text('modifie')"
-        for p in (pdf, self.application / 'crypte.bash', self.application / 'crypte_client.py'):
+        for p in (*pdfs, self.application / 'crypte.bash', self.application / 'crypte_client.py'):
             self.assertNotEqual(self.en_joueur('j1', code, p).returncode, 0)
-        self.assertNotEqual(self.en_joueur('j2', code, pdf).returncode, 0)
 
     def test_message_malforme_ne_tue_pas_collecteur(self):
         shell = self.shell()

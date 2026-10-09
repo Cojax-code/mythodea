@@ -1123,19 +1123,22 @@ vague, ni nouveau tour : ces responsabilités appartiennent au cycle de `survie.
 
 ## 16. Crypte V0.1
 
-La Crypte est une mécanique pédagogique Linux du mode Survie, avec une seule
-recette : `ame_et_lie_poulin`. Elle ne dépend pas des futurs dieux ou manuscrits.
+La Crypte est une mécanique pédagogique Linux du mode Survie, avec trois recettes :
+`ame_et_lie_poulin` et `har-chez-moi` (quatre lignes), puis `pic-nic` (six lignes).
+Elle ne dépend pas des futurs dieux ou manuscrits.
 Chaque joueur dispose de :
 
 ```text
 village/<joueur>/crypte/
 ├── grimoire/
-│   └── recette1.pdf
+│   ├── recette1.pdf
+│   ├── recette2.pdf
+│   └── recette3.pdf
 ├── atelier/
 └── recompense/
 ```
 
-Le grimoire contient un PDF téléchargeable par SCP/SFTP, à lire sur l'ordinateur
+Le grimoire contient trois PDF téléchargeables par SCP/SFTP, à lire sur l'ordinateur
 du joueur. L'atelier est entièrement jetable : aucun document personnel ne doit
 y être conservé. `recompense/` est une zone de récupération inactive, distincte
 de la garnison, de la réserve et des renforts tactiques.
@@ -1149,22 +1152,70 @@ cd /home/game/village/j1/crypte/atelier
 crypte_commence
 mkdir appel
 touch appel/cavalerie
-chmod 600 appel/cavalerie
-mv appel/cavalerie appel/offrande
+cp appel/cavalerie appel/offrande
+mv appel/offrande appel/poulin
 crypte_fin
 ```
 
-Pour j2, le chemin contient `j2`. Les quatre opérations agissent réellement sur
-le disque. Aucune commande supplémentaire entre les marqueurs n'est admise :
-`ls`, `clear`, `cd`, pipeline, liste avec `;` ou sous-shell invalident la tentative.
+La seconde recette exerce la lecture, la redirection, le pipe et le filtrage :
+
+```bash
+crypte_commence
+lsblk > a.txt
+cat a.txt
+cat a.txt | grep "NAME"
+grep "NAME" a.txt
+crypte_fin
+```
+
+La troisième recette met en évidence l'évolution des permissions :
+
+```bash
+crypte_commence
+touch rempart
+ls -l rempart
+chmod 660 rempart
+ls -l rempart
+chmod 600 rempart
+ls -l rempart
+crypte_fin
+```
+
+Les trois `ls -l` sont trois étapes distinctes, avec leurs sorties visibles dans
+le terminal. Les permissions initiales dépendent de l'umask ; après `chmod 660`,
+elles sont `-rw-rw----`, puis `-rw-------` après `chmod 600`. Le collecteur exige
+le nombre d'étapes de la recette choisie, sans limite fixe de quatre étapes.
+
+Pour j2, le chemin d'atelier contient `j2`. La première ligne sélectionne la
+recette, sans commande de sélection supplémentaire. Les commandes sont réellement
+exécutées par le shell ; les sorties de `cat` et de `grep` restent visibles.
+Chaque ligne doit correspondre exactement à la recette, guillemets, arguments,
+redirection et ordre compris. Le seul pipeline autorisé est celui de recette2.
+Aucune commande supplémentaire entre les marqueurs n'est admise :
+`ls`, `clear`, `cd`, autre pipeline, liste avec `;` ou sous-shell invalident la tentative.
 Un alias ou une fonction remplaçant une commande attendue est refusé. Chaque
 étape requiert la ligne attendue et un code retour nul. La fin prématurée, Ctrl+C
 et une erreur de syntaxe ne donnent aucune récompense.
+
+Le contrôle final de recette1 exige uniquement `appel/`, contenant les deux
+fichiers ordinaires vides sans lien `cavalerie` et `poulin`. Aucun mode `600`
+n'est imposé à ces fichiers d'exercice : la recette ne contient plus `chmod`.
+Pour recette2, l'atelier contient uniquement le fichier ordinaire sans lien
+`a.txt`, avec le motif `NAME`. Le tableau de `lsblk` dépend de la machine et
+n'est pas comparé à un inventaire figé.
+Pour recette3, l'atelier contient uniquement le fichier ordinaire vide sans lien
+`rempart`, dont les permissions finales doivent être exactement `600`.
 
 Le scanner officiel utilise `DEBUG`, la ligne complète de l'historique Bash en
 mémoire et `PROMPT_COMMAND`. Ce dernier relève aussi les erreurs de syntaxe qui
 ne déclenchent pas `DEBUG`. Les filtres d'historique sont neutralisés temporairement
 et restaurés à la fin ; un historique personnel grand ou illimité n'est pas réduit.
+Une ligne produit un événement `before`, puis éventuellement `component` pour
+les autres commandes internes, et un seul `after`. Le collecteur vérifie les
+deux composants exacts du pipeline sans avancer de deux étapes. `after.status`
+contient `$?` et `after.command` contient les codes de `PIPESTATUS`, capturés
+dès le retour à l'invite. Le pipeline exige les deux codes `0 0`, même si le
+dernier composant a réussi. Les anciens hooks doivent être réinstallés.
 La configuration privée `systeme/crypte_config.json` contient `debut` et `fin`, par
 défaut `crypte_commence` et `crypte_fin`. Ces noms doivent être distincts et respecter
 `crypte_[a-zA-Z0-9_]+`. Ils ne viennent pas de l'environnement du joueur. Après une
@@ -1207,13 +1258,18 @@ hooks EXIT/HUP de Bash. Elle invalide la tentative et nettoie l'atelier.
 par joueur :
 
 - `dernier_tour` : tour de la dernière réussite acceptée, ou `null` ;
-- `a_creer` : identifiant et tour d'une réussite attendant sa matérialisation ;
+- `a_creer` : identifiant, tour et `recette` (`recette1`, `recette2` ou `recette3`) d'une
+  réussite attendant sa matérialisation ;
 - `en_attente` : identité technique de la récompense non encore récupérée ;
-- `attributions` : historique des identifiants, tours et généraux attribués.
+- `attributions` : historique des identifiants, tours, recettes et généraux attribués.
+
+Les anciennes entrées sans champ `recette` désignent recette1 ; une récompense
+historique reste donc une récompense de cavalerie.
 
 Au début et à la validation finale, le moteur contrôle ACTIONS et son échéance,
 le cooldown et l'absence de récompense en attente. La condition est
 `dernier_tour is None` ou `tour >= dernier_tour + 5`, indépendamment pour j1 et j2.
+Ce délai est global à la Crypte pour un joueur, partagé entre toutes les recettes.
 Erreur, refus, abandon et déconnexion ne consomment pas ce délai. Le cooldown est
 enregistré atomiquement avec la réussite acceptée, pas avec une déclaration locale.
 Une seule récompense, déjà publiée ou encore `a_creer`, est autorisée par joueur.
@@ -1227,8 +1283,13 @@ pas les symlinks vers l'extérieur. Il ne parcourt jamais grimoire ou recompense
 Après une commande erronée, le nettoyage attend son retour avant de vider l'atelier.
 Une anomalie empêchant un nettoyage sûr bloque la clôture pour vérification.
 
-La récompense est `generalN`, avec `nom_affichage=ame_et_lie_poulin` et exactement
-20 cavaliers : avant 10, droite 5, gauche 5, arrière 0. Elle est créée uniquement
+La récompense est `generalN`, avec le nom et la composition de la recette :
+
+- recette1 : `nom_affichage=ame_et_lie_poulin`, 20 cavaliers (10/5/5/0) ;
+- recette2 : `nom_affichage=har-chez-moi`, 20 archers (0/0/0/20) ;
+- recette3 : `nom_affichage=pic-nic`, 20 piquiers (6/7/7/0).
+
+L'ordre des blocs est avant/droite/gauche/arrière. Elle est créée uniquement
 dans la génération privée à `village/<joueur>/crypte/recompense/generalN`, puis
 publiée. Elle ne participe ni au contrôle ni au combat tant qu'elle attend là.
 Elle ne consomme aucune des cinq créations normales ; le compteur technique
