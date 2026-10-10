@@ -56,6 +56,8 @@ mythodea/
 │   ├── survie.py
 │   ├── minuterie.py
 │   ├── vagues.py
+│   └── tests_linux/
+├── .dev/
 │   └── tests/
 │       ├── test_mythodea.py
 │       ├── test_modes.py
@@ -1070,7 +1072,7 @@ décrits dans `SURVIE_SPEC.md` et `TESTS_LINUX_SURVIE.md`.
 Suite actuelle :
 
 ```bash
-python3 -B -m unittest discover -s python/tests -v
+python3 -B -m unittest discover -s .dev/tests -v
 ```
 
 La suite conserve les 32 tests de régression V1.5 couvrant notamment :

@@ -17,7 +17,7 @@ class VaguesEst(unittest.TestCase):
         self.addCleanup(self.contextes.close)
         self.racine = Path(self.contextes.enter_context(tempfile.TemporaryDirectory()))
         self.contextes.enter_context(patch.object(sys, "path", [
-            str(Path(__file__).resolve().parents[1]), *sys.path]))
+            str(Path(__file__).resolve().parents[2] / 'python'), *sys.path]))
         self.contextes.enter_context(patch.dict(sys.modules))
         uids = {"root": 0, "j1": 1001, "j2": 1002, "mythodea_allies": 1003}
         sys.modules["pwd"] = SimpleNamespace(

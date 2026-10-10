@@ -92,7 +92,7 @@ Conserver tous les tests de régression existants.
 Commande principale :
 
 ```bash
-python3 -B -m unittest discover -s python/tests -v
+python3 -B -m unittest discover -s .dev/tests -v
 ```
 
 Après une modification Python :

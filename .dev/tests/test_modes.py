@@ -11,7 +11,7 @@ from types import ModuleType, SimpleNamespace
 from unittest.mock import Mock, call, patch
 
 
-PYTHON_DIR = Path(__file__).resolve().parents[1]
+PYTHON_DIR = Path(__file__).resolve().parents[2] / "python"
 
 
 class Modes(unittest.TestCase):

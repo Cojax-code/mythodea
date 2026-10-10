@@ -12,7 +12,7 @@ modifié. Les marqueurs ont leurs noms provisoires fixes ; la configuration
 privée des marqueurs et le collecteur moteur restent à intégrer.
 
 Le script est `bash/prototype_crypte_scan.sh`. Les tests sont dans
-`python/tests/test_crypte_scanner.py`. Ils utilisent de vrais pseudo-terminaux
+`.dev/tests/test_crypte_scanner.py`. Ils utilisent de vrais pseudo-terminaux
 Linux, des répertoires temporaires et de vraies commandes, sans dépendance Python
 supplémentaire. La vérification de la séquence est effectuée par un oracle de
 test, séparé de l'observateur. Il ne s'agit pas encore d'un atelier proposant
@@ -124,17 +124,17 @@ Depuis la racine du dépôt sous Linux :
 
 ```bash
 # 20 réussites, un test de propriété root ignoré si lancé sans root.
-python3 -B -m unittest discover -s python/tests -p test_crypte_scanner.py -v
+python3 -B -m unittest discover -s .dev/tests -p test_crypte_scanner.py -v
 
 # Les 21 tests, avec de vrais refus de permissions sous UID nobody.
-sudo python3 -B -m unittest discover -s python/tests -p test_crypte_scanner.py -v
+sudo python3 -B -m unittest discover -s .dev/tests -p test_crypte_scanner.py -v
 
 # Export facultatif des événements (un objet JSON par scénario/sous-cas).
 sudo env CRYPTE_TEST_REPORT=/tmp/crypte-observations.jsonl \
-  python3 -B -m unittest discover -s python/tests -p test_crypte_scanner.py -v
+  python3 -B -m unittest discover -s .dev/tests -p test_crypte_scanner.py -v
 
-sudo python3 -B -m unittest discover -s python/tests -v
-python3 -m py_compile python/tests/test_crypte_scanner.py
+sudo python3 -B -m unittest discover -s .dev/tests -v
+python3 -m py_compile .dev/tests/test_crypte_scanner.py
 bash -n bash/prototype_crypte_scan.sh
 git diff --check
 ```

@@ -10,7 +10,7 @@ jetable, démarrée avec systemd, avec Python 3, `loginctl`, `ps` et les outils 
 ```bash
 sudo python3 -B python/tests_linux/test_permissions_reelles.py
 sudo python3 -B -m unittest discover -s python/tests_linux -v
-python3 -B -m unittest discover -s python/tests -v
+python3 -B -m unittest discover -s .dev/tests -v
 ```
 
 Ne pas lancer `instal.sh`/`nettoyage.sh` pour ces tests : le nettoyage classique

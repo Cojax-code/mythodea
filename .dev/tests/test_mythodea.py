@@ -12,7 +12,7 @@ from types import ModuleType
 from unittest.mock import patch
 
 
-PYTHON_DIR = Path(__file__).resolve().parents[1]
+PYTHON_DIR = Path(__file__).resolve().parents[2] / "python"
 
 
 class Regressions(unittest.TestCase):

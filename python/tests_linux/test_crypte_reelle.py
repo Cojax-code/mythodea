@@ -10,7 +10,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tests'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / '.dev/tests'))
 import test_permissions_reelles as reel
 from test_crypte_scanner import BashSession
 import crypte

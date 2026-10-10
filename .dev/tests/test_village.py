@@ -15,7 +15,7 @@ class Village(unittest.TestCase):
         self.addCleanup(self.contextes.close)
         self.racine = Path(self.contextes.enter_context(tempfile.TemporaryDirectory()))
         self.contextes.enter_context(patch.object(sys, "path", [
-            str(Path(__file__).resolve().parents[1]), *sys.path,
+            str(Path(__file__).resolve().parents[2] / 'python'), *sys.path,
         ]))
         self.contextes.enter_context(patch.dict(sys.modules))
         noms = ("config", "etat", "rapports", "generaux", "mouvements",

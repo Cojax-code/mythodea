@@ -114,7 +114,7 @@ nettoyage restent classiques.
 ```text
 bash/                 scripts d'installation, lancement et nettoyage
 python/               moteur du jeu
-python/tests/         tests automatiques
+.dev/tests/           tests automatiques (développement)
 MYTHODEA_SPEC.md      règles et architecture de référence
 SURVIE_SPEC.md        conception du mode Survie V2.0
 ```
@@ -124,9 +124,15 @@ les modules de généraux, mouvements, sécurité, combats, rapports, état et p
 
 ## Tests
 
+Depuis la racine du dépôt :
+
 ```bash
-python3 -B -m unittest discover -s python/tests -v
+python3 -B -m unittest discover -s .dev/tests -v
 ```
+
+Le dossier `.dev/` est versionné dans Git. Sous Linux, `ls` le masque et `ls -a`
+l'affiche. Les validations Linux spécifiques restent dans `python/tests_linux/` ;
+leur procédure est décrite dans [TESTS_LINUX_SURVIE.md](TESTS_LINUX_SURVIE.md).
 
 Les tests utilisent un plateau temporaire. Ils ne remplacent pas la validation des
 vrais comptes, UID/GID et permissions sur Linux.
