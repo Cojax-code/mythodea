@@ -481,10 +481,61 @@ def lancer_bataille_v15():
         )
 
 
+def preparer_accueil(configuration, vague=0, rapport=None):
+    """Documents passifs du village ; le rapport est une vue du rapport court."""
+    from cycle_linux import sans_liens
+    for joueur in configuration['joueurs']:
+        acteur = configuration['acteurs'][joueur]
+        uid = pwd.getpwnam(acteur['proprietaire_linux']).pw_uid
+        gid = grp.getgrnam(acteur['groupe_linux']).gr_gid
+        village = configuration['game_path'] / 'village' / joueur
+        hotel = village / 'hotel_de_ville'
+        for dossier in (hotel, hotel / 'journal_du_Toonitruand', hotel / 'courrier'):
+            sans_liens(dossier)
+            dossier.mkdir(parents=True, exist_ok=True)
+            os.chown(dossier, 0, gid)
+            os.chmod(dossier, 0o750)
+        conseils = (
+            [('Explorez votre home pour voir votre général.', f'ls -l /home/{joueur}'),
+             ('Explorez votre village.', f'ls -l {village}'),
+             ('Consultez le temps restant au Clocher.',
+              f'cat {configuration["game_path"]}/village/clocher/etat_tour.txt')],
+            [('Lisez le bilan du tour terminé.', f'cat {hotel}/rapport.txt'),
+             ('Observez les emplacements de votre garnison.', f'ls -l {village}/garnison')],
+            [('Découvrez les documents de la Crypte.', f'ls -l {village}/crypte/grimoire'),
+             ('Consultez les possibilités du Courrier.', f'cat {hotel}/courrier/liste_requetes.txt')],
+        )
+        documents = {
+            'courrier/envoie_message.txt': '',
+            'courrier/reception_message.txt': 'Courrier en préparation : aucune requête traitée pour le moment.\n',
+            'courrier/liste_requetes.txt': 'Aucune requête disponible pour le moment.\n'
+                'envoie_message.txt accueillera vos demandes ; reception_message.txt les réponses.\n'
+                'Le journal du Toonitruand est un tutoriel passif, sans validation.\n',
+            'rapport.txt': rapport if rapport is not None else 'Aucun tour terminé pour le moment.\n',
+        }
+        for numero, entrees in enumerate(conseils):
+            if numero <= vague:
+                documents[f'journal_du_Toonitruand/vague_{numero}.txt'] = (
+                    f'=== JOURNAL DU TOONITRUAND — VAGUE {numero} ===\n\n'
+                    + '\n'.join(f'Conseil :\n{conseil}\n\nExemple :\n{exemple}\n'
+                                for conseil, exemple in entrees)).replace(
+                                    str(configuration['game_path']), str(config.game_path))
+        for nom, contenu in documents.items():
+            fichier = hotel / nom
+            sans_liens(fichier)
+            # Ne pas effacer le brouillon joueur ni le dernier bilan à l'ouverture.
+            if not fichier.exists() or (nom == 'rapport.txt' and rapport is not None):
+                etat.ecrire_prive(fichier, contenu)
+            envoi = nom == 'courrier/envoie_message.txt'
+            os.chown(fichier, uid if envoi else 0, gid)
+            os.chmod(fichier, 0o600 if envoi else 0o640)
+
+
 def reparer_structure(configuration=None):
     """Répare les zones des joueurs et leurs droits, sans générer de général."""
     if configuration is None:
         configuration = config.configuration_mode("classique")
+    config.verifier_structure_actuelle(configuration)
 
     for territory in configuration["territoires"]:
         if configuration["mode"] == "survie":

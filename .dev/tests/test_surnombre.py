@@ -365,7 +365,7 @@ class Surnombre(unittest.TestCase):
         self.assertEqual([p.parent.name for _, p in resultat], ["6", "7"])
         self.assertTrue(all(p.parent.parent.name == "renforts" for _, p in resultat))
 
-    def test_debordement_village_renforts_distincts_reserve_fatigue_et_fichiers(self):
+    def test_village_plein_retraite_refusee_reserve_fatigue_et_fichiers_intacts(self):
         arrivant = self.general(territoire="est_1", ordre=1)
         for numero in range(1, 5):
             self.general("j2", numero=numero, territoire="village", place=str(numero))
@@ -373,10 +373,11 @@ class Surnombre(unittest.TestCase):
         self.etat.sauvegarder_generaux_fatigues({"j1:general1"})
         fichiers = {p.name: p.read_bytes() for p in arrivant.iterdir() if p.is_file()}
         resultat = self.reculer([arrivant], "est_1")
-        destination = self.config.game_path / "village/j1/renforts/5/general1"
-        self.assertEqual(resultat[0][1], destination)
+        destination = arrivant
+        self.assertEqual(resultat, [])
+        self.assertFalse((self.config.game_path / 'village/j1/renforts').exists())
         self.assertTrue(reserve.exists())
-        self.assertEqual(self.etat.charger_positions_generaux()["j1:general1"], "village")
+        self.assertEqual(self.etat.charger_positions_generaux()["j1:general1"], "est_1")
         self.assertEqual(self.etat.charger_generaux_fatigues(), {"j1:general1"})
         self.assertEqual(self.generaux.total_general_depuis_chemin(destination), 20)
         self.assertEqual({p.name: p.read_bytes() for p in destination.iterdir() if p.is_file()}, fichiers)

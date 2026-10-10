@@ -71,15 +71,21 @@ ils créent une autre carte. Le moteur crée les zones Survie sur un plateau dé
 et refuse de démarrer si des territoires ou rapports territoriaux classiques
 subsistent. Une ancienne partie doit être archivée séparément par l'administrateur.
 
-Chaque fenêtre d'action dure 120 secondes, y compris le tour 0. Une annonce `wall`
+Chaque fenêtre d'action dure 120 secondes, y compris le tour 0. Une annonce directe sur les terminaux SSH
 précède un gel d'au moins 10 secondes pour capturer les actions. Les sessions
 reprennent pendant la résolution privée : anciennes forces, vague suivante,
 combats. La vague 1 apparaît à la résolution du tour 0. Un second gel court publie
 le résultat, puis une consultation de 60 secondes précède les nouvelles actions.
 Après publication, faire `cd ~` puis revenir sur la carte.
 
-Le temps est lisible avec `cat /home/game/clocher/etat_tour.txt` ou
-`tail -f /home/game/clocher/suivi_tour.log`.
+Le temps est lisible avec `cat /home/game/village/clocher/etat_tour.txt` ou
+`tail -f /home/game/village/clocher/suivi_tour.log`.
+
+Commencez par `village/<joueur>/hotel_de_ville/journal_du_Toonitruand/vague_0.txt`.
+L’Hôtel de Ville contient aussi le bilan `rapport.txt` et le `courrier/` (prototype
+sans traitement de requêtes). Les états techniques se trouvent sous `.systeme/`.
+Les anciennes structures sont refusées ; archiver la partie et réinstaller les
+hooks Crypte avant une nouvelle partie.
 
 La Crypte V0.1 propose trois recettes Linux, documentées dans les PDF
 `recette1.pdf`, `recette2.pdf` et `recette3.pdf` sous

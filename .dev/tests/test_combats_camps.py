@@ -32,16 +32,16 @@ class CombatsCamps(unittest.TestCase):
         self.config.game_path = self.racine / "game"
         self.config.territoires = [self.config.game_path / nom for nom in self.config.carte_territoires]
         for nom, relatif in {
-            "positions_generaux_path": "systeme/positions_generaux.txt",
-            "fatigue_generaux_path": "systeme/fatigue_generaux.txt",
-            "controle_territoires_path": "systeme/controle_territoires.txt",
-            "meteo_path": "systeme/meteo.txt", "repli_path": "repli",
+            "positions_generaux_path": ".systeme/positions_generaux.txt",
+            "fatigue_generaux_path": ".systeme/fatigue_generaux.txt",
+            "controle_territoires_path": ".systeme/controle_territoires.txt",
+            "meteo_path": ".systeme/meteo.txt", "repli_path": "repli",
             "rapport_dir": "rapport", "rapport_long_path": "rapport/rapport_long.txt",
             "rapport_court_path": "rapport/rapport_court.txt",
             "rapports_territoires_dir": "rapport/territoires",
         }.items():
             setattr(self.config, nom, self.config.game_path / relatif)
-        (self.config.game_path / "systeme").mkdir(parents=True)
+        (self.config.game_path / ".systeme").mkdir(parents=True)
         self.profil = self.config.configuration_mode("survie")
         self.territoire = self.config.game_path / "est_1"
         self.territoire.mkdir()

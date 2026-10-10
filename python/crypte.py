@@ -47,7 +47,7 @@ SERVICES = {}
 
 
 def charger(c):
-    p = c['game_path'] / 'systeme/crypte.json'
+    p = c['game_path'] / '.systeme/crypte.json'
     if p.exists():
         return json.loads(p.read_text(encoding='utf-8'))
     return {j: {'dernier_tour': None, 'a_creer': None, 'en_attente': None,
@@ -55,7 +55,7 @@ def charger(c):
 
 
 def sauver(c, donnees):
-    etat.ecrire_prive(c['game_path'] / 'systeme/crypte.json',
+    etat.ecrire_prive(c['game_path'] / '.systeme/crypte.json',
                       json.dumps(donnees, ensure_ascii=False) + '\n')
 
 
@@ -64,7 +64,7 @@ def zone(c, joueur):
 
 
 def configuration(c):
-    p = c['game_path'] / 'systeme/crypte_config.json'
+    p = c['game_path'] / '.systeme/crypte_config.json'
     if not p.exists():
         etat.ecrire_prive(p, json.dumps({'debut': 'crypte_commence', 'fin': 'crypte_fin'}))
     resultat = json.loads(p.read_text(encoding='utf-8'))
@@ -112,7 +112,7 @@ def preparer(c):
             os.chmod(pdf, 0o640)
         etat.initialiser_quota_normal(j)
     configuration(c)
-    if not (c['game_path'] / 'systeme/crypte.json').exists():
+    if not (c['game_path'] / '.systeme/crypte.json').exists():
         sauver(c, charger(c))
 
 
@@ -306,7 +306,7 @@ def auditer_recuperations(c):
                 punis.add(f'{j}:{p.name}')
         if fiche['en_attente'] and not (attente / fiche['en_attente']).exists():
             fiche['en_attente'] = None
-    if (c['game_path'] / 'systeme/crypte.json').exists():
+    if (c['game_path'] / '.systeme/crypte.json').exists():
         sauver(c, donnees)
     return punis
 
@@ -539,12 +539,14 @@ class Collecteur:
 
     def __enter__(self):
         from cycle_linux import sans_liens
-        racine = self.c['game_path'] / 'communication'
+        config.verifier_structure_actuelle(self.c)
+        etat.preparer_systeme_survie(self.c)
+        racine = self.c['game_path'] / '.systeme/communication'
         sans_liens(racine)
-        racine.mkdir(mode=0o750, exist_ok=True)
+        racine.mkdir(mode=0o710, exist_ok=True)
         gid = grp.getgrnam(self.c['groupe_allie']).gr_gid
         os.chown(racine, 0, gid)
-        os.chmod(racine, 0o750)
+        os.chmod(racine, 0o710)
         self.chemin = racine / 'crypte.sock'
         if self.chemin.exists() or self.chemin.is_symlink():
             raise RuntimeError('Socket Crypte résiduelle : vérifier l’ancien moteur avant retrait administratif.')

@@ -39,7 +39,7 @@ sudo groupadd -f mythodea_allies
 sudo usermod -aG mythodea_allies j1
 sudo usermod -aG mythodea_allies j2
 sudo install -d -o root -g root -m 755 /home/game
-sudo install -d -o root -g root -m 700 /home/game/systeme
+sudo install -d -o root -g mythodea_allies -m 710 /home/game/.systeme
 sudo install -d -o root -g root -m 700 /home/.mythodea-publication
 sudo python3 python/crypte_installer.py
 ls -ld /home /home/game /home/j1 /home/j2
@@ -107,15 +107,15 @@ processus longs, utiliser les véritables sessions SSH confinées des joueurs.
 
 ```bash
 ls -ld /home/game/village /home/game/est_{1,2,3} /home/game/repli
-sudo ls -ld /home/game/village/j{1,2}/{garnison,reserve,renforts}
-sudo ls -ld /home/game/village/j{1,2}/renforts/{5,20} /home/game/repli/j{1,2}
+sudo ls -ld /home/game/village/j{1,2}/{garnison,reserve,hotel_de_ville}
+sudo ls -ld /home/game/est_1/j{1,2}/renforts/{5,20} /home/game/repli/j{1,2}
 sudo stat -c '%U:%G %a %n' /home/j{1,2}/general1 /home/j{1,2}/general1/ordre.txt
 sudo -u j1 sh -c 'test -w /home/j1/general1/ordre.txt && printf "1-2\n" > /home/j1/general1/ordre.txt'
 sudo -u j2 sh -c 'test -w /home/j2/general1/ordre.txt && printf "1-2\n" > /home/j2/general1/ordre.txt'
 sudo -u j1 touch /home/game/village/j1/reserve/.sonde
 sudo -u j1 rm /home/game/village/j1/reserve/.sonde
-sudo -u j2 touch /home/game/village/j2/renforts/5/.sonde
-sudo -u j2 rm /home/game/village/j2/renforts/5/.sonde
+sudo -u j2 touch /home/game/est_1/j2/renforts/5/.sonde
+sudo -u j2 rm /home/game/est_1/j2/renforts/5/.sonde
 ```
 
 Les sondes suivantes doivent être **refusées**, même en ACTIONS :
@@ -124,22 +124,26 @@ Les sondes suivantes doivent être **refusées**, même en ACTIONS :
 sudo -u j1 cat /home/j2/general1/ordre.txt
 sudo -u j1 touch /home/game/village/j2/reserve/.interdit
 sudo -u j2 touch /home/game/est_3/bot/.interdit
-sudo -u j1 cat /home/game/systeme/cycle_survie.json
-sudo -u j2 sh -c 'echo interdit >> /home/game/systeme/compteur_general_j2.txt'
+sudo -u j1 ls /home/game/.systeme
+sudo -u j1 ls /home/game/.systeme/communication
+sudo -u j1 cat /home/game/.systeme/cycle_survie.json
+sudo -u j2 sh -c 'echo interdit >> /home/game/.systeme/compteur_general_j2.txt'
 sudo -u j1 cat /home/game/rapport/rapport_long.txt
 ```
 
 Contrôler les états privés et les informations alliées depuis l'administrateur :
 
 ```bash
-sudo find /home/game/systeme -maxdepth 1 -type f -exec stat -c '%U:%G %a %n' {} +
-sudo stat -c '%U:%G %a %n' /home/game/est_3/bot /home/game/systeme /home/game/systeme/generations
-sudo stat -c '%U:%G %a %n' /home/game/rapport /home/game/rapport/rapport_court.txt /home/game/clocher /home/game/clocher/etat_tour.txt
-sudo -u j1 cat /home/game/clocher/etat_tour.txt
+sudo find /home/game/.systeme -maxdepth 1 -type f -exec stat -c '%U:%G %a %n' {} +
+sudo stat -c '%U:%G %a %n' /home/game/est_3/bot /home/game/.systeme /home/game/.systeme/generations
+sudo stat -c '%U:%G %a %n' /home/game/rapport /home/game/rapport/rapport_court.txt /home/game/village/clocher /home/game/village/clocher/etat_tour.txt
+sudo -u j1 cat /home/game/village/clocher/etat_tour.txt
 sudo -u j2 cat /home/game/rapport/rapport_court.txt
 ```
 
-États privés : `root:root 600`, parents `700`. Informations alliées :
+États privés : `root:root 600`, sous-dossiers privés `700`. `.systeme/` et
+`.systeme/communication/` : `root:mythodea_allies 710`, traversables sans listing.
+Informations alliées :
 `root:mythodea_allies`, dossiers `750`, fichiers `640`. Jamais `604`.
 
 ## Observer clôture, résolution et consultation
@@ -148,7 +152,7 @@ Dans une session joueur, suivre le Clocher, puis interrompre seulement `tail` av
 Ctrl+C pour revenir au shell :
 
 ```bash
-tail -f /home/game/clocher/suivi_tour.log
+tail -f /home/game/village/clocher/suivi_tour.log
 ```
 
 À expiration : l'annonce directe arrive dans chaque terminal SSH avant le gel,
@@ -159,7 +163,7 @@ pendant la capture :
 ```bash
 sudo cat /sys/fs/cgroup/user.slice/user-$(id -u j1).slice/cgroup.events
 sudo cat /sys/fs/cgroup/user.slice/user-$(id -u j2).slice/cgroup.events
-sudo cat /home/game/systeme/gel_survie.json
+sudo cat /home/game/.systeme/gel_survie.json
 ```
 
 Attendre `frozen 1` ; le gel est effectif, pas simplement un `sleep`. Si la capture
@@ -167,7 +171,7 @@ dépasse 10 secondes, le Clocher annonce sa prolongation. Le seuil de 120 second
 est provisoire et configurable avec `--seuil-capture` : mesurer sur le Raspberry Pi.
 
 Pendant la résolution, les joueurs sont dégelés. Ils ne peuvent pas atteindre
-`systeme/generations/.../travail/`, même lorsque les fichiers intérieurs portent
+`.systeme/generations/.../travail/`, même lorsque les fichiers intérieurs portent
 leur UID. Root peut y écrire. Les tests automatisés vérifient réellement cette
 séparation et une écriture via un FD ouvert avant capture : elle n'affecte ni la
 copie privée ni les nouveaux inodes publiés. Ne pas éditer manuellement `travail/`
@@ -177,7 +181,7 @@ Après le second gel de publication, dans chaque session joueur :
 
 ```bash
 cd ~
-cat /home/game/clocher/etat_tour.txt
+cat /home/game/village/clocher/etat_tour.txt
 ls -l general1/ordre.txt
 test -w general1/ordre.txt
 grep 'contrôle final' /home/game/rapport/rapport_court.txt
@@ -199,7 +203,7 @@ supprimer un verrou simplement parce qu'il paraît ancien. Depuis l'administrate
 
 ```bash
 sudo python3 python/survie_admin.py diagnostic
-sudo cat /home/game/systeme/verrou_cycle_survie
+sudo cat /home/game/.systeme/verrou_cycle_survie
 ```
 
 Contrôler le PID affiché, son propriétaire, sa commande et sa date de démarrage
@@ -234,9 +238,9 @@ Si, et seulement si, la résolution est terminée (`resolution_terminee: true`) 
 la publication a été interrompue, vérifier la génération avant republication :
 
 ```bash
-GENERATION=$(sudo python3 -c 'import json; print(json.load(open("/home/game/systeme/cycle_survie.json"))["generation"])')
-sudo cat "/home/game/systeme/generations/$GENERATION/resultat.json"
-sudo cat "/home/game/systeme/generations/$GENERATION/publication.json"
+GENERATION=$(sudo python3 -c 'import json; print(json.load(open("/home/game/.systeme/cycle_survie.json"))["generation"])')
+sudo cat "/home/game/.systeme/generations/$GENERATION/resultat.json"
+sudo cat "/home/game/.systeme/generations/$GENERATION/publication.json"
 sudo python3 python/survie_admin.py republier --generation "$GENERATION" --confirmer
 ```
 
@@ -266,20 +270,20 @@ fichier seul écrit le journal du prototype, sans collecteur moteur.
 Depuis l'administrateur, après préparation du plateau par le lancement Survie :
 
 ```bash
-ls -ld /home/game/communication /home/game/systeme
+ls -ld /home/game/.systeme/communication /home/game/.systeme
 ls -ld /home/game/village/j1/crypte/{grimoire,atelier,recompense}
-sudo stat -c '%U:%G %a %n' /home/game/systeme/crypte*.json
-sudo stat -c '%U:%G %a %n' /home/game/systeme/compteur_creation_normale_*.txt
+sudo stat -c '%U:%G %a %n' /home/game/.systeme/crypte*.json
+sudo stat -c '%U:%G %a %n' /home/game/.systeme/compteur_creation_normale_*.txt
 stat -c '%U:%G %a %n' /usr/local/lib/mythodea/crypte.bash
-sudo -u j1 cat /home/game/systeme/crypte.json
-sudo -u j2 cat /home/game/systeme/crypte.json
+sudo -u j1 cat /home/game/.systeme/crypte.json
+sudo -u j2 cat /home/game/.systeme/crypte.json
 sudo -u j1 test -w /usr/local/lib/mythodea/crypte.bash
 ```
 
 Les lectures privées et le test d'écriture doivent échouer. Les états sont
 `root:root 600` ; le script officiel est `root:root 644` sous dossier `755`.
 Le socket, pendant l'exécution du moteur, est `root:mythodea_allies 660`, son
-parent `750`. Le moteur obtient l'identité par le noyau, pas par un champ joueur.
+parent `710`. Le moteur obtient l'identité par le noyau, pas par un champ joueur.
 
 Après mise à jour des recettes, réinstaller les hooks avec
 `sudo python3 python/crypte_installer.py`, puis reconnecter les joueurs.
@@ -368,14 +372,14 @@ Ces essais matériels restent à effectuer sur Raspberry Pi. Les tests automatis
 de `test_crypte_reelle.py` utilisent des comptes temporaires, de vrais Bash avec PTY,
 le socket, les permissions, les cgroups et la republication dans `/tmp`.
 
-En cas d'arrêt brutal, la présence de `communication/crypte.sock` est bloquante.
+En cas d'arrêt brutal, la présence de `.systeme/communication/crypte.sock` est bloquante.
 Après le diagnostic administratif du cycle et **vérification de l'absence du moteur** :
 
 ```bash
 sudo python3 python/survie_admin.py diagnostic
-sudo ss -xlpn | grep '/home/game/communication/crypte.sock'
+sudo ss -xlpn | grep '/home/game/.systeme/communication/crypte.sock'
 # Seulement si aucun moteur ni collecteur n'est actif :
-sudo rm -- /home/game/communication/crypte.sock
+sudo rm -- /home/game/.systeme/communication/crypte.sock
 ```
 
 Le retrait de cette socket ne retire pas le verrou moteur, ne dégèle pas les
@@ -390,3 +394,47 @@ des processus hors confinement, les interruptions et la republication administra
 Leur succès sous WSL2/ext4 ne dispense pas des essais SSH et de mesure du gel sur
 le Raspberry Pi cible. En particulier, réception visuelle de l'annonce TTY avant gel, configuration
 PAM des sessions et temps d'E/S du stockage sont à vérifier sur cette machine.
+
+## Vérification de l'accueil Survie
+
+Après une préparation réussie, toutes les sessions SSH valides j1/j2 reçoivent le
+message de début avec leur propre chemin ; aucun envoi avant préparation, ni lors
+d'une simple reprise. Lancer aussi sans session ouverte : le cycle doit continuer.
+
+```bash
+ls /home/game
+sudo ls -a /home/game
+cat /home/game/village/j1/hotel_de_ville/journal_du_Toonitruand/vague_0.txt
+cat /home/game/village/j1/hotel_de_ville/rapport.txt
+ls /home/game/village/j1/hotel_de_ville/courrier
+```
+
+Aux résolutions suivantes, vérifier l'apparition de vague_1 puis vague_2, sans
+validation de lecture. Un brouillon du Courrier reste conservé ; aucune requête
+n'est exécutée. Le rapport de chaque Hôtel de Ville doit correspondre au rapport
+court après publication. Le Clocher reste continu avec `tail -f`, même lors d'une
+publication ou republication administrative. Le village n'a pas de renforts alliés ;
+les positions 5..20 restent disponibles sur les territoires ouverts.
+
+## Anciennes structures
+
+Aucune conversion automatique : l'ancien dossier technique visible, l'ancien
+Clocher, la communication à la racine, la poste et les renforts alliés du village
+provoquent un refus explicite avant préparation. Ce contrôle s'applique aussi à
+la récupération administrative et à l'installation des hooks. Ne pas simplement
+renommer le dossier technique d'une partie existante : ses générations peuvent
+contenir l'ancienne architecture et des chemins absolus historiques.
+
+Arrêter le moteur ; s'il reste un gel, utiliser d'abord les outils de récupération
+de la version qui a créé cette partie. Archiver ensuite le plateau et les entrées
+de jeu des homes, puis préparer une nouvelle partie dédiée selon cette procédure.
+Réinstaller les hooks Crypte pour le nouveau chemin et reconnecter les joueurs.
+Le masquage par le point est uniquement visuel ; les permissions protègent les états.
+
+## Rattrapage du bot
+
+La suite `test_rattrapage_survie.py` vérifie le blocage à l'origine, la victoire ou
+la défaite après blocage, l'absence de deuxième avance après une avance normale,
+les colonnes se rejoignant, et l'exclusion des nouvelles vagues. Elle vérifie aussi
+qu'une arrivée de rattrapage sur des alliés conserve `conteste` sans nouveau combat,
+puis résout ce conflit au prochain cycle normal.

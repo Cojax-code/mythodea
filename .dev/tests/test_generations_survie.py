@@ -55,10 +55,10 @@ class GenerationsSurvie(unittest.TestCase):
         home = self.racine / 'home/j1'
         (home / '.ssh').mkdir()
         (home / '.ssh/authorized_keys').write_text('cle personnelle')
-        (self.config.game_path / 'systeme/recuperation.txt').write_text('hors capture')
+        (self.config.game_path / '.systeme/recuperation.txt').write_text('hors capture')
         g = self.gestion()
         prive, homes = g.capturer(1)
-        fichiers = {p.name for p in (prive['game_path'] / 'systeme').iterdir()}
+        fichiers = {p.name for p in (prive['game_path'] / '.systeme').iterdir()}
         self.assertTrue(fichiers <= set(self.config.ETATS_METIER))
         self.assertFalse((homes['j1'] / '.ssh').exists())
         self.assertEqual((home / '.ssh/authorized_keys').read_text(), 'cle personnelle')
@@ -117,22 +117,22 @@ class GenerationsSurvie(unittest.TestCase):
         temps = [0.0]
         g = self.gestion(monotone=lambda: temps[0])
         original = self.cycle_linux.copier
-        def lent(source, destination, verifier=lambda: None):
+        def lent(source, destination, verifier=lambda: None, **options):
             if self.gel.gele:
                 temps[0] = 11
-            return original(source, destination, verifier)
+            return original(source, destination, verifier, **options)
         with patch.object(self.cycle_linux, 'copier', side_effect=lent):
             g.capturer(1)
-        self.assertIn('PROLONGATION TECHNIQUE', (self.config.game_path / 'clocher/suivi_tour.log').read_text())
+        self.assertIn('PROLONGATION TECHNIQUE', (self.config.game_path / 'village/clocher/suivi_tour.log').read_text())
         self.assertFalse(self.gel.gele)
 
     def test_seuil_capture_provoque_recuperation(self):
         temps = [0.0]
         g = self.gestion(monotone=lambda: temps[0])
         original = self.cycle_linux.copier
-        def trop_lent(source, destination, verifier=lambda: None):
+        def trop_lent(source, destination, verifier=lambda: None, **options):
             temps[0] = 121
-            return original(source, destination, verifier)
+            return original(source, destination, verifier, **options)
         with patch.object(self.cycle_linux, 'copier', side_effect=trop_lent):
             with self.assertRaises(TimeoutError):
                 self.survie.resoudre_tour_survie(self.profil, gestion=g)
@@ -159,7 +159,7 @@ class GenerationsSurvie(unittest.TestCase):
     def test_clocher_log_append_et_photographie_courante(self):
         g = self.gestion()
         g.afficher(3, 'actions', 94)
-        log = self.config.game_path / 'clocher/suivi_tour.log'
+        log = self.config.game_path / 'village/clocher/suivi_tour.log'
         with log.open('r', encoding='utf-8') as lecteur:
             lecteur.read()
             g.afficher(3, 'consultation', 52)
@@ -187,7 +187,7 @@ class GenerationsSurvie(unittest.TestCase):
         self.assertIn((self.config.rapport_court_path, 0o640), [c.args for c in self.chmod.call_args_list])
 
     def test_verrou_ancien_non_supprime(self):
-        verrou = self.config.game_path / 'systeme/verrou_cycle_survie'
+        verrou = self.config.game_path / '.systeme/verrou_cycle_survie'
         verrou.write_text('999999\n')
         with self.assertRaises(RuntimeError):
             self.survie.resoudre_tour_survie(self.profil)
@@ -197,7 +197,7 @@ class GenerationsSurvie(unittest.TestCase):
         self.general()
         g = self.gestion()
         racines = [*self.profil['territoires'], self.profil['repli_path'], *g.homes.values()]
-        etats = {self.config.game_path / 'systeme' / nom for nom in self.config.ETATS_METIER}
+        etats = {self.config.game_path / '.systeme' / nom for nom in self.config.ETATS_METIER}
         original = self.survie._resoudre_tour_capture
         def garder(ouvrir):
             def controle(chemin, *args, **kwargs):
@@ -233,7 +233,7 @@ class GenerationsSurvie(unittest.TestCase):
         self.assertEqual({p.stem for p in self.config.rapports_territoires_dir.glob('*.txt')},
                          {'village', 'est_1', 'est_2', 'est_3'})
         for nom in ('etat_tour.txt', 'suivi_tour.log'):
-            self.assertTrue((self.config.game_path / 'clocher' / nom).is_file())
+            self.assertTrue((self.config.game_path / 'village/clocher' / nom).is_file())
 
     def test_plateau_ou_rapports_classiques_refuses_sans_modification(self):
         for nom in ('terrain1', 'terrain2', 'terrain3', 'base1', 'base2'):

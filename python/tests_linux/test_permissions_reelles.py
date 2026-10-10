@@ -72,10 +72,10 @@ class PermissionsReelles(unittest.TestCase):
         self.root.chmod(0o755)
         config.game_path = self.root / 'game'
         config.game_path.mkdir(mode=0o755)
-        for nom, relatif in {'positions_generaux_path': 'systeme/positions_generaux.txt',
-            'fatigue_generaux_path': 'systeme/fatigue_generaux.txt',
-            'controle_territoires_path': 'systeme/controle_territoires.txt', 'repli_path': 'repli',
-            'meteo_path': 'systeme/meteo.txt', 'rapport_dir': 'rapport',
+        for nom, relatif in {'positions_generaux_path': '.systeme/positions_generaux.txt',
+            'fatigue_generaux_path': '.systeme/fatigue_generaux.txt',
+            'controle_territoires_path': '.systeme/controle_territoires.txt', 'repli_path': 'repli',
+            'meteo_path': '.systeme/meteo.txt', 'rapport_dir': 'rapport',
             'rapport_long_path': 'rapport/rapport_long.txt', 'rapport_court_path': 'rapport/rapport_court.txt',
             'rapports_territoires_dir': 'rapport/territoires'}.items():
             setattr(config, nom, config.game_path / relatif)
@@ -115,15 +115,67 @@ class PermissionsReelles(unittest.TestCase):
             self.assertNotEqual(self.en_joueur('j1', 'import os,sys; os.listdir(sys.argv[1])', p).returncode, 0)
         for p in (self.c['game_path'] / 'village/j1/garnison',
                   self.c['game_path'] / 'village/j1/reserve',
-                  self.c['game_path'] / 'village/j1/renforts/5', self.c['repli_path'] / 'j1'):
+                  self.c['game_path'] / 'est_1/j1/renforts/5', self.c['repli_path'] / 'j1'):
             self.assertEqual(p.stat().st_mode & 0o777, 0o700)
 
     def test_etats_moteur_prives_y_compris_compteurs(self):
-        for p in (self.c['game_path'] / 'systeme').iterdir():
+        systeme = self.c['game_path'] / '.systeme'
+        self.assertEqual((systeme.stat().st_uid, systeme.stat().st_gid, systeme.stat().st_mode & 0o777),
+                         (0, grp.getgrnam('mythodea_allies').gr_gid, 0o710))
+        for j in ('j1', 'j2'):
+            liste = subprocess.run(['runuser', '-u', j, '--', 'ls', str(systeme)],
+                                   capture_output=True)
+            self.assertNotEqual(liste.returncode, 0)
+        for p in (self.c['game_path'] / '.systeme').iterdir():
             if p.is_file():
                 self.assertEqual((p.stat().st_uid, p.stat().st_gid, p.stat().st_mode & 0o777), (0, 0, 0o600))
                 for j in ('j1', 'j2'):
+                    self.assertNotEqual(self.en_joueur(j, 'import sys; open(sys.argv[1]).read()', p).returncode, 0)
                     self.assertNotEqual(self.en_joueur(j, "import sys; open(sys.argv[1],'a').write('x')", p).returncode, 0)
+            elif p.is_dir():
+                self.assertEqual((p.stat().st_uid, p.stat().st_gid, p.stat().st_mode & 0o777), (0, 0, 0o700))
+                for j in ('j1', 'j2'):
+                    self.assertNotEqual(self.en_joueur(j, 'import os,sys; os.chdir(sys.argv[1])', p).returncode, 0)
+
+    def test_arborescence_accueil_et_renforts_exterieurs(self):
+        self.g.afficher(0, 'actions', 0)
+        game = self.c['game_path']
+        for ancien in ('systeme', 'clocher', 'communication'):
+            self.assertFalse((game / ancien).exists())
+        for j in ('j1', 'j2'):
+            for nom in ('etat_tour.txt', 'suivi_tour.log'):
+                p = game / 'village/clocher' / nom
+                self.assertEqual(self.en_joueur(j, 'import sys; open(sys.argv[1]).read()', p).returncode, 0)
+            village = game / 'village' / j
+            for ancien in ('poste', 'clocher', 'renforts'):
+                self.assertFalse((village / ancien).exists())
+            for nom in ('hotel_de_ville', 'hotel_de_ville/courrier',
+                        'hotel_de_ville/journal_du_Toonitruand'):
+                self.assertEqual(self.en_joueur(j, 'import os,sys; os.listdir(sys.argv[1])', village / nom).returncode, 0)
+            for territoire in self.c['territoires']:
+                if territoire.name != 'village':
+                    for numero in range(5, 21):
+                        p = territoire / j / 'renforts' / str(numero)
+                        self.assertEqual(self.en_joueur(j, 'import os,sys; os.chdir(sys.argv[1])', p).returncode, 0)
+
+    def test_accueil_lecture_ecriture_et_separation_des_joueurs(self):
+        hotel = self.c['game_path'] / 'village/j1/hotel_de_ville'
+        lire = 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).read_text())'
+        ecrire = "import sys; open(sys.argv[1], 'a').write('demande')"
+        for nom in ('rapport.txt', 'journal_du_Toonitruand/vague_0.txt',
+                    'courrier/reception_message.txt', 'courrier/liste_requetes.txt'):
+            self.assertEqual(self.en_joueur('j1', lire, hotel / nom).returncode, 0)
+            self.assertNotEqual(self.en_joueur('j1', ecrire, hotel / nom).returncode, 0)
+            self.assertNotEqual(self.en_joueur('j2', lire, hotel / nom).returncode, 0)
+        envoi = hotel / 'courrier/envoie_message.txt'
+        self.assertEqual(self.en_joueur('j1', ecrire, envoi).returncode, 0)
+        self.g.permissions_consultation()
+        self.assertNotEqual(self.en_joueur('j1', ecrire, envoi).returncode, 0)
+        self.g.permissions_actions()
+        self.assertEqual(self.en_joueur('j1', ecrire, envoi).returncode, 0)
+        self.assertEqual(self.en_joueur('j1', lire, hotel / 'rapport.txt').returncode, 0)
+        self.assertNotEqual(self.en_joueur('j1', ecrire, hotel / 'rapport.txt').returncode, 0)
+        self.assertFalse((self.c['game_path'] / 'village/j1/renforts').exists())
 
     def test_capture_reelle_uid_preserve_root_peut_modifier_joueur_non(self):
         prive, _ = self.g.capturer(0)
@@ -171,7 +223,7 @@ class PermissionsReelles(unittest.TestCase):
         with etat.verrou_cycle_survie(self.c):
             with self.assertRaises(RuntimeError):
                 survie.resoudre_tour_survie(self.c, gestion=self.g)
-            self.assertEqual((self.c['game_path'] / 'systeme/verrou_cycle_survie').stat().st_mode & 0o777, 0o600)
+            self.assertEqual((self.c['game_path'] / '.systeme/verrou_cycle_survie').stat().st_mode & 0o777, 0o600)
         with patch.object(survie, 'creer_vague_est', side_effect=RuntimeError('panne injectée')):
             with self.assertRaises(RuntimeError):
                 survie.resoudre_tour_survie(self.c, gestion=self.g)
@@ -229,7 +281,7 @@ class PermissionsReelles(unittest.TestCase):
             os._exit(0)  # simule l'absence totale de finally après un arrêt brutal
         _, statut = os.waitpid(pid, 0)
         self.assertEqual(statut, 0)
-        verrou = self.c['game_path'] / 'systeme/verrou_cycle_survie'
+        verrou = self.c['game_path'] / '.systeme/verrou_cycle_survie'
         etat.ecrire_prive(verrou, str(pid))
         try:
             self.assertTrue(all('frozen 1' in (p / 'cgroup.events').read_text() for p in self.g.backend.groupes))

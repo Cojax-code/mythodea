@@ -1,5 +1,6 @@
 """Lecture et écriture des états persistants, fatigue et météo."""
 import random
+import grp
 import os
 import json
 import stat
@@ -35,16 +36,23 @@ def ecrire_prive(chemin, texte):
             os.close(fd)
 
 
+def preparer_systeme_survie(configuration):
+    """Traversée vers la socket uniquement ; les états restent privés root."""
+    chemin = configuration['game_path'] / '.systeme'
+    for parent in (chemin, *chemin.parents):
+        if parent.is_symlink():
+            raise RuntimeError(f"Parent du système non sûr : {parent}")
+    chemin.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chown(chemin, 0, grp.getgrnam(configuration['groupe_allie']).gr_gid)
+    os.chmod(chemin, 0o710)
+
+
 @contextmanager
 def verrou_cycle_survie(configuration):
     """Exclut deux pilotes/résolveurs concurrents, y compris pendant le timer."""
-    chemin = configuration["game_path"] / "systeme/verrou_cycle_survie"
-    for parent in (chemin.parent, *chemin.parent.parents):
-        if parent.is_symlink():
-            raise RuntimeError(f"Parent du verrou non sûr : {parent}")
-    chemin.parent.mkdir(parents=True, exist_ok=True)
-    os.chown(chemin.parent, 0, 0)
-    os.chmod(chemin.parent, 0o700)
+    config.verifier_structure_actuelle(configuration)
+    preparer_systeme_survie(configuration)
+    chemin = configuration["game_path"] / ".systeme/verrou_cycle_survie"
     try:
         descriptor = os.open(chemin, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     except FileExistsError as erreur:
@@ -62,7 +70,7 @@ def verrou_cycle_survie(configuration):
 
 
 def charger_cycle_survie(configuration):
-    chemin = configuration["game_path"] / "systeme/cycle_survie.json"
+    chemin = configuration["game_path"] / ".systeme/cycle_survie.json"
     if not chemin.exists():
         return None
     cycle = json.loads(chemin.read_text(encoding="utf-8"))
@@ -74,13 +82,13 @@ def charger_cycle_survie(configuration):
 
 def sauvegarder_cycle_survie(cycle, configuration):
     """État privé remplacé atomiquement ; le numéro de vague vaut toujours tour+1."""
-    chemin = configuration["game_path"] / "systeme/cycle_survie.json"
+    chemin = configuration["game_path"] / ".systeme/cycle_survie.json"
     ecrire_prive(chemin, json.dumps(cycle, ensure_ascii=False) + '\n')
 
 
 def charger_attentes_repli(configuration=None):
     racine = config.racine_metier() if configuration is None else configuration["game_path"]
-    chemin = racine / "systeme" / "attente_repli.txt"
+    chemin = racine / ".systeme" / "attente_repli.txt"
     if not chemin.exists():
         return {}
     attentes = {}
@@ -96,7 +104,7 @@ def charger_attentes_repli(configuration=None):
 def sauvegarder_attentes_repli(attentes, configuration=None):
     """Compteurs privés du moteur, indépendants des fichiers des joueurs."""
     racine = config.racine_metier() if configuration is None else configuration["game_path"]
-    chemin = racine / "systeme" / "attente_repli.txt"
+    chemin = racine / ".systeme" / "attente_repli.txt"
     chemin.parent.mkdir(parents=True, exist_ok=True)
     ecrire_prive(chemin, "".join(f"{cle}={attentes[cle]}\n" for cle in sorted(attentes)
                                if attentes[cle] > 0))
@@ -106,10 +114,10 @@ def lire_compteur_general(joueur):
     # Lit le compteur de génération des généraux.
     #
     # Exemple :
-    # /home/game/systeme/compteur_general_j1.txt contient 2
+    # /home/game/.systeme/compteur_general_j1.txt contient 2
     # donc le prochain général sera general3.
 
-    compteur_path = config.racine_metier() / "systeme" / f"compteur_general_{joueur}.txt"
+    compteur_path = config.racine_metier() / ".systeme" / f"compteur_general_{joueur}.txt"
 
     if not compteur_path.exists():
         return 0
@@ -125,13 +133,13 @@ def lire_compteur_general(joueur):
 def sauvegarder_compteur_general(joueur, numero):
     # Sauvegarde le dernier numéro de général créé.
 
-    compteur_path = config.racine_metier() / "systeme" / f"compteur_general_{joueur}.txt"
+    compteur_path = config.racine_metier() / ".systeme" / f"compteur_general_{joueur}.txt"
     compteur_path.parent.mkdir(exist_ok=True)
     ecrire_prive(compteur_path, str(numero))
 
 
 def initialiser_quota_normal(joueur):
-    chemin = config.racine_metier() / 'systeme' / f'compteur_creation_normale_{joueur}.txt'
+    chemin = config.racine_metier() / '.systeme' / f'compteur_creation_normale_{joueur}.txt'
     if not chemin.exists():
         # Migration : avant la Crypte, tous les numéros étaient des créations normales.
         ecrire_prive(chemin, str(lire_compteur_general(joueur)))
@@ -139,7 +147,7 @@ def initialiser_quota_normal(joueur):
 
 
 def sauvegarder_quota_normal(joueur, nombre):
-    ecrire_prive(config.racine_metier() / 'systeme' / f'compteur_creation_normale_{joueur}.txt', str(nombre))
+    ecrire_prive(config.racine_metier() / '.systeme' / f'compteur_creation_normale_{joueur}.txt', str(nombre))
 
 
 def charger_controle_territoires(configuration=None):

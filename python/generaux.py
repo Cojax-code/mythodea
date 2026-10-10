@@ -388,7 +388,7 @@ def zones_generaux_territoire(territory, joueur, configuration=None):
         if configuration['mode'] == 'survie':
             zones.append({'position': territory.name, 'chemin': joueur_dir / 'crypte/recompense',
                           'crypte': True})
-    if configuration["mode"] == "survie" and joueur in configuration["joueurs"]:
+    if configuration["mode"] == "survie" and joueur in configuration["joueurs"] and not village:
         zones.extend(
             {"position": territory.name, "chemin": joueur_dir / "renforts" / place,
              "emplacement": place}
@@ -614,6 +614,15 @@ def regrouper_forces_par_camp(generaux_territoire, configuration=None):
                 raise ValueError(f"Collision non résolue : {camp}/{place}")
             forces[camp][place] = general
     return forces
+
+
+def contient_unites(chemin):
+    """Présence vivante sans nettoyage, réparation ni effets de lecture."""
+    for bloc in config.ordre_blocs:
+        dossier = chemin / bloc
+        if dossier.exists() and any(identifier_unite(u) != 'inconnu' for u in dossier.iterdir()):
+            return True
+    return False
 
 
 def lire_forces_territoire(territory, configuration=None):

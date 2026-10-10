@@ -11,6 +11,7 @@ def lancer_survie(configuration, nombre_tours=None):
 
 
 def resoudre_tour_classique():
+    config.verifier_structure_actuelle(config.configuration_mode('classique'))
     # Les imports Unix restent réservés à l'exécution réelle du moteur.
     import generaux
     import plateau

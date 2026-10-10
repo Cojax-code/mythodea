@@ -31,14 +31,14 @@ class Village(unittest.TestCase):
             setattr(self, nom, importlib.import_module(nom))
         self.config.game_path = self.racine / "game"
         for nom, relatif in {
-            "positions_generaux_path": "systeme/positions_generaux.txt",
-            "fatigue_generaux_path": "systeme/fatigue_generaux.txt",
-            "controle_territoires_path": "systeme/controle_territoires.txt",
+            "positions_generaux_path": ".systeme/positions_generaux.txt",
+            "fatigue_generaux_path": ".systeme/fatigue_generaux.txt",
+            "controle_territoires_path": ".systeme/controle_territoires.txt",
             "repli_path": "repli",
             "rapport_long_path": "rapport/rapport_long.txt",
         }.items():
             setattr(self.config, nom, self.config.game_path / relatif)
-        (self.config.game_path / "systeme").mkdir(parents=True)
+        (self.config.game_path / ".systeme").mkdir(parents=True)
         for joueur in self.config.joueurs:
             (self.racine / "home" / joueur).mkdir(parents=True)
         self.contextes.enter_context(patch.object(
@@ -104,20 +104,22 @@ class Village(unittest.TestCase):
         self.assertEqual(self.config.bases_joueurs, {"j1": "base1", "j2": "base2"})
 
     def test_renforts_5_a_20_prives_decouverts_et_exclus_du_combat(self):
-        for territoire in ("village", "est_1", "est_2", "est_3"):
+        for territoire in ("est_1", "est_2", "est_3"):
             for joueur, uid in self.uids.items():
                 for place in range(5, 21):
                     dossier = self.chemin(joueur, territoire=territoire, place=str(place)).parent
                     self.assertTrue(dossier.is_dir())
                     self.assertIn(call(dossier, uid, uid), self.chown.call_args_list)
                     self.assertIn(call(dossier, 0o700), self.chmod.call_args_list)
-        renfort = self.general(place="20")
+        for joueur in self.uids:
+            self.assertFalse((self.config.game_path / 'village' / joueur / 'renforts').exists())
+        renfort = self.general(territoire="est_1", place="20")
         reserve = self.general("j2", reserve=True)
         self.audit()
         self.assertEqual(self.generaux.trouver_position_general("j1", "general1", self.profil),
-                         ("village", renfort))
-        self.assertEqual((renfort / "ordre_surnombre.txt").read_text().strip(), "2")
-        forces = self.generaux.lire_forces_territoire(self.config.game_path / "village", self.profil)
+                         ("est_1", renfort))
+        self.assertEqual((renfort / "ordre_surnombre.txt").read_text().strip(), "1")
+        forces = self.generaux.lire_forces_territoire(self.config.game_path / "est_1", self.profil)
         self.assertEqual(self.generaux.controle_forces(forces), "neutre")
         self.assertTrue(reserve.exists())
 

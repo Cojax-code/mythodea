@@ -69,11 +69,23 @@ où elle est créée.
 Règle de déplacement de base du bot :
 
 - une force ennemie déjà présente avance d'un territoire vers le village à chaque
-  résolution de tour ;
+  résolution de tour si aucune présence alliée active ne bloque son territoire
+  d'origine ; ses identités bloquées sont conservées séparément des arrivants ;
 - les ennemis déjà au village y restent ;
 - si une force ennemie rencontre une force joueuse, le moteur commun résout le
   combat ;
 - les survivants ennemis reprennent leur progression à la résolution suivante.
+
+Exception de rattrapage : après les combats et l'application des retraites, les
+survivants d'une force dont l'avancée normale a été bloquée par une présence alliée
+à l'origine obtiennent une unique tentative si le bot contrôle désormais cette
+origine. Une force ayant déjà avancé et une nouvelle apparition n'y ont jamais
+droit, même si elles ont rejoint une colonne bloquée. Les identités et positions
+sont figées avant chaque déplacement pour éviter une double avance entre territoires.
+
+Le rattrapage peut entrer dans un territoire allié et laisser un contrôle final
+`conteste`. Aucun combat supplémentaire n'est déclenché : le conflit sera traité
+au prochain cycle normal. Les règles et priorités de combat restent communes.
 
 Le village est le centre et l'objectif défensif de la partie.
 
@@ -175,30 +187,25 @@ définir ; il ne doit pas être inventé avant décision de gameplay.
 
 Le village contient des lieux de gameplay propres à chaque joueur.
 
-Structure de principe :
+Structure visible du prototype :
 
 ```text
-village/
-├── j1/
-│   ├── garnison/
-│   │   ├── 1/
-│   │   ├── 2/
-│   │   ├── 3/
-│   │   └── 4/
-│   ├── reserve/
-│   ├── forum/
-│   ├── poste/
-│   └── clocher/
-└── j2/
-    ├── garnison/
-    │   ├── 1/
-    │   ├── 2/
-    │   ├── 3/
-    │   └── 4/
-    ├── reserve/
-    ├── forum/
-    ├── poste/
-    └── clocher/
+/home/game/
+├── village/
+│   ├── clocher/{etat_tour.txt,suivi_tour.log}
+│   ├── j1/                         # même structure pour j2/
+│   │   ├── garnison/1..4/
+│   │   ├── reserve/
+│   │   ├── hotel_de_ville/
+│   │   │   ├── journal_du_Toonitruand/vague_0.txt, vague_1.txt, vague_2.txt
+│   │   │   ├── rapport.txt
+│   │   │   └── courrier/{envoie_message.txt,reception_message.txt,liste_requetes.txt}
+│   │   └── crypte/{grimoire,atelier,recompense}/
+│   ├── j2/
+│   └── bot/{1,2,3,4,renforts}/      # privé root
+├── est_1/, est_2/, est_3/
+├── repli/
+└── rapport/
 ```
 
 La garnison est la zone militaire active du village. Les quatre emplacements `1` à
@@ -215,11 +222,13 @@ si les autres règles de déplacement l'autorisent.
 ### Prise en charge des zones militaires
 
 `plateau.reparer_structure(configuration)` crée ou répare la garnison, la réserve
-et les renforts tactiques `renforts/5..20` de chaque joueur avec son propriétaire
-Linux et des permissions `700`, ainsi que
+de chaque joueur avec son propriétaire Linux et des permissions `700`, ainsi que
+les renforts tactiques `renforts/5..20` uniquement sur les territoires extérieurs,
 les emplacements extérieurs et les espaces de repli séparés. La réparation ne crée
-aucun général et ne touche pas à sa composition. Le Forum et la Poste restent pour
-les étapes suivantes ; le Clocher expose seulement l'état et le temps du cycle.
+aucun général et ne touche pas à sa composition. Le village n'a pas de renforts
+alliés : sa capacité active est limitée à quatre places logiques communes ;
+la réserve conserve les généraux complets inactifs. La colonne du bot conserve
+ses renforts privés, sans suppression de troupes.
 
 La découverte et la sécurité utilisent les mêmes descriptions de zones dans
 `generaux.py`. La réserve est inspectée pour l'identité officielle, les propriétaires
@@ -235,28 +244,44 @@ Les appels utilisent explicitement le profil retourné par
 `config.configuration_mode("survie")`, sans remplacer la configuration globale
 classique. Par exemple, `securite.verifier_tous_les_deplacements(configuration)`
 audite les joueurs du profil et enregistre positions et fatigue dans les fichiers
-communs sous `/home/game/systeme`. Le cycle Survie appelle cet audit une seule fois
+communs sous `/home/game/.systeme`. Le cycle Survie appelle cet audit une seule fois
 après la fenêtre d'action ; les contrôles suivants n'en rejouent pas les effets.
 L'audit seul ne lance ni cycle de partie ni scan périodique.
 
-### Forum
+### Hôtel de Ville
 
-Le forum reçoit les informations générales de la partie, notamment :
+`plateau.preparer_accueil()` prépare les documents sans créer d'unités ni lancer de
+mécanique de requête. Chaque joueur dispose de son Hôtel de Ville séparé.
 
-- nombre de tours survécus ;
-- rapports et informations générales utiles au joueur.
+Le journal du Toonitruand est un tutoriel passif : conseils courts et exemples de
+commandes Linux, personnalisés pour j1/j2. Le prototype contient trois fichiers,
+`vague_0.txt`, `vague_1.txt`, `vague_2.txt`. Seules les vagues atteintes sont publiées :
+0 à l'ouverture, 1 après la première résolution, 2 après la suivante. Aucun suivi
+de lecture, accomplissement, validation ou récompense. Les conseils et leur ordre
+restent provisoires. Les vagues ultérieures n'ajoutent pas encore de fichiers.
 
-### Poste
+`rapport.txt` est une copie du rapport court commun, préparée après finalisation
+du bilan puis publiée avec la génération du village. La génération commune reste
+la seule source de vérité. Une reprise administrative republie la même copie sans
+relancer le moteur. Avant le premier bilan, le fichier indique qu'aucun tour n'est
+terminé. Une ouverture de tour conserve le dernier bilan.
 
-La poste sert de canal de communication joueur -> jeu.
+Le Courrier prépare une future interface joueur ↔ moteur : `envoie_message.txt`
+est un brouillon éditable, `reception_message.txt` accueille les réponses et
+`liste_requetes.txt` documente les requêtes. Le prototype n'accepte aucune requête,
+ne scanne ni ne vide les messages et conserve le brouillon entre les tours.
+Aucun lien fonctionnel avec le journal passif.
 
-Un fichier dédié sera scanné périodiquement. Le joueur pourra y répondre à une
-proposition du jeu, par exemple `OUI` ou `NON`. Lors du scan, le moteur lit la
-réponse, applique l'action correspondante si elle est valide, puis nettoie le
-fichier.
+Dossiers de l'Hôtel de Ville : `root:<groupe_joueur> 750` ; documents du jeu :
+`root:<groupe_joueur> 640` ; fichier d'envoi : joueur et groupe joueur, `600`.
+CONSULTATION retire temporairement l'écriture ; ACTIONS restaure ces droits.
 
-Exemple futur : accepter ou refuser une dépense de 100 PO contre un bonus. Cet
-exemple ne signifie pas que le système complet d'argent est déjà défini en V2.0.
+Au démarrage effectif d'une nouvelle partie, après préparation réussie et ouverture
+d'ACTIONS, un message personnalisé est envoyé à toutes les sessions SSH valides de
+chaque joueur via le mécanisme TTY direct. Il indique le village, le journal vague 0
+et le Clocher. Une reprise d'une fenêtre existante ne répète pas cette annonce.
+L'absence de sessions n'empêche pas le lancement ; l'affichage administrateur reste
+inchangé.
 
 ### Clocher
 
@@ -264,7 +289,7 @@ Le clocher permet de consulter le temps restant de la fenêtre d'action du tour
 courant. Le timer clôt cette fenêtre ; le clocher ne contient pas lui-même la
 logique de résolution du tour.
 
-Deux fichiers sous `/home/game/clocher/` sont lisibles par le groupe allié :
+Deux fichiers sous `/home/game/village/clocher/` sont lisibles par le groupe allié :
 
 - `etat_tour.txt` : photographie courante remplacée atomiquement, pour `cat` ;
 - `suivi_tour.log` : inode stable alimenté par append, pour `tail -f`.
@@ -272,11 +297,13 @@ Deux fichiers sous `/home/game/clocher/` sont lisibles par le groupe allié :
 Ils indiquent `TOUR`, `PHASE` et `TEMPS RESTANT` pendant les fenêtres temporisées,
 avec une actualisation par seconde. Pendant la capture, ils annoncent
 `FIN DU TOUR`, `RESOLUTION EN COURS`, `JOUEURS GELES`, `PAUSE : 10 secondes`, puis
-`PROLONGATION TECHNIQUE` si nécessaire. Le log n'est pas remplacé entre les tours.
+`PROLONGATION TECHNIQUE` si nécessaire. Le log n'est pas remplacé entre les tours. Le Clocher commun est exclu des
+captures privées ; la publication remplace uniquement les espaces des acteurs du
+village et préserve le Clocher vivant, y compris lors d'une récupération.
 
 ```bash
-cat /home/game/clocher/etat_tour.txt
-tail -f /home/game/clocher/suivi_tour.log
+cat /home/game/village/clocher/etat_tour.txt
+tail -f /home/game/village/clocher/suivi_tour.log
 ```
 
 Le Clocher complète l'annonce écrite directement par root sur les terminaux SSH
@@ -381,13 +408,19 @@ Les points suivants restent volontairement ouverts :
 5. création, remplacement et recrutement futurs des unités ;
 6. place exacte des objectifs Linux dans la progression ;
 7. récompenses des objectifs Linux ;
-8. format et fréquence de scan de la poste ;
-9. format et fréquence d'actualisation du clocher ;
+8. format et fréquence du futur traitement du Courrier ;
+9. réduction future des renseignements exposés par le Clocher ;
 10. condition éventuelle de victoire ou fin d'une partie Survie ;
 11. ordres spécifiques au combat en surnombre.
 
 Ces décisions restent ouvertes tant qu'elles ne sont pas nécessaires à l'étape
 d'implémentation en cours.
+
+Décisions pour la prochaine tâche, **non implémentées dans ce prototype** : l'ajout
+ou la création d'unités dans un général sera autorisé uniquement dans le home de
+son joueur ou dans `village/<joueur>/reserve/`. Un rappel volontaire depuis une
+position légale vers le home sera étudié ensuite. Les modalités de ce rappel
+restent à définir ; les règles actuelles d'unités et de déplacement restent en place.
 
 
 ---
@@ -490,9 +523,11 @@ Dans la copie privée, la résolution du tour N suit l'ordre suivant :
 7. pendant ces cascades, préparer et réserver les retraites tactiques admissibles ;
 8. après tous les combats, appliquer physiquement les retraites exactement aux
    places réservées ;
-9. calculer et sauvegarder le contrôle final, finaliser les rapports et vérifier la
+9. tenter le rattrapage des seuls survivants bloqués avant combat dont l'origine
+   est maintenant contrôlée par le bot, sans nouveau combat ;
+10. calculer et sauvegarder le contrôle final, finaliser les rapports et vérifier la
    défaite ;
-10. publier les nouveaux inodes sous un second gel court ; en l'absence de défaite,
+11. publier les nouveaux inodes sous un second gel court ; en l'absence de défaite,
     ouvrir **CONSULTATION 60 secondes**, puis le tour N+1 avec **ACTIONS 120 secondes**.
 
 Au tour 0, l'étape 2 ne déplace personne parce qu'aucune force ennemie ancienne
@@ -526,7 +561,7 @@ en test. `seuil_capture_secondes` doit rester supérieur au minimum de gel.
   il attend la consultation puis ouvre la fenêtre suivante. À la limite de
   résolutions, la consultation reste persistée pour le prochain appel.
 
-L'état privé `systeme/cycle_survie.json` contient `tour`, `phase` et, en phase
+L'état privé `.systeme/cycle_survie.json` contient `tour`, `phase` et, en phase
 `actions` ou `consultation`, une `echeance` absolue. Les phases sont `preparation`,
 `actions`, `capture`, `resolution`, `publication`, `consultation`, `recuperation`,
 `a_preparer` et `defaite`. `generation` identifie la clôture en cours et
@@ -534,7 +569,7 @@ L'état privé `systeme/cycle_survie.json` contient `tour`, `phase` et, en phase
 `600` et est remplacé atomiquement. Le format et les transitions sont détaillés
 dans `MYTHODEA_SPEC.md`, section 17.
 
-Le verrou privé `systeme/verrou_cycle_survie` contient le PID et empêche deux
+Le verrou privé `.systeme/verrou_cycle_survie` contient le PID et empêche deux
 moteurs Survie concurrents, pendant l'attente comme pendant la résolution. Les
 API directes d'ouverture et de résolution sont également protégées. Ce verrou
 ne remplace pas le gel ni l'isolation par générations.
@@ -547,6 +582,30 @@ est libéré normalement, y compris sur `Ctrl+C` ; après un arrêt brutal, sa p
 reste bloquante jusqu'à vérification et retrait explicite.
 
 ### Clôture Linux et générations privées
+
+Les états et la communication technique sont sous `/home/game/.systeme/` :
+
+```text
+.systeme/
+├── communication/crypte.sock
+├── generations/g<tour>-<identifiant>/
+├── cycle_survie.json
+├── verrou_cycle_survie
+├── gel_survie.json
+├── crypte.json
+├── crypte_config.json
+└── compteurs, positions, fatigue, contrôle et attente de repli
+```
+
+Le point masque ce dossier dans un `ls` ou `tree` normal ; l'administrateur peut
+l'inspecter avec `ls -a` ou `tree -a`. Ce masquage n'est pas une protection de
+sécurité. Le Courrier de l'Hôtel de Ville est indépendant de cette communication.
+`.systeme/` et `.systeme/communication/` appartiennent à `root:mythodea_allies`,
+en `710` : les joueurs peuvent traverser un chemin connu mais ne peuvent ni lister
+ni modifier ces dossiers. La socket est en `660` pour ce groupe. Les états restent
+`root:root 600` et les sous-dossiers privés, notamment `generations/`, `root:root 700`.
+Les anciennes structures sont refusées avant écriture, sans conversion ni
+suppression de données ; la procédure d'archivage est dans `TESTS_LINUX_SURVIE.md`.
 
 `cycle_linux.py` contrôle les slices `user-<UID>.slice` de j1/j2 sous `user.slice`
 avec le freezer cgroup v2. Il démarre leurs gestionnaires systemd utilisateur afin
@@ -563,7 +622,7 @@ la capture cohérente ; les copies indépendantes assurent ensuite la séparatio
 Aucun montage, namespace, ACL supplémentaire ou partitionnement automatique n'est utilisé.
 
 ```text
-/home/game/systeme/generations/g<tour>-<identifiant>/
+/home/game/.systeme/generations/g<tour>-<identifiant>/
   manifeste.json              capture validée, tour, liste blanche des états
   capture/game/               territoires, repli et états métier
   capture/homes/j1/           entrées general* du home uniquement
@@ -589,7 +648,7 @@ La liste blanche `config.ETATS_METIER` est : `compteur_general_j1.txt`,
 `fatigue_generaux.txt`, `controle_territoires.txt`, `attente_repli.txt`, `meteo.txt`,
 `crypte.json`, `compteur_creation_normale_j1.txt`, `compteur_creation_normale_j2.txt`.
 Le cycle vivant, les verrous, générations, journaux de récupération, rapports et
-Clocher sont exclus. Le marqueur local du résolveur dans `travail/systeme/` n'est
+Clocher sont exclus. Le marqueur local du résolveur dans `travail/.systeme/` n'est
 jamais publié. Le moteur commun utilise le contexte privé `config.racines_generation()`.
 
 La publication prépare les copies avant le second gel, journalise chaque retrait
@@ -622,7 +681,7 @@ arborescences remplacées, lisibles avec `cat`, `tail -f` et `grep`.
 ### Récupération administrative
 
 Les sorties interceptables dégèlent les joueurs dans un `finally`. Après `SIGKILL`
-ou une panne, `systeme/gel_survie.json` indique le PID et les slices concernées.
+ou une panne, `.systeme/gel_survie.json` indique le PID et les slices concernées.
 `survie_admin.py diagnostic` affiche les marqueurs. Après vérification de l'arrêt
 du processus, `degeler --confirmer` libère les sessions sans valider le jeu,
 sans rétablir les permissions tactiques et sans supprimer le verrou. Le retrait
@@ -675,7 +734,7 @@ nom_affichage=general<vague>_<numero_dans_la_vague>
 Les généraux des joueurs ne possèdent pas ces champs.
 
 `nom` dans la fiche et le nom du dossier restent `generalN`. Le compteur commun
-`systeme/compteur_general_bot.txt` réserve des numéros techniques jamais réutilisés.
+`.systeme/compteur_general_bot.txt` réserve des numéros techniques jamais réutilisés.
 Les positions gardent le format `bot:generalN=territoire`. Le rang d'affichage est
 unique dans toute la vague, tous territoires confondus, et reste conservé après
 déplacement ou destruction d'autres généraux de cette vague.
@@ -875,9 +934,12 @@ Pour cette réorganisation, la colonne alliée utilise des positions logiques :
 
 Physiquement, les positions actives restent dans les emplacements habituels. Les
 positions `5..20` sont stockées dans une zone `renforts/` propre à chaque joueur,
-par exemple `territoire/j1/renforts/5/`. Au village, cette zone reste distincte de
-`reserve/` : la réserve est une organisation interne volontaire du village, tandis
-que `renforts/` représente un débordement tactique après une retraite.
+par exemple `est_1/j1/renforts/5/`. Cette file 1..20 concerne uniquement les
+territoires ouverts. Au village, la recherche est limitée à la garnison 1..4 ;
+aucune zone de renforts alliés n'est créée. La réserve ne reçoit jamais
+automatiquement une retraite. Sans place libre à partir de la préférence, le
+général reste sur son territoire, sans perte ni sanction de repli. Une préférence
+valide 5..20 n'offre donc aucune place au village et reste inchangée dans la fiche.
 
 La fiche d'un général joueur peut contenir le champ optionnel :
 
@@ -925,7 +987,7 @@ inventés silencieusement.
 Pendant la résolution complète d'un tour, une retraite tactique admissible est
 **réservée puis appliquée plus tard**. Au moment du choix, le moteur vérifie la
 destination, l'absence de bot actif restant sur ce territoire déjà résolu et la
-première place disponible selon la règle `1..20`. Les réservations déjà acceptées
+première place disponible selon la règle `1..20` hors village, `1..4` au village. Les réservations déjà acceptées
 comptent comme des places occupées.
 
 Si aucune destination ou place valide n'existe, le général reste engagé normalement.
@@ -950,7 +1012,8 @@ la cascade.
 4. Hors village, pour ceux qui ont choisi `1`, préparer la retraite vers le voisin
    rapprochant le plus du village. Le territoire de destination a déjà été résolu
    grâce à l'ordre `village -> est_1 -> est_2 -> est_3`. La retraite n'est acceptée
-   que si aucun bot actif n'y reste et si une place `1..20` peut être réservée.
+   que si aucun bot actif n'y reste et si une place peut être réservée
+   (1..20 hors village, 1..4 au village).
    Ceux qui ont choisi `2` restent. Au village, aucun général ne part
    automatiquement, même si son fichier contient `1`.
 5. Exclure les retraites acceptées des relectures de combat suivantes, sans encore
@@ -1022,7 +1085,7 @@ distance 5 -> 3 tours
 
 Pendant cette attente, le général ne peut effectuer aucune action. Le détail du
 stockage et de la décrémentation est défini dans `MYTHODEA_SPEC.md` : le fichier
-privé `systeme/attente_repli.txt` conserve les tours restants par identité.
+privé `.systeme/attente_repli.txt` conserve les tours restants par identité.
 
 Le home est un bac à sable. Une anomalie qui y est détectée produit uniquement
 un avertissement dans le rapport, sans suppression, envoi au repli, nouveau délai
@@ -1046,7 +1109,7 @@ doit pouvoir repérer plus facilement un comportement anormal.
 Les délais d'affichage doivent être configurables et désactivables pour les tests
 automatiques.
 
-Le Forum doit pouvoir proposer un journal de combat actualisé progressivement,
+Les rapports territoriaux proposent un journal de combat actualisé progressivement,
 consultable notamment avec `tail -f`.
 
 Le ralentissement concerne la présentation et l'enchaînement des étapes ; il ne doit
@@ -1228,7 +1291,7 @@ deux composants exacts du pipeline sans avancer de deux étapes. `after.status`
 contient `$?` et `after.command` contient les codes de `PIPESTATUS`, capturés
 dès le retour à l'invite. Le pipeline exige les deux codes `0 0`, même si le
 dernier composant a réussi. Les anciens hooks doivent être réinstallés.
-La configuration privée `systeme/crypte_config.json` contient `debut` et `fin`, par
+La configuration privée `.systeme/crypte_config.json` contient `debut` et `fin`, par
 défaut `crypte_commence` et `crypte_fin`. Ces noms doivent être distincts et respecter
 `crypte_[a-zA-Z0-9_]+`. Ils ne viennent pas de l'environnement du joueur. Après une
 modification administrative, réinstaller les hooks et reconnecter les joueurs ;
@@ -1253,8 +1316,8 @@ l'attente. Le timer reste indépendant de la logique métier. Les tests peuvent
 désactiver uniquement le service socket avec `collecteur_crypte=False` et appeler
 directement le collecteur ou la résolution sans attendre.
 
-Le socket est `/home/game/communication/crypte.sock` : dossier
-`root:mythodea_allies 750`, socket `root:mythodea_allies 660`. Il reçoit des messages
+Le socket est `/home/game/.systeme/communication/crypte.sock` : dossier
+`root:mythodea_allies 710`, socket `root:mythodea_allies 660`. Il reçoit des messages
 JSON bornés en taille ; il n'exécute jamais leur texte. L'UID est obtenu par
 `SO_PEERCRED`. Le collecteur vérifie aussi l'ascendance du client, l'UID de sa session,
 son PID et son instant de démarrage dans `/proc`, ainsi que son répertoire réel.
@@ -1266,7 +1329,7 @@ après redémarrage. Une nouvelle tentative remplace l'ancienne sans pouvoir la
 continuer. La disparition du processus de session est observée sans dépendre des
 hooks EXIT/HUP de Bash. Elle invalide la tentative et nettoie l'atelier.
 
-`systeme/crypte.json` est un état atomique privé `root:root 600`, avec une entrée
+`.systeme/crypte.json` est un état atomique privé `root:root 600`, avec une entrée
 par joueur :
 
 - `dernier_tour` : tour de la dernière réussite acceptée, ou `null` ;

@@ -90,17 +90,27 @@ class CrypteReelle(unittest.TestCase):
 
     def test_scanner_socket_uid_et_succes_prive(self):
         self.reussir(self.shell())
+        gid = grp.getgrnam('mythodea_allies').gr_gid
+        for p, mode in ((self.c['game_path'] / '.systeme', 0o710),
+                        (self.collecteur.chemin.parent, 0o710), (self.collecteur.chemin, 0o660)):
+            self.assertEqual((p.stat().st_uid, p.stat().st_gid, p.stat().st_mode & 0o777), (0, gid, mode))
+        for j in ('j1', 'j2'):
+            for p in (self.c['game_path'] / '.systeme', self.collecteur.chemin.parent):
+                self.assertNotEqual(self.en_joueur(j, 'import os,sys; os.listdir(sys.argv[1])', p).returncode, 0)
+                self.assertNotEqual(self.en_joueur(j, "import pathlib,sys; (pathlib.Path(sys.argv[1]) / 'intrus').touch()", p).returncode, 0)
         donnees = crypte.charger(self.c)
         self.assertIsNotNone(donnees['j1']['a_creer'])
         self.assertIsNone(donnees['j2']['a_creer'])
         self.assertFalse(list((crypte.zone(self.c, 'j1') / 'recompense').iterdir()))
         self.assertFalse(list((crypte.zone(self.c, 'j1') / 'atelier').iterdir()))
         for nom in ('crypte.json', 'crypte_config.json', 'compteur_creation_normale_j1.txt'):
-            p = self.c['game_path'] / 'systeme' / nom
+            p = self.c['game_path'] / '.systeme' / nom
             self.assertEqual((p.stat().st_uid, p.stat().st_gid, p.stat().st_mode & 0o777), (0, 0, 0o600))
             code = "from pathlib import Path; import sys; Path(sys.argv[1]).write_text('faux')"
             self.assertNotEqual(self.en_joueur('j1', code, p).returncode, 0)
             self.assertNotEqual(self.en_joueur('j2', code, p).returncode, 0)
+            for j in ('j1', 'j2'):
+                self.assertNotEqual(self.en_joueur(j, 'import sys; open(sys.argv[1]).read()', p).returncode, 0)
 
     def test_refus_reel_mauvais_atelier_et_commande_extra(self):
         shell = self.shell()
@@ -184,7 +194,7 @@ class CrypteReelle(unittest.TestCase):
         self.reussir(shell)
 
     def test_marqueurs_administrateur_reellement_utilises(self):
-        reel.etat.ecrire_prive(self.c['game_path'] / 'systeme/crypte_config.json',
+        reel.etat.ecrire_prive(self.c['game_path'] / '.systeme/crypte_config.json',
                               json.dumps({'debut': 'crypte_ouvre', 'fin': 'crypte_ferme'}))
         crypte.preparer(self.c)
         crypte_installer.installer(self.c, self.application, self.root / 'profil.sh')

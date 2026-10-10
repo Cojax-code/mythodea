@@ -12,7 +12,7 @@ class CycleSurvie(unittest.TestCase):
     def setUp(self):
         test_surnombre.Surnombre.setUp(self)
         for nom, relatif in {"rapport_dir": "rapport", "rapport_court_path": "rapport/rapport_court.txt",
-                             "meteo_path": "systeme/meteo.txt"}.items():
+                             "meteo_path": ".systeme/meteo.txt"}.items():
             setattr(self.config, nom, self.config.game_path / relatif)
         for joueur in self.profil["joueurs"]:
             (self.racine / "home" / joueur).mkdir(parents=True, exist_ok=True)
@@ -109,15 +109,19 @@ class CycleSurvie(unittest.TestCase):
         for index, nom in enumerate(self.survie.ORDRE_RESOLUTION_EST, 1):
             self.general(numero=index, territoire=nom, nombre=1)
         self.colonne(1, "est_1")
+        self.colonne(1, "village", numeros=[2])
         reel = self.survie.resoudre_cascade
         ordre = []
         def verifier(territoire, *args):
             ordre.append(territoire.name)
-            self.assertEqual(self.etat.lire_compteur_general("bot"), 7)
+            self.assertEqual(self.etat.lire_compteur_general("bot"), 8)
             if len(ordre) == 1:
-                self.assertEqual(self.etat.charger_positions_generaux()["bot:general1"], "village")
+                # La présence alliée bloque désormais le départ d'est_1.
+                self.assertEqual(self.etat.charger_positions_generaux()["bot:general1"], "est_1")
+                self.assertEqual(self.etat.charger_positions_generaux()["bot:general2"], "village")
                 for nom in self.survie.ORDRE_APPARITION_EST:
-                    self.assertEqual(len(self.survie.inventorier_ennemis(self.config.game_path / nom, self.profil)), 2)
+                    self.assertEqual(len(self.survie.inventorier_ennemis(self.config.game_path / nom, self.profil)),
+                                     3 if nom == 'est_1' else 2)
             return reel(territoire, *args)
         with patch.object(self.survie, "resoudre_cascade", side_effect=verifier):
             self.resoudre()
@@ -254,7 +258,7 @@ class CycleSurvie(unittest.TestCase):
         self.assertEqual(self.survie.ouvrir_tour_survie(self.profil, lambda: 1090), premier)
         self.assertEqual(self.etat.lire_compteur_general("j1"), 1)
         self.assertTrue((self.racine / "home/j1/general1").is_dir())
-        prive = self.config.game_path / "systeme/cycle_survie.tmp"
+        prive = self.config.game_path / ".systeme/cycle_survie.tmp"
         self.assertIn(call(prive, 0, 0), self.chown.call_args_list)
         self.assertIn(call(prive, 0o600), self.chmod.call_args_list)
 
@@ -302,7 +306,7 @@ class CycleSurvie(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "verrouillé"):
                     self.survie.lancer_partie_survie(self.profil, 1)
             audit.assert_not_called()
-        self.assertFalse((self.config.game_path / "systeme/verrou_cycle_survie").exists())
+        self.assertFalse((self.config.game_path / ".systeme/verrou_cycle_survie").exists())
 
     def test_interruption_timer_preserve_echeance_et_libere_verrou(self):
         self.activer(0)
@@ -313,7 +317,7 @@ class CycleSurvie(unittest.TestCase):
             self.survie.lancer_partie_survie(self.profil, 1, lambda: 90, interrompre)
         self.assertEqual(self.etat.charger_cycle_survie(self.profil), avant)
         self.assertEqual(self.etat.lire_compteur_general("bot"), 0)
-        self.assertFalse((self.config.game_path / "systeme/verrou_cycle_survie").exists())
+        self.assertFalse((self.config.game_path / ".systeme/verrou_cycle_survie").exists())
 
     def test_reprise_timer_attend_seulement_temps_restant(self):
         self.activer(0)

@@ -75,6 +75,26 @@ class NotificationsSurvie(unittest.TestCase):
         with patch.object(self.cycle_linux.subprocess, 'run', side_effect=resultats), self.assertLogs():
             self.assertEqual(self.linux.terminaux_ssh(), [])
 
+    def test_debut_personnalise_toutes_sessions_et_aucune_session(self):
+        gestion = self.cycle_linux.Generations(self.profil, self.linux)
+        with patch.object(self.linux, 'terminaux_ssh', return_value=[
+                (1001, 'pts/1'), (1001, 'pts/3'), (1002, 'pts/2')]), \
+                patch.object(self.linux, 'ecrire_terminal', return_value=True) as ecrire, \
+                patch.object(self.cycle_linux.time, 'sleep'):
+            gestion.annoncer_debut()
+        self.assertEqual(ecrire.call_count, 3)
+        for appel in ecrire.call_args_list:
+            uid, tty, texte = appel.args
+            joueur = 'j1' if uid == 1001 else 'j2'
+            village = self.config.game_path / 'village' / joueur
+            self.assertIn(f'{village}/hotel_de_ville', texte)
+            self.assertIn('cat journal_du_Toonitruand/vague_0.txt', texte)
+            self.assertNotIn('wall', texte)
+        with patch.object(self.linux, 'terminaux_ssh', return_value=[]), \
+                patch.object(self.linux, 'ecrire_terminal') as ecrire:
+            gestion.annoncer_debut()
+            ecrire.assert_not_called()
+
     def test_echec_logind_non_masque(self):
         with patch.object(self.cycle_linux.subprocess, 'run', side_effect=OSError('logind absent')):
             with self.assertRaises(OSError):

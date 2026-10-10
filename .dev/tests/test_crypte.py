@@ -414,7 +414,7 @@ class Crypte(unittest.TestCase):
         self.assertEqual(self.rapports.nom_affichage_general(general), 'general9')
 
     def test_marqueurs_configures_et_pdf_actualise(self):
-        self.etat.ecrire_prive(self.profil['game_path'] / 'systeme/crypte_config.json',
+        self.etat.ecrire_prive(self.profil['game_path'] / '.systeme/crypte_config.json',
                                json.dumps({'debut': 'crypte_ouvre', 'fin': 'crypte_ferme'}))
         self.crypte.preparer(self.profil)
         pdf = self.crypte.zone(self.profil, 'j1') / 'grimoire/recette1.pdf'

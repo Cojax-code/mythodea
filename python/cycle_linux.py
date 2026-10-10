@@ -49,7 +49,7 @@ def ecrire_json(chemin, valeur):
     etat.ecrire_prive(chemin, json.dumps(valeur, ensure_ascii=False, indent=2) + "\n")
 
 
-def copier(source, destination, verifier=lambda: None):
+def copier(source, destination, verifier=lambda: None, exclure=()):
     """Copie physique vérifiée ; garde UID/GID/modes, jamais les liens source."""
     verifier()
     sans_liens(source)
@@ -58,6 +58,8 @@ def copier(source, destination, verifier=lambda: None):
     if stat.S_ISDIR(infos.st_mode):
         destination.mkdir(mode=0o700)
         for enfant in sorted(source.iterdir()):
+            if enfant.name in exclure:
+                continue
             copier(enfant, destination / enfant.name, verifier)
         synchroniser_dossier(destination)
     elif stat.S_ISREG(infos.st_mode):
@@ -108,7 +110,7 @@ class Linux:
             raise RuntimeError("Les joueurs exigent deux comptes non-root distincts.")
         self.groupes = [Path(f"/sys/fs/cgroup/user.slice/user-{uid}.slice") for uid in self.uids]
         self.geles = []
-        self.journal = configuration["game_path"] / "systeme/gel_survie.json"
+        self.journal = configuration["game_path"] / ".systeme/gel_survie.json"
 
     def verifier_processus(self):
         attendus = dict(zip(self.uids, [str(p.relative_to('/sys/fs/cgroup')) for p in self.groupes]))
@@ -158,8 +160,11 @@ class Linux:
         for uid, tty in self.terminaux_ssh():
             if (uid, tty) in envoyes:
                 continue
+            texte = message.get(uid) if isinstance(message, dict) else message
+            if texte is None:
+                continue
             try:
-                if self.ecrire_terminal(uid, tty, message):
+                if self.ecrire_terminal(uid, tty, texte):
                     envoyes.add((uid, tty))
             except OSError as erreur:
                 erreurs.append(f'{tty} : {erreur}')
@@ -307,26 +312,27 @@ class Generations:
 
     def preparer(self):
         import minuterie
+        config.verifier_structure_actuelle(self.c)
         for nom in ('duree_gel_secondes', 'duree_consultation_secondes', 'seuil_capture_secondes'):
             minuterie.valider_duree(self.c[nom])
         if self.c['seuil_capture_secondes'] <= self.c['duree_gel_secondes']:
             raise ValueError('Le seuil de capture doit dépasser le gel minimum.')
         for chemin in (self.game, *self.homes.values()):
             sans_liens(chemin)
-        dossier_prive(self.game / 'systeme')
-        dossier_prive(self.game / 'systeme/generations')
+        etat.preparer_systeme_survie(self.c)
+        dossier_prive(self.game / '.systeme/generations')
         dossier_prive(self.home_stage)
         # Une partition dédiée /home/game n'oblige pas à déplacer les homes.
         for home in self.homes.values():
             if home.stat().st_dev != self.home_stage.stat().st_dev:
                 raise RuntimeError("Le staging des homes doit être sur leur système de fichiers.")
         for nom in config.ETATS_METIER:
-            p = self.game / 'systeme' / nom
+            p = self.game / '.systeme' / nom
             if p.exists():
                 sans_liens(p)
                 os.chown(p, 0, 0)
                 os.chmod(p, 0o600)
-        for d in (self.game / 'rapport', self.game / 'rapport/territoires', self.game / 'clocher'):
+        for d in (self.game / 'rapport', self.game / 'rapport/territoires', self.game / 'village/clocher'):
             sans_liens(d)
             d.mkdir(parents=True, exist_ok=True)
             os.chown(d, 0, self.gid)
@@ -347,7 +353,7 @@ class Generations:
             texte += f"TEMPS RESTANT : {secondes // 60:02}:{secondes % 60:02}\n"
         if detail:
             texte += detail + '\n'
-        repertoire = self.game / 'clocher'
+        repertoire = self.game / 'village/clocher'
         repertoire.mkdir(parents=True, exist_ok=True)
         courant = repertoire / 'etat_tour.txt'
         etat.ecrire_prive(courant, texte)
@@ -360,6 +366,18 @@ class Generations:
             os.chown(suivi, 0, self.gid)
             os.chmod(suivi, 0o640)
             f.write(texte + '\n')
+
+    def annoncer_debut(self):
+        messages = {}
+        for joueur in self.c['joueurs']:
+            uid = pwd.getpwnam(self.c['acteurs'][joueur]['proprietaire_linux']).pw_uid
+            village = self.game / 'village' / joueur
+            messages[uid] = (
+                '=== MYTHODEA — SURVIE ===\n\nLa partie commence.\n\n'
+                f'Votre village :\n{village}\n\nCommencez par l’Hôtel de Ville :\n\n'
+                f'cd {village}/hotel_de_ville\ncat journal_du_Toonitruand/vague_0.txt\n\n'
+                f'Le Clocher indique l’état du tour :\n\ncat {self.game}/village/clocher/etat_tour.txt')
+        self.backend.annoncer(messages)
 
     def attendre(self, cycle):
         import minuterie
@@ -378,7 +396,7 @@ class Generations:
 
     def capturer(self, tour):
         import crypte
-        self.generation = self.game / 'systeme/generations' / f'g{tour:06}-{uuid.uuid4().hex[:12]}'
+        self.generation = self.game / '.systeme/generations' / f'g{tour:06}-{uuid.uuid4().hex[:12]}'
         dossier_prive(self.generation)
         with crypte.VERROU:
             self.marquer(tour, 'capture')
@@ -405,12 +423,13 @@ class Generations:
             dossier_prive(capture / 'homes')
             for source in (*self.c['territoires'], self.c['repli_path']):
                 if source.exists():
-                    copier(source, capture / 'game' / source.name, verifier)
-            dossier_prive(capture / 'game/systeme')
+                    copier(source, capture / 'game' / source.name, verifier,
+                           exclure=('clocher',) if source.name in self.c['villages'] else ())
+            dossier_prive(capture / 'game/.systeme')
             for nom in config.ETATS_METIER:
-                source = self.game / 'systeme' / nom
+                source = self.game / '.systeme' / nom
                 if source.exists():
-                    copier(source, capture / 'game/systeme' / nom, verifier)
+                    copier(source, capture / 'game/.systeme' / nom, verifier)
             for j, home in self.homes.items():
                 dossier_prive(capture / 'homes' / j)
                 for source in entrees_home(home):
@@ -449,6 +468,7 @@ class Generations:
         fichier = self.generation / 'publication.json'
         ecrire_json(fichier, journal)
         self.backend.annoncer('PUBLICATION DU TOUR\nBRÈVE PAUSE TECHNIQUE')
+        self.afficher(tour, 'publication', detail='PUBLICATION DU TOUR\nBRÈVE PAUSE TECHNIQUE')
         self.backend.geler()
         try:
             def remplacer(source, destination, ancien):
@@ -474,16 +494,24 @@ class Generations:
                 op['etat'] = 'installee'
                 ecrire_json(fichier, journal)
             for nom in [p.name for p in self.c['territoires']] + ['repli']:
-                remplacer(public / 'game' / nom, self.game / nom, public / 'anciens' / nom)
+                if nom in self.c['villages']:
+                    # Le Clocher appartient au cycle vivant : préserver son inode,
+                    # même lors d'une republication administrative.
+                    dossier_prive(public / 'anciens' / nom)
+                    for acteur in self.c['acteurs']:
+                        remplacer(public / 'game' / nom / acteur, self.game / nom / acteur,
+                                  public / 'anciens' / nom / acteur)
+                else:
+                    remplacer(public / 'game' / nom, self.game / nom, public / 'anciens' / nom)
             for j, home in self.homes.items():
                 dossier_prive(stage / 'anciens' / j)
                 noms = {p.name for p in entrees_home(home)} | {p.name for p in (stage / 'nouveaux' / j).iterdir()}
                 for nom in sorted(noms):
                     remplacer(stage / 'nouveaux' / j / nom, home / nom, stage / 'anciens' / j / nom)
-            dossier_prive(public / 'anciens/systeme')
+            dossier_prive(public / 'anciens/.systeme')
             for nom in config.ETATS_METIER:
-                remplacer(public / 'game/systeme' / nom, self.game / 'systeme' / nom,
-                          public / 'anciens/systeme' / nom)
+                remplacer(public / 'game/.systeme' / nom, self.game / '.systeme' / nom,
+                          public / 'anciens/.systeme' / nom)
             self.permissions_consultation()
             journal['termine'] = True
             ecrire_json(fichier, journal)
@@ -516,6 +544,9 @@ class Generations:
         # Les documents administrateur doivent rester lisibles par leur joueur.
         import crypte
         crypte.preparer(self.c)
+        import plateau
+        cycle = etat.charger_cycle_survie(self.c)
+        plateau.preparer_accueil(self.c, cycle['tour'] + 1 if cycle else 0)
 
     def erreur(self, tour, erreur):
         self.marquer(tour, 'recuperation', erreur=str(erreur))

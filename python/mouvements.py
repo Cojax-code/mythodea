@@ -248,7 +248,7 @@ def destination_retraite_surnombre(origine, configuration):
     return meilleurs[0]
 
 
-def planifier_positions_surnombre(arrivants, positions_occupees, territoire=None):
+def planifier_positions_surnombre(arrivants, positions_occupees, territoire=None, capacite=20):
     """Calcule tout le placement avant de déplacer un seul général."""
     priorites = []
     cles = set()
@@ -274,10 +274,10 @@ def planifier_positions_surnombre(arrivants, positions_occupees, territoire=None
     placements = []
     for (categorie, rang, _), general in sorted(priorites, key=lambda item: item[0]):
         debut = rang if categorie == 0 else 1
-        place = next((n for n in range(debut, 21) if n not in occupees), None)
+        place = next((n for n in range(debut, capacite + 1) if n not in occupees), None)
         if place is None:
             message = (f"Avertissement : retraite impossible pour {general['joueur']}:{general['nom']}, "
-                       f"aucune place libre entre {debut} et 20 ; reste sur son territoire.")
+                       f"aucune place libre entre {debut} et {capacite} ; reste sur son territoire.")
             rapports.afficher_et_ecrire(message)
             if territoire is not None:
                 rapports.ecrire_rapport_territoire(territoire, message)
@@ -322,7 +322,8 @@ def preparer_retraites_surnombre(arrivants, territoire, configuration, reservati
         if identite in identites:
             raise FileExistsError(f"Une identité existe déjà à l'arrivée : {identite}")
         identites.add(identite)
-    placements = planifier_positions_surnombre(arrivants, occupees, territoire)
+    capacite = 4 if arrivee in configuration["villages"] else 20
+    placements = planifier_positions_surnombre(arrivants, occupees, territoire, capacite)
     destinations = []
     for general, place in placements:
         zone = next(z for z in zones[general["joueur"]] if z.get("emplacement") == place)

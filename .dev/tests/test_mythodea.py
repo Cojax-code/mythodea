@@ -63,10 +63,10 @@ class Regressions(unittest.TestCase):
         self.config.game_path = jeu
         self.config.territoires = [jeu / nom for nom in self.config.carte_territoires]
         for nom, relatif in {
-            "positions_generaux_path": "systeme/positions_generaux.txt",
-            "fatigue_generaux_path": "systeme/fatigue_generaux.txt",
-            "controle_territoires_path": "systeme/controle_territoires.txt",
-            "meteo_path": "systeme/meteo.txt",
+            "positions_generaux_path": ".systeme/positions_generaux.txt",
+            "fatigue_generaux_path": ".systeme/fatigue_generaux.txt",
+            "controle_territoires_path": ".systeme/controle_territoires.txt",
+            "meteo_path": ".systeme/meteo.txt",
             "repli_path": "repli",
             "rapport_dir": "rapport",
             "rapport_court_path": "rapport/rapport_court.txt",
@@ -74,7 +74,7 @@ class Regressions(unittest.TestCase):
             "rapports_territoires_dir": "rapport/territoires",
         }.items():
             setattr(self.config, nom, jeu / relatif)
-        (jeu / "systeme").mkdir(parents=True)
+        (jeu / ".systeme").mkdir(parents=True)
         for joueur in self.config.joueurs:
             CheminTest(f"/home/{joueur}").mkdir(parents=True)
             (jeu / "repli" / joueur).mkdir(parents=True)

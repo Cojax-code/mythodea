@@ -12,7 +12,7 @@ sudo mkdir -p /home/game/terrain2
 sudo mkdir -p /home/game/terrain3
 sudo mkdir -p /home/game/base2
 sudo mkdir -p /home/game/rapport
-sudo mkdir -p /home/game/systeme
+sudo mkdir -p /home/game/.systeme
 
 # Recréer les dossiers joueurs + emplacements.
 for territoire in base1 terrain1 terrain2 terrain3 base2
@@ -75,8 +75,8 @@ sudo chmod 600 /home/game/base2/tentative_j1.txt
 sudo chown -R root:root /home/game/rapport
 sudo chmod -R 755 /home/game/rapport
 
-sudo chown -R root:root /home/game/systeme
-sudo chmod -R 755 /home/game/systeme
+sudo chown -R root:root /home/game/.systeme
+sudo chmod -R 755 /home/game/.systeme
 
 echo "Nettoyage V1.5 terminé."
 echo "Lance ensuite : ./start_v15.sh"

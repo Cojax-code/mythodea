@@ -13,7 +13,8 @@ import securite
 
 
 def exiger_moteur_arrete(configuration):
-    systeme = configuration['game_path'] / 'systeme'
+    config.verifier_structure_actuelle(configuration)
+    systeme = configuration['game_path'] / '.systeme'
     for fichier, json_pid in ((systeme / 'verrou_cycle_survie', False), (systeme / 'gel_survie.json', True)):
         cycle_linux.sans_liens(fichier)
         if fichier.exists():
@@ -29,7 +30,7 @@ def exiger_moteur_arrete(configuration):
 
 def degeler(configuration):
     exiger_moteur_arrete(configuration)
-    fichier = configuration['game_path'] / 'systeme/gel_survie.json'
+    fichier = configuration['game_path'] / '.systeme/gel_survie.json'
     if not fichier.exists():
         return
     donnees = json.loads(fichier.read_text())
@@ -49,7 +50,7 @@ def degeler(configuration):
 
 def retirer_verrou(configuration):
     exiger_moteur_arrete(configuration)
-    verrou = configuration['game_path'] / 'systeme/verrou_cycle_survie'
+    verrou = configuration['game_path'] / '.systeme/verrou_cycle_survie'
     if verrou.exists():
         verrou.unlink()
         cycle_linux.synchroniser_dossier(verrou.parent)
@@ -66,7 +67,7 @@ def republier(configuration, generation):
             raise RuntimeError('Seule la génération interrompue peut être republiée après vérification.')
         gestion = cycle_linux.Generations(configuration)
         gestion.preparer()
-        gestion.generation = configuration['game_path'] / 'systeme/generations' / generation
+        gestion.generation = configuration['game_path'] / '.systeme/generations' / generation
         cycle_linux.sans_liens(gestion.generation)
         resultat = json.loads((gestion.generation / 'resultat.json').read_text())
         if not resultat.get('resolution_terminee'):
@@ -102,8 +103,9 @@ def main(argv=None):
         p.error('Exécuter sous Linux avec root depuis le compte administrateur.')
     c = config.configuration_mode('survie')
     if args.operation == 'diagnostic':
+        config.verifier_structure_actuelle(c)
         for nom in ('cycle_survie.json', 'verrou_cycle_survie', 'gel_survie.json'):
-            fichier = c['game_path'] / 'systeme' / nom
+            fichier = c['game_path'] / '.systeme' / nom
             print(nom + ':\n' + (fichier.read_text() if fichier.exists() else 'absent'))
         return
     if not args.confirmer:

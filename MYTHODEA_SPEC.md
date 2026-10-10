@@ -83,10 +83,10 @@ Responsabilités :
 | `securite.py` | anti-triche, audit des déplacements et contrôles territoriaux sans effets secondaires |
 | `combats.py` | résolution des combats |
 | `rapports.py` | rapports et tableaux |
-| `plateau.py` | structure du plateau et coordination des territoires |
+| `plateau.py` | structure du plateau, accueil passif du village et coordination des territoires |
 | `victoire.py` | objectifs et victoire |
 | `vagues.py` | compositions des vagues Est, sans accès au disque |
-| `survie.py` | cycle Survie Est, progression ennemie, vagues, cascades et retraites différées |
+| `survie.py` | cycle Survie Est, progression et rattrapage ennemis, vagues, cascades et retraites différées |
 | `minuterie.py` | validation de la durée et attente jusqu'à une échéance, sans logique métier |
 | `cycle_linux.py` | gel Linux, capture privée, publication de générations et permissions des phases Survie |
 | `survie_admin.py` | diagnostic, dégel de secours et republication explicitement autorisée, sans rejeu métier |
@@ -114,7 +114,7 @@ communes sont utilisées par la recherche, l'audit et la préparation du plateau
 elles ne lisent ni ne modifient le disque. Une zone numérotée porte un champ
 `emplacement` ; une réserve n'en porte pas. Seules les places actives `1..4`
 participent à la lecture des forces engagées. En Survie, les renforts alliés
-`territoire/joueur/renforts/5..20` sont découverts et audités comme les autres
+`territoire/joueur/renforts/5..20`, uniquement hors village, sont découverts et audités comme les autres
 généraux, avec leurs propriétaires séparés. Ils restent distincts de la réserve.
 
 En Survie, ces descriptions incluent aussi `territoire/bot/renforts/`, sans
@@ -164,13 +164,15 @@ avec le défaut `1` hors village et `2` au village ; un choix existant suit le d
 `mouvements.destination_retraite_surnombre()` cherche l'unique voisin tactique
 rapprochant le plus du village ; un départage ambigu est refusé.
 `mouvements.preparer_retraites_surnombre()` prépare sans déplacement le placement
-des arrivants dans la file alliée `1..20`, selon `position_surnombre` puis leur
+des arrivants dans la file alliée `1..20` hors village (`1..4` en garnison),
+selon `position_surnombre` puis leur
 position d'origine.
 À préférence égale, l'origine logique croissante départage les généraux, sans
 priorité liée à `j1` ou `j2`. Une préférence vide, invalide ou hors de `1..20`
 produit un avertissement et est traitée comme absente, sans réécrire la fiche.
 Les places déjà occupées ou réservées à l'arrivée restent indisponibles. La réserve
-n'entre pas dans ce placement. Un général sans place libre entre son début de recherche et `20`
+n'entre pas dans ce placement. Un général sans place libre entre son début de
+recherche et la capacité d'arrivée (`4` au village, `20` ailleurs)
 reste sur son territoire d'origine avec un avertissement, sans suppression ni
 repli ; les autres retraites possibles continuent. Les unités, fichiers et fatigue sont
 conservés ; les positions officielles sont mises à jour après chaque déplacement.
@@ -320,18 +322,19 @@ Exemples invalides : `general01`, `general0`, `general١`.
 Les compteurs sont stockés dans :
 
 ```text
-/home/game/systeme/compteur_general_j1.txt
-/home/game/systeme/compteur_general_j2.txt
+/home/game/.systeme/compteur_general_j1.txt
+/home/game/.systeme/compteur_general_j2.txt
 ```
 
 Les compteurs et états moteur sont privés : fichiers `root:root 600`, sous
-`systeme/` en `root:root 700`. Leur remplacement atomique prépare un inode privé
+`.systeme/` (en Survie : `root:mythodea_allies 710`, traversée seule pour joindre
+la socket Crypte ; sous-dossiers privés `root:root 700`). Leur remplacement atomique prépare un inode privé
 avant publication ; un fichier temporaire n'est jamais exposé aux joueurs.
 
 Les positions actives sont stockées dans :
 
 ```text
-/home/game/systeme/positions_generaux.txt
+/home/game/.systeme/positions_generaux.txt
 ```
 
 Un numéro déjà généré ne doit jamais être réutilisé. Lorsqu'un général est
@@ -357,7 +360,7 @@ Créer manuellement un dossier portant le nom d'un ancien général ne le ressus
 pas.
 
 Le bot Survie utilise la même identité `bot:generalN`, le même fichier de positions
-et un compteur distinct `systeme/compteur_general_bot.txt`. Il n'est pas soumis
+et un compteur distinct `.systeme/compteur_general_bot.txt`. Il n'est pas soumis
 à la limite de cinq généraux générés des joueurs humains.
 
 ### Fiche
@@ -561,7 +564,7 @@ distance 5 -> 3 tours
 ```
 
 Tant que ce compteur est supérieur à zéro, le général ne peut effectuer aucune
-action. Le compteur est conservé dans `systeme/attente_repli.txt`, privé au moteur
+action. Le compteur est conservé dans `.systeme/attente_repli.txt`, privé au moteur
 (`root:root`, `600`), au format `joueur:generalN=tours_restants`, une ligne par
 général. Un fichier absent signifie qu'aucun délai n'est enregistré.
 
@@ -610,7 +613,7 @@ Une marche forcée valide rend le général **fatigué pour le tour**.
 État de fatigue :
 
 ```text
-/home/game/systeme/fatigue_generaux.txt
+/home/game/.systeme/fatigue_generaux.txt
 ```
 
 La fatigue est recalculée à chaque nouveau tour.
@@ -637,13 +640,15 @@ aucune unité       -> neutre
 les deux présents  -> conteste
 ```
 
-`conteste` est normalement transitoire pendant la résolution. À la fin d'un tour,
-le territoire doit revenir à `j1`, `j2` ou `neutre`.
+`conteste` est normalement transitoire pendant la résolution classique. À la fin
+d'un tour classique, le territoire doit revenir à `j1`, `j2` ou `neutre`.
+En Survie, un rattrapage bot peut laisser un territoire `conteste` jusqu'au prochain
+cycle normal, sans lancer de combat supplémentaire pendant ce rattrapage.
 
 Contrôle persistant :
 
 ```text
-/home/game/systeme/controle_territoires.txt
+/home/game/.systeme/controle_territoires.txt
 ```
 
 Le code sait également retrouver une chaîne de territoires ravitaillés depuis la
@@ -934,6 +939,13 @@ de données. `rapports.afficher_fin_de_tour(configuration=None)` reçoit le prof
 Survie pour produire son exemple de consultation ; sans profil, le comportement
 classique est conservé. Aucun chemin ou exemple classique n'est produit en Survie.
 
+Les anciennes structures visibles sont aussi refusées avant écriture. Le dossier
+technique commun est `.systeme/`. L'accueil Survie est publié sous
+`village/<joueur>/hotel_de_ville/` : journal passif des vagues 0..2, Courrier sans
+traitement de requêtes et copie du rapport court finalisé. Le Clocher commun est
+`village/clocher/` ; il reste attaché au cycle vivant et exclu des captures. La
+publication du village conserve ses inodes, notamment le journal suivi avec `tail -f`.
+
 Responsabilités des API :
 
 - `minuterie.valider_duree()` valide la durée ;
@@ -969,13 +981,16 @@ la génération privée. L'orchestrateur :
    sans déplacement supplémentaire, puis détecte les conflits ;
 5. résout les cascades dans l'ordre `village -> est_1 -> est_2 -> est_3`, réserve
    les retraites admissibles et les applique physiquement après tous les combats ;
-6. sauvegarde le contrôle final, les rapports et l'éventuelle défaite ;
-7. publie de nouveaux inodes puis, en l'absence de défaite, ouvre la consultation
+6. tente un rattrapage pour les seuls survivants bloqués avant combat, si le bot
+   contrôle maintenant leur origine ; aucune deuxième avance pour les forces déjà
+   déplacées, ni déplacement des nouvelles apparitions, ni combat supplémentaire ;
+7. sauvegarde le contrôle final, les rapports et l'éventuelle défaite ;
+8. publie de nouveaux inodes puis, en l'absence de défaite, ouvre la consultation
    de 60 secondes et ensuite le tour suivant avec un nouveau timer de 120 secondes.
 
 Le pilote Survie héberge aussi le collecteur Crypte pendant les fenêtres d'action.
 Il reçoit des observations Bash, authentifie l'UID par le noyau et conserve les
-décisions dans `systeme/crypte.json`, privé `root:root 600`. Une réussite acceptée
+décisions dans `.systeme/crypte.json`, privé `root:root 600`. Une réussite acceptée
 enregistre ensemble son tour, son identifiant et le cooldown, sans créer de général
 sur le plateau vivant. À la clôture, les nouvelles demandes sont refusées ; sous
 gel, les tentatives inachevées sont invalidées et les ateliers nettoyés avant copie.
@@ -991,6 +1006,9 @@ Les règles de recette, permissions et récupération sont définies dans
 
 Les déplacements automatiques sont préparés depuis un inventaire initial des
 actifs et renforts bots, en tenant compte des départs prévus, puis appliqués.
+Une présence alliée active à l'origine bloque le départ de la colonne ; les
+identités bloquées sont distinguées des forces ayant déjà avancé. Les arrivants
+rejoignent la colonne restée sur place, derrière ses occupants.
 Le cycle appelle séparément `avancer_ennemis()` et `creer_vague_est(N + 1, ...)`.
 Les contrôles intermédiaires utilisent `securite.controler_coherence_territoires()`
 sans rejouer l'audit, la fatigue, les sanctions ou l'attente de repli.
@@ -1008,7 +1026,7 @@ ni les combats, ni le contrôle final, ni le passage au tour suivant.
 ### État persistant et reprise du cycle Survie
 
 `etat.charger_cycle_survie()` et `etat.sauvegarder_cycle_survie()` utilisent
-`/home/game/systeme/cycle_survie.json`. Ce fichier privé appartient à `root:root`
+`/home/game/.systeme/cycle_survie.json`. Ce fichier privé appartient à `root:root`
 en `600`. L'écriture passe par `cycle_survie.tmp`, également privé, puis remplace
 atomiquement le fichier d'état. Celui-ci contient `tour` (entier à partir de 0),
 `phase` et, en phase `actions` ou `consultation`, `echeance` (secondes depuis
@@ -1039,7 +1057,7 @@ administrative est nécessaire : aucun retour arrière, audit, vague ou combat n
 rejoué automatiquement. Les journaux et générations sont conservés pour l'examen.
 
 `etat.verrou_cycle_survie()` crée exclusivement
-`/home/game/systeme/verrou_cycle_survie` (`root:root`, `600`), qui contient le PID.
+`/home/game/.systeme/verrou_cycle_survie` (`root:root`, `600`), qui contient le PID.
 Le pilote le garde pendant toute son exécution, y compris l'attente ; les appels
 directs d'ouverture et de résolution prennent aussi ce verrou. Sa présence refuse
 un second moteur Survie. Il est retiré à la sortie, y compris sur exception ou

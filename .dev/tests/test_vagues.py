@@ -32,9 +32,9 @@ class VaguesEst(unittest.TestCase):
             setattr(self, nom, importlib.import_module(nom))
         self.config.game_path = self.racine / "game"
         for nom, relatif in {
-            "positions_generaux_path": "systeme/positions_generaux.txt",
-            "fatigue_generaux_path": "systeme/fatigue_generaux.txt",
-            "controle_territoires_path": "systeme/controle_territoires.txt",
+            "positions_generaux_path": ".systeme/positions_generaux.txt",
+            "fatigue_generaux_path": ".systeme/fatigue_generaux.txt",
+            "controle_territoires_path": ".systeme/controle_territoires.txt",
             "repli_path": "repli", "rapport_long_path": "rapport/rapport_long.txt",
             "rapports_territoires_dir": "rapport/territoires",
         }.items():

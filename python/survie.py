@@ -31,6 +31,7 @@ def profil_survie(configuration=None):
 
 def verifier_plateau_dedie(configuration):
     """Refuse un mélange avec une partie classique, sans effacer ses données."""
+    config.verifier_structure_actuelle(configuration)
     for nom in config.configuration_mode('classique')['carte_territoires']:
         for chemin in (configuration['game_path'] / nom,
                        config.rapports_territoires_dir / (nom + '.txt')):
@@ -104,17 +105,48 @@ def enregistrer_arrivee_ennemi(territoire, chemin, configuration):
     generaux.sauvegarder_ordre_renforts_bot(territoire, [*precedents, chemin], configuration)
 
 
-def preparer_deplacements_ennemis(configuration=None):
+def allies_presents(territoire, configuration):
+    """Même présence active que le contrôle commun, sans rejouer son audit."""
+    for joueur in configuration['joueurs']:
+        for zone in generaux.zones_generaux_territoire(territoire, joueur, configuration):
+            if zone.get('emplacement') not in configuration['emplacements'] or not zone['chemin'].exists():
+                continue
+            if any(p.is_dir() and generaux.numero_general_depuis_nom(p.name) is not None
+                   and generaux.contient_unites(p) for p in zone['chemin'].iterdir()):
+                return True
+    return False
+
+
+def preparer_deplacements_ennemis(configuration=None, rattrapage=None):
     """Plan complet calculé sans mutation à partir d'un seul inventaire initial."""
     configuration = profil_survie(configuration)
     racine = configuration["game_path"]
     initial = {nom: inventorier_ennemis(racine / nom, configuration)
                for nom in ORDRE_RESOLUTION_EST}
+    presences = {nom: allies_presents(racine / nom, configuration) for nom in initial}
+    controles_bot = {nom: not presences[nom] and any(
+        g['emplacement'] in configuration['emplacements'] and generaux.contient_unites(g['chemin'])
+        for g in initial[nom]) for nom in initial}
+    destinations = {}
+    bloques = {}
+    for index, origine in enumerate(ORDRE_RESOLUTION_EST):
+        for general in initial[origine]:
+            destination = origine
+            if index and rattrapage is not None:
+                if rattrapage.get(general['nom']) == origine and controles_bot[origine]:
+                    destination = ORDRE_RESOLUTION_EST[index - 1]
+            elif index:
+                if presences[origine]:
+                    bloques[general['nom']] = origine
+                else:
+                    destination = ORDRE_RESOLUTION_EST[index - 1]
+            destinations[general['nom']] = destination
     mouvements_prepares = []
     files = {}
     for index, destination in enumerate(ORDRE_RESOLUTION_EST):
-        presents = initial[destination] if destination == "village" else []
-        arrivants = initial[ORDRE_RESOLUTION_EST[index + 1]] if index < 3 else []
+        presents = [g for g in initial[destination] if destinations[g['nom']] == destination]
+        arrivants = ([g for g in initial[ORDRE_RESOLUTION_EST[index + 1]]
+                      if destinations[g['nom']] == destination] if index < 3 else [])
         occupees = {g["emplacement"] for g in presents if g["emplacement"] is not None}
         files[destination] = []
         for general in [*presents, *arrivants]:
@@ -131,7 +163,7 @@ def preparer_deplacements_ennemis(configuration=None):
             mouvements_prepares.append({"nom": general["nom"], "origine": general["territoire"],
                                         "destination": destination, "source": general["chemin"],
                                         "chemin": chemin})
-    return {"mouvements": mouvements_prepares, "files": files}
+    return {"mouvements": mouvements_prepares, "files": files, "bloques": bloques}
 
 
 def appliquer_deplacements_ennemis(plan, configuration):
@@ -152,10 +184,29 @@ def appliquer_deplacements_ennemis(plan, configuration):
             if m["origine"] != m["destination"]]
 
 
-def avancer_ennemis(configuration=None):
+def avancer_ennemis(configuration=None, bloques=None):
     configuration = profil_survie(configuration)
     preparer_zones_bot(configuration)
-    return appliquer_deplacements_ennemis(preparer_deplacements_ennemis(configuration), configuration)
+    plan = preparer_deplacements_ennemis(configuration)
+    if bloques is not None:
+        bloques.update(plan['bloques'])
+    return appliquer_deplacements_ennemis(plan, configuration)
+
+
+def rattraper_ennemis(bloques, configuration):
+    """Une tentative réservée aux survivants bloqués avant les combats.
+
+    La destination peut devenir contestée : aucun nouveau combat ici. Le plan
+    repose sur un inventaire unique, même si plusieurs colonnes se rejoignent.
+    """
+    if not bloques:
+        return []
+    plan = preparer_deplacements_ennemis(configuration, rattrapage=bloques)
+    deplacements = appliquer_deplacements_ennemis(plan, configuration)
+    for mouvement in deplacements:
+        rapports.ecrire_rapport_court(
+            f"Rattrapage bot {mouvement['nom']} : {mouvement['origine']} -> {mouvement['destination']}.")
+    return deplacements
 
 
 def creer_vague_est(numero, configuration=None, aleatoire=None):
@@ -296,6 +347,7 @@ def ouvrir_tour_survie(configuration=None, horloge=None):
 def _ouvrir_tour_survie(configuration, horloge=None):
     """Prépare une seule fois les généraux et ouvre la fenêtre d'action."""
     configuration = profil_survie(configuration)
+    config.verifier_structure_actuelle(configuration)
     horloge = time.time if horloge is None else horloge
     duree = minuterie.valider_duree(configuration["duree_phase_action_secondes"])
     cycle = etat.charger_cycle_survie(configuration)
@@ -312,6 +364,7 @@ def _ouvrir_tour_survie(configuration, horloge=None):
     plateau.reparer_structure(configuration)
     preparer_zones_bot(configuration)
     crypte.preparer(configuration)
+    plateau.preparer_accueil(configuration, tour)
     for joueur in configuration["joueurs"]:
         generaux.faire_apparaitre_general_si_possible(joueur, configuration)
     generaux.scanner_ordres_surnombre(configuration)
@@ -370,6 +423,7 @@ def _clore_tour_survie(configuration, gestion, aleatoire=None):
 def _resoudre_tour_capture(configuration, aleatoire=None):
     """Résout une fenêtre d'action ouverte, sans attendre et sans lancer de timer."""
     configuration = profil_survie(configuration)
+    config.verifier_structure_actuelle(configuration)
     cycle = etat.charger_cycle_survie(configuration)
     if cycle is None or cycle["phase"] != "actions":
         raise RuntimeError("Aucune fenêtre d'action Survie ouverte à résoudre.")
@@ -380,7 +434,8 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
     controle_avant = etat.charger_controle_territoires(configuration)
     profil_audit = dict(configuration, tour_preparation=(tour == 0))
     securite.verifier_tous_les_deplacements(profil_audit)
-    deplacements = avancer_ennemis(configuration)
+    bloques = {}
+    deplacements = avancer_ennemis(configuration, bloques)
     securite.controler_coherence_territoires(configuration)
     nouveaux = creer_vague_est(tour + 1, configuration, aleatoire)
     # Assurer une tête de colonne même sur les territoires sans alliés.
@@ -399,6 +454,7 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
     finally:
         rapports.definir_territoire_rapport(None)
     mouvements.appliquer_retraites_surnombre(en_cours_de_fuite, configuration)
+    rattrapages = rattraper_ennemis(bloques, configuration)
     securite.controler_coherence_territoires(configuration)
     plateau.sauvegarder_controle_territoires(configuration)
     controle = etat.charger_controle_territoires(configuration)
@@ -410,10 +466,13 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
         rapports.ecrire_rapport_court("DÉFAITE : le bot contrôle le village.")
     crypte.materialiser(configuration, tour)
     rapports.ecrire_rapport_court(f"Fin du tour {tour} — vague {tour + 1}.")
+    plateau.preparer_accueil(configuration, tour + 1,
+                            config.rapport_court_path.read_text(encoding='utf-8'))
     etat.sauvegarder_cycle_survie(
         {"tour": tour if defaite else tour + 1, "phase": "defaite" if defaite else "a_preparer"},
         configuration)
     return {"tour": tour, "vague": tour + 1, "deplacements": deplacements,
+            "rattrapages": rattrapages,
             "nouveaux": nouveaux, "batailles": batailles, "retraites": en_cours_de_fuite,
             "controle": controle, "defaite": defaite}
 
@@ -436,8 +495,12 @@ def _lancer_partie_survie(configuration, nombre_tours, horloge, dormir):
     resultats = []
     with rapports.droits_allies(gestion.gid):
         cycle = etat.charger_cycle_survie(configuration)
+        nouvelle_partie = cycle is None
         if cycle is None or cycle['phase'] == 'a_preparer':
             cycle = _ouvrir_tour_survie(configuration, horloge)
+        if nouvelle_partie:
+            gestion.afficher(cycle['tour'], 'actions', max(0, cycle['echeance'] - gestion.horloge()))
+            gestion.annoncer_debut()
         while cycle['phase'] != 'defaite' and (nombre_tours is None or len(resultats) < nombre_tours):
             if cycle['phase'] == 'consultation':
                 gestion.attendre(cycle)
@@ -450,7 +513,7 @@ def _lancer_partie_survie(configuration, nombre_tours, horloge, dormir):
                 cycle = _ouvrir_tour_survie(configuration, horloge)
             if cycle['phase'] != 'actions':
                 raise RuntimeError('Cycle interrompu : récupération administrative requise.')
-            # Migration d'une partie étape 7 reprise au milieu de sa fenêtre.
+            # Compléter les documents Crypte lors de la reprise d'une fenêtre.
             crypte.preparer(configuration)
             gestion.attendre(cycle)
             resultat = _clore_tour_survie(configuration, gestion)

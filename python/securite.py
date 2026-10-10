@@ -37,13 +37,7 @@ def controler_coherence_territoires(configuration):
                             raise ValueError(f"Collision non résolue : {territoire.name}/{cle}")
                         places.add(cle)
                     if place in configuration["emplacements"]:
-                        vivant = False
-                        for bloc in config.ordre_blocs:
-                            dossier = chemin / bloc
-                            if dossier.exists() and any(generaux.identifier_unite(u) != "inconnu"
-                                                        for u in dossier.iterdir()):
-                                vivant = True
-                        if vivant:
+                        if generaux.contient_unites(chemin):
                             presences[territoire.name].add(acteur["camp"])
     tactiques = {t.name for t in configuration["territoires"]}
     manquantes = {i for i, position in officielles.items()
@@ -471,6 +465,7 @@ def verifier_tous_les_deplacements(configuration=None):
 
     if configuration is None:
         configuration = config.configuration_mode("classique")
+    config.verifier_structure_actuelle(configuration)
 
     rapports.afficher_et_ecrire(
         "\n=== Vérification des déplacements ==="

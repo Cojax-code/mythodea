@@ -35,7 +35,7 @@ def home_generation(joueur):
 
 def chemin_etat(nom):
     courant = _generation.get()
-    return courant[0] / "systeme" / globals()[nom].name if courant else globals()[nom]
+    return courant[0] / ".systeme" / globals()[nom].name if courant else globals()[nom]
 
 game_path = Path("/home/game")
 
@@ -61,11 +61,11 @@ bases_joueurs = {
 }
 
 positions_generaux_path = (
-    game_path / "systeme" / "positions_generaux.txt"
+    game_path / ".systeme" / "positions_generaux.txt"
 )
 
 fatigue_generaux_path = (
-    game_path / "systeme" / "fatigue_generaux.txt"
+    game_path / ".systeme" / "fatigue_generaux.txt"
 )
 
 repli_path = game_path / "repli"
@@ -159,7 +159,7 @@ rapports_territoires_dir = (
 
 meteo_path = (
     game_path
-    / "systeme"
+    / ".systeme"
     / "meteo.txt"
 )
 
@@ -172,10 +172,25 @@ meteos_possibles = [
     "neige",
 ]
 
-controle_territoires_path = game_path / "systeme" / "controle_territoires.txt"
+controle_territoires_path = game_path / ".systeme" / "controle_territoires.txt"
 
 
 modes_disponibles = ("classique", "survie")
+
+
+def verifier_structure_actuelle(configuration):
+    """Refuse les anciens chemins avant toute écriture, même s'ils sont vides."""
+    racine = configuration['game_path']
+    anciens = [racine / 'systeme']
+    if configuration['mode'] == 'survie':
+        anciens += [racine / nom for nom in ('clocher', 'communication')]
+        anciens += [racine / 'village' / j / nom
+                    for j in configuration['joueurs'] for nom in ('poste', 'clocher', 'renforts')]
+    for chemin in anciens:
+        if chemin.exists() or chemin.is_symlink():
+            raise RuntimeError(f'Ancienne structure incompatible : {chemin}. '
+                               'Arrêter le moteur et faire archiver la partie par un administrateur ; '
+                               'aucune migration automatique ni suppression effectuée.')
 
 
 def configuration_mode(mode):
