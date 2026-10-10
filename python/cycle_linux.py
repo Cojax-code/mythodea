@@ -6,9 +6,11 @@ Linux pour permettre aux tests d'injecter une horloge et un contrôleur de gel.
 import grp
 import hashlib
 import json
+import logging
 import os
 from pathlib import Path
 import pwd
+import re
 import stat
 import subprocess
 import time
@@ -148,8 +150,104 @@ class Linux:
                 raise RuntimeError(f"Groupe déjà gelé : {groupe}")
 
     def annoncer(self, message):
-        subprocess.run(['wall', '-n', '-t', '2', '-g', self.configuration['groupe_allie']],
-                       input=message + '\n', text=True, check=True, timeout=5)
+        # Les appels de capture ET de publication attendent cet envoi avant geler().
+        if self.geles:
+            raise RuntimeError("L'annonce doit précéder le gel des joueurs.")
+        envoyes = set()
+        erreurs = []
+        for uid, tty in self.terminaux_ssh():
+            if (uid, tty) in envoyes:
+                continue
+            try:
+                if self.ecrire_terminal(uid, tty, message):
+                    envoyes.add((uid, tty))
+            except OSError as erreur:
+                erreurs.append(f'{tty} : {erreur}')
+        if erreurs:
+            raise RuntimeError("Annonce incomplète avant gel : " + '; '.join(erreurs))
+        if envoyes:
+            # L'écriture sur le PTY est synchrone, mais sshd doit encore relayer
+            # les octets avant que sa slice soit gelée. Laisser tourner le relais.
+            time.sleep(0.2)
+
+    def terminaux_ssh(self):
+        """Sessions logind des joueurs ; aucun recours à utmp/wall."""
+        comptes = {str(uid): self.configuration['acteurs'][j]['proprietaire_linux']
+                   for j, uid in zip(self.configuration['joueurs'], self.uids)}
+        sessions = subprocess.run(['loginctl', 'list-sessions', '--no-legend', '--no-pager'],
+                                  capture_output=True, text=True, check=True, timeout=5)
+        terminaux = set()
+        for ligne in sessions.stdout.splitlines():
+            champs = ligne.split()
+            if len(champs) < 2 or champs[1] not in comptes:
+                continue
+            session = subprocess.run(
+                ['loginctl', 'show-session', champs[0], '--no-pager',
+                 '--property=User,Name,Service,State,TTY,Leader'],
+                capture_output=True, text=True, check=False, timeout=5)
+            if session.returncode:
+                # Une déconnexion peut survenir entre l'inventaire et la lecture.
+                logging.warning('Session SSH %s indisponible : %s', champs[0], session.stderr.strip())
+                continue
+            infos = dict(l.split('=', 1) for l in session.stdout.splitlines() if '=' in l)
+            uid = infos.get('User')
+            if (uid not in comptes or infos.get('Name') != comptes[uid]
+                    or infos.get('Service') != 'sshd'
+                    or infos.get('State') not in ('active', 'online')):
+                continue
+            tty = infos.get('TTY', '').removeprefix('/dev/')
+            if re.fullmatch(r'pts/[0-9]+', tty):
+                terminaux.add((int(uid), tty))
+                continue
+            leader = infos.get('Leader', '')
+            if not re.fullmatch(r'[1-9][0-9]*', leader):
+                continue
+            # Sur Debian 13, le Leader root est « sshd-session: joueur [priv] ».
+            # Son enfant appartenant au joueur porte « sshd-session: joueur@pts/N ».
+            enfants = subprocess.run(['ps', '--ppid', leader, '-o', 'uid=,args='],
+                                     capture_output=True, text=True, check=False, timeout=5)
+            if enfants.returncode not in (0, 1):
+                raise RuntimeError(f'Lecture des enfants SSH impossible : {enfants.stderr.strip()}')
+            motif = rf'sshd(?:-session)?: {re.escape(comptes[uid])}@(pts/[0-9]+)'
+            for enfant in enfants.stdout.splitlines():
+                champs_enfant = enfant.strip().split(None, 1)
+                if len(champs_enfant) != 2 or champs_enfant[0] != uid:
+                    continue
+                correspondance = re.fullmatch(motif, champs_enfant[1].strip())
+                if correspondance:
+                    terminaux.add((int(uid), correspondance[1]))
+        return sorted(terminaux)
+
+    @staticmethod
+    def ecrire_terminal(uid, tty, message):
+        """Valide aussi le descripteur ouvert, sans créer ni modifier de droits."""
+        if not re.fullmatch(r'pts/[0-9]+', tty):
+            raise ValueError(f'Terminal SSH invalide : {tty}')
+        chemin = Path('/dev') / tty
+        try:
+            infos = chemin.lstat()
+            if not stat.S_ISCHR(infos.st_mode) or infos.st_uid != uid:
+                logging.warning('Terminal ignoré (type/propriétaire inattendu) : %s', chemin)
+                return False
+            fd = os.open(chemin, os.O_WRONLY | os.O_NOFOLLOW | os.O_NOCTTY | os.O_NONBLOCK)
+        except FileNotFoundError:
+            return False  # Session fermée depuis l'inventaire.
+        try:
+            actuel = os.fstat(fd)
+            if (actuel.st_uid != uid or not stat.S_ISCHR(actuel.st_mode)
+                    or (actuel.st_dev, actuel.st_ino) != (infos.st_dev, infos.st_ino)
+                    or not os.isatty(fd)):
+                logging.warning('Terminal modifié ou invalide, envoi refusé : %s', chemin)
+                return False
+            restant = ('\n' + message + '\n').encode('utf-8')
+            while restant:
+                taille = os.write(fd, restant)
+                if taille == 0:
+                    raise OSError('Écriture TTY interrompue')
+                restant = restant[taille:]
+            return True
+        finally:
+            os.close(fd)
 
     def geler(self):
         self.verifier_processus()

@@ -279,8 +279,20 @@ cat /home/game/clocher/etat_tour.txt
 tail -f /home/game/clocher/suivi_tour.log
 ```
 
-Le Clocher complète l'annonce `wall` envoyée avant le gel. Une seule session SSH
-principale par joueur suffit ; aucune autre fonctionnalité de bâtiment n'est requise.
+Le Clocher complète l'annonce écrite directement par root sur les terminaux SSH
+des joueurs avant le gel. Toutes leurs sessions SSH actives sont recherchées via
+`loginctl`. Si le champ `TTY` est vide, le terminal `pts/N` est extrait du nom de
+l'enfant `sshd-session: joueur@pts/N` (ou `sshd: joueur@pts/N`) du `Leader`, avec
+vérification de l'UID de cet enfant. Chaque `/dev/pts/N` doit être un terminal
+appartenant au joueur attendu ; son propriétaire est revérifié après ouverture.
+Les liens et autres types de fichiers sont refusés, sans changement de permissions.
+Les envois sont terminés avant le gel de capture comme de publication, avec une
+courte attente de 0,2 seconde permettant au relais SSH de s'exécuter. Cette attente
+ne constitue pas un accusé de réception du terminal distant : la visibilité avant
+gel doit être validée sur la machine cible. Une erreur d'écriture bloque le gel ;
+les sessions fermées, sans terminal ou avec un terminal non valide sont ignorées.
+`wall` n'est pas utilisé. Une seule session SSH principale par joueur suffit ;
+aucune autre fonctionnalité de bâtiment n'est requise.
 
 ---
 
@@ -452,7 +464,7 @@ une version ultérieure.
 La phase d'action dure **120 secondes (2 minutes) par défaut**, y compris au tour 0.
 
 Un tour comprend une fenêtre d'action joueurs puis sa résolution automatique.
-À son expiration : `wall`, annonce au Clocher, gel réel confirmé de j1/j2,
+À son expiration : annonce directe sur les TTY SSH, annonce au Clocher, gel réel confirmé de j1/j2,
 capture cohérente, puis dégel. Le gel dure **au moins 10 secondes**, même si la
 copie finit avant. Une capture plus longue prolonge le gel et l'annonce au Clocher.
 Le seuil de sécurité est configurable (`--seuil-capture`), avec une valeur

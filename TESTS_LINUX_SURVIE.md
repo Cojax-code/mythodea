@@ -5,7 +5,7 @@ La suite ordinaire simule les droits. `python/tests_linux/test_permissions_reell
 Les tests automatiques s'exécutent dans `/tmp`, jamais sur une partie `/home/game`.
 Ils créent puis retirent j1/j2 et le groupe allié ; ils refusent de démarrer si ces
 comptes ou ce groupe existent déjà. Utiliser une VM/installation Linux dédiée et
-jetable, démarrée avec systemd, avec Python 3, `wall` et les outils de comptes Unix.
+jetable, démarrée avec systemd, avec Python 3, `loginctl`, `ps` et les outils de comptes Unix.
 
 ```bash
 sudo python3 -B python/tests_linux/test_permissions_reelles.py
@@ -22,7 +22,8 @@ Les commandes suivantes concernent le serveur de démonstration, avec un plateau
 dédié sans ancienne partie classique ni anciens rapports territoriaux classiques.
 Le moteur refuse ce mélange sans le nettoyer : faire archiver séparément l'ancienne
 partie par l'administrateur. Garder une session administrateur distincte ouverte.
-Les joueurs utilisent chacun une seule session SSH principale. Le moteur doit
+Une seule session SSH principale par joueur suffit ; toutes les sessions SSH
+avec un terminal valide reçoivent les annonces. Le moteur doit
 être lancé depuis l'administrateur, jamais depuis un `sudo` dans la session j1/j2.
 
 ```bash
@@ -32,7 +33,8 @@ id j1
 id j2
 stat -fc %T /sys/fs/cgroup
 systemctl --version
-command -v wall
+command -v loginctl
+command -v ps
 sudo groupadd -f mythodea_allies
 sudo usermod -aG mythodea_allies j1
 sudo usermod -aG mythodea_allies j2
@@ -69,15 +71,21 @@ des services de connexion/PAM du serveur. Dans chaque session SSH joueur :
 ```bash
 id
 cat /proc/self/cgroup
-mesg y
 ```
 
 La ligne cgroup doit être sous `/user.slice/user-<son UID>.slice/`. Vérifier depuis
-l'administrateur que cette annonce arrive bien dans les deux terminaux :
+l'administrateur, à la racine du dépôt, que cette annonce arrive bien dans tous
+les terminaux joueurs (ouvrir aussi une seconde session j1 pour ce contrôle) :
 
 ```bash
-printf 'TEST MYTHODEA : annonce avant gel\n' | sudo wall -n -t 2 -g mythodea_allies
+sudo python3 -B -c 'import sys; sys.path.insert(0, "python"); import config, cycle_linux; cycle_linux.Linux(config.configuration_mode("survie")).annoncer("TEST MYTHODEA : annonce avant gel")'
 ```
+
+Ce contrôle envoie uniquement une annonce, sans geler les slices ni lancer de tour.
+Le champ `TTY` de `loginctl` peut être vide : le moteur cherche alors `pts/N` dans
+le nom de l'enfant joueur du `Leader` SSH. Il vérifie le propriétaire réel du
+terminal avant d'écrire directement dessus en root. `wall` et `mesg y` ne sont
+pas nécessaires. Une session sans terminal (SFTP, par exemple) est ignorée.
 
 Le moteur démarre `user@<UID>.service` afin de maintenir les slices même sans SSH.
 Il ne tue pas les sessions et n'utilise ni ACL supplémentaire, bind mount ou namespace.
@@ -143,7 +151,8 @@ Ctrl+C pour revenir au shell :
 tail -f /home/game/clocher/suivi_tour.log
 ```
 
-À expiration : `wall` arrive avant le gel, le terminal est suspendu au moins
+À expiration : l'annonce directe arrive dans chaque terminal SSH avant le gel,
+sans attendre le dégel pour apparaître. Le terminal est suspendu au moins
 10 secondes, puis reprend pendant la résolution privée. Depuis l'administrateur,
 pendant la capture :
 
@@ -379,5 +388,5 @@ le même numéro ; ne pas remettre manuellement `a_creer` pour demander un rejeu
 Les tests Linux réels couvrent les droits, le gel noyau, les FD, les liens, le refus
 des processus hors confinement, les interruptions et la republication administrative.
 Leur succès sous WSL2/ext4 ne dispense pas des essais SSH et de mesure du gel sur
-le Raspberry Pi cible. En particulier, réception visuelle de `wall`, configuration
+le Raspberry Pi cible. En particulier, réception visuelle de l'annonce TTY avant gel, configuration
 PAM des sessions et temps d'E/S du stockage sont à vérifier sur cette machine.
