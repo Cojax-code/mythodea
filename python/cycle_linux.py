@@ -546,7 +546,9 @@ class Generations:
         crypte.preparer(self.c)
         import plateau
         cycle = etat.charger_cycle_survie(self.c)
-        plateau.preparer_accueil(self.c, cycle['tour'] + 1 if cycle else 0)
+        vague = 0 if cycle is None else cycle['tour'] + (
+            cycle['phase'] in ('consultation', 'defaite'))
+        plateau.preparer_accueil(self.c, vague)
 
     def erreur(self, tour, erreur):
         self.marquer(tour, 'recuperation', erreur=str(erreur))

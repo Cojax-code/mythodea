@@ -1,0 +1,16 @@
+Vague 9 - Automatiser avec une boucle for
+
+----------------------------------------------------------
+
+CONSEIL
+Créer plusieurs unités similaires avec une boucle.
+
+>>> COMMANDE
+
+for i in 1 2 3 4 5; do mkdir arriere/archer$i; done
+
+NOTE : Cette première boucle évite volontairement les options complexes ; elle montre surtout for, do, done et la variable i.
+
+Une boucle for répète la même action pour plusieurs valeurs. Dans l'exemple, i prend successivement les valeurs 1, 2, 3, 4 et 5 : la même commande de création est donc exécutée cinq fois avec un nom différent.
+
+Cette méthode devient utile pour préparer rapidement plusieurs unités similaires. Il faut cependant toujours respecter la limite totale d'unités d'un général et les règles d'entraînement du lieu où il se trouve.

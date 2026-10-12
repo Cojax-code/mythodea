@@ -1,0 +1,19 @@
+Vague 10 - Plusieurs blocs avec une double boucle
+
+----------------------------------------------------------
+
+CONSEIL
+Créer des unités dans plusieurs blocs avec deux boucles.
+
+>>> COMMANDE
+
+for bloc in droite gauche; do for i in 1 2 3; do mkdir "$bloc/piquier$i"; done; done
+
+NOTE : La boucle externe choisit le bloc ; la boucle interne répète la création des unités.
+
+Une double boucle combine deux répétitions. La boucle extérieure choisit ici le bloc, tandis que la boucle intérieure répète la création de plusieurs unités dans ce bloc.
+
+Cette technique permet de préparer plusieurs flancs avec une seule structure de commande. Elle est plus compacte, mais demande de bien distinguer la variable qui représente le bloc de celle qui sert de compteur.
+
+
+

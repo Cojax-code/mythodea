@@ -197,7 +197,7 @@ Structure visible du prototype :
 │   │   ├── garnison/1..4/
 │   │   ├── reserve/
 │   │   ├── hotel_de_ville/
-│   │   │   ├── journal_du_Toonitruand/vague_0.txt, vague_1.txt, vague_2.txt
+│   │   │   ├── journal_du_Toonitruand/vague_0.txt ... vague_N.txt  # N ≤ 10, vagues atteintes
 │   │   │   ├── rapport.txt
 │   │   │   └── courrier/{envoie_message.txt,reception_message.txt,liste_requetes.txt}
 │   │   └── crypte/{grimoire,atelier,recompense}/
@@ -253,12 +253,21 @@ L'audit seul ne lance ni cycle de partie ni scan périodique.
 `plateau.preparer_accueil()` prépare les documents sans créer d'unités ni lancer de
 mécanique de requête. Chaque joueur dispose de son Hôtel de Ville séparé.
 
-Le journal du Toonitruand est un tutoriel passif : conseils courts et exemples de
-commandes Linux, personnalisés pour j1/j2. Le prototype contient trois fichiers,
-`vague_0.txt`, `vague_1.txt`, `vague_2.txt`. Seules les vagues atteintes sont publiées :
-0 à l'ouverture, 1 après la première résolution, 2 après la suivante. Aucun suivi
-de lecture, accomplissement, validation ou récompense. Les conseils et leur ordre
-restent provisoires. Les vagues ultérieures n'ajoutent pas encore de fichiers.
+Le journal du Toonitruand est un tutoriel passif : conseils, commandes, notes et
+explications du document validé, personnalisés pour j1/j2 depuis les mêmes modèles
+dans `python/textes/journal_du_Toonitruand/`. Il comprend onze textes, de
+`vague_0.txt` à `vague_10.txt`. Seul `vague_0.txt` est publié au démarrage, avec une
+introduction expliquant la découverte progressive du jeu. Chaque nouvelle vague
+publie son fichier après résolution ; les fichiers futurs n'existent pas encore
+dans le journal joueur. Une reprise à la vague N complète les fichiers manquants
+0..min(N, 10), y compris pendant une fenêtre déjà ouverte. Les anciens conseils
+ne sont jamais supprimés ni réécrits. Il n'y a aucun suivi de lecture,
+accomplissement, validation ou récompense.
+
+La vague 5 présente les combats avec plusieurs généraux, la vague 6 la Crypte.
+Les commandes internes des recettes restent dans les PDF. Le texte pédagogique
+n'active pas les futures règles d'entraînement ou de rappel vers le home :
+ces changements de gameplay restent distincts de la publication du journal.
 
 `rapport.txt` est une copie du rapport court commun, préparée après finalisation
 du bilan puis publiée avec la génération du village. La génération commune reste

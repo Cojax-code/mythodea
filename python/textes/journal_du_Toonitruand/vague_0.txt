@@ -1,0 +1,142 @@
+Le Journal du Toonitruand vous expliquera le déroulement du jeu petit à petit.
+À chaque nouvelle vague, de nouveaux conseils apparaîtront ici.
+Il n'est pas nécessaire de tout apprendre immédiatement : découvrez les mécaniques
+et les commandes Linux au fur et à mesure de votre progression.
+
+
+Entrée dans le jeu
+
+----------------------------------------------------------
+
+CONSEIL
+Lire le journal  de bord du Toonitruand pour savoir quoi découvrir en priorité.
+
+>>> COMMANDE
+
+cat /home/game/village/{joueur}/hotel_de_ville/journal_du_Toonitruand/vague_0.txt
+
+NOTE : Le journal donne des conseils ; facultative mais lecture fortement recommande.
+
+----------------------------------------------------------
+
+CONSEIL
+Regarder ce qui se trouve dans votre home.
+
+>>> COMMANDE
+
+ls -l /home/{joueur}
+
+NOTE : Votre général classique apparaît dans votre home.
+
+----------------------------------------------------------
+
+CONSEIL
+Vérifier votre position actuelle dans l'arborescence.
+
+>>> COMMANDE
+
+pwd
+
+NOTE : Cette commande est utile dès que vous ne savez plus dans quel dossier vous vous trouvez.
+
+Vague 0 - Prendre ses repères
+
+----------------------------------------------------------
+
+CONSEIL
+Explorer votre village.
+
+>>> COMMANDE
+
+ls -l /home/game/village/{joueur}
+
+NOTE : Vous y trouverez notamment la garnison, la réserve, la Crypte et l'Hôtel de Ville.
+
+----------------------------------------------------------
+
+CONSEIL
+Voir l'arborescence du village de façon plus visuelle.
+
+>>> COMMANDE
+
+tree /home/game/village/{joueur}
+
+NOTE : tree est pratique pour comprendre la structure générale sans ouvrir chaque dossier.
+
+----------------------------------------------------------
+
+CONSEIL
+Consulter le Clocher.
+
+>>> COMMANDE
+
+cat /home/game/village/clocher/etat_tour.txt
+
+NOTE : Le Clocher indique l'état actuel du cycle et le temps restant.
+
+----------------------------------------------------------
+
+CONSEIL
+Observer la structure de votre premier général.
+
+>>> COMMANDE
+
+tree /home/{joueur}/general1
+
+NOTE : Un général contient quatre blocs : avant, droite, gauche et arrière.
+
+----------------------------------------------------------
+
+CONSEIL
+Créer le dossier de votre premier archer dans le bloc arrière.
+
+>>> COMMANDE
+
+mkdir /home/{joueur}/general1/arriere/infanterie1
+touch /home/{joueur}/general1/arriere/infanterie1/arc
+
+NOTE : mkdir crée le dossier de l'unité. touch crée ensuite le fichier d'équipement arc : c'est ce fichier qui finalise ici l'unité en archer.
+
+----------------------------------------------------------
+
+CONSEIL
+Créer et finaliser un piquier sur le flanc droit.
+
+>>> COMMANDE
+
+mkdir /home/{joueur}/general1/droite/infanterie2
+touch /home/{joueur}/general1/droite/infanterie2/pique
+
+NOTE : Le dossier infanterie devient un piquier grâce au fichier pique créé avec touch. Les flancs seront importants dans les formations futures.
+
+----------------------------------------------------------
+
+CONSEIL
+Créer et finaliser un cavalier à l'avant.
+
+>>> COMMANDE
+
+mkdir /home/{joueur}/general1/avant/cavalerie1
+touch /home/{joueur}/general1/avant/cavalerie1/cheval
+
+NOTE : Le fichier cheval finalise l'unité de cavalerie. Retenez surtout le principe : le dossier représente l'unité et touch ajoute l'équipement qui détermine son type.
+
+----------------------------------------------------------
+
+CONSEIL
+Déployer votre général dans une place de garnison libre.
+
+>>> COMMANDE
+
+mv /home/{joueur}/general1 /home/game/village/{joueur}/garnison/1/
+
+NOTE : Les déplacements dans Mythodea sont de vrais déplacements de dossiers. La granison represnte le lieu de defense du village.
+
+Un tour alterne plusieurs phases. Pendant ACTIONS, vous pouvez préparer vos généraux et effectuer vos déplacements jusqu'à la fin du temps indiqué par le Clocher. À la clôture, les sessions joueurs sont brièvement gelées afin que le moteur capture un état cohérent de la partie.
+
+Après cette capture, les joueurs sont dégelés pendant que Mythodea résout le tour : déplacement du bot, apparition de la nouvelle vague et combats. Une phase de CONSULTATION permet ensuite de lire les résultats avant le retour à ACTIONS.
+
+Votre objectif est de résister au plus grand nombre de vagues possible. Si les forces du bot finissent par contrôler le village, la partie est perdue. Le Clocher sert de repère pour connaître la phase actuelle et le temps restant.
+
+
+

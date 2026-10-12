@@ -1,6 +1,6 @@
 """Accueil, publication et refus des anciens plateaux, en isolation."""
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 import test_cycle_survie
 from support_cycle import GelSimule
@@ -14,6 +14,12 @@ class AccueilSurvie(unittest.TestCase):
     def hotel(self, joueur='j1'):
         return self.config.game_path / 'village' / joueur / 'hotel_de_ville'
 
+    def verifier_journal(self, vague):
+        for joueur in self.profil['joueurs']:
+            journal = self.hotel(joueur) / 'journal_du_Toonitruand'
+            self.assertEqual({p.name for p in journal.iterdir()},
+                             {f'vague_{n}.txt' for n in range(vague + 1)})
+
     def test_journal_progressif_passif_personnalise(self):
         self.plateau.preparer_accueil(self.profil)
         for j in self.profil['joueurs']:
@@ -26,7 +32,116 @@ class AccueilSurvie(unittest.TestCase):
         journal = self.hotel() / 'journal_du_Toonitruand'
         self.assertEqual({p.name for p in journal.iterdir()}, {'vague_0.txt', 'vague_1.txt'})
         self.plateau.preparer_accueil(self.profil, 20)
-        self.assertEqual(len(list(journal.iterdir())), 3)
+        self.verifier_journal(10)
+
+    def test_nouvelle_partie_et_publication_premiere_vague(self):
+        (self.config.game_path / '.systeme/cycle_survie.json').unlink()
+        self.survie.ouvrir_tour_survie(self.profil)
+        self.verifier_journal(0)
+        avant = (self.hotel() / 'journal_du_Toonitruand/vague_0.txt').read_bytes()
+        self.survie.resoudre_tour_survie(self.profil)
+        self.verifier_journal(1)
+        self.assertEqual((self.hotel() / 'journal_du_Toonitruand/vague_0.txt').read_bytes(), avant)
+
+    def test_passage_vague_cinq_et_conservation_des_acquis(self):
+        self.plateau.preparer_accueil(self.profil, 1)
+        self.plateau.preparer_accueil(self.profil, 5)
+        self.verifier_journal(5)
+        self.plateau.preparer_accueil(self.profil, 2)
+        self.verifier_journal(5)
+
+    def test_reprise_directe_vague_quatre_sans_rejouer_la_preparation(self):
+        self.activer(4)
+        avant = self.etat.charger_cycle_survie(self.profil)
+        with patch.object(self.generaux, 'faire_apparaitre_general_si_possible') as apparition:
+            self.assertEqual(self.survie.ouvrir_tour_survie(self.profil), avant)
+            apparition.assert_not_called()
+        self.verifier_journal(4)
+        self.assertEqual(self.etat.charger_cycle_survie(self.profil), avant)
+
+    def test_pilote_complete_le_journal_avant_attente_de_reprise(self):
+        for phase, tour in (('actions', 4), ('consultation', 3)):
+            with self.subTest(phase=phase):
+                self.etat.sauvegarder_cycle_survie(
+                    {'tour': tour, 'phase': phase, 'echeance': 100}, self.profil)
+                for joueur in self.profil['joueurs']:
+                    journal = self.hotel(joueur) / 'journal_du_Toonitruand'
+                    for fichier in journal.glob('vague_*.txt'):
+                        fichier.unlink()
+                def verifier(gestion, cycle):
+                    self.verifier_journal(4)
+                    raise KeyboardInterrupt
+                with patch.object(self.cycle_linux.Generations, 'attendre', autospec=True,
+                                  side_effect=verifier), \
+                        patch.object(self.plateau, 'preparer_accueil') as accueil:
+                    with self.assertRaises(KeyboardInterrupt):
+                        self.survie.lancer_partie_survie(self.profil, 1)
+                    accueil.assert_not_called()
+
+    def test_idempotence_et_reparation_d_un_conseil_manquant(self):
+        self.plateau.preparer_accueil(self.profil, 4)
+        fichiers = [p for j in self.profil['joueurs']
+                    for p in (self.hotel(j) / 'journal_du_Toonitruand').iterdir()]
+        # Un ancien texte déjà débloqué ne doit pas être remplacé par le modèle.
+        fichiers[0].write_text('Conseil historique conservé.\n', encoding='utf-8')
+        avant = {p: (p.read_bytes(), p.stat().st_mtime_ns, p.stat().st_ino) for p in fichiers}
+        self.plateau.preparer_accueil(self.profil, 4)
+        self.verifier_journal(4)
+        self.assertEqual(avant, {p: (p.read_bytes(), p.stat().st_mtime_ns, p.stat().st_ino)
+                                for p in fichiers})
+        manquant = self.hotel('j2') / 'journal_du_Toonitruand/vague_2.txt'
+        contenu = manquant.read_bytes()
+        manquant.unlink()
+        self.plateau.preparer_accueil(self.profil, 4)
+        self.assertEqual(manquant.read_bytes(), contenu)
+        self.verifier_journal(4)
+
+    def test_textes_personnalises_introduction_et_contenu_valide(self):
+        self.plateau.preparer_accueil(self.profil, 10)
+        for joueur, autre in (('j1', 'j2'), ('j2', 'j1')):
+            journal = self.hotel(joueur) / 'journal_du_Toonitruand'
+            textes = [(journal / f'vague_{n}.txt').read_text(encoding='utf-8') for n in range(11)]
+            for texte in textes:
+                self.assertIn('----------------------------------------------------------\n', texte)
+                self.assertIn('CONSEIL\n', texte)
+                self.assertIn('>>> COMMANDE\n', texte)
+                self.assertIn('NOTE :', texte)
+                for absent in (autre, '{joueur}', '/chemin/vers/', 'À expliquer librement',
+                               'crypte_commence', 'crypte_fin', 'mkdir appel', 'chmod 660 rempart'):
+                    self.assertNotIn(absent, texte)
+            self.assertIn('déroulement du jeu petit à petit', textes[0].splitlines()[0])
+            self.assertLess(textes[0].index('À chaque nouvelle vague'), textes[0].index('CONSEIL'))
+            for bloc, unite, equipement in (('arriere', 'infanterie1', 'arc'),
+                                             ('droite', 'infanterie2', 'pique'),
+                                             ('avant', 'cavalerie1', 'cheval')):
+                chemin = f'/home/{joueur}/general1/{bloc}/{unite}'
+                self.assertIn(f'mkdir {chemin}\ntouch {chemin}/{equipement}', textes[0])
+            self.assertIn(f'/home/game/village/{joueur}/garnison/1/', textes[0])
+            self.assertIn('ses fichiers enfants, comme arc, suivent automatiquement', textes[1])
+            self.assertIn('Ce rattrapage ne déclenche jamais un deuxième combat', textes[2])
+            self.assertIn('Vague 5 - Combats avec plusieurs généraux', textes[5])
+            self.assertNotIn('crypte', textes[5].lower())
+            self.assertIn('Vague 6 - Découvrir la Crypte', textes[6])
+            self.assertIn(f'scp {joueur}@Mythodea.local:/home/game/village/{joueur}/crypte/', textes[6])
+            self.assertIn('Une double boucle combine deux répétitions.', textes[10])
+
+    def test_permissions_du_journal_et_aucune_vague_en_avance(self):
+        self.activer(0)
+        self.plateau.preparer_accueil(self.profil)
+        gestion = self.cycle_linux.Generations(self.profil, GelSimule())
+        gestion.permissions_actions()
+        self.verifier_journal(0)
+        for joueur in self.profil['joueurs']:
+            gid = self.plateau.grp.getgrnam(self.profil['acteurs'][joueur]['groupe_linux']).gr_gid
+            journal = self.hotel(joueur) / 'journal_du_Toonitruand'
+            self.assertIn(call(journal, 0, gid), self.chown.call_args_list)
+            self.assertIn(call(journal, 0o750), self.chmod.call_args_list)
+            self.assertIn(call(journal / 'vague_0.txt', 0, gid), self.chown.call_args_list)
+            self.assertIn(call(journal / 'vague_0.txt', 0o640), self.chmod.call_args_list)
+        self.etat.sauvegarder_cycle_survie(
+            {'tour': 0, 'phase': 'consultation', 'echeance': 100}, self.profil)
+        gestion.permissions_actions()
+        self.verifier_journal(1)
 
     def test_courrier_brouillon_preserve_sans_traitement(self):
         self.plateau.preparer_accueil(self.profil)
@@ -54,7 +169,8 @@ class AccueilSurvie(unittest.TestCase):
                              self.config.rapport_court_path.read_bytes())
             texte = (self.hotel(j) / 'journal_du_Toonitruand/vague_2.txt').read_text(encoding='utf-8')
             self.assertNotIn('generations', texte)
-            self.assertIn(str(self.config.game_path), texte)
+            self.assertNotIn(str(self.racine), texte)
+            self.assertIn(f'/home/game/village/{j}/garnison/1', texte)
         gestion.permissions_actions()
         self.assertEqual((self.hotel() / 'rapport.txt').read_bytes(), self.config.rapport_court_path.read_bytes())
 

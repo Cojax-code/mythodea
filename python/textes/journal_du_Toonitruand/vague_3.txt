@@ -1,0 +1,38 @@
+Vague 3 - Garnison, réserve, renforts et repli
+
+----------------------------------------------------------
+
+CONSEIL
+Comparer la garnison et la réserve.
+
+>>> COMMANDE
+
+ls -l /home/game/village/{joueur}
+
+NOTE : La garnison contient les positions actives du village ; la réserve stocke des généraux complets.
+
+----------------------------------------------------------
+
+CONSEIL
+Regarder le contenu de la réserve.
+
+>>> COMMANDE
+
+ls -l /home/game/village/{joueur}/reserve
+
+NOTE : La réserve est une zone logistique du village.
+
+----------------------------------------------------------
+
+CONSEIL
+Observer un territoire ouvert et ses renforts.
+
+>>> COMMANDE
+
+tree /home/game/est_1
+
+NOTE : Le village n'a pas de renforts 5-20, mais cette mécanique existe sur les territoires ouverts.
+
+Le home et la réserve sont les zones logistiques prévues pour entraîner ou compléter les unités d'un général. La garnison et les territoires de combat ne doivent pas permettre de créer librement de nouvelles troupes au front.
+
+Une troupe fraîchement entraînée devra attendre le passage d'un tour avant de pouvoir être déplacée avec son général. Cette règle évite de créer des unités puis de les envoyer immédiatement au combat pendant la même fenêtre d'ACTIONS.

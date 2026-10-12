@@ -2,6 +2,7 @@
 import grp
 import os
 import pwd
+from pathlib import Path
 
 import combats
 import config
@@ -481,30 +482,47 @@ def lancer_bataille_v15():
         )
 
 
+def preparer_journal_toonitruand(configuration, vague=0):
+    """Publie les conseils manquants 0..vague, sans réécrire les acquis."""
+    from cycle_linux import sans_liens
+    modeles = Path(__file__).resolve().parent / 'textes' / 'journal_du_Toonitruand'
+    for joueur in configuration['joueurs']:
+        acteur = configuration['acteurs'][joueur]
+        gid = grp.getgrnam(acteur['groupe_linux']).gr_gid
+        hotel = configuration['game_path'] / 'village' / joueur / 'hotel_de_ville'
+        journal = hotel / 'journal_du_Toonitruand'
+        for dossier in (hotel, journal):
+            sans_liens(dossier)
+            dossier.mkdir(parents=True, exist_ok=True)
+            os.chown(dossier, 0, gid)
+            os.chmod(dossier, 0o750)
+        for numero in range(min(vague, 10) + 1):
+            fichier = journal / f'vague_{numero}.txt'
+            sans_liens(fichier)
+            if not fichier.exists():
+                contenu = (modeles / fichier.name).read_text(encoding='utf-8')
+                # Les commandes gardent les chemins Linux publics du document,
+                # même pendant une résolution dans une génération privée.
+                etat.ecrire_prive(fichier, contenu.replace('{joueur}', joueur))
+            os.chown(fichier, 0, gid)
+            os.chmod(fichier, 0o640)
+
+
 def preparer_accueil(configuration, vague=0, rapport=None):
     """Documents passifs du village ; le rapport est une vue du rapport court."""
     from cycle_linux import sans_liens
+    preparer_journal_toonitruand(configuration, vague)
     for joueur in configuration['joueurs']:
         acteur = configuration['acteurs'][joueur]
         uid = pwd.getpwnam(acteur['proprietaire_linux']).pw_uid
         gid = grp.getgrnam(acteur['groupe_linux']).gr_gid
         village = configuration['game_path'] / 'village' / joueur
         hotel = village / 'hotel_de_ville'
-        for dossier in (hotel, hotel / 'journal_du_Toonitruand', hotel / 'courrier'):
+        for dossier in (hotel, hotel / 'courrier'):
             sans_liens(dossier)
             dossier.mkdir(parents=True, exist_ok=True)
             os.chown(dossier, 0, gid)
             os.chmod(dossier, 0o750)
-        conseils = (
-            [('Explorez votre home pour voir votre général.', f'ls -l /home/{joueur}'),
-             ('Explorez votre village.', f'ls -l {village}'),
-             ('Consultez le temps restant au Clocher.',
-              f'cat {configuration["game_path"]}/village/clocher/etat_tour.txt')],
-            [('Lisez le bilan du tour terminé.', f'cat {hotel}/rapport.txt'),
-             ('Observez les emplacements de votre garnison.', f'ls -l {village}/garnison')],
-            [('Découvrez les documents de la Crypte.', f'ls -l {village}/crypte/grimoire'),
-             ('Consultez les possibilités du Courrier.', f'cat {hotel}/courrier/liste_requetes.txt')],
-        )
         documents = {
             'courrier/envoie_message.txt': '',
             'courrier/reception_message.txt': 'Courrier en préparation : aucune requête traitée pour le moment.\n',
@@ -513,13 +531,6 @@ def preparer_accueil(configuration, vague=0, rapport=None):
                 'Le journal du Toonitruand est un tutoriel passif, sans validation.\n',
             'rapport.txt': rapport if rapport is not None else 'Aucun tour terminé pour le moment.\n',
         }
-        for numero, entrees in enumerate(conseils):
-            if numero <= vague:
-                documents[f'journal_du_Toonitruand/vague_{numero}.txt'] = (
-                    f'=== JOURNAL DU TOONITRUAND — VAGUE {numero} ===\n\n'
-                    + '\n'.join(f'Conseil :\n{conseil}\n\nExemple :\n{exemple}\n'
-                                for conseil, exemple in entrees)).replace(
-                                    str(configuration['game_path']), str(config.game_path))
         for nom, contenu in documents.items():
             fichier = hotel / nom
             sans_liens(fichier)

@@ -941,10 +941,19 @@ classique est conservé. Aucun chemin ou exemple classique n'est produit en Surv
 
 Les anciennes structures visibles sont aussi refusées avant écriture. Le dossier
 technique commun est `.systeme/`. L'accueil Survie est publié sous
-`village/<joueur>/hotel_de_ville/` : journal passif des vagues 0..2, Courrier sans
+`village/<joueur>/hotel_de_ville/` : journal passif des vagues 0..10, Courrier sans
 traitement de requêtes et copie du rapport court finalisé. Le Clocher commun est
 `village/clocher/` ; il reste attaché au cycle vivant et exclu des captures. La
 publication du village conserve ses inodes, notamment le journal suivi avec `tail -f`.
+
+Les modèles du journal sont conservés dans `python/textes/journal_du_Toonitruand/`.
+`plateau.preparer_journal_toonitruand()` personnalise `{joueur}` et crée uniquement
+les fichiers manquants des vagues 0 à la vague atteinte, plafonnée à 10. Les chemins
+des commandes restent les chemins Linux publics, même dans une génération privée.
+Les fichiers déjà débloqués ne sont ni supprimés ni réécrits. Une reprise complète
+les conseils manquants sans rejouer la préparation des généraux ni modifier l'échéance.
+En ACTIONS, la vague atteinte est `tour` ; en CONSULTATION ou après défaite, elle
+est `tour + 1`, puisque la résolution de ce tour est terminée.
 
 Responsabilités des API :
 

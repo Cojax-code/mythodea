@@ -1,0 +1,27 @@
+Vague 8 - Ordres
+
+----------------------------------------------------------
+
+CONSEIL
+Lire l'ordre actuel d'un général.
+
+>>> COMMANDE
+
+cat /home/game/village/{joueur}/garnison/1/general1/ordre.txt
+
+NOTE : Les ordres permettent d'influencer le comportement tactique.
+
+----------------------------------------------------------
+
+CONSEIL
+Écrire un ordre dans le fichier.
+
+>>> COMMANDE
+
+echo '1-2' > /home/game/village/{joueur}/garnison/1/general1/ordre.txt
+
+NOTE : La redirection > remplace le contenu du fichier par la nouvelle valeur.
+
+Les ordres sont écrits dans ordre.txt sous la forme type-numéro, avec parfois une troisième valeur de précision. Le moteur compare cette valeur à son registre des ordres connus ; une écriture inconnue ou mal formée est ignorée.
+
+Le registre présenté au joueur doit donner le numéro, le nom et l'effet de chaque ordre disponible. Modifier ordre.txt permet ainsi de changer le comportement tactique sans utiliser une interface graphique.

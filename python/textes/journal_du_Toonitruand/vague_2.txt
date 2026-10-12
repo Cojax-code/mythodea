@@ -1,0 +1,40 @@
+Vague 2 - Le cycle du bot et un nouveau général
+
+----------------------------------------------------------
+
+CONSEIL
+Suivre les étapes du cycle en direct.
+
+>>> COMMANDE
+
+tail -f /home/game/village/clocher/suivi_tour.log
+
+NOTE : Vous pouvez interrompre tail avec Ctrl+C pour revenir au terminal.
+
+----------------------------------------------------------
+
+CONSEIL
+Observer ce qu'il reste de vos forces après le combat.
+
+>>> COMMANDE
+
+ls -l /home/game/village/{joueur}/garnison/1
+
+NOTE : Avant de renforcer une position, regardez d'abord quels généraux ont survécu.
+
+----------------------------------------------------------
+
+CONSEIL
+Regarder si un nouveau général est apparu dans votre home.
+
+>>> COMMANDE
+
+ls -l /home/{joueur}
+
+NOTE : Pour survivre aux vagues avenir, il faudra  préparer des nouveaux général pour soutenir celui qui a été affaibli. Les generaux Classique cad qui pop tout seul dans le home, sont limite a 5 par joueurs, et une apparition par tour. Attention les generaux ne se cumule pas dans le home donc meme si vous ne les utilisez pas, stocke les dans “reserve” afin de laisser els suivants se creer automatiquement
+
+À chaque résolution, les forces du bot déjà présentes tentent d'abord d'avancer vers le village. Une nouvelle vague apparaît ensuite à l'est, puis les combats sont résolus sur les territoires où les deux camps se rencontrent.
+
+Si une force du bot a été bloquée avant le combat et remporte ensuite son affrontement, elle peut effectuer une avancée de rattrapage. Ce rattrapage ne déclenche jamais un deuxième combat pendant le même tour : un territoire peut donc rester contesté jusqu'au cycle suivant.
+
+Les généraux classiques apparaissent dans votre home, au maximum un par tour et dans la limite de cinq créations normales. Tant qu'un général reste dans le home, le suivant ne peut pas y apparaître : utilisez la réserve lorsque vous voulez libérer cet espace. Certains généraux bonus, notamment ceux de la Crypte, sont hors de cette limite.

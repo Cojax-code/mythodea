@@ -1,0 +1,43 @@
+Vague 4 - Consolider ses acquis avant le boss
+
+----------------------------------------------------------
+
+CONSEIL
+Relire les conseils déjà découverts lors des vagues precedentes
+
+>>> COMMANDE
+
+ls -l /home/game/village/{joueur}/hotel_de_ville/journal_du_Toonitruand
+
+NOTE : Un boss arrive à la vague 5, 10, 15, …prepare vous en consequence !.
+
+----------------------------------------------------------
+
+CONSEIL
+Comprendre un déplacement simple : déplacer un général vers une zone adjacente et autorisée.
+
+>>> COMMANDE
+
+mv /home/game/village/{joueur}/garnison/1/general1 /home/game/est_1/{joueur}/1/
+
+NOTE : Le moteur vérifiera ensuite si ce déplacement respecte les règles du tour.
+
+----------------------------------------------------------
+
+CONSEIL
+Observer la zone de repli.
+
+>>> COMMANDE
+
+tree /home/game/repli
+
+NOTE : Le repli sert aux sanctions et aux retours forcés.
+
+Un déplacement simple permet de rejoindre un territoire adjacent autorisé pendant une fenêtre d'ACTIONS. Le moteur ne valide réellement ce mouvement qu'à la résolution : déplacer un dossier vers un endroit interdit ne permet donc pas de contourner les règles.
+
+Le repli est une zone de sanction ou de retour forcé. Selon la cause et la distance, un général peut devoir y attendre avant de revenir vers le village. Un général revenu du home doit lui aussi repasser par le village avant de progresser de nouveau vers le front.
+
+La vague 5 sera un boss. Profitez de cette vague pour relire les journaux précédents, vérifier vos effectifs, réorganiser vos formations et placer vos généraux avant la prochaine menace.
+
+
+
