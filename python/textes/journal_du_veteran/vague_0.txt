@@ -1,0 +1,45 @@
+Vague 0 - Prendre ses repères efficacement
+
+----------------------------------------------------------
+
+CONSEIL
+Afficher uniquement les premiers niveaux du village, avec le type de chaque entrée.
+
+>>> COMMANDE VÉTÉRAN
+
+find /home/game/village/{joueur} -maxdepth 2 -printf '%y  %p\n' | sort
+
+NOTE : find permet de filtrer précisément la profondeur explorée. %y affiche le type de l'entrée et %p son chemin.
+
+----------------------------------------------------------
+
+CONSEIL
+Afficher seulement les dossiers composant votre général.
+
+>>> COMMANDE VÉTÉRAN
+
+find /home/{joueur}/general1 -maxdepth 2 -type d -printf '%P\n' | sort
+
+NOTE : Avec %P, le chemin est affiché relativement à general1, ce qui rend la structure plus lisible.
+
+----------------------------------------------------------
+
+CONSEIL
+Créer et finaliser un archer en une seule ligne.
+
+>>> COMMANDE VÉTÉRAN
+
+mkdir -p /home/{joueur}/general1/arriere/infanterie1 && touch /home/{joueur}/general1/arriere/infanterie1/arc
+
+NOTE : && n'exécute touch que si mkdir réussit. Le dossier représente l'unité ; le fichier arc détermine son équipement.
+
+----------------------------------------------------------
+
+CONSEIL
+Contrôler immédiatement le résultat de la création.
+
+>>> COMMANDE VÉTÉRAN
+
+find /home/{joueur}/general1/arriere/infanterie1 -maxdepth 1 -printf '%y  %f\n'
+
+NOTE : C'est une vérification rapide de la structure réellement créée.

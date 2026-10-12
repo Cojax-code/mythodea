@@ -1,0 +1,23 @@
+Vague 9 - Boucles compactes
+
+----------------------------------------------------------
+
+CONSEIL
+Créer plusieurs archers avec la brace expansion.
+
+>>> COMMANDE VÉTÉRAN
+
+for i in {1..5}; do mkdir -p "arriere/infanterie$i" && touch "arriere/infanterie$i/arc"; done
+
+NOTE : {1..5} est développé par Bash avant l'exécution. Les guillemets protègent les chemins construits.
+
+----------------------------------------------------------
+
+CONSEIL
+Vérifier en une commande les unités créées.
+
+>>> COMMANDE VÉTÉRAN
+
+find arriere -maxdepth 2 -type f -name arc -printf '%h\n' | sort
+
+NOTE : On filtre directement les fichiers arc puis on affiche le dossier de chaque unité.

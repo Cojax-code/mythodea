@@ -88,7 +88,10 @@ class NotificationsSurvie(unittest.TestCase):
             joueur = 'j1' if uid == 1001 else 'j2'
             village = self.config.game_path / 'village' / joueur
             self.assertIn(f'{village}/hotel_de_ville', texte)
-            self.assertIn('cat journal_du_Toonitruand/vague_0.txt', texte)
+            self.assertIn(f'Débutant :\ncat {village}/hotel_de_ville/journal_du_Toonitruand/vague_0.txt', texte)
+            self.assertIn(f'À l’aise avec Linux :\ncat {village}/hotel_de_ville/journal_du_veteran/vague_0.txt', texte)
+            self.assertNotIn('vague_1.txt', texte)
+            self.assertNotIn('/j2/' if joueur == 'j1' else '/j1/', texte)
             self.assertNotIn('wall', texte)
         with patch.object(self.linux, 'terminaux_ssh', return_value=[]), \
                 patch.object(self.linux, 'ecrire_terminal') as ecrire:

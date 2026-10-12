@@ -1,0 +1,23 @@
+Vague 10 - Double boucle et paramètres
+
+----------------------------------------------------------
+
+CONSEIL
+Créer des piquiers sur les deux flancs avec une double boucle.
+
+>>> COMMANDE VÉTÉRAN
+
+for bloc in droite gauche; do for i in {1..3}; do mkdir -p "$bloc/infanterie$i" && touch "$bloc/infanterie$i/pique"; done; done
+
+NOTE : La boucle externe choisit le bloc et la boucle interne crée les unités de ce bloc.
+
+----------------------------------------------------------
+
+CONSEIL
+Contrôler la répartition finale par bloc.
+
+>>> COMMANDE VÉTÉRAN
+
+for bloc in droite gauche; do printf '%s : ' "$bloc"; find "$bloc" -maxdepth 2 -type f -name pique | wc -l; done
+
+NOTE : On réutilise la même variable pour produire un petit bilan automatique.

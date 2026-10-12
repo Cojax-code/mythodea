@@ -150,7 +150,7 @@ class PermissionsReelles(unittest.TestCase):
             for ancien in ('poste', 'clocher', 'renforts'):
                 self.assertFalse((village / ancien).exists())
             for nom in ('hotel_de_ville', 'hotel_de_ville/courrier',
-                        'hotel_de_ville/journal_du_Toonitruand'):
+                        'hotel_de_ville/journal_du_Toonitruand', 'hotel_de_ville/journal_du_veteran'):
                 self.assertEqual(self.en_joueur(j, 'import os,sys; os.listdir(sys.argv[1])', village / nom).returncode, 0)
             for territoire in self.c['territoires']:
                 if territoire.name != 'village':
@@ -163,6 +163,7 @@ class PermissionsReelles(unittest.TestCase):
         lire = 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).read_text())'
         ecrire = "import sys; open(sys.argv[1], 'a').write('demande')"
         for nom in ('rapport.txt', 'journal_du_Toonitruand/vague_0.txt',
+                    'journal_du_veteran/vague_0.txt',
                     'courrier/reception_message.txt', 'courrier/liste_requetes.txt'):
             self.assertEqual(self.en_joueur('j1', lire, hotel / nom).returncode, 0)
             self.assertNotEqual(self.en_joueur('j1', ecrire, hotel / nom).returncode, 0)

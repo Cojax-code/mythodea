@@ -1,0 +1,23 @@
+Vague 4 - Consolider ses acquis avant le boss
+
+----------------------------------------------------------
+
+CONSEIL
+Lister les conseils déjà débloqués dans l'ordre.
+
+>>> COMMANDE VÉTÉRAN
+
+printf '%s\n' /home/game/village/{joueur}/hotel_de_ville/journal_du_Toonitruand/vague_*.txt | sort -V
+
+NOTE : sort -V trie naturellement les numéros de version : vague_2 vient avant vague_10.
+
+----------------------------------------------------------
+
+CONSEIL
+Vérifier le chemin canonique d'une destination avant un déplacement.
+
+>>> COMMANDE VÉTÉRAN
+
+realpath /home/game/est_1/{joueur}/1
+
+NOTE : realpath résout le chemin absolu réel et aide à éviter les erreurs de destination.

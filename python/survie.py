@@ -352,7 +352,7 @@ def _ouvrir_tour_survie(configuration, horloge=None):
     duree = minuterie.valider_duree(configuration["duree_phase_action_secondes"])
     cycle = etat.charger_cycle_survie(configuration)
     if cycle is not None and cycle["phase"] in ("actions", "defaite"):
-        plateau.preparer_journal_toonitruand(
+        plateau.preparer_journaux(
             configuration, cycle['tour'] + (cycle['phase'] == 'defaite'))
         return cycle
     if cycle is not None and cycle["phase"] != "a_preparer":
@@ -501,7 +501,7 @@ def _lancer_partie_survie(configuration, nombre_tours, horloge, dormir):
         if cycle is None or cycle['phase'] == 'a_preparer':
             cycle = _ouvrir_tour_survie(configuration, horloge)
         elif cycle['phase'] in ('actions', 'consultation', 'defaite'):
-            plateau.preparer_journal_toonitruand(
+            plateau.preparer_journaux(
                 configuration, cycle['tour'] + (cycle['phase'] != 'actions'))
         if nouvelle_partie:
             gestion.afficher(cycle['tour'], 'actions', max(0, cycle['echeance'] - gestion.horloge()))

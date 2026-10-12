@@ -1,0 +1,23 @@
+Vague 8 - Manipuler les ordres proprement
+
+----------------------------------------------------------
+
+CONSEIL
+Écrire un ordre puis vérifier immédiatement son contenu.
+
+>>> COMMANDE VÉTÉRAN
+
+printf '%s\n' '1-2' | tee /home/game/village/{joueur}/garnison/1/general1/ordre.txt
+
+NOTE : tee écrit dans le fichier tout en affichant la valeur envoyée.
+
+----------------------------------------------------------
+
+CONSEIL
+Afficher le fichier avec numérotation des lignes.
+
+>>> COMMANDE VÉTÉRAN
+
+nl -ba /home/game/village/{joueur}/garnison/1/general1/ordre.txt
+
+NOTE : nl aide à diagnostiquer les lignes vides ou plusieurs ordres accidentels.

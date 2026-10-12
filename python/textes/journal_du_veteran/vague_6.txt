@@ -1,0 +1,34 @@
+Vague 6 - Crypte : récupérer et vérifier une recette
+
+----------------------------------------------------------
+
+CONSEIL
+Télécharger une recette dans un dossier local explicite.
+
+>>> COMMANDE VÉTÉRAN
+
+scp {joueur}@Mythodea.local:/home/game/village/{joueur}/crypte/grimoire/recette1.pdf ./recettes/
+
+NOTE : La destination explicite évite de perdre le fichier dans le mauvais répertoire local.
+
+----------------------------------------------------------
+
+CONSEIL
+Calculer l'empreinte SHA-256 du PDF après téléchargement.
+
+>>> COMMANDE VÉTÉRAN
+
+sha256sum ./recettes/recette1.pdf
+
+NOTE : Une empreinte permet de vérifier qu'un fichier n'a pas été modifié entre deux copies.
+
+----------------------------------------------------------
+
+CONSEIL
+Afficher les métadonnées du PDF sans ouvrir d'interface graphique.
+
+>>> COMMANDE VÉTÉRAN
+
+pdfinfo ./recettes/recette1.pdf
+
+NOTE : pdfinfo affiche notamment le nombre de pages et des informations techniques sur le document.

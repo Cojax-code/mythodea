@@ -1,0 +1,23 @@
+Vague 2 - Suivre le cycle du bot en direct
+
+----------------------------------------------------------
+
+CONSEIL
+Suivre le Clocher en continu tout en filtrant les changements de phase.
+
+>>> COMMANDE VÉTÉRAN
+
+tail -F /home/game/village/clocher/suivi_tour.log | grep --line-buffered -Ei 'actions|résolution|consultation|vague|combat'
+
+NOTE : tail -F continue à suivre le fichier même s'il est recréé. --line-buffered évite que grep retarde l'affichage.
+
+----------------------------------------------------------
+
+CONSEIL
+Repérer les généraux actuellement présents dans le home.
+
+>>> COMMANDE VÉTÉRAN
+
+find /home/{joueur} -maxdepth 1 -type d -name 'general*' -printf '%f\n' | sort
+
+NOTE : Cette forme plus précise de find évite d'afficher les autres dossiers du home.

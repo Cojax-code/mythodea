@@ -482,36 +482,37 @@ def lancer_bataille_v15():
         )
 
 
-def preparer_journal_toonitruand(configuration, vague=0):
-    """Publie les conseils manquants 0..vague, sans réécrire les acquis."""
+def preparer_journaux(configuration, vague=0):
+    """Publie les deux niveaux de conseils 0..vague, sans réécrire les acquis."""
     from cycle_linux import sans_liens
-    modeles = Path(__file__).resolve().parent / 'textes' / 'journal_du_Toonitruand'
+    modeles = Path(__file__).resolve().parent / 'textes'
     for joueur in configuration['joueurs']:
         acteur = configuration['acteurs'][joueur]
         gid = grp.getgrnam(acteur['groupe_linux']).gr_gid
         hotel = configuration['game_path'] / 'village' / joueur / 'hotel_de_ville'
-        journal = hotel / 'journal_du_Toonitruand'
-        for dossier in (hotel, journal):
-            sans_liens(dossier)
-            dossier.mkdir(parents=True, exist_ok=True)
-            os.chown(dossier, 0, gid)
-            os.chmod(dossier, 0o750)
-        for numero in range(min(vague, 10) + 1):
-            fichier = journal / f'vague_{numero}.txt'
-            sans_liens(fichier)
-            if not fichier.exists():
-                contenu = (modeles / fichier.name).read_text(encoding='utf-8')
-                # Les commandes gardent les chemins Linux publics du document,
-                # même pendant une résolution dans une génération privée.
-                etat.ecrire_prive(fichier, contenu.replace('{joueur}', joueur))
-            os.chown(fichier, 0, gid)
-            os.chmod(fichier, 0o640)
+        for nom in ('journal_du_Toonitruand', 'journal_du_veteran'):
+            journal = hotel / nom
+            for dossier in (hotel, journal):
+                sans_liens(dossier)
+                dossier.mkdir(parents=True, exist_ok=True)
+                os.chown(dossier, 0, gid)
+                os.chmod(dossier, 0o750)
+            for numero in range(min(vague, 10) + 1):
+                fichier = journal / f'vague_{numero}.txt'
+                sans_liens(fichier)
+                if not fichier.exists():
+                    contenu = (modeles / nom / fichier.name).read_text(encoding='utf-8')
+                    # Garder les chemins publics, même dans une génération privée,
+                    # et les accolades Bash présentes dans les commandes vétéran.
+                    etat.ecrire_prive(fichier, contenu.replace('{joueur}', joueur))
+                os.chown(fichier, 0, gid)
+                os.chmod(fichier, 0o640)
 
 
 def preparer_accueil(configuration, vague=0, rapport=None):
     """Documents passifs du village ; le rapport est une vue du rapport court."""
     from cycle_linux import sans_liens
-    preparer_journal_toonitruand(configuration, vague)
+    preparer_journaux(configuration, vague)
     for joueur in configuration['joueurs']:
         acteur = configuration['acteurs'][joueur]
         uid = pwd.getpwnam(acteur['proprietaire_linux']).pw_uid

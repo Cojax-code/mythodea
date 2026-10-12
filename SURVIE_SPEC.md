@@ -198,6 +198,7 @@ Structure visible du prototype :
 │   │   ├── reserve/
 │   │   ├── hotel_de_ville/
 │   │   │   ├── journal_du_Toonitruand/vague_0.txt ... vague_N.txt  # N ≤ 10, vagues atteintes
+│   │   │   ├── journal_du_veteran/vague_0.txt ... vague_N.txt     # mêmes vagues atteintes
 │   │   │   ├── rapport.txt
 │   │   │   └── courrier/{envoie_message.txt,reception_message.txt,liste_requetes.txt}
 │   │   └── crypte/{grimoire,atelier,recompense}/
@@ -264,6 +265,15 @@ dans le journal joueur. Une reprise à la vague N complète les fichiers manquan
 ne sont jamais supprimés ni réécrits. Il n'y a aucun suivi de lecture,
 accomplissement, validation ou récompense.
 
+Le Journal du Vétéran coexiste dans `journal_du_veteran/`, avec les mêmes vagues
+0..10 et thèmes, sous une forme plus compacte destinée aux joueurs à l'aise avec
+Linux. Ses conseils, commandes et notes proviennent de `Journal_du_Veteran.docx`,
+sans ajout de longs paragraphes. Les modèles communs à j1/j2 sont dans
+`python/textes/journal_du_veteran/` ; leurs commandes portent le marqueur
+`>>> COMMANDE VÉTÉRAN`. `plateau.preparer_journaux()` applique le même déblocage,
+rattrapage et les mêmes permissions aux deux journaux, sans remplacer les conseils
+déjà présents du Toonitruand.
+
 La vague 5 présente les combats avec plusieurs généraux, la vague 6 la Crypte.
 Les commandes internes des recettes restent dans les PDF. Le texte pédagogique
 n'active pas les futures règles d'entraînement ou de rappel vers le home :
@@ -287,8 +297,9 @@ CONSULTATION retire temporairement l'écriture ; ACTIONS restaure ces droits.
 
 Au démarrage effectif d'une nouvelle partie, après préparation réussie et ouverture
 d'ACTIONS, un message personnalisé est envoyé à toutes les sessions SSH valides de
-chaque joueur via le mécanisme TTY direct. Il indique le village, le journal vague 0
-et le Clocher. Une reprise d'une fenêtre existante ne répète pas cette annonce.
+chaque joueur via le mécanisme TTY direct. Il indique le village, les commandes
+absolues de lecture des deux journaux vague 0 (« Débutant » et « À l'aise avec
+Linux ») et le Clocher. Une reprise d'une fenêtre existante ne répète pas cette annonce.
 L'absence de sessions n'empêche pas le lancement ; l'affichage administrateur reste
 inchangé.
 

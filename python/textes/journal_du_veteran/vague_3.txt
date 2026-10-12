@@ -1,0 +1,34 @@
+Vague 3 - Diagnostiquer garnison, réserve, renforts et repli
+
+----------------------------------------------------------
+
+CONSEIL
+Lister uniquement les généraux stockés en réserve.
+
+>>> COMMANDE VÉTÉRAN
+
+find /home/game/village/{joueur}/reserve -maxdepth 1 -type d -name 'general*' -printf '%f\n' | sort
+
+NOTE : Le filtre évite le bruit visuel et facilite le comptage rapide.
+
+----------------------------------------------------------
+
+CONSEIL
+Examiner les métadonnées d'un général en réserve.
+
+>>> COMMANDE VÉTÉRAN
+
+stat -c 'nom=%n | propriétaire=%U | groupe=%G | droits=%A | modifié=%y' /home/game/village/{joueur}/reserve/general1
+
+NOTE : stat donne des informations utiles pour comprendre droits, propriétaire et dernière modification.
+
+----------------------------------------------------------
+
+CONSEIL
+Observer les emplacements de renforts d'un territoire ouvert.
+
+>>> COMMANDE VÉTÉRAN
+
+find /home/game/est_1 -maxdepth 3 -type d -path '*/renforts/*' -printf '%p\n' | sort
+
+NOTE : Les renforts 5..20 existent sur les territoires ouverts, mais pas dans le village.

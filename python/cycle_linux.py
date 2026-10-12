@@ -375,7 +375,8 @@ class Generations:
             messages[uid] = (
                 '=== MYTHODEA — SURVIE ===\n\nLa partie commence.\n\n'
                 f'Votre village :\n{village}\n\nCommencez par l’Hôtel de Ville :\n\n'
-                f'cd {village}/hotel_de_ville\ncat journal_du_Toonitruand/vague_0.txt\n\n'
+                f'Débutant :\ncat {village}/hotel_de_ville/journal_du_Toonitruand/vague_0.txt\n\n'
+                f'À l’aise avec Linux :\ncat {village}/hotel_de_ville/journal_du_veteran/vague_0.txt\n\n'
                 f'Le Clocher indique l’état du tour :\n\ncat {self.game}/village/clocher/etat_tour.txt')
         self.backend.annoncer(messages)
 
