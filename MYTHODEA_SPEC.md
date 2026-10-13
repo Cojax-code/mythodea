@@ -438,7 +438,13 @@ cavalerie1/
 
 ### Cavalerie lourde de récompense
 
-Le type moteur `cavalerie_lourde` est représenté par `cavalerie_lourdeN/armure`.
+Le type moteur `cavalerie_lourde` est représenté par un dossier `cavalerie_LN/`,
+contenant les cinq fichiers `cheval`, `armure`, `cuirasse`, `bouclier`, `casque`.
+La récompense produit exactement ces fichiers dans `cavalerie_L1` à `cavalerie_L20`.
+La reconnaissance exige le préfixe `cavalerie_L` et les cinq équipements fichiers.
+Un dossier incomplet portant ce préfixe est invalide, sans repli vers le type
+cavalier ordinaire. L'ancien format `cavalerie_lourdeN/armure` n'est plus produit
+ni reconnu comme cavalerie lourde ; aucune conversion automatique n'est effectuée.
 `config.unites_equipements` centralise les représentations reconnues ; ce catalogue
 n'autorise pas leur construction. Il s'agit d'un format interne, sans recette
 joueur déverrouillée. L'unité est comptée et nettoyée comme les autres unités.
@@ -485,7 +491,10 @@ L'audit compare la capture à `.systeme/unites_actions.json` (`root:root 600`),
 inclus dans `ETATS_METIER`. La référence contient `tour` et `generaux`, indexés
 par chemin relatif `game/...` ou `home/<joueur>/generalN`. Chaque entrée conserve
 l'identité officielle, la position, l'éligibilité à l'entraînement, le périphérique
-et les unités valides : périphérique/inode du dossier et de l'équipement, et type.
+et les unités valides : périphérique/inode du dossier, puis de chacun des
+équipements dans l'ordre du catalogue, et type en dernier élément. La forme des
+entrées ordinaires à un seul équipement reste inchangée ; une entrée de cavalerie
+lourde conserve les cinq paires d'identités des équipements.
 Un renommage ou changement de bloc conserve ces identités ; une copie, un nouvel
 équipement ou une finalisation est un ajout. Aucune date n'autorise une unité.
 

@@ -324,11 +324,15 @@ def attribuer_recompense(c, joueur, fiche, attribution, composition):
     generaux.creer_general(general, nom)
     with (general / 'fiche.txt').open('a', encoding='utf-8') as f:
         f.write(f'\nnom_affichage={composition["nom"]}\n')
+    equipements = composition.get('equipements')
+    if equipements is None:
+        equipements = (composition['equipement'],)
     for bloc, taille in zip(config.ordre_blocs, composition['blocs']):
         for i in range(1, taille + 1):
             unite = general / bloc / f'{composition["unite"]}{i}'
             unite.mkdir()
-            (unite / composition['equipement']).touch()
+            for equipement in equipements:
+                (unite / equipement).touch()
     generaux.donner_permissions_general(general, c['acteurs'][joueur]['proprietaire_linux'])
     positions = etat.charger_positions_generaux()
     positions[f'{joueur}:{nom}'] = 'village'

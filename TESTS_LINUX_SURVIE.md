@@ -495,7 +495,9 @@ doivent rester intacts. Reprendre le moteur et republier une génération termin
 aucun général supplémentaire. j2 doit pouvoir valider séparément.
 
 À la publication, vérifier `crypte/recompense/generalN/avant/` : exactement vingt
-dossiers `cavalerie_lourdeN/armure`, autres blocs vides, quota normal inchangé.
+dossiers `cavalerie_L1` à `cavalerie_L20`, contenant chacun exactement les fichiers
+`cheval`, `armure`, `cuirasse`, `bouclier`, `casque` ; autres blocs vides, quota
+normal inchangé. Retirer l'un de ces fichiers rend l'unité lourde invalide.
 Occuper d'abord la zone par une recette : le défi doit attendre sa récupération.
 La fiche indique « Construction : Verrouillée ». Une copie supplémentaire d'une
 unité lourde dans le home ou la réserve est supprimée à l'audit, tandis que les

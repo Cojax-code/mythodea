@@ -231,6 +231,13 @@ class DefisSurvie(unittest.TestCase):
         self.assertEqual(self.etat.charger_positions_generaux()['j1:general6'], 'village')
         blocs = self.generaux.lire_blocs_general(chemin)
         self.assertEqual([blocs[b]['nombre'] for b in self.config.ordre_blocs], [20, 0, 0, 0])
+        self.assertEqual({p.name for p in (chemin / 'avant').iterdir()},
+                         {f'cavalerie_L{i}' for i in range(1, 21)})
+        for p in (chemin / 'avant').iterdir():
+            self.assertEqual({e.name for e in p.iterdir()},
+                             {'cheval', 'armure', 'cuirasse', 'bouclier', 'casque'})
+            self.assertTrue(all(e.is_file() for e in p.iterdir()))
+        self.assertFalse(list(chemin.glob('*/cavalerie_lourde*')))
         self.assertEqual(blocs['avant']['type'], 'cavalerie_lourde')
         self.assertTrue(all(self.generaux.identifier_unite(p) == 'cavalerie_lourde'
                             for p in (chemin / 'avant').iterdir()))
@@ -329,9 +336,10 @@ class DefisSurvie(unittest.TestCase):
         for n, territoire, reserve in ((1, 'home', False), (2, 'village', True),
                                       (3, 'est_1', False), (4, 'repli', False)):
             chemin = self.general(numero=n, territoire=territoire, reserve=reserve, nombre=2)
-            faux = chemin / 'avant/cavalerie_lourde1'
+            faux = chemin / 'avant/cavalerie_L1'
             faux.mkdir()
-            (faux / 'armure').touch()
+            for nom in ('cheval', 'armure', 'cuirasse', 'bouclier', 'casque'):
+                (faux / nom).touch()
             self.securite.verifier_tous_les_deplacements(self.profil)
             self.assertFalse(faux.exists())
             self.assertEqual(self.generaux.total_general_depuis_chemin(chemin), 2)
@@ -340,17 +348,59 @@ class DefisSurvie(unittest.TestCase):
         self.valider()
         self.resoudre()
         chemin = self.recompense()
-        original = chemin / 'avant/cavalerie_lourde1'
-        original.rename(chemin / 'gauche/cavalerie_lourde77')
-        copie = chemin / 'avant/cavalerie_lourde99'
-        shutil.copytree(chemin / 'avant/cavalerie_lourde2', copie)
+        original = chemin / 'avant/cavalerie_L1'
+        original.rename(chemin / 'gauche/cavalerie_L77')
+        copie = chemin / 'avant/cavalerie_L99'
+        shutil.copytree(chemin / 'avant/cavalerie_L2', copie)
         # Aller au home ne débloque aucune recette d'entraînement lourde.
         home = self.racine / 'home/j1' / chemin.name
         chemin.rename(home)
         self.securite.verifier_tous_les_deplacements(self.profil)
-        self.assertFalse((home / 'avant/cavalerie_lourde99').exists())
-        self.assertTrue((home / 'gauche/cavalerie_lourde77').exists())
+        self.assertFalse((home / 'avant/cavalerie_L99').exists())
+        self.assertTrue((home / 'gauche/cavalerie_L77').exists())
         self.assertEqual(self.generaux.total_general_depuis_chemin(home), 20)
+
+    def test_reconnaissance_lourde_exige_les_cinq_fichiers(self):
+        unite = self.racine / 'cavalerie_L1'
+        unite.mkdir()
+        equipements = ('cheval', 'armure', 'cuirasse', 'bouclier', 'casque')
+        for nom in equipements:
+            (unite / nom).touch()
+        self.assertEqual(self.generaux.identifier_unite(unite), 'cavalerie_lourde')
+        for nom in equipements:
+            with self.subTest(equipement=nom):
+                fichier = unite / nom
+                fichier.unlink()
+                self.assertEqual(self.generaux.identifier_unite(unite), 'inconnu')
+                fichier.mkdir()  # Un dossier ne remplace pas un équipement fichier.
+                self.assertEqual(self.generaux.identifier_unite(unite), 'inconnu')
+                fichier.rmdir()
+                fichier.touch()
+                self.assertEqual(self.generaux.identifier_unite(unite), 'cavalerie_lourde')
+
+    def test_ancien_format_invalide_et_cavalier_ordinaire_inchange(self):
+        ancienne = self.racine / 'cavalerie_lourde1'
+        ancienne.mkdir()
+        (ancienne / 'armure').touch()
+        self.assertEqual(self.generaux.identifier_unite(ancienne), 'inconnu')
+        ordinaire = self.racine / 'cavalerie1'
+        ordinaire.mkdir()
+        for nom in ('cheval', 'armure', 'cuirasse', 'bouclier', 'casque'):
+            (ordinaire / nom).touch()
+        self.assertEqual(self.generaux.identifier_unite(ordinaire), 'cavalier')
+
+    def test_audit_suit_chacun_des_cinq_equipements_lourds(self):
+        self.valider()
+        self.resoudre()
+        chemin = self.recompense()
+        for numero, nom in enumerate(('cheval', 'armure', 'cuirasse', 'bouclier', 'casque'), 1):
+            unite = chemin / 'avant' / f'cavalerie_L{numero}'
+            # Conserver l'ancien inode ailleurs empêche sa réutilisation par le FS.
+            (unite / nom).rename(self.racine / f'ancien_{nom}')
+            (unite / nom).touch()
+            self.securite.verifier_tous_les_deplacements(self.profil)
+            self.assertFalse(unite.exists(), nom)
+        self.assertEqual(self.generaux.total_general_depuis_chemin(chemin), 15)
 
     def test_bonus_formation_et_avantages_sans_statistique_permanente(self):
         c = self.combats

@@ -83,10 +83,10 @@ max_generaux_par_joueur = 5
 # Représentations reconnues par le moteur ; ce catalogue n'accorde aucun droit
 # d'entraînement. La cavalerie lourde est réservée aux attributions privées.
 unites_equipements = {
-    'archer': ('infanterie', 'arc'),
-    'piquier': ('infanterie', 'pique'),
-    'cavalier': ('cavalerie', 'cheval'),
-    'cavalerie_lourde': ('cavalerie_lourde', 'armure'),
+    'archer': ('infanterie', ('arc',)),
+    'piquier': ('infanterie', ('pique',)),
+    'cavalier': ('cavalerie', ('cheval',)),
+    'cavalerie_lourde': ('cavalerie_L', ('cheval', 'armure', 'cuirasse', 'bouclier', 'casque')),
 }
 
 orientations = ["stratege", "combattant"]

@@ -982,10 +982,15 @@ def identifier_unite(unite):
     nom_unite = unite.name
     contenu = [element.name for element in unite.iterdir() if element.is_file()]
 
+    prefixe_lourd, equipements_lourds = config.unites_equipements['cavalerie_lourde']
+    if nom_unite.startswith(prefixe_lourd):
+        # Le préfixe réservé ne doit pas retomber sur le cavalier ordinaire.
+        return 'cavalerie_lourde' if all(e in contenu for e in equipements_lourds) else 'inconnu'
+
     resultats = []
 
-    for type_unite, (nom_base, equipement) in config.unites_equipements.items():
-        if nom_unite.startswith(nom_base) and equipement in contenu:
+    for type_unite, (nom_base, equipements) in config.unites_equipements.items():
+        if nom_unite.startswith(nom_base) and all(e in contenu for e in equipements):
             resultats.append(type_unite)
 
     if len(resultats) == 1:

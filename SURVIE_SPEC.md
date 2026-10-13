@@ -1586,6 +1586,9 @@ reste une perspective ; aucune de ces voies supplémentaires n'est implémentée
 En résolution privée, après les recettes Crypte, le défi attribue une seule fois
 `cavalier_noir`, avec identité canonique `generalN`, hors quota des cinq généraux
 normaux. Il contient 20 cavaliers lourds dans `avant/`, zéro dans les autres blocs.
+Les dossiers sont `cavalerie_L1` à `cavalerie_L20`, contenant chacun exactement
+`cheval`, `armure`, `cuirasse`, `bouclier` et `casque`. Seule la récompense divine
+peut actuellement les créer ; la construction manuelle reste verrouillée.
 Il utilise la création commune de la Crypte et sa zone `recompense/`. Si une
 recette ou un général occupe cette place, le défi reste terminé mais non livré
 jusqu'à libération ; il ne consomme aucun cooldown de recette. La réponse annonce
@@ -1600,3 +1603,13 @@ génération terminée sans nouvelle création. Réécritures, redémarrage ou p
 général ne réouvrent pas le droit à récompense. j1 et j2 ont chacun leur attribution.
 Les règles de récupération Crypte et le moteur commun restent applicables ; la
 représentation et les valeurs de combat sont définies dans `MYTHODEA_SPEC.md`.
+
+### Armurerie future — conception uniquement
+
+Une future armurerie pourra transformer les cavaliers ordinaires : déplacer un
+général dans l'armurerie, l'y laisser un tour, ajouter l'équipement requis, puis
+faire vérifier la transformation par le moteur. Le moteur devra renommer lui-même
+les unités en `cavalerie_LN`, avec une numérotation robuste évitant les collisions.
+Le joueur n'aura pas à renommer chaque dossier. Cette mécanique, ses contrôles
+et la méthode d'entraînement ne sont pas implémentés ; aucun accès ni cycle
+d'armurerie n'est actif.

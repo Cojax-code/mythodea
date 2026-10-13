@@ -321,7 +321,7 @@ def materialiser(c, tour):
             continue
         composition = {'nom': NOM_RECOMPENSE, 'blocs': (20, 0, 0, 0),
                        'unite': config.unites_equipements['cavalerie_lourde'][0],
-                       'equipement': config.unites_equipements['cavalerie_lourde'][1]}
+                       'equipements': config.unites_equipements['cavalerie_lourde'][1]}
         attribution = {'id': f'defi:{j}:{DEFI}', 'source': 'defi', 'defi': DEFI,
                        'tour': tour, 'nom_affichage': NOM_RECOMPENSE}
         # Une interruption privée est bloquante ; ne jamais créer une seconde attribution.

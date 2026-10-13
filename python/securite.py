@@ -56,11 +56,12 @@ def inventorier_unites_actions(configuration):
                         type_unite = generaux.identifier_unite(unite)
                         if type_unite == 'inconnu':
                             continue
-                        equipement = unite / config.unites_equipements[type_unite][1]
-                        dossier_stat, equipement_stat = unite.stat(), equipement.stat()
-                        unites[unite.relative_to(chemin).as_posix()] = [
-                            dossier_stat.st_dev, dossier_stat.st_ino,
-                            equipement_stat.st_dev, equipement_stat.st_ino, type_unite]
+                        dossier_stat = unite.stat()
+                        identites = [dossier_stat.st_dev, dossier_stat.st_ino]
+                        for nom in config.unites_equipements[type_unite][1]:
+                            equipement_stat = (unite / nom).stat()
+                            identites.extend((equipement_stat.st_dev, equipement_stat.st_ino))
+                        unites[unite.relative_to(chemin).as_posix()] = [*identites, type_unite]
                 cle = cle_general_actions(chemin, joueur, configuration)
                 resultat[cle] = {'identifiant': f'{joueur}:{chemin.name}',
                                 'device': chemin.stat().st_dev,
