@@ -94,7 +94,8 @@ def preparer(c):
         for identifiant in RECETTES:
             pdf = zone(c, j) / f'grimoire/{identifiant}.pdf'
             sans_liens(pdf)
-            contenu = recette_pdf(configuration(c), identifiant)
+            contenu = recette_pdf(configuration(c), identifiant,
+                                  c.get('game_public_path', config.game_public_path))
             if not pdf.exists() or pdf.read_bytes() != contenu:
                 # Source installée avec le moteur ; aucun contenu fourni par le joueur.
                 temporaire = pdf.with_suffix('.nouveau')
@@ -153,8 +154,9 @@ def nettoyer(c, j):
                 os.unlink(nom, dir_fd=fd)
 
 
-def recette_pdf(marqueurs, identifiant="recette1"):
+def recette_pdf(marqueurs, identifiant="recette1", racine=None):
     """PDF une page sans dépendance : texte sélectionnable pour SCP/SFTP."""
+    racine = (config.game_public_path if racine is None else racine).as_posix()
     recette = RECETTES[identifiant]
     explications = [
         'mkdir cree le dossier appel.',
@@ -189,10 +191,10 @@ def recette_pdf(marqueurs, identifiant="recette1"):
         'MYTHODEA - Crypte V0.1', f'{identifiant} : {recette["nom"]}', '',
         'Telechargez ce PDF avec votre client SFTP, puis lisez-le sur votre PC.',
         'Exemple SCP depuis votre PC (remplacez ADRESSE_DU_PI) :',
-        f'scp j1@ADRESSE_DU_PI:/home/game/village/j1/crypte/grimoire/{identifiant}.pdf .',
+        f'scp j1@ADRESSE_DU_PI:{racine}/village/j1/crypte/grimoire/{identifiant}.pdf .',
         'Pour j2, remplacez j1 par j2 dans les chemins et la connexion.', '',
         'Pendant ACTIONS, dans votre Bash habituel :',
-        'cd /home/game/village/j1/crypte/atelier', marqueurs['debut'], *recette['lignes'], marqueurs['fin'], '',
+        f'cd {racine}/village/j1/crypte/atelier', marqueurs['debut'], *recette['lignes'], marqueurs['fin'], '',
         'Saisissez une commande par ligne, dans cet ordre exact.',
         'Aucune commande supplementaire : ls, clear, cd... invalident la tentative.',
         'Une commande echouee, Ctrl+C ou une tentative inachevee ne rapporte rien.',
@@ -206,7 +208,7 @@ def recette_pdf(marqueurs, identifiant="recette1"):
         'Cette recompense ne consomme pas les 5 creations normales.', '',
         'Apres publication : cd ~ puis revenez sur la carte.',
         'Lors des ACTIONS suivantes, choisissez une destination legale et libre :',
-        'mv /home/game/village/j1/crypte/recompense/generalN /home/game/village/j1/garnison/1/',
+        f'mv {racine}/village/j1/crypte/recompense/generalN {racine}/village/j1/garnison/1/',
         'Ne ramenez pas un general dans recompense/ apres sa recuperation.',
     ]
     commandes = ['BT /F1 10 Tf 42 795 Td 17 TL']

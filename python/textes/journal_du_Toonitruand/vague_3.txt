@@ -7,7 +7,7 @@ Comparer la garnison et la réserve.
 
 >>> COMMANDE
 
-ls -l /home/game/village/{joueur}
+ls -l {game_path}/village/{joueur}
 
 NOTE : La garnison contient les positions actives du village ; la réserve stocke des généraux complets.
 
@@ -18,7 +18,7 @@ Regarder le contenu de la réserve.
 
 >>> COMMANDE
 
-ls -l /home/game/village/{joueur}/reserve
+ls -l {game_path}/village/{joueur}/reserve
 
 NOTE : La réserve est une zone logistique du village.
 
@@ -29,7 +29,7 @@ Observer un territoire ouvert et ses renforts.
 
 >>> COMMANDE
 
-tree /home/game/est_1
+tree {game_path}/est_1
 
 NOTE : Le village n'a pas de renforts 5-20, mais cette mécanique existe sur les territoires ouverts.
 

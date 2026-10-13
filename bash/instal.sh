@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 if [[ $EUID -ne 0 ]]; then
     echo "Erreur : lance ce script avec sudo."
     echo "Exemple : sudo ./install_mythodea.sh"
     exit 1
 fi
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/stockage.sh"
+verifier_stockage
+verifier_sous_montages
 
 for joueur in j1 j2; do
     if id "$joueur" &>/dev/null; then
@@ -19,8 +25,6 @@ for joueur in j1 j2; do
     chown "$joueur:$joueur" "/home/$joueur"
     chmod 700 "/home/$joueur"
 done
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 bash "$SCRIPT_DIR/nettoyage.sh"
 

@@ -7,7 +7,7 @@ Chercher en une seule fois les mentions de fatigue ou de marche forcée.
 
 >>> COMMANDE VÉTÉRAN
 
-grep -Ein 'fatigue|marche forcée' /home/game/village/{joueur}/hotel_de_ville/rapport.txt
+grep -Ein 'fatigue|marche forcée' {game_path}/village/{joueur}/hotel_de_ville/rapport.txt
 
 NOTE : Le motif alternatif évite de lancer deux recherches séparées.
 
@@ -18,6 +18,6 @@ Afficher le contexte autour d'une mention trouvée.
 
 >>> COMMANDE VÉTÉRAN
 
-grep -Ein -C 2 'fatigue|marche forcée' /home/game/village/{joueur}/hotel_de_ville/rapport.txt
+grep -Ein -C 2 'fatigue|marche forcée' {game_path}/village/{joueur}/hotel_de_ville/rapport.txt
 
 NOTE : -C 2 ajoute deux lignes avant et après chaque correspondance.

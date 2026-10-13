@@ -7,6 +7,22 @@ distinctes du cycle actuellement implémenté.
 Il complète `MYTHODEA_SPEC.md`, qui reste la référence du moteur commun hérité de
 la V1.5. Les règles non définies ici ne doivent pas être inventées.
 
+Le plateau Survie occupe une partition dédiée montée directement sur `/game`.
+L'administrateur crée et monte cette partition manuellement ; le dépôt reste par
+exemple dans `/home/cojax/mythodea`, et les homes `/home/j1` et `/home/j2` restent
+hors du plateau. Aucun symlink depuis l'ancienne racine, ni partitionnement ou
+formatage automatique. La racine et le contrôle du montage sont communs aux modes,
+dans `config.py` (voir `MYTHODEA_SPEC.md`, section 3).
+
+`sudo bash bash/reset_survie.sh` détruit volontairement la partie courante : tout
+le contenu de `/game`, y compris `.systeme` et les générations, est effacé, sans
+supprimer le point de montage. Le script refuse un montage absent ou inadapté,
+un sous-montage, un moteur actif, un verrou résiduel ou un gel. Seuls `general*`
+sont effacés des homes ; les données personnelles et `.ssh` sont conservées.
+Il prépare les racines et permissions, réinstalle la Crypte, puis laisse le moteur
+recréer village, fronts et états. Les commandes de préparation et de contrôle
+Raspberry figurent dans `TESTS_LINUX_SURVIE.md`.
+
 ---
 
 ## 1. Objectif de la V2.0
@@ -190,7 +206,7 @@ Le village contient des lieux de gameplay propres à chaque joueur.
 Structure visible du prototype :
 
 ```text
-/home/game/
+/game/
 ├── village/
 │   ├── clocher/{etat_tour.txt,suivi_tour.log}
 │   ├── j1/                         # même structure pour j2/
@@ -249,7 +265,7 @@ Les appels utilisent explicitement le profil retourné par
 `config.configuration_mode("survie")`, sans remplacer la configuration globale
 classique. Par exemple, `securite.verifier_tous_les_deplacements(configuration)`
 audite les joueurs du profil et enregistre positions et fatigue dans les fichiers
-communs sous `/home/game/.systeme`. Le cycle Survie appelle cet audit une seule fois
+communs sous `/game/.systeme`. Le cycle Survie appelle cet audit une seule fois
 après la fenêtre d'action ; les contrôles suivants n'en rejouent pas les effets.
 L'audit seul ne lance ni cycle de partie ni scan périodique.
 
@@ -332,7 +348,7 @@ Le clocher permet de consulter le temps restant de la fenêtre d'action du tour
 courant. Le timer clôt cette fenêtre ; le clocher ne contient pas lui-même la
 logique de résolution du tour.
 
-Deux fichiers sous `/home/game/village/clocher/` sont lisibles par le groupe allié :
+Deux fichiers sous `/game/village/clocher/` sont lisibles par le groupe allié :
 
 - `etat_tour.txt` : photographie courante remplacée atomiquement, pour `cat` ;
 - `suivi_tour.log` : inode stable alimenté par append, pour `tail -f`.
@@ -345,8 +361,8 @@ captures privées ; la publication remplace uniquement les espaces des acteurs d
 village et préserve le Clocher vivant, y compris lors d'une récupération.
 
 ```bash
-cat /home/game/village/clocher/etat_tour.txt
-tail -f /home/game/village/clocher/suivi_tour.log
+cat /game/village/clocher/etat_tour.txt
+tail -f /game/village/clocher/suivi_tour.log
 ```
 
 Le Clocher complète l'annonce écrite directement par root sur les terminaux SSH
@@ -665,7 +681,7 @@ reste bloquante jusqu'à vérification et retrait explicite.
 
 ### Clôture Linux et générations privées
 
-Les états et la communication technique sont sous `/home/game/.systeme/` :
+Les états et la communication technique sont sous `/game/.systeme/` :
 
 ```text
 .systeme/
@@ -704,7 +720,7 @@ la capture cohérente ; les copies indépendantes assurent ensuite la séparatio
 Aucun montage, namespace, ACL supplémentaire ou partitionnement automatique n'est utilisé.
 
 ```text
-/home/game/.systeme/generations/g<tour>-<identifiant>/
+/game/.systeme/generations/g<tour>-<identifiant>/
   manifeste.json              capture validée, tour, liste blanche des états
   capture/game/               territoires, repli et états métier
   capture/homes/j1/           entrées general* du home uniquement
@@ -740,7 +756,7 @@ opérations. Elle n'est pas une transaction atomique couvrant plusieurs dossiers
 le gel empêche les joueurs d'observer les remplacements partiels, et une panne
 laisse un journal à examiner. Chaque renommage reste sur un même système de
 fichiers ; le staging des homes est séparé pour permettre une partition dédiée
-montée sur `/home/game`, sans automatiser sa création.
+montée sur `/game`, sans automatiser sa création.
 
 Les homes `/home/j1` et `/home/j2` eux-mêmes restent aux joueurs. Seules les
 entrées réservées au jeu `general*` sont remplacées ; `.ssh`, les fichiers personnels,
@@ -1310,7 +1326,7 @@ de la garnison, de la réserve et des renforts tactiques.
 Dans son Bash normal, pendant ACTIONS, le joueur exécute une commande par ligne :
 
 ```bash
-cd /home/game/village/j1/crypte/atelier
+cd /game/village/j1/crypte/atelier
 crypte_commence
 mkdir appel
 touch appel/cavalerie
@@ -1403,7 +1419,7 @@ l'attente. Le timer reste indépendant de la logique métier. Les tests peuvent
 désactiver uniquement le service socket avec `collecteur_crypte=False` et appeler
 directement le collecteur ou la résolution sans attendre.
 
-Le socket est `/home/game/.systeme/communication/crypte.sock` : dossier
+Le socket est `/game/.systeme/communication/crypte.sock` : dossier
 `root:mythodea_allies 710`, socket `root:mythodea_allies 660`. Il reçoit des messages
 JSON bornés en taille ; il n'exécute jamais leur texte. L'UID est obtenu par
 `SO_PEERCRED`. Le collecteur vérifie aussi l'ascendance du client, l'UID de sa session,
@@ -1460,7 +1476,7 @@ commun continue à croître et ne réutilise jamais un numéro.
 Pendant ACTIONS, le joueur choisit une destination légale et utilise un vrai `mv` :
 
 ```bash
-mv /home/game/village/j1/crypte/recompense/general7 /home/game/village/j1/garnison/1/
+mv /game/village/j1/crypte/recompense/general7 /game/village/j1/garnison/1/
 ```
 
 La position logique d'origine est le village. Les limites, identités, collisions,
@@ -1486,7 +1502,7 @@ vérification de l'arrêt du moteur. Les commandes sont dans `TESTS_LINUX_SURVIE
 `defis.py` prépare le premier mini-défi, `cabane_est_2_defi_1`, sur EST_2 :
 
 ```text
-/home/game/est_2/cabane_mysterieuse/
+/game/est_2/cabane_mysterieuse/
 ├── readme.txt
 ├── coffre/.sceau
 ├── archives/

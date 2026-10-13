@@ -13,7 +13,7 @@ Lire le journal  de bord du Toonitruand pour savoir quoi découvrir en priorité
 
 >>> COMMANDE
 
-cat /home/game/village/{joueur}/hotel_de_ville/journal_du_Toonitruand/vague_0.txt
+cat {game_path}/village/{joueur}/hotel_de_ville/journal_du_Toonitruand/vague_0.txt
 
 NOTE : Le journal donne des conseils ; facultative mais lecture fortement recommande.
 
@@ -48,7 +48,7 @@ Explorer votre village.
 
 >>> COMMANDE
 
-ls -l /home/game/village/{joueur}
+ls -l {game_path}/village/{joueur}
 
 NOTE : Vous y trouverez notamment la garnison, la réserve, la Crypte et l'Hôtel de Ville.
 
@@ -59,7 +59,7 @@ Voir l'arborescence du village de façon plus visuelle.
 
 >>> COMMANDE
 
-tree /home/game/village/{joueur}
+tree {game_path}/village/{joueur}
 
 NOTE : tree est pratique pour comprendre la structure générale sans ouvrir chaque dossier.
 
@@ -70,7 +70,7 @@ Consulter le Clocher.
 
 >>> COMMANDE
 
-cat /home/game/village/clocher/etat_tour.txt
+cat {game_path}/village/clocher/etat_tour.txt
 
 NOTE : Le Clocher indique l'état actuel du cycle et le temps restant.
 
@@ -128,7 +128,7 @@ Déployer votre général dans une place de garnison libre.
 
 >>> COMMANDE
 
-mv /home/{joueur}/general1 /home/game/village/{joueur}/garnison/1/
+mv /home/{joueur}/general1 {game_path}/village/{joueur}/garnison/1/
 
 NOTE : Les déplacements dans Mythodea sont de vrais déplacements de dossiers. La granison represnte le lieu de defense du village.
 

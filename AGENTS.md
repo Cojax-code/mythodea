@@ -25,7 +25,7 @@ Ne pas modifier silencieusement :
 - les ordres ;
 - les sanctions anti-triche ;
 - les permissions Linux ;
-- les chemins sous `/home/game`, `/home/j1`, `/home/j2` ;
+- les chemins sous `/game`, `/home/j1`, `/home/j2` ;
 - les formats des fichiers d'état ;
 - les rapports ;
 - les conditions de victoire.
@@ -103,7 +103,7 @@ Après une modification Python :
 4. ne jamais modifier un résultat attendu uniquement pour faire passer un test.
 
 Les tests temporaires doivent utiliser un environnement isolé et ne jamais altérer
-une vraie partie sous `/home/game`.
+une vraie partie sous `/game`.
 
 Les caches Python (`__pycache__`, `*.pyc`) ne doivent jamais être commités.
 

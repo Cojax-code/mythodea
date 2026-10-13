@@ -504,7 +504,9 @@ def preparer_journaux(configuration, vague=0):
                     contenu = (modeles / nom / fichier.name).read_text(encoding='utf-8')
                     # Garder les chemins publics, même dans une génération privée,
                     # et les accolades Bash présentes dans les commandes vétéran.
-                    etat.ecrire_prive(fichier, contenu.replace('{joueur}', joueur))
+                    contenu = contenu.replace('{joueur}', joueur).replace(
+                        '{game_path}', configuration.get('game_public_path', config.game_public_path).as_posix())
+                    etat.ecrire_prive(fichier, contenu)
                 os.chown(fichier, 0, gid)
                 os.chmod(fichier, 0o640)
 

@@ -124,7 +124,7 @@ def lire_compteur_general(joueur):
     # Lit le compteur de génération des généraux.
     #
     # Exemple :
-    # /home/game/.systeme/compteur_general_j1.txt contient 2
+    # /game/.systeme/compteur_general_j1.txt contient 2
     # donc le prochain général sera general3.
 
     compteur_path = config.racine_metier() / ".systeme" / f"compteur_general_{joueur}.txt"

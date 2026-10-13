@@ -7,7 +7,7 @@ Observer plusieurs positions sur un territoire.
 
 >>> COMMANDE
 
-tree /home/game/est_1
+tree {game_path}/est_1
 
 NOTE : Cette vague introduit les combats NvN et l'importance de la position des généraux.
 

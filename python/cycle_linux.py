@@ -322,7 +322,7 @@ class Generations:
         etat.preparer_systeme_survie(self.c)
         dossier_prive(self.game / '.systeme/generations')
         dossier_prive(self.home_stage)
-        # Une partition dédiée /home/game n'oblige pas à déplacer les homes.
+        # Une partition dédiée /game n'oblige pas à déplacer les homes.
         for home in self.homes.values():
             if home.stat().st_dev != self.home_stage.stat().st_dev:
                 raise RuntimeError("Le staging des homes doit être sur leur système de fichiers.")

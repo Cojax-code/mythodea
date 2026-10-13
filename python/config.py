@@ -39,7 +39,43 @@ def chemin_etat(nom):
     courant = _generation.get()
     return courant[0] / ".systeme" / globals()[nom].name if courant else globals()[nom]
 
-game_path = Path("/home/game")
+GAME_PATH_OFFICIEL = Path("/game")
+game_path = GAME_PATH_OFFICIEL
+# Les exemples joueurs visent le plateau publié, jamais une génération privée.
+game_public_path = GAME_PATH_OFFICIEL
+
+
+def verifier_partition_plateau():
+    """Contrôle Linux en lecture seule, réservé aux points d'entrée réels.
+
+    Les API métier gardent leurs configurations temporaires injectables en test.
+    Aucune création, migration, opération de montage ou de formatage ici.
+    """
+    import json
+    import subprocess
+
+    if game_path != GAME_PATH_OFFICIEL:
+        raise RuntimeError(f'Racine de production interdite : {game_path} ; /game attendu.')
+    if game_path.is_symlink() or not game_path.is_dir():
+        raise RuntimeError('/game doit exister, sans lien symbolique, avant le lancement.')
+    try:
+        resultat = subprocess.run(
+            ['findmnt', '--json', '--mountpoint', game_path.as_posix(),
+             '--output', 'TARGET,FSROOT,OPTIONS'],
+            check=True, capture_output=True, text=True,
+        )
+        montages = json.loads(resultat.stdout)['filesystems']
+        if len(montages) != 1:
+            raise ValueError('montage ambigu')
+        montage = montages[0]
+        valide = (montage['target'] == game_path.as_posix()
+                  and montage['fsroot'] == '/'
+                  and 'rw' in montage['options'].split(','))
+    except (OSError, subprocess.CalledProcessError, ValueError, KeyError, TypeError) as erreur:
+        raise RuntimeError('/game doit être un point de montage dédié ; vérifier findmnt --mountpoint /game.') from erreur
+    if (not valide or game_path.stat().st_dev in
+            {Path('/').stat().st_dev, Path('/home').stat().st_dev}):
+        raise RuntimeError('/game exige une partition entière, accessible en écriture, distincte de / et /home.')
 
 territoires = [
     game_path / "base1",
@@ -249,6 +285,7 @@ def configuration_mode(mode):
     return {
         "mode": mode,
         "game_path": game_path,
+        "game_public_path": game_public_path,
         "territoires": territoires_mode,
         "carte_territoires": carte,
         "bases_joueurs": bases,

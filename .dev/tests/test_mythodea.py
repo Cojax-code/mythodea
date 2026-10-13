@@ -25,7 +25,8 @@ class Regressions(unittest.TestCase):
             @staticmethod
             def rediriger(args):
                 if args and isinstance(args[0], str):
-                    if args[0] == "/home" or args[0].startswith("/home/"):
+                    if (args[0] in ("/home", "/game")
+                            or args[0].startswith(("/home/", "/game/"))):
                         args = (str(racine / args[0].lstrip("/")), *args[1:])
                 return args
 
@@ -57,7 +58,7 @@ class Regressions(unittest.TestCase):
             if hasattr(module, "Path"):
                 module.Path = CheminTest
         self.chemin = CheminTest
-        jeu = CheminTest("/home/game")
+        jeu = CheminTest(self.config.game_path.as_posix())
         self.assertTrue(jeu.is_relative_to(racine))
         self.assertTrue(CheminTest("/home/j1").is_relative_to(racine))
         self.config.game_path = jeu

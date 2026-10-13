@@ -7,7 +7,7 @@ Consulter le rapport pour repérer une marche forcée ou de la fatigue.
 
 >>> COMMANDE
 
-grep fatigue /home/game/village/{joueur}/hotel_de_ville/rapport.txt
+grep fatigue {game_path}/village/{joueur}/hotel_de_ville/rapport.txt
 
 NOTE : grep permet de chercher un mot précis dans un fichier.
 
@@ -18,7 +18,7 @@ Rappeler un général vers votre home.
 
 >>> COMMANDE
 
-mv /home/game/est_1/{joueur}/1/general1 /home/{joueur}/
+mv {game_path}/est_1/{joueur}/1/general1 /home/{joueur}/
 
 NOTE : Le rappel vers le home est instantané et sans pénalité.
 

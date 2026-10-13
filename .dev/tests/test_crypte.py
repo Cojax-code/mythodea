@@ -39,6 +39,27 @@ class Crypte(unittest.TestCase):
             self.tokens[j] = resultat
         return resultat
 
+    def test_pdf_racine_publique_configurable(self):
+        for identifiant in self.crypte.RECETTES:
+            pdf = self.crypte.recette_pdf({'debut': 'crypte_commence', 'fin': 'crypte_fin'},
+                                         identifiant, Path('/plateau-public'))
+            self.assertIn(b'/plateau-public/village/j1/crypte/', pdf)
+            self.assertNotIn(b'/game/', pdf)
+
+    def test_installateur_racine_configuree_et_socket(self):
+        installateur = importlib.import_module('crypte_installer')
+        with patch.object(installateur, 'installer') as installer, \
+                patch.object(self.config, 'verifier_partition_plateau') as verifier, \
+                patch.object(sys, 'argv', ['crypte_installer.py']):
+            installateur.main()
+        self.assertEqual(installer.call_args.args[0]['game_path'], self.config.game_path)
+        verifier.assert_called_once_with()
+        destination = self.racine / 'application'
+        with patch.object(installateur.os, 'geteuid', return_value=0, create=True):
+            installateur.installer(self.profil, destination, self.racine / 'profil.sh')
+        hooks = (destination / 'crypte.bash').read_text(encoding='utf-8')
+        self.assertIn(str(self.profil['game_path'] / '.systeme/communication/crypte.sock'), hooks)
+
     def commande(self, ligne, j='j1', retour='0'):
         self.message('before', j, line=ligne, command=ligne, kind='file', history='1/1')
         atelier = self.crypte.zone(self.profil, j) / 'atelier'

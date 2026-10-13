@@ -41,6 +41,8 @@ mythodea/
 ├── bash/
 │   ├── instal.sh
 │   ├── nettoyage.sh
+│   ├── reset_survie.sh
+│   ├── stockage.sh
 │   └── start.sh
 ├── python/
 │   ├── mythodea_v_1_5.py
@@ -222,10 +224,37 @@ La préparation Linux requise est décrite dans `TESTS_LINUX_SURVIE.md`.
 Racines utilisées :
 
 ```text
-/home/game
+/game
 /home/j1
 /home/j2
 ```
+
+Le plateau officiel est une **partition dédiée montée directement sur `/game`**,
+distincte des systèmes de fichiers de `/` et `/home`. La référence unique est
+`config.GAME_PATH_OFFICIEL`, utilisée par `config.game_path`. Les profils des deux
+modes en dérivent leurs chemins ; `game_public_path` garde les chemins publiés
+pour les journaux et PDF, même pendant une résolution privée.
+Les homes joueurs restent `/home/j1` et `/home/j2`, et le dépôt administrateur peut
+rester dans `/home/cojax/mythodea`. Aucun symlink entre l'ancien `/home/game` et
+`/game`, aucune migration automatique d'une partie existante.
+
+L'administrateur crée et monte la partition manuellement avant le premier lancement.
+`config.verifier_partition_plateau()` contrôle, sans écriture, l'existence, l'absence
+de lien, le montage exact avec `findmnt --mountpoint`, sa racine de filesystem `/`,
+l'accès `rw` et des périphériques distincts de `/` et `/home`.
+Le point d'entrée du moteur et l'installation Crypte officielle font ce contrôle ;
+`--afficher-configuration` reste consultable sans montage. Les API métier et les
+tests conservent leurs chemins temporaires injectables.
+
+`bash/stockage.sh` partage ce contrôle entre les scripts administratifs et refuse
+toute cible autre que `/game`, ainsi que les sous-montages avant nettoyage.
+`reset_survie.sh` détruit le contenu, fichiers cachés inclus, sans supprimer le
+point de montage ni formater la partition. Il refuse moteur actif, verrou ou gel
+résiduel, puis conserve son propre verrou exclusif Survie pendant l'opération ;
+seuls `general*` sont retirés des homes. Il prépare les racines et
+permissions puis installe les hooks Crypte ; le moteur crée le plateau Survie.
+`instal.sh` et `nettoyage.sh` restent classiques, avec le même contrôle du stockage.
+Aucun script ne crée, ne monte ni ne formate une partition.
 
 Le moteur utilise notamment :
 
@@ -323,8 +352,8 @@ Exemples invalides : `general01`, `general0`, `general١`.
 Les compteurs sont stockés dans :
 
 ```text
-/home/game/.systeme/compteur_general_j1.txt
-/home/game/.systeme/compteur_general_j2.txt
+/game/.systeme/compteur_general_j1.txt
+/game/.systeme/compteur_general_j2.txt
 ```
 
 Les compteurs et états moteur sont privés : fichiers `root:root 600`, sous
@@ -335,7 +364,7 @@ avant publication ; un fichier temporaire n'est jamais exposé aux joueurs.
 Les positions actives sont stockées dans :
 
 ```text
-/home/game/.systeme/positions_generaux.txt
+/game/.systeme/positions_generaux.txt
 ```
 
 Un numéro déjà généré ne doit jamais être réutilisé. Lorsqu'un général est
@@ -502,7 +531,7 @@ Pour un `mv` entre deux systèmes de fichiers, les inodes changent : les unités
 équivalentes sont rapprochées par type, dans la limite des effectifs de départ.
 Seul le surplus est un renforcement ; remplacer une unité par une autre du même
 type pendant cette traversée ne donne aucun effectif supplémentaire. Cette
-exception permet de conserver une partition `/home/game` distincte des homes.
+exception permet de conserver une partition `/game` distincte des homes.
 
 Sous le gel de clôture, les identités vivantes sont relevées dans le champ
 `capture` de la copie privée de cet état, avant les copies qui changent les inodes.
@@ -587,8 +616,8 @@ ils sont envoyés au repli.
 Zone de repli :
 
 ```text
-/home/game/repli/j1/
-/home/game/repli/j2/
+/game/repli/j1/
+/game/repli/j2/
 ```
 
 ---
@@ -710,7 +739,7 @@ Une marche forcée valide rend le général **fatigué pour le tour**.
 État de fatigue :
 
 ```text
-/home/game/.systeme/fatigue_generaux.txt
+/game/.systeme/fatigue_generaux.txt
 ```
 
 La fatigue est recalculée à chaque nouveau tour.
@@ -745,7 +774,7 @@ cycle normal, sans lancer de combat supplémentaire pendant ce rattrapage.
 Contrôle persistant :
 
 ```text
-/home/game/.systeme/controle_territoires.txt
+/game/.systeme/controle_territoires.txt
 ```
 
 Le code sait également retrouver une chaîne de territoires ravitaillés depuis la
@@ -926,7 +955,7 @@ l'expérience de jeu et d'un document de design validé. Ne pas les inventer.
 Répertoire :
 
 ```text
-/home/game/rapport/
+/game/rapport/
 ```
 
 Rapports :
@@ -1075,7 +1104,8 @@ publication du village conserve ses inodes, notamment le journal suivi avec `tai
 
 Les modèles sont conservés dans `python/textes/journal_du_Toonitruand/` et
 `python/textes/journal_du_veteran/`. `plateau.preparer_journaux()` utilise la même
-publication pour les deux niveaux : elle personnalise `{joueur}` et crée uniquement
+publication pour les deux niveaux : elle remplace `{joueur}` et `{game_path}`
+(racine publique configurée) et crée uniquement
 les fichiers manquants des vagues 0 à la vague atteinte, plafonnée à 10. Les chemins
 des commandes restent les chemins Linux publics, même dans une génération privée.
 Les fichiers déjà débloqués ne sont ni supprimés ni réécrits. Une reprise complète
@@ -1181,7 +1211,7 @@ ni les combats, ni le contrôle final, ni le passage au tour suivant.
 ### État persistant et reprise du cycle Survie
 
 `etat.charger_cycle_survie()` et `etat.sauvegarder_cycle_survie()` utilisent
-`/home/game/.systeme/cycle_survie.json`. Ce fichier privé appartient à `root:root`
+`/game/.systeme/cycle_survie.json`. Ce fichier privé appartient à `root:root`
 en `600`. L'écriture passe par `cycle_survie.tmp`, également privé, puis remplace
 atomiquement le fichier d'état. Celui-ci contient `tour` (entier à partir de 0),
 `phase` et, en phase `actions` ou `consultation`, `echeance` (secondes depuis
@@ -1212,7 +1242,7 @@ administrative est nécessaire : aucun retour arrière, audit, vague ou combat n
 rejoué automatiquement. Les journaux et générations sont conservés pour l'examen.
 
 `etat.verrou_cycle_survie()` crée exclusivement
-`/home/game/.systeme/verrou_cycle_survie` (`root:root`, `600`), qui contient le PID.
+`/game/.systeme/verrou_cycle_survie` (`root:root`, `600`), qui contient le PID.
 Le pilote le garde pendant toute son exécution, y compris l'attente ; les appels
 directs d'ouverture et de résolution prennent aussi ce verrou. Sa présence refuse
 un second moteur Survie. Il est retiré à la sortie, y compris sur exception ou
@@ -1361,7 +1391,7 @@ La V2.0 dispose du cycle jouable Survie Est et poursuit les objectifs suivants :
 Sans décision explicite, ne pas changer :
 
 - carte classique ;
-- chemins sous `/home/game`, `/home/j1`, `/home/j2` ;
+- chemins sous `/game`, `/home/j1`, `/home/j2` ;
 - structure des généraux et unités ;
 - permissions 700/600 ;
 - identité officielle des généraux ;

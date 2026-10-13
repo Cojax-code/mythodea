@@ -7,7 +7,7 @@ Extraire du rapport les lignes utiles au bilan sans relire tout le fichier.
 
 >>> COMMANDE VÉTÉRAN
 
-grep -Ein 'perte|surviv|résultat|force' /home/game/village/{joueur}/hotel_de_ville/rapport.txt
+grep -Ein 'perte|surviv|résultat|force' {game_path}/village/{joueur}/hotel_de_ville/rapport.txt
 
 NOTE : -E autorise plusieurs motifs avec |, -i ignore la casse et -n affiche les numéros de ligne.
 
@@ -18,7 +18,7 @@ Afficher une portion du rapport autour d'une information trouvée.
 
 >>> COMMANDE VÉTÉRAN
 
-sed -n '1,80p' /home/game/village/{joueur}/hotel_de_ville/rapport.txt
+sed -n '1,80p' {game_path}/village/{joueur}/hotel_de_ville/rapport.txt
 
 NOTE : sed -n permet de sélectionner une plage de lignes sans modifier le fichier.
 
@@ -29,6 +29,6 @@ Déplacer une unité complète entre deux blocs.
 
 >>> COMMANDE VÉTÉRAN
 
-mv /home/game/village/{joueur}/garnison/1/general1/arriere/infanterie1 /home/game/village/{joueur}/garnison/1/general1/droite/
+mv {game_path}/village/{joueur}/garnison/1/general1/arriere/infanterie1 {game_path}/village/{joueur}/garnison/1/general1/droite/
 
 NOTE : mv déplace le dossier entier : le fichier arc qu'il contient suit automatiquement.

@@ -7,7 +7,7 @@ Télécharger une recette dans un dossier local explicite.
 
 >>> COMMANDE VÉTÉRAN
 
-scp {joueur}@Mythodea.local:/home/game/village/{joueur}/crypte/grimoire/recette1.pdf ./recettes/
+scp {joueur}@Mythodea.local:{game_path}/village/{joueur}/crypte/grimoire/recette1.pdf ./recettes/
 
 NOTE : La destination explicite évite de perdre le fichier dans le mauvais répertoire local.
 

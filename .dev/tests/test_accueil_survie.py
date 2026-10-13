@@ -121,14 +121,23 @@ class AccueilSurvie(unittest.TestCase):
                                              ('avant', 'cavalerie1', 'cheval')):
                 chemin = f'/home/{joueur}/general1/{bloc}/{unite}'
                 self.assertIn(f'mkdir {chemin}\ntouch {chemin}/{equipement}', textes[0])
-            self.assertIn(f'/home/game/village/{joueur}/garnison/1/', textes[0])
+            self.assertIn(f'/game/village/{joueur}/garnison/1/', textes[0])
             self.assertIn('ses fichiers enfants, comme arc, suivent automatiquement', textes[1])
             self.assertIn('Ce rattrapage ne déclenche jamais un deuxième combat', textes[2])
             self.assertIn('Vague 5 - Combats avec plusieurs généraux', textes[5])
             self.assertNotIn('crypte', textes[5].lower())
             self.assertIn('Vague 6 - Découvrir la Crypte', textes[6])
-            self.assertIn(f'scp {joueur}@Mythodea.local:/home/game/village/{joueur}/crypte/', textes[6])
+            self.assertIn(f'scp {joueur}@Mythodea.local:/game/village/{joueur}/crypte/', textes[6])
             self.assertIn('Une double boucle combine deux répétitions.', textes[10])
+
+    def test_journaux_racine_publique_injectee(self):
+        self.profil['game_public_path'] = self.config.Path('/plateau-public')
+        self.plateau.preparer_accueil(self.profil, 0)
+        for nom in self.journaux:
+            texte = (self.hotel('j1') / nom / 'vague_0.txt').read_text(encoding='utf-8')
+            self.assertIn('/plateau-public/village/j1', texte)
+            self.assertNotIn('{game_path}', texte)
+            self.assertNotIn('/game/', texte)
 
     def test_veteran_fidele_au_word_et_personnalise(self):
         # Empreintes des sections 0..10 extraites de Journal_du_Veteran.docx.
@@ -161,7 +170,10 @@ class AccueilSurvie(unittest.TestCase):
                     self.assertNotIn(autre, texte)
                     self.assertNotIn('{joueur}', texte)
                     self.assertNotIn(str(self.racine), texte)
-                    normalise = '\n'.join(ligne for ligne in texte.replace(joueur, 'j1').splitlines()
+                    # Le Word historique utilisait /home/game. Conserver ses empreintes
+                    # pour vérifier le texte ; seule la racine publiée a changé.
+                    historique = texte.replace('/game/', '/home/game/').replace(joueur, 'j1')
+                    normalise = '\n'.join(ligne for ligne in historique.splitlines()
                                           if ligne.strip())
                     self.assertEqual(hashlib.sha256(normalise.encode('utf-8')).hexdigest(), empreinte)
 
@@ -228,7 +240,7 @@ class AccueilSurvie(unittest.TestCase):
             texte = (self.hotel(j) / 'journal_du_Toonitruand/vague_2.txt').read_text(encoding='utf-8')
             self.assertNotIn('generations', texte)
             self.assertNotIn(str(self.racine), texte)
-            self.assertIn(f'/home/game/village/{j}/garnison/1', texte)
+            self.assertIn(f'/game/village/{j}/garnison/1', texte)
             veteran = (self.hotel(j) / 'journal_du_veteran/vague_2.txt').read_text(encoding='utf-8')
             self.assertNotIn(str(self.racine), veteran)
             self.assertIn(f'find /home/{j}', veteran)

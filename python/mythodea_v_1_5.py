@@ -95,6 +95,7 @@ def main(argv=None):
         print(json.dumps(configuration, ensure_ascii=False, indent=2, default=str))
         return
 
+    config.verifier_partition_plateau()
     if arguments.mode == "survie":
         lancer_survie(configuration, arguments.tours)
         return

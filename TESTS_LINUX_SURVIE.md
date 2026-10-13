@@ -2,7 +2,7 @@
 
 La suite ordinaire simule les droits. `python/tests_linux/test_permissions_reelles.py`
 éprouve réellement les UID/GID, droits Unix, inodes, cgroup v2 et la récupération.
-Les tests automatiques s'exécutent dans `/tmp`, jamais sur une partie `/home/game`.
+Les tests automatiques s'exécutent dans `/tmp`, jamais sur une partie `/game`.
 Ils créent puis retirent j1/j2 et le groupe allié ; ils refusent de démarrer si ces
 comptes ou ce groupe existent déjà. Utiliser une VM/installation Linux dédiée et
 jetable, démarrée avec systemd, avec Python 3, `loginctl`, `ps` et les outils de comptes Unix.
@@ -29,6 +29,97 @@ des ACTIONS déjà jouées sans examen administratif du dernier état fiable.
 Ne pas lancer `instal.sh`/`nettoyage.sh` pour ces tests : le nettoyage classique
 efface les homes entiers. Ces scripts ne servent pas à migrer une partie Survie.
 
+## Partition dédiée sur le Raspberry
+
+Avant le premier lancement, l'administrateur crée et formate **manuellement** une
+partition dédiée, puis la monte directement sur `/game`. Prévoir son montage au
+démarrage dans la configuration système du Raspberry. Aucun script Mythodea ne
+crée de partition, ne formate de disque ou ne monte un système de fichiers.
+Ne pas relier l'ancien `/home/game` à `/game` par un symlink ; archiver l'ancienne
+partie séparément avant de préparer une nouvelle partie.
+
+```text
+partition dédiée → /game → plateau Mythodea
+/home/cojax/mythodea     dépôt et administration, hors plateau
+/home/j1                home joueur 1, hors plateau
+/home/j2                home joueur 2, hors plateau
+/home/.mythodea-publication  staging des homes, sur leur filesystem
+```
+
+Vérifications manuelles, sans écriture :
+
+```bash
+findmnt /game
+findmnt --mountpoint /game
+lsblk -f
+df -h /game
+```
+
+La cible exacte doit être `/game`, montée en lecture/écriture, avec la racine
+complète de sa partition. Son système de fichiers doit être distinct de `/` et
+de `/home` ; un bind mount d'un sous-dossier ne convient pas. Le simple fait que
+le dossier existe ne suffit pas. Le moteur, l'installation Crypte officielle et
+les scripts d'installation/reset vérifient ces conditions via `config.py`.
+
+## Repartir de zéro en Survie
+
+Sur le serveur de test, depuis le dépôt et une session administrateur distincte,
+arrêter le moteur puis exécuter :
+
+```bash
+sudo bash bash/reset_survie.sh
+bash bash/start.sh --mode survie
+```
+
+**Le reset détruit entièrement la partie courante dans `/game`**, y compris les
+fichiers cachés, états privés, rapports, générations et anciennes structures.
+Il conserve le dossier `/game`, son montage et sa partition ; il ne reformate rien.
+Dans `/home/j1` et `/home/j2`, il supprime uniquement `general*` et conserve `.ssh`,
+`.bashrc`, `.profile` et les autres fichiers personnels. Les comptes existants ne
+sont ni supprimés ni recréés, et `usermod -aG` conserve leurs autres groupes.
+Le contenu antérieur de `/home/.mythodea-publication` est conservé.
+
+Le reset exige root et refuse les cibles `/`, `/home`, `/home/j1`, `/home/j2`
+et toute racine autre que `/game`. Il refuse également un montage inadapté, les
+sous-montages dans les zones à supprimer, les homes symboliques, un moteur actif,
+les verrous même résiduels et les gels, y compris sous l'ancien `systeme/`.
+En cas de journal de gel, utiliser `survie_admin.py degeler --confirmer` après
+arrêt du moteur puis refaire le diagnostic. Pour une ancienne structure, utiliser
+l'outil de récupération de la version correspondante. Aucun marqueur de récupération
+n'est effacé pour contourner un refus.
+
+Suspendre les relances automatiques et ne lancer aucun moteur ni opération de
+montage/démontage pendant le reset. Le script réserve le verrou exclusif commun
+Survie pendant le nettoyage et l'installation, puis le retire à sa sortie.
+Le verrou bloque un démarrage Survie concurrent ; un arrêt brutal du reset peut
+laisser un verrou résiduel à diagnostiquer avec les outils administratifs habituels.
+La maintenance exclusive reste nécessaire pour les montages et le mode classique.
+
+Après nettoyage : `/game` est `root:root 755`, `/game/.systeme` est
+`root:mythodea_allies 710`, `/home/.mythodea-publication` est `root:root 700`, et
+les homes restent `j1:j1 700` et `j2:j2 700`, sans changement récursif.
+Le script installe les hooks Crypte et vérifie l'absence d'anciennes structures.
+Le moteur recrée ensuite village, fronts et états privés. Reconnecter les sessions
+SSH après ajout au groupe allié et pour charger les hooks réinstallés.
+Le script retrouve le dépôt depuis son emplacement, même lancé depuis un autre dossier.
+
+`bash/nettoyage.sh` reste réservé au mode classique et n'est jamais appelé par
+le reset Survie. Son comportement de nettoyage des homes reste destructif.
+
+Validation de développement sur répertoires temporaires uniquement :
+
+```bash
+bash -n bash/reset_survie.sh
+python3 -B -m unittest discover -s .dev/tests -p 'test_stockage.py' -v
+python3 -B -m unittest discover -s .dev/tests -p 'test_reset_survie.py' -v
+```
+
+Les tests simulent montages, comptes, cgroups et permissions. Ils couvrent les
+refus avant suppression, le nettoyage des fichiers cachés, la conservation du
+point de montage et des données personnelles, les hooks et le second reset.
+Ils ne remplacent pas un essai sur une partition Linux de test avec de vrais
+UID/GID. Vérifier les permissions et `findmnt --mountpoint /game` après cet essai.
+
 ## Préparation du serveur de jeu
 
 Les commandes suivantes concernent le serveur de démonstration, avec un plateau
@@ -40,6 +131,7 @@ avec un terminal valide reçoivent les annonces. Le moteur doit
 être lancé depuis l'administrateur, jamais depuis un `sudo` dans la session j1/j2.
 
 ```bash
+sudo python3 -B -c 'import sys; sys.path.insert(0, "python"); import config; config.verifier_partition_plateau()'
 id j1 >/dev/null 2>&1 || sudo useradd --create-home --shell /bin/bash j1
 id j2 >/dev/null 2>&1 || sudo useradd --create-home --shell /bin/bash j2
 id j1
@@ -51,11 +143,11 @@ command -v ps
 sudo groupadd -f mythodea_allies
 sudo usermod -aG mythodea_allies j1
 sudo usermod -aG mythodea_allies j2
-sudo install -d -o root -g root -m 755 /home/game
-sudo install -d -o root -g mythodea_allies -m 710 /home/game/.systeme
+sudo install -d -o root -g root -m 755 /game
+sudo install -d -o root -g mythodea_allies -m 710 /game/.systeme
 sudo install -d -o root -g root -m 700 /home/.mythodea-publication
 sudo python3 python/crypte_installer.py
-ls -ld /home /home/game /home/j1 /home/j2
+ls -ld /home /game /home/j1 /home/j2
 ```
 
 Résultat attendu : `cgroup2fs`, UID joueurs distincts et non nuls, homes conservés
@@ -102,9 +194,9 @@ pas nécessaires. Une session sans terminal (SFTP, par exemple) est ignorée.
 
 Le moteur démarre `user@<UID>.service` afin de maintenir les slices même sans SSH.
 Il ne tue pas les sessions et n'utilise ni ACL supplémentaire, bind mount ou namespace.
-La partition dédiée à `/home/game` reste un exercice manuel ; les homes et leur
-staging restent sur le même système de fichiers. Monter la partition sur ce chemin,
-sans remplacer le chemin par un symlink, et conserver les propriétaires requis.
+La partition dédiée montée sur `/game` est un prérequis préparé manuellement ;
+les homes et leur staging restent sur le même système de fichiers, hors du plateau.
+Conserver les propriétaires requis et ne pas remplacer le montage par un symlink.
 
 ## Vérifier une fenêtre ACTIONS
 
@@ -119,39 +211,39 @@ petits `sudo -u` sont des sondes ponctuelles à terminer avant le gel ; pour les
 processus longs, utiliser les véritables sessions SSH confinées des joueurs.
 
 ```bash
-ls -ld /home/game/village /home/game/est_{1,2,3} /home/game/repli
-sudo ls -ld /home/game/village/j{1,2}/{garnison,reserve,hotel_de_ville}
-sudo ls -ld /home/game/est_1/j{1,2}/renforts/{5,20} /home/game/repli/j{1,2}
+ls -ld /game/village /game/est_{1,2,3} /game/repli
+sudo ls -ld /game/village/j{1,2}/{garnison,reserve,hotel_de_ville}
+sudo ls -ld /game/est_1/j{1,2}/renforts/{5,20} /game/repli/j{1,2}
 sudo stat -c '%U:%G %a %n' /home/j{1,2}/general1 /home/j{1,2}/general1/ordre.txt
 sudo -u j1 sh -c 'test -w /home/j1/general1/ordre.txt && printf "1-2\n" > /home/j1/general1/ordre.txt'
 sudo -u j2 sh -c 'test -w /home/j2/general1/ordre.txt && printf "1-2\n" > /home/j2/general1/ordre.txt'
-sudo -u j1 touch /home/game/village/j1/reserve/.sonde
-sudo -u j1 rm /home/game/village/j1/reserve/.sonde
-sudo -u j2 touch /home/game/est_1/j2/renforts/5/.sonde
-sudo -u j2 rm /home/game/est_1/j2/renforts/5/.sonde
+sudo -u j1 touch /game/village/j1/reserve/.sonde
+sudo -u j1 rm /game/village/j1/reserve/.sonde
+sudo -u j2 touch /game/est_1/j2/renforts/5/.sonde
+sudo -u j2 rm /game/est_1/j2/renforts/5/.sonde
 ```
 
 Les sondes suivantes doivent être **refusées**, même en ACTIONS :
 
 ```bash
 sudo -u j1 cat /home/j2/general1/ordre.txt
-sudo -u j1 touch /home/game/village/j2/reserve/.interdit
-sudo -u j2 touch /home/game/est_3/bot/.interdit
-sudo -u j1 ls /home/game/.systeme
-sudo -u j1 ls /home/game/.systeme/communication
-sudo -u j1 cat /home/game/.systeme/cycle_survie.json
-sudo -u j2 sh -c 'echo interdit >> /home/game/.systeme/compteur_general_j2.txt'
-sudo -u j1 cat /home/game/rapport/rapport_long.txt
+sudo -u j1 touch /game/village/j2/reserve/.interdit
+sudo -u j2 touch /game/est_3/bot/.interdit
+sudo -u j1 ls /game/.systeme
+sudo -u j1 ls /game/.systeme/communication
+sudo -u j1 cat /game/.systeme/cycle_survie.json
+sudo -u j2 sh -c 'echo interdit >> /game/.systeme/compteur_general_j2.txt'
+sudo -u j1 cat /game/rapport/rapport_long.txt
 ```
 
 Contrôler les états privés et les informations alliées depuis l'administrateur :
 
 ```bash
-sudo find /home/game/.systeme -maxdepth 1 -type f -exec stat -c '%U:%G %a %n' {} +
-sudo stat -c '%U:%G %a %n' /home/game/est_3/bot /home/game/.systeme /home/game/.systeme/generations
-sudo stat -c '%U:%G %a %n' /home/game/rapport /home/game/rapport/rapport_court.txt /home/game/village/clocher /home/game/village/clocher/etat_tour.txt
-sudo -u j1 cat /home/game/village/clocher/etat_tour.txt
-sudo -u j2 cat /home/game/rapport/rapport_court.txt
+sudo find /game/.systeme -maxdepth 1 -type f -exec stat -c '%U:%G %a %n' {} +
+sudo stat -c '%U:%G %a %n' /game/est_3/bot /game/.systeme /game/.systeme/generations
+sudo stat -c '%U:%G %a %n' /game/rapport /game/rapport/rapport_court.txt /game/village/clocher /game/village/clocher/etat_tour.txt
+sudo -u j1 cat /game/village/clocher/etat_tour.txt
+sudo -u j2 cat /game/rapport/rapport_court.txt
 ```
 
 États privés : `root:root 600`, sous-dossiers privés `700`. `.systeme/` et
@@ -165,7 +257,7 @@ Dans une session joueur, suivre le Clocher, puis interrompre seulement `tail` av
 Ctrl+C pour revenir au shell :
 
 ```bash
-tail -f /home/game/village/clocher/suivi_tour.log
+tail -f /game/village/clocher/suivi_tour.log
 ```
 
 À expiration : l'annonce directe arrive dans chaque terminal SSH avant le gel,
@@ -176,7 +268,7 @@ pendant la capture :
 ```bash
 sudo cat /sys/fs/cgroup/user.slice/user-$(id -u j1).slice/cgroup.events
 sudo cat /sys/fs/cgroup/user.slice/user-$(id -u j2).slice/cgroup.events
-sudo cat /home/game/.systeme/gel_survie.json
+sudo cat /game/.systeme/gel_survie.json
 ```
 
 Attendre `frozen 1` ; le gel est effectif, pas simplement un `sleep`. Si la capture
@@ -194,10 +286,10 @@ Après le second gel de publication, dans chaque session joueur :
 
 ```bash
 cd ~
-cat /home/game/village/clocher/etat_tour.txt
+cat /game/village/clocher/etat_tour.txt
 ls -l general1/ordre.txt
 test -w general1/ordre.txt
-grep 'contrôle final' /home/game/rapport/rapport_court.txt
+grep 'contrôle final' /game/rapport/rapport_court.txt
 ```
 
 En CONSULTATION, `test -w` échoue et `cat` réussit. Après 60 secondes, ACTIONS
@@ -216,7 +308,7 @@ supprimer un verrou simplement parce qu'il paraît ancien. Depuis l'administrate
 
 ```bash
 sudo python3 python/survie_admin.py diagnostic
-sudo cat /home/game/.systeme/verrou_cycle_survie
+sudo cat /game/.systeme/verrou_cycle_survie
 ```
 
 Contrôler le PID affiché, son propriétaire, sa commande et sa date de démarrage
@@ -251,9 +343,9 @@ Si, et seulement si, la résolution est terminée (`resolution_terminee: true`) 
 la publication a été interrompue, vérifier la génération avant republication :
 
 ```bash
-GENERATION=$(sudo python3 -c 'import json; print(json.load(open("/home/game/.systeme/cycle_survie.json"))["generation"])')
-sudo cat "/home/game/.systeme/generations/$GENERATION/resultat.json"
-sudo cat "/home/game/.systeme/generations/$GENERATION/publication.json"
+GENERATION=$(sudo python3 -c 'import json; print(json.load(open("/game/.systeme/cycle_survie.json"))["generation"])')
+sudo cat "/game/.systeme/generations/$GENERATION/resultat.json"
+sudo cat "/game/.systeme/generations/$GENERATION/publication.json"
 sudo python3 python/survie_admin.py republier --generation "$GENERATION" --confirmer
 ```
 
@@ -283,13 +375,13 @@ fichier seul écrit le journal du prototype, sans collecteur moteur.
 Depuis l'administrateur, après préparation du plateau par le lancement Survie :
 
 ```bash
-ls -ld /home/game/.systeme/communication /home/game/.systeme
-ls -ld /home/game/village/j1/crypte/{grimoire,atelier,recompense}
-sudo stat -c '%U:%G %a %n' /home/game/.systeme/crypte*.json
-sudo stat -c '%U:%G %a %n' /home/game/.systeme/compteur_creation_normale_*.txt
+ls -ld /game/.systeme/communication /game/.systeme
+ls -ld /game/village/j1/crypte/{grimoire,atelier,recompense}
+sudo stat -c '%U:%G %a %n' /game/.systeme/crypte*.json
+sudo stat -c '%U:%G %a %n' /game/.systeme/compteur_creation_normale_*.txt
 stat -c '%U:%G %a %n' /usr/local/lib/mythodea/crypte.bash
-sudo -u j1 cat /home/game/.systeme/crypte.json
-sudo -u j2 cat /home/game/.systeme/crypte.json
+sudo -u j1 cat /game/.systeme/crypte.json
+sudo -u j2 cat /game/.systeme/crypte.json
 sudo -u j1 test -w /usr/local/lib/mythodea/crypte.bash
 ```
 
@@ -303,16 +395,16 @@ Après mise à jour des recettes, réinstaller les hooks avec
 Depuis le PC du joueur (remplacer l'adresse), télécharger les PDF :
 
 ```bash
-scp j1@ADRESSE_DU_PI:/home/game/village/j1/crypte/grimoire/recette1.pdf .
-scp j1@ADRESSE_DU_PI:/home/game/village/j1/crypte/grimoire/recette2.pdf .
-scp j1@ADRESSE_DU_PI:/home/game/village/j1/crypte/grimoire/recette3.pdf .
+scp j1@ADRESSE_DU_PI:/game/village/j1/crypte/grimoire/recette1.pdf .
+scp j1@ADRESSE_DU_PI:/game/village/j1/crypte/grimoire/recette2.pdf .
+scp j1@ADRESSE_DU_PI:/game/village/j1/crypte/grimoire/recette3.pdf .
 ```
 
 Dans sa session SSH principale, pendant ACTIONS, après avoir lu le PDF :
 
 ```bash
 type crypte_commence crypte_fin
-cd /home/game/village/j1/crypte/atelier
+cd /game/village/j1/crypte/atelier
 crypte_commence
 mkdir appel
 touch appel/cavalerie
@@ -323,7 +415,7 @@ crypte_fin
 
 Résultat attendu : « Réussite enregistrée », atelier vide, aucune récompense avant
 publication. Après publication, faire `cd ~`, puis revenir consulter
-`/home/game/village/j1/crypte/recompense`. Un seul `generalN` doit apparaître, avec
+`/game/village/j1/crypte/recompense`. Un seul `generalN` doit apparaître, avec
 `nom_affichage=ame_et_lie_poulin` et 20 équipements `cheval`, répartis 10/5/5/0.
 Lors des prochaines ACTIONS, déplacer ce dossier avec `mv` vers une place légale
 libre de la garnison. Remplacer `generalN` par le nom réellement attribué.
@@ -390,9 +482,9 @@ Après le diagnostic administratif du cycle et **vérification de l'absence du m
 
 ```bash
 sudo python3 python/survie_admin.py diagnostic
-sudo ss -xlpn | grep '/home/game/.systeme/communication/crypte.sock'
+sudo ss -xlpn | grep '/game/.systeme/communication/crypte.sock'
 # Seulement si aucun moteur ni collecteur n'est actif :
-sudo rm -- /home/game/.systeme/communication/crypte.sock
+sudo rm -- /game/.systeme/communication/crypte.sock
 ```
 
 Le retrait de cette socket ne retire pas le verrou moteur, ne dégèle pas les
@@ -415,11 +507,11 @@ message de début avec leur propre chemin ; aucun envoi avant préparation, ni l
 d'une simple reprise. Lancer aussi sans session ouverte : le cycle doit continuer.
 
 ```bash
-ls /home/game
-sudo ls -a /home/game
-cat /home/game/village/j1/hotel_de_ville/journal_du_Toonitruand/vague_0.txt
-cat /home/game/village/j1/hotel_de_ville/rapport.txt
-ls /home/game/village/j1/hotel_de_ville/courrier
+ls /game
+sudo ls -a /game
+cat /game/village/j1/hotel_de_ville/journal_du_Toonitruand/vague_0.txt
+cat /game/village/j1/hotel_de_ville/rapport.txt
+ls /game/village/j1/hotel_de_ville/courrier
 ```
 
 Aux résolutions suivantes, vérifier l'apparition de vague_1 puis vague_2, sans
@@ -457,14 +549,14 @@ puis résout ce conflit au prochain cycle normal.
 Sur une partie de test dédiée, vérifier à chaque publication :
 
 ```bash
-sudo stat -c '%U:%G %a %n' /home/game/est_2/cabane_mysterieuse
-sudo stat -c '%U:%G %a %n' /home/game/est_2/cabane_mysterieuse/coffre/.sceau
-sudo stat -c '%U:%G %a %n' /home/game/.systeme/defis.json
+sudo stat -c '%U:%G %a %n' /game/est_2/cabane_mysterieuse
+sudo stat -c '%U:%G %a %n' /game/est_2/cabane_mysterieuse/coffre/.sceau
+sudo stat -c '%U:%G %a %n' /game/.systeme/defis.json
 id j1
 id j2
-sudo -u j1 cat /home/game/est_2/cabane_mysterieuse/coffre/.sceau
-sudo -u j2 cat /home/game/est_2/cabane_mysterieuse/coffre/.sceau
-sudo -u j1 cat /home/game/.systeme/defis.json
+sudo -u j1 cat /game/est_2/cabane_mysterieuse/coffre/.sceau
+sudo -u j2 cat /game/est_2/cabane_mysterieuse/coffre/.sceau
+sudo -u j1 cat /game/.systeme/defis.json
 ```
 
 Contrôle allié : les deux lectures du sceau réussissent, dossiers
@@ -477,7 +569,7 @@ Vérifier aussi une perte puis une reconquête et la republication administrativ
 Avec EST_2 contrôlé par les alliés, dans une session j1 :
 
 ```bash
-cd /home/game/est_2/cabane_mysterieuse
+cd /game/est_2/cabane_mysterieuse
 cat readme.txt
 ls -la coffre
 cat coffre/.sceau
@@ -486,7 +578,7 @@ cat notes/note1.txt notes/note2.txt
 ```
 
 Envoyer `FLAG` suivi du flag réellement découvert dans le fichier
-`/home/game/village/j1/hotel_de_ville/courrier/envoie_message.txt`.
+`/game/village/j1/hotel_de_ville/courrier/envoie_message.txt`.
 Dans les dix secondes environ pendant ACTIONS, vérifier la réponse de validation
 et la fiche `bestiaire/cavalerie_lourde.txt`. Le général attend la fin du tour.
 Essayer d'abord un flag faux, puis réécrire le bon depuis deux sessions j1 :

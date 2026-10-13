@@ -7,7 +7,7 @@ Explorer la Crypte.
 
 >>> COMMANDE
 
-ls -l /home/game/village/{joueur}/crypte
+ls -l {game_path}/village/{joueur}/crypte
 
 NOTE : Vous y trouverez le grimoire, l'atelier et la zone de récompense.
 
@@ -18,7 +18,7 @@ Lister les recettes disponibles.
 
 >>> COMMANDE
 
-ls -l /home/game/village/{joueur}/crypte/grimoire
+ls -l {game_path}/village/{joueur}/crypte/grimoire
 
 NOTE : Les commandes exactes des rituels restent volontairement dans les PDF.
 
@@ -29,7 +29,7 @@ Télécharger une recette sur votre propre PC.
 
 >>> COMMANDE
 
-scp {joueur}@Mythodea.local:/home/game/village/{joueur}/crypte/grimoire/recette1.pdf .
+scp {joueur}@Mythodea.local:{game_path}/village/{joueur}/crypte/grimoire/recette1.pdf .
 
 NOTE : Cette commande est exécutée depuis le PC du joueur, pas depuis le Raspberry.
 

@@ -37,10 +37,12 @@ def installer(c, destination, profil):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--game', type=Path, default=Path('/home/game'))
+    p.add_argument('--game', type=Path, default=config.game_path)
     p.add_argument('--destination', type=Path, default=Path('/usr/local/lib/mythodea'))
     p.add_argument('--profil', type=Path, default=Path('/etc/profile.d/mythodea-crypte.sh'))
     a = p.parse_args()
+    if a.game == config.game_path:
+        config.verifier_partition_plateau()
     installer({'game_path': a.game}, a.destination, a.profil)
 
 

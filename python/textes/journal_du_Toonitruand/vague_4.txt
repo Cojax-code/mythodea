@@ -7,7 +7,7 @@ Relire les conseils déjà découverts lors des vagues precedentes
 
 >>> COMMANDE
 
-ls -l /home/game/village/{joueur}/hotel_de_ville/journal_du_Toonitruand
+ls -l {game_path}/village/{joueur}/hotel_de_ville/journal_du_Toonitruand
 
 NOTE : Un boss arrive à la vague 5, 10, 15, …prepare vous en consequence !.
 
@@ -18,7 +18,7 @@ Comprendre un déplacement simple : déplacer un général vers une zone adjacen
 
 >>> COMMANDE
 
-mv /home/game/village/{joueur}/garnison/1/general1 /home/game/est_1/{joueur}/1/
+mv {game_path}/village/{joueur}/garnison/1/general1 {game_path}/est_1/{joueur}/1/
 
 NOTE : Le moteur vérifiera ensuite si ce déplacement respecte les règles du tour.
 
@@ -29,7 +29,7 @@ Observer la zone de repli.
 
 >>> COMMANDE
 
-tree /home/game/repli
+tree {game_path}/repli
 
 NOTE : Le repli sert aux sanctions et aux retours forcés.
 

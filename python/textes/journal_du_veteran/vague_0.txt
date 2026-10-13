@@ -7,7 +7,7 @@ Afficher uniquement les premiers niveaux du village, avec le type de chaque entr
 
 >>> COMMANDE VÉTÉRAN
 
-find /home/game/village/{joueur} -maxdepth 2 -printf '%y  %p\n' | sort
+find {game_path}/village/{joueur} -maxdepth 2 -printf '%y  %p\n' | sort
 
 NOTE : find permet de filtrer précisément la profondeur explorée. %y affiche le type de l'entrée et %p son chemin.
 

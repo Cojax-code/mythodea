@@ -27,6 +27,11 @@ La validation réelle sous Linux / Raspberry Pi se poursuit pendant son dévelop
 
 Mythodea est prévu pour Linux / Raspberry Pi OS.
 
+Avant le premier lancement, l'administrateur doit créer et monter manuellement une
+partition dédiée sur `/game`. Le jeu ne partitionne ni ne formate les disques.
+Les homes `/home/j1`, `/home/j2` et le dépôt (par exemple `/home/cojax/mythodea`)
+restent séparés. Voir [la préparation Raspberry](TESTS_LINUX_SURVIE.md#partition-dédiée-sur-le-raspberry).
+
 Pour installer et lancer le **mode classique**, depuis la racine du dépôt :
 
 ```bash
@@ -71,6 +76,16 @@ ils créent une autre carte. Le moteur crée les zones Survie sur un plateau dé
 et refuse de démarrer si des territoires ou rapports territoriaux classiques
 subsistent. Une ancienne partie doit être archivée séparément par l'administrateur.
 
+Pour détruire la partie Survie actuelle et repartir de zéro, moteur arrêté :
+
+```bash
+sudo bash bash/reset_survie.sh
+bash bash/start.sh --mode survie
+```
+
+Le reset vide `/game` sans retirer son montage et ne supprime que `general*` dans
+les homes ; `.ssh` et les fichiers personnels sont conservés.
+
 Chaque fenêtre d'action dure 120 secondes, y compris le tour 0. Une annonce directe sur les terminaux SSH
 précède un gel d'au moins 10 secondes pour capturer les actions. Les sessions
 reprennent pendant la résolution privée : anciennes forces, vague suivante,
@@ -78,8 +93,8 @@ combats. La vague 1 apparaît à la résolution du tour 0. Un second gel court p
 le résultat, puis une consultation de 60 secondes précède les nouvelles actions.
 Après publication, faire `cd ~` puis revenir sur la carte.
 
-Le temps est lisible avec `cat /home/game/village/clocher/etat_tour.txt` ou
-`tail -f /home/game/village/clocher/suivi_tour.log`.
+Le temps est lisible avec `cat /game/village/clocher/etat_tour.txt` ou
+`tail -f /game/village/clocher/suivi_tour.log`.
 
 Commencez par `village/<joueur>/hotel_de_ville/journal_du_Toonitruand/vague_0.txt`.
 L’Hôtel de Ville contient aussi le bilan `rapport.txt` et le `courrier/` (prototype
@@ -112,8 +127,8 @@ bash bash/start.sh --mode survie --duree-action 0 --duree-gel 0 --duree-consulta
 résolution ou publication interrompue exige une récupération administrative ; les
 [commandes de diagnostic et de dégel](TESTS_LINUX_SURVIE.md#récupération-administrative)
 ne rejouent aucun audit ou combat. Ne pas alterner classique et Survie sur une même
-partie : les identités et fichiers d'état sont communs. L'installation et le
-nettoyage restent classiques.
+partie : les identités et fichiers d'état sont communs. `instal.sh` et
+`nettoyage.sh` restent réservés au mode classique.
 
 ## Organisation
 

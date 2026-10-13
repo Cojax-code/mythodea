@@ -483,7 +483,7 @@ def lire_generaux_territoire(territory, configuration=None):
     # territoire/joueur/emplacement/generalX/
     #
     # Exemple :
-    # /home/game/terrain1/j1/1/general1
+    # /game/terrain1/j1/1/general1
     #
     # Cette fonction ne sanctionne rien et ne déplace rien.
     # Les anomalies sont traitées auparavant par les

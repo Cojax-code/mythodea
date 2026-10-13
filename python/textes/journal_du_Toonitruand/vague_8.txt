@@ -7,7 +7,7 @@ Lire l'ordre actuel d'un général.
 
 >>> COMMANDE
 
-cat /home/game/village/{joueur}/garnison/1/general1/ordre.txt
+cat {game_path}/village/{joueur}/garnison/1/general1/ordre.txt
 
 NOTE : Les ordres permettent d'influencer le comportement tactique.
 
@@ -18,7 +18,7 @@ CONSEIL
 
 >>> COMMANDE
 
-echo '1-2' > /home/game/village/{joueur}/garnison/1/general1/ordre.txt
+echo '1-2' > {game_path}/village/{joueur}/garnison/1/general1/ordre.txt
 
 NOTE : La redirection > remplace le contenu du fichier par la nouvelle valeur.
 

@@ -7,7 +7,7 @@ Suivre les étapes du cycle en direct.
 
 >>> COMMANDE
 
-tail -f /home/game/village/clocher/suivi_tour.log
+tail -f {game_path}/village/clocher/suivi_tour.log
 
 NOTE : Vous pouvez interrompre tail avec Ctrl+C pour revenir au terminal.
 
@@ -18,7 +18,7 @@ Observer ce qu'il reste de vos forces après le combat.
 
 >>> COMMANDE
 
-ls -l /home/game/village/{joueur}/garnison/1
+ls -l {game_path}/village/{joueur}/garnison/1
 
 NOTE : Avant de renforcer une position, regardez d'abord quels généraux ont survécu.
 

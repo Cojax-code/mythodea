@@ -27,6 +27,7 @@ class Modes(unittest.TestCase):
         ):
             sys.modules.pop(nom, None)
         self.config = importlib.import_module("config")
+        self.montage = self.contextes.enter_context(patch.object(self.config, 'verifier_partition_plateau'))
         self.entree = importlib.import_module("mythodea_v_1_5")
 
     def test_profil_classique_conserve_carte_bases_et_proprietaires(self):
@@ -37,7 +38,7 @@ class Modes(unittest.TestCase):
             "terrain3": ["terrain2", "base2"], "base2": ["terrain3"],
         })
         self.assertEqual(profil["bases_joueurs"], {"j1": "base1", "j2": "base2"})
-        self.assertEqual(profil["game_path"], Path("/home/game"))
+        self.assertEqual(profil["game_path"], Path("/game"))
         self.assertFalse(profil["emplacements_partages"])
         self.assertIsNone(profil["duree_phase_action_secondes"])
         for joueur in ("j1", "j2"):
@@ -56,7 +57,7 @@ class Modes(unittest.TestCase):
         self.assertEqual([p.name for p in profil["territoires"]],
                          ["village", "est_1", "est_2", "est_3"])
         self.assertIn("repli", profil["zones_speciales"])
-        self.assertEqual(profil["repli_path"], Path("/home/game/repli"))
+        self.assertEqual(profil["repli_path"], Path("/game/repli"))
         self.assertEqual(profil["bases_joueurs"], {"j1": "village", "j2": "village"})
         self.assertEqual(profil["duree_phase_action_secondes"], 120)
         self.assertEqual(profil["emplacements"], ["1", "2", "3", "4"])
@@ -114,7 +115,18 @@ class Modes(unittest.TestCase):
                     for nom in self.config.carte_territoires:
                         self.assertNotIn(nom, sortie.getvalue())
                 resoudre.assert_not_called()
+                self.montage.assert_not_called()
                 self.assertNotIn("plateau", sys.modules)
+
+    def test_montage_refuse_avant_tout_lancement(self):
+        self.montage.side_effect = RuntimeError('partition absente')
+        with patch.object(self.entree, 'lancer_survie') as survie, \
+                patch.object(self.entree, 'resoudre_tour_classique') as classique:
+            for mode in ('classique', 'survie'):
+                with self.assertRaisesRegex(RuntimeError, 'partition absente'):
+                    self.entree.main(['--mode', mode])
+            survie.assert_not_called()
+            classique.assert_not_called()
 
     def test_survie_jouable_ne_lance_pas_le_moteur_classique(self):
         with patch.object(self.entree, "resoudre_tour_classique") as resoudre, \

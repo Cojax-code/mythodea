@@ -1,7 +1,7 @@
 """Tests destructifs UNIQUEMENT pour leurs comptes temporaires j1/j2.
 
 Exiger une VM Linux dédiée où j1, j2 et mythodea_allies n'existent pas.
-Ne touche jamais /home/game ni /home/j1 ou /home/j2. Aucun droit Unix simulé.
+Ne touche jamais /game ni /home/j1 ou /home/j2. Aucun droit Unix simulé.
 """
 import grp
 import json

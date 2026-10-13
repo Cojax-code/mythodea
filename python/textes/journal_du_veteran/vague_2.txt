@@ -7,7 +7,7 @@ Suivre le Clocher en continu tout en filtrant les changements de phase.
 
 >>> COMMANDE VÉTÉRAN
 
-tail -F /home/game/village/clocher/suivi_tour.log | grep --line-buffered -Ei 'actions|résolution|consultation|vague|combat'
+tail -F {game_path}/village/clocher/suivi_tour.log | grep --line-buffered -Ei 'actions|résolution|consultation|vague|combat'
 
 NOTE : tail -F continue à suivre le fichier même s'il est recréé. --line-buffered évite que grep retarde l'affichage.
 

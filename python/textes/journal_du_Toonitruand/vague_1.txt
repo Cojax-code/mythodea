@@ -7,7 +7,7 @@ Lire le rapport du dernier tour.
 
 >>> COMMANDE
 
-cat /home/game/village/{joueur}/hotel_de_ville/rapport.txt
+cat {game_path}/village/{joueur}/hotel_de_ville/rapport.txt
 
 NOTE : Le rapport résume ce qui s'est passé pendant le tour terminé.
 
@@ -18,7 +18,7 @@ Regarder ce qu'il reste de votre général après le premier combat.
 
 >>> COMMANDE
 
-tree /home/game/village/{joueur}/garnison/1/general1
+tree {game_path}/village/{joueur}/garnison/1/general1
 
 NOTE : Comparer l'avant et l'après aide à comprendre les pertes.
 
@@ -29,7 +29,7 @@ Déplacer une unité d'un bloc vers un autre.
 
 >>> COMMANDE
 
-mv /home/game/village/{joueur}/garnison/1/general1/arriere/archer1 /home/game/village/{joueur}/garnison/1/general1/droite/
+mv {game_path}/village/{joueur}/garnison/1/general1/arriere/archer1 {game_path}/village/{joueur}/garnison/1/general1/droite/
 
 NOTE : mv déplace ici tout le dossier de l'unité : ses fichiers enfants, comme arc, suivent automatiquement sans option supplémentaire. Un bloc doit rester homogène ; mélanger plusieurs types peut le rendre invalide.
 

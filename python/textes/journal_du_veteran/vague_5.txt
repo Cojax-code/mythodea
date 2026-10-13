@@ -7,7 +7,7 @@ Repérer tous les généraux visibles sur est_1 et leur emplacement.
 
 >>> COMMANDE VÉTÉRAN
 
-find /home/game/est_1 -maxdepth 4 -type d -name 'general*' -printf '%h -> %f\n' | sort
+find {game_path}/est_1 -maxdepth 4 -type d -name 'general*' -printf '%h -> %f\n' | sort
 
 NOTE : %h affiche le dossier parent : on voit immédiatement dans quelle place se trouve chaque général.
 
@@ -18,6 +18,6 @@ Compter les généraux trouvés sur le territoire.
 
 >>> COMMANDE VÉTÉRAN
 
-find /home/game/est_1 -maxdepth 4 -type d -name 'general*' -printf '.' | wc -c
+find {game_path}/est_1 -maxdepth 4 -type d -name 'general*' -printf '.' | wc -c
 
 NOTE : La sortie de find est transformée en un compteur simple avec wc -c.
