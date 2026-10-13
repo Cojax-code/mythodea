@@ -352,6 +352,12 @@ def _ouvrir_tour_survie(configuration, horloge=None):
     duree = minuterie.valider_duree(configuration["duree_phase_action_secondes"])
     cycle = etat.charger_cycle_survie(configuration)
     if cycle is not None and cycle["phase"] in ("actions", "defaite"):
+        if cycle['phase'] == 'actions' and (etat.charger_unites_actions(configuration) is None
+                or (cycle['tour'] == 0 and 'generation_active' not in cycle and any(
+                    etat.lire_compteur_general(j) == 0 for j in configuration['joueurs']))):
+            gestion = creer_gestion(configuration, horloge)
+            gestion.preparer()
+            gestion.preparer_generaux_actions(cycle['tour'], reprise=True)
         plateau.preparer_journaux(
             configuration, cycle['tour'] + (cycle['phase'] == 'defaite'))
         return cycle
@@ -367,9 +373,11 @@ def _ouvrir_tour_survie(configuration, horloge=None):
     preparer_zones_bot(configuration)
     crypte.preparer(configuration)
     plateau.preparer_accueil(configuration, tour)
-    for joueur in configuration["joueurs"]:
-        generaux.faire_apparaitre_general_si_possible(joueur, configuration)
-    generaux.scanner_ordres_surnombre(configuration)
+    gestion = creer_gestion(configuration, horloge)
+    gestion.preparer()
+    gestion.preparer_generaux_actions(tour)
+    if tour == 0 and 'generation_active' not in precedent:
+        gestion.initialiser_exploration()
     cycle = {"tour": tour, "phase": "actions", "echeance": horloge() + duree}
     precedent = etat.charger_cycle_survie(configuration) or {}
     if 'generation_active' in precedent:
@@ -500,7 +508,9 @@ def _lancer_partie_survie(configuration, nombre_tours, horloge, dormir):
         nouvelle_partie = cycle is None
         if cycle is None or cycle['phase'] == 'a_preparer':
             cycle = _ouvrir_tour_survie(configuration, horloge)
-        elif cycle['phase'] in ('actions', 'consultation', 'defaite'):
+        elif cycle['phase'] == 'actions':
+            cycle = _ouvrir_tour_survie(configuration, horloge)
+        elif cycle['phase'] in ('consultation', 'defaite'):
             plateau.preparer_journaux(
                 configuration, cycle['tour'] + (cycle['phase'] != 'actions'))
         if nouvelle_partie:

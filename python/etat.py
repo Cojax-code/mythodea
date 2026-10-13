@@ -101,6 +101,16 @@ def charger_attentes_repli(configuration=None):
     return attentes
 
 
+def charger_unites_actions(configuration):
+    chemin = configuration['game_path'] / '.systeme/unites_actions.json'
+    return json.loads(chemin.read_text(encoding='utf-8')) if chemin.exists() else None
+
+
+def sauvegarder_unites_actions(configuration, valeur):
+    ecrire_prive(configuration['game_path'] / '.systeme/unites_actions.json',
+                 json.dumps(valeur, ensure_ascii=False) + '\n')
+
+
 def sauvegarder_attentes_repli(attentes, configuration=None):
     """Compteurs privés du moteur, indépendants des fichiers des joueurs."""
     racine = config.racine_metier() if configuration is None else configuration["game_path"]

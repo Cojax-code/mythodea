@@ -27,12 +27,22 @@ class CycleSurvie(unittest.TestCase):
             lambda c, horloge=None, dormir=None: self.cycle_linux.Generations(
                 c, GelSimule(), horloge=horloge, dormir=dormir)))
 
-    general = test_surnombre.Surnombre.general
+    def general(self, *args, **kwargs):
+        chemin = test_surnombre.Surnombre.general(self, *args, **kwargs)
+        joueur = args[0] if args else kwargs.get('joueur', 'j1')
+        if joueur in self.profil['joueurs']:
+            tour = self.etat.charger_cycle_survie(self.profil)['tour']
+            # Ce helper installe une troupe de scénario déjà publiée, pas une
+            # création joueur pendant ACTIONS. Ne pas revalider les autres troupes.
+            self.securite.memoriser_unites_actions(
+                self.profil, tour, [f'{joueur}:{chemin.name}'])
+        return chemin
     colonne = test_surnombre.Surnombre.colonne
     preference = test_surnombre.Surnombre.preference
 
     def activer(self, tour):
         self.etat.sauvegarder_cycle_survie({"tour": tour, "phase": "actions", "echeance": 100}, self.profil)
+        self.securite.memoriser_unites_actions(self.profil, tour)
 
     def resoudre(self, apparitions=True):
         # Ces régressions éprouvent le moteur sur leur plateau isolé. L'enveloppe

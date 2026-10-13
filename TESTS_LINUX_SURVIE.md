@@ -13,6 +13,19 @@ sudo python3 -B -m unittest discover -s python/tests_linux -v
 python3 -B -m unittest discover -s .dev/tests -v
 ```
 
+La suite simulée `test_entrainement_rappel_survie.py` couvre l'attribution avant
+ACTIONS, l'idempotence, les compteurs après destruction, l'entraînement limité
+au home/réserve, les renommages et finalisations, le délai d'un tour, le rappel
+sans fatigue et son retour obligatoire par le village. Elle traverse aussi les
+captures, publications et republications après incident. Les plateaux préparés
+par les helpers de tests disposent d'une référence des unités déjà publiées.
+
+Sous Linux, vérifier également les droits `root:root 600` de
+`.systeme/unites_actions.json`, l'impossibilité pour j1/j2 de le modifier et la
+conservation des unités lors d'un vrai `mv`. Une partie ancienne sans cette
+référence est arrêtée pour récupération : ne pas fabriquer un inventaire depuis
+des ACTIONS déjà jouées sans examen administratif du dernier état fiable.
+
 Ne pas lancer `instal.sh`/`nettoyage.sh` pour ces tests : le nettoyage classique
 efface les homes entiers. Ces scripts ne servent pas à migrer une partie Survie.
 

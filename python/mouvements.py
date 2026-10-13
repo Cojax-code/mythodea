@@ -91,6 +91,10 @@ def verifier_deplacement_general(
 
         return False, False, "sortie du repli interdite"
 
+    if (configuration['mode'] == 'survie' and destination == 'home'
+            and origine in {t.name for t in configuration['territoires']}):
+        return True, False, "rappel volontaire, retour par le village obligatoire"
+
     # Destination spéciale interdite.
     if destination in ["home", "repli"]:
         return False, False, "destination interdite"

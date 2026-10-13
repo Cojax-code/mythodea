@@ -1,0 +1,100 @@
+RAPPORT D'EXPLORATION — j1
+Vague : 4
+
+============================================================
+VILLAGE
+============================================================
+
+Contrôle : allié
+
+j1
+  Garnison :
+    1 : general1 — 5 unités
+      avant   : 5 archers
+    2 : vide
+    3 : vide
+    4 : vide
+  Réserve (hors combat) :
+    aucune présence
+
+j2
+  Garnison :
+    1 : occupé par j1
+    2 : vide
+    3 : vide
+    4 : vide
+  Réserve (hors combat) :
+    general2 — 3 unités
+      avant   : 3 piquiers
+
+BOT
+  aucune présence
+
+============================================================
+EST_1
+============================================================
+
+Contrôle : contesté
+
+j1
+  aucune présence
+
+j2
+  Positions actives :
+    1 : general3 — 14 unités
+      avant   : 5 cavaliers
+      droite  : 3 piquiers
+      gauche  : 3 piquiers
+      arrière : 3 archers
+
+BOT
+  Positions actives :
+    1 : general1_1 — 12 unités
+      avant   : 12 archers
+
+============================================================
+EST_2
+============================================================
+
+Contrôle : vide
+
+j1
+  aucune présence
+
+j2
+  aucune présence
+
+BOT
+  aucune présence
+
+============================================================
+EST_3
+============================================================
+
+Contrôle : vide
+
+j1
+  aucune présence
+
+j2
+  aucune présence
+
+BOT
+  aucune présence
+
+============================================================
+REPLI
+============================================================
+
+Contrôle : hors combat (zone de sanction)
+
+j1
+  Généraux en repli (hors combat) :
+    general4 — 7 unités
+      avant   : 7 archers
+
+j2
+  aucune présence
+
+BOT
+  aucune présence

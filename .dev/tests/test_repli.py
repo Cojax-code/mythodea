@@ -144,11 +144,15 @@ class SanctionsRepli(unittest.TestCase):
         self.verifier_home_sans_sanction([general])
         self.assertEqual(self.etat.charger_positions_generaux(), {})
 
-    def test_deplacement_vers_home_avertissement_et_position_reelle(self):
+    def test_rappel_survie_vers_home_position_officielle_sans_sanction(self):
         general = self.general(territoire="est_3")
         home = self.chemin(territoire="home")
         general.rename(home)
-        self.verifier_home_sans_sanction([home])
+        with patch.object(self.mouvements, 'envoyer_general_au_repli') as envoi:
+            self.audit()
+        envoi.assert_not_called()
+        self.assertTrue(home.exists())
+        self.assertIn('rappel volontaire', self.config.rapport_long_path.read_text(encoding='utf-8'))
         self.assertEqual(self.etat.charger_positions_generaux(), {"j1:general1": "home"})
 
     def test_home_plusieurs_generaux_ne_sont_pas_un_conflit_emplacement(self):
@@ -161,7 +165,7 @@ class SanctionsRepli(unittest.TestCase):
         self.assertTrue(premier.exists())
         self.assertTrue(second.exists())
 
-    def test_home_general_en_attente_sans_envoi_ni_modification_delai(self):
+    def test_rappel_depuis_repli_refuse_sans_nouvelle_sanction(self):
         general = self.general(territoire="repli")
         home = self.chemin(territoire="home")
         general.rename(home)
@@ -172,9 +176,10 @@ class SanctionsRepli(unittest.TestCase):
             self.audit()
         envoi.assert_not_called()
         calcul.assert_not_called()
-        self.assertTrue(home.exists())
+        self.assertTrue(general.exists())
+        self.assertFalse(home.exists())
         self.assertEqual(self.etat.charger_attentes_repli(self.profil), attentes)
-        self.assertEqual(self.etat.charger_positions_generaux(), {"j1:general1": "home"})
+        self.assertEqual(self.etat.charger_positions_generaux(), {"j1:general1": "repli"})
 
     def test_envoi_direct_depuis_home_ne_calcule_aucun_delai(self):
         general = self.general(territoire="home")

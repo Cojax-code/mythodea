@@ -10,6 +10,7 @@ ETATS_METIER = (
     "positions_generaux.txt", "fatigue_generaux.txt", "controle_territoires.txt",
     "attente_repli.txt", "meteo.txt",
     "crypte.json", "compteur_creation_normale_j1.txt", "compteur_creation_normale_j2.txt",
+    "unites_actions.json",
 )
 
 

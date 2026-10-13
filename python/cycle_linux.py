@@ -418,6 +418,11 @@ class Generations:
                 derniere[0] = int(ecoule)
         try:
             crypte.clore(self.c)
+            import securite
+            reference = etat.charger_unites_actions(self.c)
+            if reference is None or reference['tour'] != tour:
+                raise RuntimeError('Référence des unités du tour absente : récupération requise.')
+            reference['capture'] = securite.inventorier_unites_actions(self.c)
             capture = self.generation / 'capture'
             dossier_prive(capture)
             dossier_prive(capture / 'game')
@@ -435,6 +440,7 @@ class Generations:
                 dossier_prive(capture / 'homes' / j)
                 for source in entrees_home(home):
                     copier(source, capture / 'homes' / j / source.name, verifier)
+            etat.sauvegarder_unites_actions(dict(self.c, game_path=capture / 'game'), reference)
             verifier()
             ecrire_json(self.generation / 'manifeste.json', {'tour': tour, 'capture_validee': True,
                         'etats_metier': list(config.ETATS_METIER), 'generation': self.generation.name})
@@ -450,6 +456,56 @@ class Generations:
                       territoires=[travail / 'game' / p.name for p in self.c['territoires']],
                       repli_path=travail / 'game/repli')
         return profil, {j: travail / 'homes' / j for j in self.homes}
+
+    def initialiser_exploration(self):
+        """Photographie initiale cohérente avant la première fenêtre ACTIONS."""
+        self.backend.annoncer('PRÉPARATION DU RAPPORT D’EXPLORATION\nBRÈVE PAUSE TECHNIQUE')
+        self.backend.geler()
+        try:
+            self.backend.verifier_gel()
+            rapports.publier_rapports_exploration(self.c, 0)
+        finally:
+            self.backend.degeler()
+
+    def preparer_generaux_actions(self, tour, reprise=False):
+        """Attribution avant ACTIONS, avec référence privée prise sous le même gel."""
+        import securite
+        reference = etat.charger_unites_actions(self.c)
+        cycle = etat.charger_cycle_survie(self.c) or {}
+        manquants = [j for j in self.c['joueurs'] if tour == 0
+                     and 'generation_active' not in cycle
+                     and etat.lire_compteur_general(j) == 0
+                     and etat.initialiser_quota_normal(j) == 0
+                     and not any(i.startswith(j + ':') for i in etat.charger_positions_generaux())]
+        if reprise and reference is not None and not manquants:
+            return
+        if reprise and reference is None and (tour != 0 or 'generation_active' in cycle or any(
+                etat.lire_compteur_general(j) or etat.initialiser_quota_normal(j)
+                for j in self.c['joueurs']) or etat.charger_positions_generaux()):
+            raise RuntimeError('Partie existante sans référence des unités : récupération requise.')
+        self.backend.geler()
+        try:
+            self.backend.verifier_gel()
+            nouveaux = []
+            for joueur in self.c['joueurs']:
+                if reprise and joueur not in manquants:
+                    continue
+                # Le tour zéro n'attribue qu'une première identité normale.
+                if tour == 0 and (etat.lire_compteur_general(joueur)
+                                  or etat.initialiser_quota_normal(joueur)):
+                    continue
+                identifiant = generaux.faire_apparaitre_general_si_possible(joueur, self.c)
+                if identifiant:
+                    nouveaux.append(identifiant)
+                elif tour == 0:
+                    raise RuntimeError(f'Première attribution bloquée pour {joueur} : vérifier le home.')
+            generaux.scanner_ordres_surnombre(self.c)
+            if reference is None:
+                securite.memoriser_unites_actions(self.c, tour)
+            elif nouveaux:
+                securite.memoriser_unites_actions(self.c, tour, nouveaux)
+        finally:
+            self.backend.degeler()
 
     def preparer_publication(self):
         travail = self.generation / 'travail'
@@ -513,6 +569,12 @@ class Generations:
             for nom in config.ETATS_METIER:
                 remplacer(public / 'game/.systeme' / nom, self.game / '.systeme' / nom,
                           public / 'anciens/.systeme' / nom)
+            # Tous les territoires et états sont installés ; les producteurs
+            # restent gelés jusqu'à la fin des rapports et de la publication.
+            self.backend.verifier_gel()
+            rapports.publier_rapports_exploration(self.c, tour + 1)
+            import securite
+            securite.memoriser_unites_actions(self.c, tour + 1)
             self.permissions_consultation()
             journal['termine'] = True
             ecrire_json(fichier, journal)

@@ -1,12 +1,158 @@
 """Audit des généraux et validation des actions avant les combats."""
 import pwd
 import shutil
+from pathlib import Path
+from collections import Counter
 
 import config
 import etat
 import generaux
 import mouvements
 import rapports
+
+
+def cle_general_actions(chemin, joueur, configuration):
+    home = next(z['chemin'] for z in generaux.zones_generaux(joueur, configuration)
+                if z['position'] == 'home')
+    if chemin.parent == home:
+        return f'home/{joueur}/{chemin.name}'
+    return 'game/' + chemin.relative_to(configuration['game_path']).as_posix()
+
+
+def chemin_general_actions(cle, configuration):
+    parties = Path(cle).parts
+    if parties[0] == 'home':
+        home = next(z['chemin'] for z in generaux.zones_generaux(parties[1], configuration)
+                    if z['position'] == 'home')
+        return home / parties[2]
+    return configuration['game_path'].joinpath(*parties[1:])
+
+
+def inventorier_unites_actions(configuration):
+    """Identités du disque vivant, relevées sous gel avant toute copie."""
+    from cycle_linux import sans_liens
+    resultat = {}
+    for joueur in configuration['joueurs']:
+        for zone in generaux.zones_generaux(joueur, configuration):
+            parent = zone['chemin']
+            sans_liens(parent)
+            if not parent.exists():
+                continue
+            for chemin in parent.iterdir():
+                sans_liens(chemin)
+                if not chemin.is_dir() or generaux.numero_general_depuis_nom(chemin.name) is None:
+                    continue
+                unites = {}
+                for bloc in config.ordre_blocs:
+                    dossier = chemin / bloc
+                    sans_liens(dossier)
+                    if not dossier.is_dir():
+                        continue
+                    for unite in dossier.iterdir():
+                        sans_liens(unite)
+                        if unite.is_dir():
+                            for element in unite.iterdir():
+                                sans_liens(element)
+                        type_unite = generaux.identifier_unite(unite)
+                        if type_unite == 'inconnu':
+                            continue
+                        equipement = unite / {'archer': 'arc', 'piquier': 'pique',
+                                               'cavalier': 'cheval'}[type_unite]
+                        dossier_stat, equipement_stat = unite.stat(), equipement.stat()
+                        unites[unite.relative_to(chemin).as_posix()] = [
+                            dossier_stat.st_dev, dossier_stat.st_ino,
+                            equipement_stat.st_dev, equipement_stat.st_ino, type_unite]
+                cle = cle_general_actions(chemin, joueur, configuration)
+                resultat[cle] = {'identifiant': f'{joueur}:{chemin.name}',
+                                'device': chemin.stat().st_dev,
+                                'position': zone['position'],
+                                'entrainement': zone['position'] == 'home' or (
+                                    zone['position'] in configuration['villages']
+                                    and parent.name == 'reserve'),
+                                'unites': unites}
+    return resultat
+
+
+def memoriser_unites_actions(configuration, tour, nouveaux=()):
+    """Référence publiée ; ajouter un général moteur ne revalide pas les autres."""
+    reference = etat.charger_unites_actions(configuration)
+    inventaire = inventorier_unites_actions(configuration)
+    if nouveaux:
+        if reference is None:
+            raise RuntimeError('Référence des unités absente : récupération requise.')
+        for cle, valeur in inventaire.items():
+            if valeur['identifiant'] in nouveaux:
+                reference['generaux'][cle] = valeur
+        reference['tour'] = tour
+    else:
+        reference = {'tour': tour, 'generaux': inventaire}
+    etat.sauvegarder_unites_actions(configuration, reference)
+
+
+def auditer_entrainement(configuration, positions, punis):
+    """Retire les ajouts interdits ; remet l'entraînement mobile à son origine."""
+    if configuration['mode'] != 'survie':
+        return
+    reference = etat.charger_unites_actions(configuration)
+    # L'API métier isolée reste utilisable sans cycle ; la capture réelle exige
+    # toujours une référence et transmet les observations des inodes vivants.
+    if reference is None:
+        return
+    observations = reference.get('capture')
+    if observations is None:
+        observations = inventorier_unites_actions(configuration)
+    origines = {g['identifiant']: (cle, g) for cle, g in reference['generaux'].items()
+                if positions.get(g['identifiant']) == g['position']}
+    for cle, actuel in observations.items():
+        identifiant = actuel['identifiant']
+        if identifiant in punis or identifiant not in positions:
+            continue
+        chemin = chemin_general_actions(cle, configuration)
+        joueur = identifiant.split(':')[0]
+        if not chemin.exists() or joueur_proprietaire_chemin(chemin) != joueur:
+            continue
+        origine_cle, origine = origines.get(identifiant, (None, {}))
+        anciennes = {tuple(u) for u in origine.get('unites', {}).values()}
+        if origine and origine['device'] != actuel['device']:
+            # mv entre /home et une partition /home/game copie les inodes.
+            # Les unités d'un même type sont interchangeables pour le moteur :
+            # conserver au plus les effectifs publiés, jamais un renfort net.
+            disponibles = Counter(u[-1] for u in origine['unites'].values())
+            nouvelles = []
+            for relatif, unite in sorted(actuel['unites'].items()):
+                if disponibles[unite[-1]]:
+                    disponibles[unite[-1]] -= 1
+                else:
+                    nouvelles.append(chemin / relatif)
+        else:
+            nouvelles = [chemin / relatif for relatif, unite in actuel['unites'].items()
+                         if tuple(unite) not in anciennes]
+        if not nouvelles:
+            continue
+        deplacement, _, _ = mouvements.verifier_deplacement_general(
+            joueur, positions[identifiant], actuel['position'],
+            etat.charger_controle_territoires(configuration), configuration)
+        if actuel['entrainement'] and (cle == origine_cle or (
+                not origine.get('entrainement') and deplacement)):
+            # Un rappel légal permet d'entraîner dans le home à l'arrivée.
+            rapports.afficher_et_ecrire(
+                f'{identifiant} : entraînement autorisé, {len(nouvelles)} unité(s) ; '
+                'départ possible au tour suivant.')
+        elif origine.get('entrainement'):
+            destination = chemin_general_actions(origine_cle, configuration)
+            if destination.exists():
+                raise RuntimeError(f'Retour après entraînement impossible : {destination}')
+            shutil.move(str(chemin), str(destination))
+            rapports.afficher_et_ecrire(
+                f'{identifiant} : déplacement refusé après entraînement ; '
+                'retour à la zone de départ, attendre le tour suivant.')
+        else:
+            for unite in nouvelles:
+                if unite.exists():
+                    shutil.rmtree(unite)
+            rapports.afficher_et_ecrire(
+                f'{identifiant} : {len(nouvelles)} nouvelle(s) unité(s) supprimée(s), '
+                'entraînement interdit hors home/réserve ; unités anciennes conservées.')
 
 
 def controler_coherence_territoires(configuration):
@@ -496,6 +642,9 @@ def verifier_tous_les_deplacements(configuration=None):
     import crypte
     punis_crypte = crypte.auditer_recuperations(configuration)
 
+    auditer_entrainement(configuration, positions,
+                        punis_mauvais_joueur | punis_duplication | punis_crypte)
+
     # Un général encore en attente ne peut pas entrer en combat ni occuper
     # une place alliée. Le retour forcé n'ajoute pas une nouvelle sanction.
     for identifiant in attentes_avant:
@@ -585,6 +734,28 @@ def verifier_tous_les_deplacements(configuration=None):
                     continue
 
             if position_actuelle == "home":
+                if configuration['mode'] == 'survie' and positions.get(identifiant) != 'home':
+                    origine = positions.get(identifiant)
+                    autorise, _, raison = mouvements.verifier_deplacement_general(
+                        joueur, origine, 'home', controle_avant, configuration)
+                    proprietaire_correct = (chemin_actuel is not None
+                        and joueur_proprietaire_chemin(chemin_actuel) == joueur)
+                    if (origine is not None and autorise and proprietaire_correct
+                            and identifiant not in attentes_avant
+                            and identifiant not in generaux_deja_punis):
+                        nouvelles_positions[identifiant] = 'home'
+                        rapports.afficher_et_ecrire(f'{identifiant} : {origine} -> home [{raison}]')
+                    elif origine is not None:
+                        nouvelles_positions[identifiant] = origine
+                        rapports.afficher_et_ecrire(
+                            f'Avertissement dans le home : rappel refusé pour {identifiant}, '
+                            'identité, propriétaire ou position de départ invalide.')
+                        if origine == 'repli' and proprietaire_correct:
+                            destination = configuration['repli_path'] / joueur / nom_general
+                            if not destination.exists():
+                                shutil.move(str(chemin_actuel), str(destination))
+                            generaux_deja_punis.add(identifiant)
+                    continue
                 if positions.get(identifiant) != "home" or identifiant in attentes_avant:
                     rapports.afficher_et_ecrire(
                         f"Avertissement dans le home : position anormale de "

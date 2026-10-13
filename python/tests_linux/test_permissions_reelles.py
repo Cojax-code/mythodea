@@ -25,6 +25,7 @@ import etat
 import generaux
 import plateau
 import rapports
+import securite
 import survie
 import survie_admin
 
@@ -137,6 +138,31 @@ class PermissionsReelles(unittest.TestCase):
                 for j in ('j1', 'j2'):
                     self.assertNotEqual(self.en_joueur(j, 'import os,sys; os.chdir(sys.argv[1])', p).returncode, 0)
 
+    def test_renforcement_garnison_refuse_meme_apres_chmod_joueur(self):
+        # Installer un état de départ du scénario, puis relever sa référence
+        # sous gel comme lors d'une publication. Le joueur tente ensuite l'ajout.
+        destination = self.c['game_path'] / 'village/j1/garnison/1/general1'
+        self.general.rename(destination)
+        positions = etat.charger_positions_generaux()
+        positions['j1:general1'] = 'village'
+        etat.sauvegarder_positions_generaux(positions)
+        self.g.backend.geler()
+        try:
+            self.g.backend.verifier_gel()
+            securite.memoriser_unites_actions(self.c, 0)
+        finally:
+            self.g.backend.degeler()
+        tentative = self.en_joueur('j1',
+            'import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.chmod(0o700); '
+            '(p/"infanterie2").mkdir(); (p/"infanterie2/arc").touch()', destination / 'avant')
+        self.assertEqual(tentative.returncode, 0, tentative.stderr)
+        survie.resoudre_tour_survie(self.c, gestion=self.g)
+        self.assertTrue((destination / 'avant/infanterie1/arc').exists())
+        self.assertFalse((destination / 'avant/infanterie2').exists())
+        reference = self.c['game_path'] / '.systeme/unites_actions.json'
+        self.assertEqual((reference.stat().st_uid, reference.stat().st_gid,
+                          reference.stat().st_mode & 0o777), (0, 0, 0o600))
+
     def test_arborescence_accueil_et_renforts_exterieurs(self):
         self.g.afficher(0, 'actions', 0)
         game = self.c['game_path']
@@ -163,6 +189,7 @@ class PermissionsReelles(unittest.TestCase):
         lire = 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).read_text())'
         ecrire = "import sys; open(sys.argv[1], 'a').write('demande')"
         for nom in ('rapport.txt', 'journal_du_Toonitruand/vague_0.txt',
+                    'rapport_exploration.txt',
                     'journal_du_veteran/vague_0.txt',
                     'courrier/reception_message.txt', 'courrier/liste_requetes.txt'):
             self.assertEqual(self.en_joueur('j1', lire, hotel / nom).returncode, 0)
@@ -177,6 +204,22 @@ class PermissionsReelles(unittest.TestCase):
         self.assertEqual(self.en_joueur('j1', lire, hotel / 'rapport.txt').returncode, 0)
         self.assertNotEqual(self.en_joueur('j1', ecrire, hotel / 'rapport.txt').returncode, 0)
         self.assertFalse((self.c['game_path'] / 'village/j1/renforts').exists())
+
+    def test_exploration_permissions_reelles_actions_consultation_et_publication(self):
+        lire = 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).read_text())'
+        ecrire = "import sys; open(sys.argv[1], 'a').write('faux bilan')"
+        for etape in ('initial', 'publication', 'actions'):
+            if etape == 'publication':
+                survie.resoudre_tour_survie(self.c, gestion=self.g)
+            elif etape == 'actions':
+                self.g.permissions_actions()
+            for joueur, autre in (('j1', 'j2'), ('j2', 'j1')):
+                p = self.c['game_path'] / 'village' / joueur / 'hotel_de_ville/rapport_exploration.txt'
+                self.assertEqual((p.stat().st_uid, p.stat().st_gid), (0, grp.getgrnam(joueur).gr_gid))
+                self.assertEqual(p.stat().st_mode & 0o777, 0o440 if etape == 'publication' else 0o640)
+                self.assertEqual(self.en_joueur(joueur, lire, p).returncode, 0)
+                self.assertNotEqual(self.en_joueur(joueur, ecrire, p).returncode, 0)
+                self.assertNotEqual(self.en_joueur(autre, lire, p).returncode, 0)
 
     def test_capture_reelle_uid_preserve_root_peut_modifier_joueur_non(self):
         prive, _ = self.g.capturer(0)

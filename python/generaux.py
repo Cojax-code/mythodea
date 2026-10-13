@@ -135,6 +135,7 @@ def faire_apparaitre_general_si_possible(joueur, configuration=None):
     rapports.afficher_et_ecrire(
         f"Nouveau général apparu pour {joueur} : {nom_general}"
     )
+    return f'{joueur}:{nom_general}'
 
 
 def est_general_valide(chemin_general):
@@ -639,6 +640,24 @@ def controle_forces(forces):
     if len(presents) == 1:
         return presents[0]
     return "conteste"
+
+
+def lire_composition_general(chemin_general):
+    """Compte les types réellement présents, sans réparer ni nettoyer les blocs."""
+    from cycle_linux import sans_liens
+    composition = {}
+    for bloc in config.ordre_blocs:
+        dossier = chemin_general / bloc
+        sans_liens(dossier)
+        effectifs = {}
+        if dossier.is_dir():
+            for unite in dossier.iterdir():
+                sans_liens(unite)
+                type_unite = identifier_unite(unite)
+                if type_unite != 'inconnu':
+                    effectifs[type_unite] = effectifs.get(type_unite, 0) + 1
+        composition[bloc] = effectifs
+    return composition
 
 
 def lire_blocs_general(chemin_general):

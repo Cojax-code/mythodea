@@ -341,6 +341,14 @@ Un numéro déjà généré ne doit jamais être réutilisé. Lorsqu'un généra
 entièrement détruit, son entrée de position disparaît mais le compteur n'est pas
 diminué.
 
+En Survie, une nouvelle partie attribue `general1` à chaque joueur dans son home,
+avant la première fenêtre ACTIONS. L'attribution et l'inventaire initial sont
+effectués sous gel. Le tour zéro ne réattribue pas un numéro déjà consommé, même
+si son dossier a disparu. Un état ACTIONS au tour zéro encore vierge (sans aucune
+attribution, position ni génération publiée) termine cette initialisation ; une
+reprise ordinaire conserve l'échéance et ne répète pas les créations. Une phase
+`preparation` interrompue reste soumise à la récupération administrative commune.
+
 En Survie, les récompenses Crypte sont hors quota normal. Les compteurs privés
 `compteur_creation_normale_j1.txt` et `compteur_creation_normale_j2.txt` comptent
 uniquement les créations normales. À leur première initialisation, ils reprennent
@@ -439,6 +447,47 @@ Le type majoritaire devient le type du bloc.
 Cette règle d'égalité est volontaire : une composition équilibrée entre plusieurs
 types n'est pas considérée comme une simple erreur d'inattention.
 
+### Entraînement Survie
+
+Les ajouts d'unités sont permis uniquement dans le home du propriétaire et sa
+réserve au village. Garnison, fronts, renforts, repli et récompense Crypte sont
+exclus. Un dossier d'unité inachevé ne compte qu'après finalisation de son
+équipement. Les règles du mode classique ne changent pas.
+
+L'audit compare la capture à `.systeme/unites_actions.json` (`root:root 600`),
+inclus dans `ETATS_METIER`. La référence contient `tour` et `generaux`, indexés
+par chemin relatif `game/...` ou `home/<joueur>/generalN`. Chaque entrée conserve
+l'identité officielle, la position, l'éligibilité à l'entraînement, le périphérique
+et les unités valides : périphérique/inode du dossier et de l'équipement, et type.
+Un renommage ou changement de bloc conserve ces identités ; une copie, un nouvel
+équipement ou une finalisation est un ajout. Aucune date n'autorise une unité.
+
+Pour un `mv` entre deux systèmes de fichiers, les inodes changent : les unités
+équivalentes sont rapprochées par type, dans la limite des effectifs de départ.
+Seul le surplus est un renforcement ; remplacer une unité par une autre du même
+type pendant cette traversée ne donne aucun effectif supplémentaire. Cette
+exception permet de conserver une partition `/home/game` distincte des homes.
+
+Sous le gel de clôture, les identités vivantes sont relevées dans le champ
+`capture` de la copie privée de cet état, avant les copies qui changent les inodes.
+L'audit supprime les seuls ajouts interdits et journalise la raison. Si un général
+a quitté une zone d'entraînement avec des ajouts, il revient à son chemin exact
+d'origine avec toutes ses unités, sans fatigue ni repli. Cela inclut les passages
+home/réserve et réserve/garnison. Un rappel légal vers home peut être suivi
+d'entraînement à l'arrivée. La publication suivante renouvelle la référence :
+les unités acceptées sont alors anciennes, et le départ au tour suivant est permis.
+
+La référence est relevée sous gel après installation de la génération, jamais
+reconstruite depuis des modifications pendant ACTIONS ou CONSULTATION. À l'ouverture
+suivante, seules les nouvelles identités attribuées par le moteur y sont ajoutées.
+La capture refuse une référence absente ou d'un autre tour. Une partie ancienne
+sans référence exige une récupération administrative, sans validation rétroactive
+silencieuse des troupes présentes. Une republication renouvelle la référence sans
+rejouer l'audit. L'API d'audit isolée sans état de cycle conserve son usage historique.
+
+Comme les déplacements existants, ces règles utilisent les positions aux bornes
+du tour : elles ne reconstituent pas les commandes intermédiaires d'un joueur.
+
 ---
 
 ## 7. Permissions
@@ -520,7 +569,7 @@ Valide.
 
 ### Home
 
-Une anomalie constatée dans le home (propriétaire, identité, duplication ou
+En classique, une anomalie constatée dans le home (propriétaire, identité, duplication ou
 déplacement vers le home) produit uniquement un avertissement : aucun envoi au
 repli, aucun nouveau délai et aucun calcul de distance de sanction depuis `home`.
 Le home n'est pas un emplacement tactique soumis aux collisions de positions.
@@ -535,6 +584,18 @@ j2 : home -> base2 uniquement
 ```
 
 En mode Survie, les deux joueurs se déploient depuis `home` vers `village`.
+
+Le rappel Survie d'un général officiel depuis une position tactique légale vers
+le home de son propriétaire est explicite, instantané par `mv`, sans combat
+supplémentaire ni fatigue ajoutée. L'audit vérifie l'UID, l'identité et l'origine
+officielle ; la position devient `home`. Au tour suivant, seul `home -> village`
+est permis ; le départ du village vers le front attend le tour d'après. Le calcul
+normal de fatigue par tour reste applicable, sans dette propre au rappel.
+
+Un rappel depuis `repli` est refusé : le dossier revient au repli et son attente
+reste inchangée, sans nouvelle sanction. Un général adverse ou sans origine
+officielle légale n'est jamais enregistré dans le home par ce mécanisme. Les
+copies du bac à sable restent des copies et ne masquent pas une présence sur carte.
 
 ### Repli
 
@@ -868,6 +929,36 @@ finit pas par combattre personnellement ; le détail du rapport permet de voir s
 a réellement subi des pertes.
 
 ---
+
+### Rapport d'exploration Survie
+
+`village/<joueur>/hotel_de_ville/rapport_exploration.txt` est une photographie
+du plateau, distincte du bilan du tour et des journaux de combat. Elle montre
+village, est_1, est_2, est_3 et repli, sans home ni dossiers techniques. Les deux
+joueurs disposent de documents séparés et du même niveau d'information.
+
+`generaux.lire_composition_general()` compte les unités avec `identifier_unite()`
+sans nettoyage, réparation ni application des limites. Les types reconnus d'un
+bloc mixte restent visibles séparément ; les objets non reconnus ne sont pas
+comptés et restent intacts. Les lectures utilisées par les combats sont inchangées.
+`rapports.lire_etat_exploration()` réutilise les zones du moteur et
+`controle_forces()` pour les seules places actives. Réserve, renforts et récompenses
+Crypte sont présentés séparément ; le repli reste une zone de sanction hors combat,
+sans contrôle territorial inventé. Le surnombre bot est entièrement visible.
+
+`rapports.generer_rapport_exploration(joueur, etat_publie)` produit uniquement du
+texte à partir de cette photographie en mémoire. Ce rendu par destinataire
+centralise la future personnalisation de la visibilité, sans la filtrer aujourd'hui.
+Le rapport n'appelle ni audit, ni combat, ni déplacement.
+
+À la préparation du tour 0, une lecture sous gel bref produit le rapport initial
+avant l'ouverture d'ACTIONS. Ensuite, `Generations.publier()` reconstruit les deux
+rapports après installation de tous les territoires et états, toujours sous le
+gel de publication, avant CONSULTATION et le dégel. Chaque fichier est remplacé
+atomiquement, appartient à `root:<groupe_joueur>` en `640` (`440` en CONSULTATION).
+L'ouverture d'ACTIONS restaure seulement ses droits, sans recalcul ni réécriture.
+Une erreur empêche la validation de publication ; la republication administrative
+reconstruit les rapports depuis le résultat réinstallé, sans rejouer le moteur.
 
 ## 16. Victoire classique
 

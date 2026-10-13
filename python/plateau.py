@@ -532,6 +532,11 @@ def preparer_accueil(configuration, vague=0, rapport=None):
                 'Le journal du Toonitruand est un tutoriel passif, sans validation.\n',
             'rapport.txt': rapport if rapport is not None else 'Aucun tour terminé pour le moment.\n',
         }
+        exploration = hotel / 'rapport_exploration.txt'
+        sans_liens(exploration)
+        if exploration.exists():
+            # Restaurer ses droits à l'ouverture d'ACTIONS sans relire le plateau.
+            documents['rapport_exploration.txt'] = None
         for nom, contenu in documents.items():
             fichier = hotel / nom
             sans_liens(fichier)

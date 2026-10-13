@@ -200,6 +200,7 @@ Structure visible du prototype :
 │   │   │   ├── journal_du_Toonitruand/vague_0.txt ... vague_N.txt  # N ≤ 10, vagues atteintes
 │   │   │   ├── journal_du_veteran/vague_0.txt ... vague_N.txt     # mêmes vagues atteintes
 │   │   │   ├── rapport.txt
+│   │   │   ├── rapport_exploration.txt
 │   │   │   └── courrier/{envoie_message.txt,reception_message.txt,liste_requetes.txt}
 │   │   └── crypte/{grimoire,atelier,recompense}/
 │   ├── j2/
@@ -275,15 +276,33 @@ rattrapage et les mêmes permissions aux deux journaux, sans remplacer les conse
 déjà présents du Toonitruand.
 
 La vague 5 présente les combats avec plusieurs généraux, la vague 6 la Crypte.
-Les commandes internes des recettes restent dans les PDF. Le texte pédagogique
-n'active pas les futures règles d'entraînement ou de rappel vers le home :
-ces changements de gameplay restent distincts de la publication du journal.
+Les commandes internes des recettes restent dans les PDF. La publication du
+texte pédagogique est indépendante de l'audit moteur de l'entraînement et du
+rappel vers le home, défini dans la section du prototype jouable.
 
 `rapport.txt` est une copie du rapport court commun, préparée après finalisation
 du bilan puis publiée avec la génération du village. La génération commune reste
 la seule source de vérité. Une reprise administrative republie la même copie sans
 relancer le moteur. Avant le premier bilan, le fichier indique qu'aucun tour n'est
 terminé. Une ouverture de tour conserve le dernier bilan.
+
+`rapport_exploration.txt` donne l'état du plateau après la dernière publication,
+avec une visibilité complète commune aux deux joueurs et un rendu distinct pour
+chaque destinataire. Il montre les cinq territoires du prototype, leur contrôle,
+les propriétaires, les noms d'affichage, les effectifs et compositions par bloc.
+Le home reste exclu. Garnison, réserve, récompenses Crypte et forces en attente
+sont distinguées ; seuls les quatre emplacements actifs déterminent le contrôle.
+Le village n'a pas de renforts alliés 5..20. Le repli reste hors combat. Un territoire
+contesté par rattrapage affiche les deux camps sans provoquer de nouveau combat.
+
+La photographie initiale est prise sous gel bref, avant ACTIONS du tour 0.
+Les suivantes sont reconstruites après le remplacement complet de la génération,
+avant la fin du gel de publication et l'ouverture de CONSULTATION. Les lectures
+ne réparent, nettoient ni déplacent rien. Le texte précédent est remplacé, sans
+historique ; le fichier reste stable pendant ACTIONS. Ses permissions suivent
+celles des documents de l'Hôtel de Ville. Une republication administrative reprend
+le même résultat terminé et reconstruit sa photographie sans rejouer la résolution.
+Les rapports de combat et le bilan `rapport.txt` gardent leur fonction actuelle.
 
 Le Courrier prépare une future interface joueur ↔ moteur : `envoie_message.txt`
 est un brouillon éditable, `reception_message.txt` accueille les réponses et
@@ -436,11 +455,8 @@ Les points suivants restent volontairement ouverts :
 Ces décisions restent ouvertes tant qu'elles ne sont pas nécessaires à l'étape
 d'implémentation en cours.
 
-Décisions pour la prochaine tâche, **non implémentées dans ce prototype** : l'ajout
-ou la création d'unités dans un général sera autorisé uniquement dans le home de
-son joueur ou dans `village/<joueur>/reserve/`. Un rappel volontaire depuis une
-position légale vers le home sera étudié ensuite. Les modalités de ce rappel
-restent à définir ; les règles actuelles d'unités et de déplacement restent en place.
+L'entraînement home/réserve et le rappel volontaire vers le home sont définis
+ci-dessous. L'économie et les recrutements futurs restent ouverts.
 
 
 ---
@@ -457,6 +473,48 @@ Le tour 0 est un tour de préparation. Pendant ce tour, les joueurs peuvent cré
 leurs généraux selon les règles classiques : un général créé par tour, cinq généraux
 générés au maximum par joueur. Pendant ce tour 0, un général ne peut se déplacer que
 de son home vers le village.
+
+### Première attribution, entraînement et rappel
+
+Une nouvelle partie attribue automatiquement `/home/j1/general1` et
+`/home/j2/general1` sous gel, avant l'ouverture normale d'ACTIONS. Les compteurs
+techniques, quotas normaux et positions officielles sont enregistrés. Une relance
+d'ACTIONS ne répète pas l'attribution. Un tour zéro prémarqué ACTIONS mais encore
+vierge termine son initialisation ; un général détruit ne réutilise jamais son
+numéro. Une interruption de préparation reste signalée pour récupération.
+
+Les joueurs créent ou finalisent les unités uniquement dans leur home ou dans
+`village/<joueur>/reserve/generalN`. Les ajouts sont interdits en garnison, sur
+les fronts, dans les renforts, au repli et dans la Crypte, y compris sa récompense.
+L'atelier pédagogique ne devient pas une zone de recrutement militaire.
+
+L'entraînement impose d'attendre la fin du tour avant de quitter sa zone :
+un général entraîné au tour N puis déplacé est remis au chemin d'origine avec
+ses unités, sans fatigue ni sanction de repli. Au tour N+1, il peut partir
+normalement. L'interdiction inclut réserve/garnison et home/réserve.
+Les unités ajoutées hors d'une zone autorisée sont supprimées par l'audit privé ;
+les unités déjà présentes sont conservées. Chaque refus est expliqué au rapport.
+
+La référence privée `.systeme/unites_actions.json`, décrite dans `MYTHODEA_SPEC.md`,
+compare les identités des unités de la génération publiée avec celles de la capture
+sous gel. Les renommages ne créent pas de droits et les dates ne servent pas de
+preuve. Entre partitions, le rapprochement conserve au plus les effectifs publiés
+par type ; le surplus reste un ajout. La publication rend les unités acceptées
+disponibles au tour suivant. Une reprise d'ACTIONS conserve la référence ; une
+republication ne rejoue pas l'entraînement. Une ancienne partie dépourvue de
+référence nécessite une récupération, sans inventaire rétroactif automatique.
+
+Un général officiel peut être rappelé par `mv` d'une position légale au home de
+son propriétaire. L'audit valide l'UID, l'identité et l'origine. Le rappel n'ajoute
+ni fatigue ni combat. Le tempo est : tour N rappel, tour N+1 home vers village
+uniquement, tour N+2 départ normal vers le front. Un rappel depuis le repli est
+refusé et le dossier y retourne sans nouveau délai ; l'attente existante est
+préservée. Un rappel adverse ou depuis une origine non officielle est refusé.
+Un rappel légal permet de renforcer au home ; les nouvelles unités suivent la
+même attente d'un tour. Sans entraînement, les déplacements normaux sont inchangés.
+
+L'audit observe les positions de départ et d'arrivée du tour, comme le moteur
+commun ; il n'enregistre pas l'historique de toutes les commandes `mv` intermédiaires.
 
 La zone spéciale `repli` fait partie du graphe Survie et est directement reliée au
 `village`. Elle conserve des espaces séparés pour les joueurs. Ce n'est pas un
@@ -666,7 +724,8 @@ Un hardlink source est copié comme un fichier indépendant.
 La liste blanche `config.ETATS_METIER` est : `compteur_general_j1.txt`,
 `compteur_general_j2.txt`, `compteur_general_bot.txt`, `positions_generaux.txt`,
 `fatigue_generaux.txt`, `controle_territoires.txt`, `attente_repli.txt`, `meteo.txt`,
-`crypte.json`, `compteur_creation_normale_j1.txt`, `compteur_creation_normale_j2.txt`.
+`crypte.json`, `compteur_creation_normale_j1.txt`, `compteur_creation_normale_j2.txt`,
+`unites_actions.json`.
 Le cycle vivant, les verrous, générations, journaux de récupération, rapports et
 Clocher sont exclus. Le marqueur local du résolveur dans `travail/.systeme/` n'est
 jamais publié. Le moteur commun utilise le contexte privé `config.racines_generation()`.
@@ -1107,11 +1166,15 @@ Pendant cette attente, le général ne peut effectuer aucune action. Le détail 
 stockage et de la décrémentation est défini dans `MYTHODEA_SPEC.md` : le fichier
 privé `.systeme/attente_repli.txt` conserve les tours restants par identité.
 
-Le home est un bac à sable. Une anomalie qui y est détectée produit uniquement
+Le home conserve ses copies de bac à sable. Une anomalie d'identité qui y est détectée produit uniquement
 un avertissement dans le rapport, sans suppression, envoi au repli, nouveau délai
 ni calcul de distance de sanction depuis `home`. Ses copies ne masquent pas les
 occurrences présentes sur la carte et ne les sanctionnent pas. La sortie du home
 reste soumise aux règles communes de déploiement et d'identité.
+
+Le rappel volontaire est validé séparément selon les règles ci-dessus : une
+présence physique dans le home ne suffit plus à y enregistrer une position
+officielle, et un rappel depuis le repli ramène le dossier dans sa zone de sanction.
 
 Pour un général déjà au repli, une nouvelle anomalie produit un avertissement,
 sans nouvelle sanction ni nouveau calcul de délai ; son compteur existant est

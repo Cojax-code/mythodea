@@ -1,6 +1,7 @@
 """Écriture, formatage et affichage des rapports du tour."""
 from pathlib import Path
 import os
+import grp
 from contextlib import contextmanager
 from contextvars import ContextVar
 
@@ -73,6 +74,125 @@ def formater_force(infos):
         return f"1 {type_unite}"
 
     return f"{nombre} {type_unite}s"
+
+
+def lire_etat_exploration(configuration, vague):
+    """Photographie en lecture seule ; appeler sur un plateau figé ou une copie privée.
+
+    Les zones viennent du moteur commun. Seules les places actives contribuent
+    au contrôle ; réserve, récompense, renforts et repli restent hors combat.
+    """
+    import generaux
+    from cycle_linux import sans_liens
+    photographie = {'vague': vague, 'territoires': []}
+    for territoire in (*configuration['territoires'], configuration['repli_path']):
+        repli = territoire == configuration['repli_path']
+        village = territoire.name in configuration['villages']
+        vue = {'nom': territoire.name, 'village': village, 'acteurs': {}}
+        forces = {acteur['camp']: {place: {'total_unites': 0}
+                  for place in configuration['emplacements']}
+                  for acteur in configuration['acteurs'].values()}
+        for joueur, acteur in configuration['acteurs'].items():
+            zones = ([{'chemin': territoire / joueur}] if repli else
+                     generaux.zones_generaux_territoire(territoire, joueur, configuration))
+            groupes = {}
+            for zone in zones:
+                place = zone.get('emplacement')
+                actif = not repli and place in configuration['emplacements']
+                if repli:
+                    libelle = 'Généraux en repli (hors combat)'
+                elif actif:
+                    libelle = 'Garnison' if village and joueur in configuration['joueurs'] else 'Positions actives'
+                elif zone.get('crypte'):
+                    libelle = 'Récompense Crypte (hors combat)'
+                elif village and joueur in configuration['joueurs']:
+                    libelle = 'Réserve (hors combat)'
+                else:
+                    libelle = 'Colonne en attente' if joueur == 'bot' else 'Renforts (hors places actives)'
+                groupe = groupes.setdefault(libelle, {})
+                entries = groupe.setdefault(place, [])
+                chemin = zone['chemin']
+                sans_liens(chemin)
+                if not chemin.is_dir():
+                    continue
+                chemins = []
+                for enfant in chemin.iterdir():
+                    sans_liens(enfant)
+                    if enfant.is_dir() and generaux.numero_general_depuis_nom(enfant.name) is not None:
+                        chemins.append(enfant)
+                chemins.sort(key=lambda p: generaux.numero_general_depuis_nom(p.name))
+                for general in chemins:
+                    sans_liens(general / 'fiche.txt')
+                    blocs = generaux.lire_composition_general(general)
+                    total = sum(sum(types.values()) for types in blocs.values())
+                    infos = {'nom': general.name, 'joueur': joueur,
+                             'fiche': generaux.lire_fiche_general(general)}
+                    with config.racines_generation(configuration['game_path'], {}):
+                        nom = nom_affichage_general(infos)
+                    entries.append({'nom': nom, 'blocs': blocs, 'total_unites': total})
+                    if actif:
+                        forces[acteur['camp']][place]['total_unites'] += total
+            vue['acteurs'][joueur] = groupes
+        vue['controle'] = None if repli else generaux.controle_forces(forces)
+        photographie['territoires'].append(vue)
+    return photographie
+
+
+def generer_rapport_exploration(joueur, etat_publie):
+    """Rendu pur par destinataire ; point unique pour une future visibilité filtrée."""
+    lignes = [f"RAPPORT D'EXPLORATION — {joueur}", f"Vague : {etat_publie['vague']}", '']
+    controles = {'allies': 'allié', 'bot': 'bot', 'conteste': 'contesté',
+                 'neutre': 'vide', None: 'hors combat (zone de sanction)'}
+    for territoire in etat_publie['territoires']:
+        occupants_garnison = {}
+        for proprietaire, groupes in territoire['acteurs'].items():
+            for place, presents in groupes.get('Garnison', {}).items():
+                if presents:
+                    occupants_garnison.setdefault(place, []).append(proprietaire)
+        lignes.extend(['=' * 60, territoire['nom'].upper(), '=' * 60, '',
+                       f"Contrôle : {controles[territoire['controle']]}", ''])
+        for acteur, groupes in territoire['acteurs'].items():
+            lignes.append('BOT' if acteur == 'bot' else acteur)
+            garnison = territoire['village'] and 'Garnison' in groupes
+            if not garnison and not any(gs for places in groupes.values() for gs in places.values()):
+                lignes.extend(['  aucune présence', ''])
+                continue
+            for zone, places in groupes.items():
+                presents = any(places.values())
+                if not presents and zone not in ('Garnison', 'Réserve (hors combat)'):
+                    continue
+                lignes.append(f'  {zone} :')
+                if not presents and zone != 'Garnison':
+                    lignes.append('    aucune présence')
+                for place, generaux_presents in places.items():
+                    if not generaux_presents and zone == 'Garnison':
+                        occupants = occupants_garnison.get(place, [])
+                        situation = 'occupé par ' + ', '.join(occupants) if occupants else 'vide'
+                        lignes.append(f'    {place} : {situation}')
+                    for general in generaux_presents:
+                        prefixe = f'{place} : ' if place is not None else ''
+                        total = general['total_unites']
+                        lignes.append(f"    {prefixe}{general['nom']} — {total} unité{'s' if total != 1 else ''}")
+                        for bloc, types in general['blocs'].items():
+                            if types:
+                                composition = ', '.join(formater_force({'type': t, 'nombre': n})
+                                                        for t, n in sorted(types.items()))
+                                label = 'arrière' if bloc == 'arriere' else bloc
+                                lignes.append(f'      {label:<7} : {composition}')
+            lignes.append('')
+    return '\n'.join(lignes).rstrip() + '\n'
+
+
+def publier_rapports_exploration(configuration, vague):
+    """Remplace les deux documents depuis un même état ; les joueurs doivent être gelés."""
+    photographie = lire_etat_exploration(configuration, vague)
+    for joueur in configuration['joueurs']:
+        fichier = configuration['game_path'] / 'village' / joueur / 'hotel_de_ville/rapport_exploration.txt'
+        texte = generer_rapport_exploration(joueur, photographie)
+        etat.ecrire_prive(fichier, texte)
+        gid = grp.getgrnam(configuration['acteurs'][joueur]['groupe_linux']).gr_gid
+        os.chown(fichier, 0, gid)
+        os.chmod(fichier, 0o640)
 
 
 def formater_survivants(nombre, type_unite):
