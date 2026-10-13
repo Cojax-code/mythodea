@@ -634,17 +634,29 @@ def cible_facile(type_unite):
 
 
 def multiplicateur(type_attaquant, type_defenseur):
+    if type_attaquant == 'cavalerie_lourde' and type_defenseur in ('archer', 'cavalier'):
+        return 2
+    if type_attaquant == 'piquier' and type_defenseur == 'cavalerie_lourde':
+        return 2
     if cible_facile(type_attaquant) == type_defenseur:
         return 2
 
     return 1
 
 
+def valeur_base_bloc(infos, bloc=None):
+    """Bonus contextuel recalculé avec les survivants de chaque affrontement."""
+    return 2 if (infos['type'] == 'cavalerie_lourde' and bloc == 'avant'
+                 and infos['nombre'] >= 15) else 1
+
+
 def combat_bloc(
     infos_1,
     infos_2,
     fatigue_1=False,
-    fatigue_2=False
+    fatigue_2=False,
+    bloc_1=None,
+    bloc_2=None,
 ):
     # Calcule le résultat d'un combat entre deux blocs.
     #
@@ -661,12 +673,12 @@ def combat_bloc(
     nombre_1 = infos_1["nombre"]
     nombre_2 = infos_2["nombre"]
 
-    valeur_1 = multiplicateur(
+    valeur_1 = valeur_base_bloc(infos_1, bloc_1) * multiplicateur(
         type_1,
         type_2
     )
 
-    valeur_2 = multiplicateur(
+    valeur_2 = valeur_base_bloc(infos_2, bloc_2) * multiplicateur(
         type_2,
         type_1
     )
@@ -679,11 +691,11 @@ def combat_bloc(
 
         # Général 1 fatigué, général 2 frais.
         if fatigue_1 and not fatigue_2:
-            valeur_2 = 2
+            valeur_2 *= 2
 
         # Général 2 fatigué, général 1 frais.
         elif fatigue_2 and not fatigue_1:
-            valeur_1 = 2
+            valeur_1 *= 2
 
     degats_1 = nombre_1 * valeur_1
     degats_2 = nombre_2 * valeur_2
@@ -706,12 +718,11 @@ def combat_bloc(
 
 def trouver_cible_facile(armee, joueur_attaquant, type_attaquant):
     joueur_ennemi = adversaire_du_duel(armee, joueur_attaquant)
-    type_cible = cible_facile(type_attaquant)
 
     for bloc in config.ordre_blocs:
         infos_ennemi = armee[joueur_ennemi][bloc]
 
-        if infos_ennemi["type"] == type_cible and infos_ennemi["nombre"] > 0:
+        if multiplicateur(type_attaquant, infos_ennemi['type']) == 2 and infos_ennemi["nombre"] > 0:
             return bloc
 
     return None
@@ -798,7 +809,8 @@ def confrontation_directe(
         infos_1,
         infos_2,
         fatigue_1,
-        fatigue_2
+        fatigue_2,
+        bloc, bloc,
     )
 
     rapports.afficher_et_ecrire("\nRésultat :")
@@ -967,7 +979,8 @@ def attaque_ciblee(
         infos_attaquant,
         infos_defenseur,
         fatigue_attaquant,
-        fatigue_defenseur
+        fatigue_defenseur,
+        bloc_attaquant, bloc_cible,
     )
 
     rapports.afficher_et_ecrire("\nRésultat :")

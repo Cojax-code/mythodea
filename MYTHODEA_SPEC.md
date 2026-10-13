@@ -91,6 +91,7 @@ Responsabilités :
 | `cycle_linux.py` | gel Linux, capture privée, publication de générations et permissions des phases Survie |
 | `survie_admin.py` | diagnostic, dégel de secours et republication explicitement autorisée, sans rejeu métier |
 | `crypte.py` | collecteur privé Survie, recette pédagogique, cooldown et attribution différée |
+| `defis.py` | lieux des mini-défis, accès par camp, flags via Courrier, état privé, bestiaire et récompense unique |
 | `crypte_client.py` | transport non privilégié des observations Bash vers le socket local |
 | `crypte_installer.py` | installation administrative des fonctions et hooks Bash officiels |
 
@@ -434,6 +435,32 @@ Cavalier :
 cavalerie1/
 └── cheval
 ```
+
+### Cavalerie lourde de récompense
+
+Le type moteur `cavalerie_lourde` est représenté par `cavalerie_lourdeN/armure`.
+`config.unites_equipements` centralise les représentations reconnues ; ce catalogue
+n'autorise pas leur construction. Il s'agit d'un format interne, sans recette
+joueur déverrouillée. L'unité est comptée et nettoyée comme les autres unités.
+
+Sa valeur de base est 1. Depuis le bloc `avant`, au moins 15 cavaliers lourds
+participant ensemble portent cette valeur à 2 pour cet affrontement. Le seuil
+est recalculé avec les survivants avant chaque affrontement, en CHOC comme en
+MANŒUVRE ; aucun bonus ne s'applique depuis les autres blocs. L'avantage de type
+multiplie ensuite la valeur par 2 contre archer et cavalier : une formation
+éligible vaut donc 4 par unité contre ces types. Le piquier bénéficie de son
+avantage x2 contre la cavalerie lourde. La règle commune de fatigue entre blocs
+du même type s'applique à la valeur contextuelle. Aucun attribut permanent de
+force n'est ajouté ; le champ historique `force` de la fiche reste inchangé.
+
+L'audit interdit toute cavalerie lourde construite manuellement, y compris dans
+le home et la réserve. Il vérifie l'attribution privée du général récompense et
+les unités de la référence publiée `unites_actions.json`, avant les déplacements
+de sanction. Une copie ou un nouveau marqueur d'équipement est supprimé ; une
+unité ancienne renommée ou déplacée entre blocs est conservée. Le rapprochement
+inter-systèmes de fichiers garde la limite des effectifs déjà publiés. La
+publication renouvelle la référence après pertes : les morts ne peuvent pas être
+réentraînés. Une validation du défi ne déverrouille aucune construction.
 
 ### Bloc mixte
 
@@ -1032,8 +1059,8 @@ classique est conservé. Aucun chemin ou exemple classique n'est produit en Surv
 
 Les anciennes structures visibles sont aussi refusées avant écriture. Le dossier
 technique commun est `.systeme/`. L'accueil Survie est publié sous
-`village/<joueur>/hotel_de_ville/` : deux journaux passifs des vagues 0..10, Courrier sans
-traitement de requêtes et copie du rapport court finalisé. Le Clocher commun est
+`village/<joueur>/hotel_de_ville/` : deux journaux passifs des vagues 0..10, Courrier
+acceptant `FLAG <flag>`, bestiaire progressif et copie du rapport court finalisé. Le Clocher commun est
 `village/clocher/` ; il reste attaché au cycle vivant et exclu des captures. La
 publication du village conserve ses inodes, notamment le journal suivi avec `tail -f`.
 
@@ -1048,6 +1075,22 @@ En ACTIONS, la vague atteinte est `tour` ; en CONSULTATION ou après défaite, e
 est `tour + 1`, puisque la résolution de ce tour est terminée.
 Le message d'accueil propose les deux fichiers `vague_0.txt`, avec les niveaux
 « Débutant » (Toonitruand) et « À l'aise avec Linux » (Vétéran).
+
+Les mini-défis sont décrits dans `SURVIE_SPEC.md`. Leur état privé `defis.json`
+fait partie de `config.ETATS_METIER`. Le pilote de cycle relève le Courrier
+toutes les dix secondes pendant ACTIONS et une dernière fois sous gel de capture.
+Une décision est persistée avant sa réponse. La récompense est créée dans la
+génération privée via `crypte.attribuer_recompense()`, avec numéro canonique et
+sans consommation du quota normal ni du cooldown des recettes. Les deux états
+privés sont publiés avec le plateau ; une republication ne rejoue pas l'attribution.
+
+L'accès aux lieux conquis utilise le camp du contrôle publié et
+`configuration['groupes_camps']` (camp → groupe Unix). En Survie, `allies` désigne
+`mythodea_allies` ; le bot n'a aucun groupe joueur autorisé. Les groupes des
+sessions déterminent les lecteurs, sans test sur un nom de joueur individuel.
+Neutre et contesté n'autorisent aucun groupe. Les droits de la cabane sont posés
+à sa création puis recalculés sous gel après installation complète de la
+publication, y compris administrative ; ils restent stables pendant ACTIONS.
 
 Responsabilités des API :
 

@@ -1,0 +1,22 @@
+CAVALERIE LOURDE
+
+Statut :
+Débloquée comme récompense spéciale
+
+Catégorie :
+Cavalier
+
+Force :
+- Archer
+- Cavalier
+
+Faiblesse :
+- Piquier
+
+Effet spécial :
+Si au moins 15 cavaliers lourds frappent ensemble depuis le bloc avant,
+chaque unité vaut 2 au lieu de 1 pour cette résolution.
+L'avantage de type multiplie ensuite cette valeur par 2.
+
+Construction :
+Verrouillée

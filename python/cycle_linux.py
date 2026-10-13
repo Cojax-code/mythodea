@@ -382,8 +382,17 @@ class Generations:
 
     def attendre(self, cycle):
         import minuterie
+        import defis
+        prochain_scan = self.horloge()
+        def observer(restant):
+            nonlocal prochain_scan
+            self.afficher(cycle['tour'], cycle['phase'], restant)
+            maintenant = self.horloge()
+            if cycle['phase'] == 'actions' and maintenant >= prochain_scan:
+                defis.scanner(self.c, self.horloge)
+                prochain_scan = maintenant + defis.INTERVALLE_SCAN
         minuterie.attendre_jusqua(cycle['echeance'], self.horloge, self.dormir,
-            observer=lambda restant: self.afficher(cycle['tour'], cycle['phase'], restant))
+            observer=observer)
 
     def marquer(self, tour, phase, **autres):
         cycle = {'tour': tour, 'phase': phase, **autres}
@@ -418,6 +427,8 @@ class Generations:
                 derniere[0] = int(ecoule)
         try:
             crypte.clore(self.c)
+            import defis
+            defis.scanner(self.c, self.horloge, cloture=True)
             import securite
             reference = etat.charger_unites_actions(self.c)
             if reference is None or reference['tour'] != tour:
@@ -573,6 +584,9 @@ class Generations:
             # restent gelés jusqu'à la fin des rapports et de la publication.
             self.backend.verifier_gel()
             rapports.publier_rapports_exploration(self.c, tour + 1)
+            import defis
+            defis.publier_acces(self.c)
+            defis.synchroniser_courrier_publie(self.c)
             import securite
             securite.memoriser_unites_actions(self.c, tour + 1)
             self.permissions_consultation()

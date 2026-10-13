@@ -11,6 +11,7 @@ ETATS_METIER = (
     "attente_repli.txt", "meteo.txt",
     "crypte.json", "compteur_creation_normale_j1.txt", "compteur_creation_normale_j2.txt",
     "unites_actions.json",
+    "defis.json",
 )
 
 
@@ -78,6 +79,15 @@ joueurs = ["j1", "j2"]
 emplacements = ["1", "2", "3","4"]
 max_unites_par_general = 20
 max_generaux_par_joueur = 5
+
+# Représentations reconnues par le moteur ; ce catalogue n'accorde aucun droit
+# d'entraînement. La cavalerie lourde est réservée aux attributions privées.
+unites_equipements = {
+    'archer': ('infanterie', 'arc'),
+    'piquier': ('infanterie', 'pique'),
+    'cavalier': ('cavalerie', 'cheval'),
+    'cavalerie_lourde': ('cavalerie_lourde', 'armure'),
+}
 
 orientations = ["stratege", "combattant"]
 orientation_rare = "hybride"
@@ -256,4 +266,8 @@ def configuration_mode(mode):
         "duree_gel_secondes": 10,
         "seuil_capture_secondes": 120,
         "groupe_allie": "mythodea_allies",
+        # Seuls les camps joueurs inscrits ici peuvent lire les lieux conquis.
+        # L'appartenance effective est portée par les groupes Unix des sessions.
+        "groupes_camps": ({"allies": "mythodea_allies"} if mode == "survie"
+                          else {j: acteurs[j]["groupe_linux"] for j in joueurs}),
     }

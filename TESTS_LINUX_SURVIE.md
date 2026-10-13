@@ -423,8 +423,8 @@ ls /home/game/village/j1/hotel_de_ville/courrier
 ```
 
 Aux résolutions suivantes, vérifier l'apparition de vague_1 puis vague_2, sans
-validation de lecture. Un brouillon du Courrier reste conservé ; aucune requête
-n'est exécutée. Le rapport de chaque Hôtel de Ville doit correspondre au rapport
+validation de lecture. Un brouillon du Courrier reste conservé ; seules les lignes
+`FLAG <flag>` sont traitées. Le rapport de chaque Hôtel de Ville doit correspondre au rapport
 court après publication. Le Clocher reste continu avec `tail -f`, même lors d'une
 publication ou republication administrative. Le village n'a pas de renforts alliés ;
 les positions 5..20 restent disponibles sur les territoires ouverts.
@@ -451,3 +451,60 @@ la défaite après blocage, l'absence de deuxième avance après une avance norm
 les colonnes se rejoignant, et l'exclusion des nouvelles vagues. Elle vérifie aussi
 qu'une arrivée de rattrapage sur des alliés conserve `conteste` sans nouveau combat,
 puis résout ce conflit au prochain cycle normal.
+
+## Cabane, Courrier et cavalerie lourde
+
+Sur une partie de test dédiée, vérifier à chaque publication :
+
+```bash
+sudo stat -c '%U:%G %a %n' /home/game/est_2/cabane_mysterieuse
+sudo stat -c '%U:%G %a %n' /home/game/est_2/cabane_mysterieuse/coffre/.sceau
+sudo stat -c '%U:%G %a %n' /home/game/.systeme/defis.json
+id j1
+id j2
+sudo -u j1 cat /home/game/est_2/cabane_mysterieuse/coffre/.sceau
+sudo -u j2 cat /home/game/est_2/cabane_mysterieuse/coffre/.sceau
+sudo -u j1 cat /home/game/.systeme/defis.json
+```
+
+Contrôle allié : les deux lectures du sceau réussissent, dossiers
+`root:mythodea_allies 750`, documents `640`. Contrôle bot, neutre ou contesté :
+les deux lectures échouent, dossiers `root:root 700`, documents `600`.
+L'état privé reste `root:root 600`, toujours illisible par les joueurs.
+Déplacer un général pendant ACTIONS ne change pas l'accès avant publication.
+Vérifier aussi une perte puis une reconquête et la republication administrative.
+
+Avec EST_2 contrôlé par les alliés, dans une session j1 :
+
+```bash
+cd /home/game/est_2/cabane_mysterieuse
+cat readme.txt
+ls -la coffre
+cat coffre/.sceau
+grep 'NOIR-17' archives/*
+cat notes/note1.txt notes/note2.txt
+```
+
+Envoyer `FLAG` suivi du flag réellement découvert dans le fichier
+`/home/game/village/j1/hotel_de_ville/courrier/envoie_message.txt`.
+Dans les dix secondes environ pendant ACTIONS, vérifier la réponse de validation
+et la fiche `bestiaire/cavalerie_lourde.txt`. Le général attend la fin du tour.
+Essayer d'abord un flag faux, puis réécrire le bon depuis deux sessions j1 :
+une seule attribution doit être créée. Le brouillon et les messages ordinaires
+doivent rester intacts. Reprendre le moteur et republier une génération terminée :
+aucun général supplémentaire. j2 doit pouvoir valider séparément.
+
+À la publication, vérifier `crypte/recompense/generalN/avant/` : exactement vingt
+dossiers `cavalerie_lourdeN/armure`, autres blocs vides, quota normal inchangé.
+Occuper d'abord la zone par une recette : le défi doit attendre sa récupération.
+La fiche indique « Construction : Verrouillée ». Une copie supplémentaire d'une
+unité lourde dans le home ou la réserve est supprimée à l'audit, tandis que les
+unités anciennes déplacées sont conservées. Vérifier les seuils 14/15 et le bonus
+uniquement à l'avant, contre archers, cavaliers et piquiers.
+
+La suite `test_defis_survie.py` couvre ces décisions sur plateaux isolés, les
+reprises et les permissions demandées aux API ; son test de liens nécessite Unix.
+Ces simulations Windows ne valident pas les UID/GID ni l'accès réel de sessions
+Linux. Les vérifications ci-dessus restent nécessaires sur une machine Linux
+de test avant déploiement ; elles ne nécessitent aucun accès au Raspberry Pi
+pendant le développement.

@@ -49,6 +49,9 @@ def nom_affichage_general(general):
         import crypte
         d = crypte.charger({'game_path': config.racine_metier(), 'joueurs': []})
         for attribution in d.get(general['joueur'], {}).get('attributions', []):
+            if (attribution.get('source') == 'defi' and attribution['general'] == general['nom']
+                    and attribution.get('nom_affichage') == general['fiche']['nom_affichage']):
+                return attribution['nom_affichage']
             recette = crypte.RECETTES.get(attribution.get('recette', 'recette1'))
             if (attribution['general'] == general['nom'] and recette
                     and general['fiche']['nom_affichage'] == recette['nom']):
@@ -70,10 +73,7 @@ def formater_force(infos):
     if nombre <= 0:
         return "aucune unité"
 
-    if nombre == 1:
-        return f"1 {type_unite}"
-
-    return f"{nombre} {type_unite}s"
+    return f"{nombre} {nom_type_unite(type_unite, nombre)}"
 
 
 def lire_etat_exploration(configuration, vague):
@@ -202,9 +202,9 @@ def formater_survivants(nombre, type_unite):
         return "aucune unité survivante"
 
     if nombre == 1:
-        return f"1 {type_unite} survivant"
+        return f"1 {nom_type_unite(type_unite, nombre)} survivant"
 
-    return f"{nombre} {type_unite}s survivants"
+    return f"{nombre} {nom_type_unite(type_unite, nombre)} survivants"
 
 
 def afficher_tableau_pertes(pertes_joueur_1, pertes_joueur_2, nom_joueur_1, nom_joueur_2):
@@ -403,12 +403,14 @@ def nom_type_unite(type_unite, nombre):
         "archer": "archer",
         "piquier": "piquier",
         "cavalier": "cavalier",
+        "cavalerie_lourde": "cavalier lourd",
         "vide": "vide",
     }
     pluriel = {
         "archer": "archers",
         "piquier": "piquiers",
         "cavalier": "cavaliers",
+        "cavalerie_lourde": "cavaliers lourds",
         "vide": "vide",
     }
 

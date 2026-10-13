@@ -527,8 +527,9 @@ def preparer_accueil(configuration, vague=0, rapport=None):
         documents = {
             'courrier/envoie_message.txt': '',
             'courrier/reception_message.txt': 'Courrier en préparation : aucune requête traitée pour le moment.\n',
-            'courrier/liste_requetes.txt': 'Aucune requête disponible pour le moment.\n'
-                'envoie_message.txt accueillera vos demandes ; reception_message.txt les réponses.\n'
+            'courrier/liste_requetes.txt': 'Requête disponible : FLAG <flag trouvé>\n'
+                'Écrivez une ligne dans envoie_message.txt ; consultez reception_message.txt pour la réponse.\n'
+                'Le Courrier est relevé environ toutes les 10 secondes pendant ACTIONS.\n'
                 'Le journal du Toonitruand est un tutoriel passif, sans validation.\n',
             'rapport.txt': rapport if rapport is not None else 'Aucun tour terminé pour le moment.\n',
         }
@@ -541,11 +542,15 @@ def preparer_accueil(configuration, vague=0, rapport=None):
             fichier = hotel / nom
             sans_liens(fichier)
             # Ne pas effacer le brouillon joueur ni le dernier bilan à l'ouverture.
-            if not fichier.exists() or (nom == 'rapport.txt' and rapport is not None):
+            if (not fichier.exists() or (nom == 'rapport.txt' and rapport is not None)
+                    or (nom == 'courrier/liste_requetes.txt'
+                        and fichier.read_text(encoding='utf-8') != contenu)):
                 etat.ecrire_prive(fichier, contenu)
             envoi = nom == 'courrier/envoie_message.txt'
             os.chown(fichier, uid if envoi else 0, gid)
             os.chmod(fichier, 0o600 if envoi else 0o640)
+    import defis
+    defis.preparer(configuration)
 
 
 def reparer_structure(configuration=None):

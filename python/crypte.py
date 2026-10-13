@@ -311,6 +311,33 @@ def auditer_recuperations(c):
     return punis
 
 
+def attribuer_recompense(c, joueur, fiche, attribution, composition):
+    """Création commune dans une génération privée, hors quota normal."""
+    import generaux
+    attente = zone(c, joueur) / 'recompense'
+    if any(attente.iterdir()):
+        raise RuntimeError('Récompense Crypte occupée : attribution impossible.')
+    numero = etat.lire_compteur_general(joueur) + 1
+    etat.sauvegarder_compteur_general(joueur, numero)
+    nom = f'general{numero}'
+    general = attente / nom
+    generaux.creer_general(general, nom)
+    with (general / 'fiche.txt').open('a', encoding='utf-8') as f:
+        f.write(f'\nnom_affichage={composition["nom"]}\n')
+    for bloc, taille in zip(config.ordre_blocs, composition['blocs']):
+        for i in range(1, taille + 1):
+            unite = general / bloc / f'{composition["unite"]}{i}'
+            unite.mkdir()
+            (unite / composition['equipement']).touch()
+    generaux.donner_permissions_general(general, c['acteurs'][joueur]['proprietaire_linux'])
+    positions = etat.charger_positions_generaux()
+    positions[f'{joueur}:{nom}'] = 'village'
+    etat.sauvegarder_positions_generaux(positions)
+    fiche['en_attente'] = nom
+    fiche['attributions'].append({**attribution, 'general': nom})
+    return nom
+
+
 def materialiser(c, tour):
     """Uniquement dans travail/ : aucune lecture/écriture de la partie vivante."""
     import generaux
@@ -329,24 +356,7 @@ def materialiser(c, tour):
         attente = zone(c, j) / 'recompense'
         if any(attente.iterdir()):
             raise RuntimeError('Récompense Crypte occupée après acceptation : vérifier la partie.')
-        numero = etat.lire_compteur_general(j) + 1
-        etat.sauvegarder_compteur_general(j, numero)
-        nom = f'general{numero}'
-        general = attente / nom
-        generaux.creer_general(general, nom)
-        with (general / 'fiche.txt').open('a', encoding='utf-8') as f:
-            f.write(f'\nnom_affichage={recette["nom"]}\n')
-        for bloc, taille in zip(config.ordre_blocs, recette['blocs']):
-            for i in range(1, taille + 1):
-                unite = general / bloc / f'{recette["unite"]}{i}'
-                unite.mkdir()
-                (unite / recette['equipement']).touch()
-        generaux.donner_permissions_general(general, c['acteurs'][j]['proprietaire_linux'])
-        positions = etat.charger_positions_generaux()
-        positions[f'{j}:{nom}'] = 'village'
-        etat.sauvegarder_positions_generaux(positions)
-        fiche['en_attente'] = nom
-        fiche['attributions'].append({**demande, 'general': nom})
+        nom = attribuer_recompense(c, j, fiche, demande, recette)
         fiche['a_creer'] = None
         sauver(c, donnees)
         rapports.ecrire_rapport_court(f'{j} : {recette["nom"]} ({nom}) attend dans village/{j}/crypte/recompense/.')

@@ -201,11 +201,14 @@ Structure visible du prototype :
 │   │   │   ├── journal_du_veteran/vague_0.txt ... vague_N.txt     # mêmes vagues atteintes
 │   │   │   ├── rapport.txt
 │   │   │   ├── rapport_exploration.txt
+│   │   │   ├── bestiaire/          # fiches des unités débloquées seulement
 │   │   │   └── courrier/{envoie_message.txt,reception_message.txt,liste_requetes.txt}
 │   │   └── crypte/{grimoire,atelier,recompense}/
 │   ├── j2/
 │   └── bot/{1,2,3,4,renforts}/      # privé root
-├── est_1/, est_2/, est_3/
+├── est_1/
+├── est_2/cabane_mysterieuse/       # lieu non militaire, accès selon le camp propriétaire
+├── est_3/
 ├── repli/
 └── rapport/
 ```
@@ -304,10 +307,11 @@ celles des documents de l'Hôtel de Ville. Une republication administrative repr
 le même résultat terminé et reconstruit sa photographie sans rejouer la résolution.
 Les rapports de combat et le bilan `rapport.txt` gardent leur fonction actuelle.
 
-Le Courrier prépare une future interface joueur ↔ moteur : `envoie_message.txt`
+Le Courrier constitue l'interface joueur ↔ moteur : `envoie_message.txt`
 est un brouillon éditable, `reception_message.txt` accueille les réponses et
-`liste_requetes.txt` documente les requêtes. Le prototype n'accepte aucune requête,
-ne scanne ni ne vide les messages et conserve le brouillon entre les tours.
+`liste_requetes.txt` documente les requêtes. Le prototype accepte `FLAG <flag>`
+pour les mini-défis, selon le traitement décrit ci-dessous. Le brouillon est
+conservé entre les tours et les autres messages ne sont pas exécutés ni effacés.
 Aucun lien fonctionnel avec le journal passif.
 
 Dossiers de l'Hôtel de Ville : `root:<groupe_joueur> 750` ; documents du jeu :
@@ -446,8 +450,8 @@ Les points suivants restent volontairement ouverts :
 4. ressources initiales du joueur et future économie ;
 5. création, remplacement et recrutement futurs des unités ;
 6. place exacte des objectifs Linux dans la progression ;
-7. récompenses des objectifs Linux ;
-8. format et fréquence du futur traitement du Courrier ;
+7. récompenses des objectifs Linux au-delà du premier mini-défi décrit ci-dessous ;
+8. requêtes du Courrier autres que `FLAG <flag>` ;
 9. réduction future des renseignements exposés par le Clocher ;
 10. condition éventuelle de victoire ou fin d'une partie Survie ;
 11. ordres spécifiques au combat en surnombre.
@@ -725,7 +729,7 @@ La liste blanche `config.ETATS_METIER` est : `compteur_general_j1.txt`,
 `compteur_general_j2.txt`, `compteur_general_bot.txt`, `positions_generaux.txt`,
 `fatigue_generaux.txt`, `controle_territoires.txt`, `attente_repli.txt`, `meteo.txt`,
 `crypte.json`, `compteur_creation_normale_j1.txt`, `compteur_creation_normale_j2.txt`,
-`unites_actions.json`.
+`unites_actions.json`, `defis.json`.
 Le cycle vivant, les verrous, générations, journaux de récupération, rapports et
 Clocher sont exclus. Le marqueur local du résolveur dans `travail/.systeme/` n'est
 jamais publié. Le moteur commun utilise le contexte privé `config.racines_generation()`.
@@ -1476,3 +1480,123 @@ récupération du cycle. Une republication administrative utilise le résultat t
 sans réexécuter ni audit, ni recette, ni création de récompense. Une socket résiduelle
 reste bloquante : son retrait est une décision administrative explicite après
 vérification de l'arrêt du moteur. Les commandes sont dans `TESTS_LINUX_SURVIE.md`.
+
+## Mini-défi de la cabane mystérieuse
+
+`defis.py` prépare le premier mini-défi, `cabane_est_2_defi_1`, sur EST_2 :
+
+```text
+/home/game/est_2/cabane_mysterieuse/
+├── readme.txt
+├── coffre/.sceau
+├── archives/
+│   ├── registre1.txt
+│   ├── registre2.txt
+│   └── registre3.txt
+└── notes/
+    ├── note1.txt
+    └── note2.txt
+```
+
+Le readme suggère de découvrir un sceau caché, de le lire, de rechercher sa
+référence dans les archives et d'envoyer le flag à l'Hôtel de Ville ; il ne donne
+pas les commandes. Le sceau contient `SCEAU=NOIR-17`. Chaque registre contient
+40 lignes logistiques ; une seule contient cette référence suivie du flag.
+Le flag est généré une seule fois par partie, partagé comme solution par les
+deux joueurs, et enregistré en privé. Il n'est pas livré dans le code source,
+le readme, les notes, le bestiaire ou les réponses du Courrier. Seule la ligne
+d'archives prévue expose la solution complète dans les documents publics du jeu.
+
+Les deux notes de six lignes décrivent les cataphractaires parthes et leur
+combinaison avec les archers montés à Carrhes en 53 av. J.-C. Elles reposent sur
+[Plutarque, Vie de Crassus, 24–27](https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Plutarch/Lives/Crassus*.html)
+et [Encyclopaedia Iranica, Carrhae](https://www.iranicaonline.org/articles/carrhae-harran-town-in-mesopotamia-where-in-may-53-b/).
+Elles ne sont pas nécessaires à la résolution du défi.
+
+### Accès du camp contrôlant EST_2
+
+Le contrôle utilisé est celui de `controle_territoires.txt` après publication,
+pas la présence instantanée de dossiers déplacés pendant ACTIONS. La correspondance
+`groupes_camps` associe un identifiant de camp à son groupe Unix de lecteurs.
+En Survie : `allies → mythodea_allies`, dont j1 et j2 sont membres ; aucun groupe
+n'est attribué au bot. La politique est indépendante des noms j1/j2 et peut
+recevoir d'autres camps joueurs dans un futur profil.
+
+| Contrôle publié | Propriétaire/groupe | Dossiers | Fichiers |
+| --- | --- | --- | --- |
+| allies | root:mythodea_allies | 750 | 640 |
+| bot, neutre, conteste, camp non configuré | root:root | 700 | 600 |
+
+Les états neutre et contesté sont toujours refusés. La cabane est initialement
+fermée si aucun contrôle n'est enregistré. `defis.publier_acces()` recalcule ses
+droits sous gel après installation du plateau et de ses états, avant dégel,
+y compris lors d'une republication. Les reprises et scans pendant ACTIONS ne
+modifient pas ces droits. Les fichiers restent administrés par root. La perte
+du territoire retire l'accès aux documents publiés ; elle n'efface pas les
+connaissances déjà lues ni la progression individuelle d'un défi.
+
+### Scanner et persistance
+
+Le pilote unique `Generations.attendre()` appelle le scanner au début de son
+attente ACTIONS puis environ toutes les dix secondes via l'observateur existant
+du minuteur. Aucun thread ou processus supplémentaire n'est créé. Aucun scan
+périodique n'a lieu pendant CONSULTATION, résolution ou après l'échéance.
+Un dernier relevé a lieu sous gel en phase capture, avant copie privée.
+
+Le scanner lit `hotel_de_ville/courrier/envoie_message.txt` de chaque joueur.
+Il traite les lignes dont le premier mot est exactement `FLAG`, suivi d'un seul
+argument. La lecture est limitée à 64 Kio ; un fichier plus grand ou modifié
+durant la lecture attend un prochain relevé. Aucune commande n'est exécutée.
+Sous Linux, les ouvertures sont ancrées par descripteurs ; liens symboliques,
+hardlinks, objets spéciaux et remplacement des dossiers administrateur sont
+refusés. Une violation d'intégrité arrête le cycle selon sa procédure existante.
+
+Le brouillon reste intact. Les réponses sont ajoutées à `reception_message.txt` :
+« Flag invalide. », « Ce défi a déjà été validé. » ou validation avec annonce
+de la publication en fin de tour, dès que la zone de récompense sera libre.
+Le flag n'est pas recopié dans la réponse. Les autres messages sont conservés.
+
+`.systeme/defis.json`, `root:root 600`, contient :
+
+- `flags` : identifiant du défi → solution de la partie ;
+- `joueurs/<joueur>/cabane_est_2_defi_1` : `termine`, `recompense_recue`, `general` ;
+- `joueurs/<joueur>/courrier` : empreinte SHA-256, date de modification du brouillon,
+  et réponse en attente `a_repondre`.
+
+Une relecture inchangée n'écrit rien. Une réécriture identique du joueur peut
+recevoir « déjà validé », sans nouvelle récompense. La publication synchronise
+la date du brouillon copié pour ne pas confondre une copie moteur avec un envoi.
+Les décisions et la réponse en attente sont enregistrées avant les sorties
+publiques ; une interruption termine la réponse au prochain relevé, sans
+revalider le défi. Une réponse déjà présente en fin de fichier n'est pas ajoutée
+une seconde fois. Le verrou du cycle et le verrou partagé avec la Crypte
+sérialisent les traitements ; plusieurs sessions SSH ne sont pas plusieurs
+consommateurs du scanner.
+
+### Récompense et bestiaire
+
+La validation débloque immédiatement, pour ce joueur seulement,
+`hotel_de_ville/bestiaire/cavalerie_lourde.txt` (`root:<groupe_joueur> 640`, dossier
+750). La fiche indique le statut de récompense spéciale, la catégorie Cavalier,
+les forces Archer/Cavalier, la faiblesse Piquier, le bonus de formation de 15+
+depuis l'avant et la construction verrouillée. Le dossier est vide avant
+déblocage. Le futur déblocage par espionnage, renseignement, combat ou documents
+reste une perspective ; aucune de ces voies supplémentaires n'est implémentée.
+
+En résolution privée, après les recettes Crypte, le défi attribue une seule fois
+`cavalier_noir`, avec identité canonique `generalN`, hors quota des cinq généraux
+normaux. Il contient 20 cavaliers lourds dans `avant/`, zéro dans les autres blocs.
+Il utilise la création commune de la Crypte et sa zone `recompense/`. Si une
+recette ou un général occupe cette place, le défi reste terminé mais non livré
+jusqu'à libération ; il ne consomme aucun cooldown de recette. La réponse annonce
+la disponibilité seulement à la publication effective du général.
+
+L'attribution est enregistrée dans `crypte.json` avec un identifiant stable
+`defi:<joueur>:cabane_est_2_defi_1`, puis acquittée dans `defis.json`.
+Ces deux états sont capturés et publiés ensemble par le protocole de générations.
+Une interruption de résolution exige la récupération habituelle ; une attribution
+partielle n'est jamais rejouée silencieusement. Une republication utilise la
+génération terminée sans nouvelle création. Réécritures, redémarrage ou perte du
+général ne réouvrent pas le droit à récompense. j1 et j2 ont chacun leur attribution.
+Les règles de récupération Crypte et le moteur commun restent applicables ; la
+représentation et les valeurs de combat sont définies dans `MYTHODEA_SPEC.md`.

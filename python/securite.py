@@ -56,8 +56,7 @@ def inventorier_unites_actions(configuration):
                         type_unite = generaux.identifier_unite(unite)
                         if type_unite == 'inconnu':
                             continue
-                        equipement = unite / {'archer': 'arc', 'piquier': 'pique',
-                                               'cavalier': 'cheval'}[type_unite]
+                        equipement = unite / config.unites_equipements[type_unite][1]
                         dossier_stat, equipement_stat = unite.stat(), equipement.stat()
                         unites[unite.relative_to(chemin).as_posix()] = [
                             dossier_stat.st_dev, dossier_stat.st_ino,
@@ -89,6 +88,50 @@ def memoriser_unites_actions(configuration, tour, nouveaux=()):
     etat.sauvegarder_unites_actions(configuration, reference)
 
 
+def unites_nouvelles_actions(origine, actuel):
+    anciennes = {tuple(u) for u in origine.get('unites', {}).values()}
+    if origine and origine['device'] != actuel['device']:
+        disponibles = Counter(u[-1] for u in origine['unites'].values())
+        nouvelles = []
+        for relatif, unite in sorted(actuel['unites'].items()):
+            if disponibles[unite[-1]]:
+                disponibles[unite[-1]] -= 1
+            else:
+                nouvelles.append(relatif)
+        return nouvelles
+    return [relatif for relatif, unite in actuel['unites'].items() if tuple(unite) not in anciennes]
+
+
+def auditer_cavalerie_lourde(configuration, positions):
+    """Seules les unités d'une récompense officielle déjà publiée sont admises."""
+    import defis
+    d = defis.charger(configuration)
+    reference = etat.charger_unites_actions(configuration) or {'generaux': {}}
+    origines = {g['identifiant']: g for g in reference['generaux'].values()
+                if positions.get(g['identifiant']) == g['position']}
+    observations = reference.get('capture')
+    if observations is None:
+        observations = inventorier_unites_actions(configuration)
+    for cle, actuel in observations.items():
+        lourdes = {relatif for relatif, unite in actuel['unites'].items()
+                   if unite[-1] == 'cavalerie_lourde'}
+        if not lourdes:
+            continue
+        chemin = chemin_general_actions(cle, configuration)
+        joueur = joueur_proprietaire_chemin(chemin)
+        identifiant = f'{joueur}:{chemin.name}'
+        attribution = (d or {}).get('joueurs', {}).get(joueur, {}).get(defis.DEFI, {})
+        autorise = attribution.get('recompense_recue') and attribution.get('general') == chemin.name
+        nouvelles = set(unites_nouvelles_actions(origines.get(identifiant, {}), actuel))
+        for relatif in sorted(lourdes if not autorise else lourdes & nouvelles):
+            unite = chemin / relatif
+            if unite.exists():
+                shutil.rmtree(unite)
+                rapports.afficher_et_ecrire(
+                    f'{identifiant} : cavalerie lourde supprimée, construction verrouillée ; '
+                    'seules les unités de la récompense officielle sont autorisées.')
+
+
 def auditer_entrainement(configuration, positions, punis):
     """Retire les ajouts interdits ; remet l'entraînement mobile à son origine."""
     if configuration['mode'] != 'survie':
@@ -112,21 +155,8 @@ def auditer_entrainement(configuration, positions, punis):
         if not chemin.exists() or joueur_proprietaire_chemin(chemin) != joueur:
             continue
         origine_cle, origine = origines.get(identifiant, (None, {}))
-        anciennes = {tuple(u) for u in origine.get('unites', {}).values()}
-        if origine and origine['device'] != actuel['device']:
-            # mv entre /home et une partition /home/game copie les inodes.
-            # Les unités d'un même type sont interchangeables pour le moteur :
-            # conserver au plus les effectifs publiés, jamais un renfort net.
-            disponibles = Counter(u[-1] for u in origine['unites'].values())
-            nouvelles = []
-            for relatif, unite in sorted(actuel['unites'].items()):
-                if disponibles[unite[-1]]:
-                    disponibles[unite[-1]] -= 1
-                else:
-                    nouvelles.append(chemin / relatif)
-        else:
-            nouvelles = [chemin / relatif for relatif, unite in actuel['unites'].items()
-                         if tuple(unite) not in anciennes]
+        nouvelles = [chemin / relatif for relatif in unites_nouvelles_actions(origine, actuel)
+                     if (chemin / relatif).exists()]
         if not nouvelles:
             continue
         deplacement, _, _ = mouvements.verifier_deplacement_general(
@@ -620,6 +650,7 @@ def verifier_tous_les_deplacements(configuration=None):
     positions = etat.charger_positions_generaux()
     controle_avant = etat.charger_controle_territoires(configuration)
     attentes_avant = etat.charger_attentes_repli(configuration)
+    auditer_cavalerie_lourde(configuration, positions)
 
     # ------------------------------------------
     # Sécurité générale

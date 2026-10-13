@@ -360,6 +360,8 @@ def _ouvrir_tour_survie(configuration, horloge=None):
             gestion.preparer_generaux_actions(cycle['tour'], reprise=True)
         plateau.preparer_journaux(
             configuration, cycle['tour'] + (cycle['phase'] == 'defaite'))
+        import defis
+        defis.preparer(configuration)
         return cycle
     if cycle is not None and cycle["phase"] != "a_preparer":
         raise RuntimeError("Cycle interrompu : vérifier le plateau avant de reprendre.")
@@ -475,6 +477,8 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
         rapports.afficher_et_ecrire("DÉFAITE : le bot contrôle le village.")
         rapports.ecrire_rapport_court("DÉFAITE : le bot contrôle le village.")
     crypte.materialiser(configuration, tour)
+    import defis
+    defis.materialiser(configuration, tour)
     rapports.ecrire_rapport_court(f"Fin du tour {tour} — vague {tour + 1}.")
     plateau.preparer_accueil(configuration, tour + 1,
                             config.rapport_court_path.read_text(encoding='utf-8'))

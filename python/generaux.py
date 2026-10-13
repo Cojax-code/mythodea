@@ -982,15 +982,9 @@ def identifier_unite(unite):
     nom_unite = unite.name
     contenu = [element.name for element in unite.iterdir() if element.is_file()]
 
-    types_unites = {
-        ("infanterie", "arc"): "archer",
-        ("infanterie", "pique"): "piquier",
-        ("cavalerie", "cheval"): "cavalier",
-    }
-
     resultats = []
 
-    for (nom_base, equipement), type_unite in types_unites.items():
+    for type_unite, (nom_base, equipement) in config.unites_equipements.items():
         if nom_unite.startswith(nom_base) and equipement in contenu:
             resultats.append(type_unite)
 
