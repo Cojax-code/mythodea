@@ -506,7 +506,8 @@ def preparer_journaux(configuration, vague=0):
                     # et les accolades Bash présentes dans les commandes vétéran.
                     contenu = contenu.replace('{joueur}', joueur).replace(
                         '{game_path}', configuration.get('game_public_path', config.game_public_path).as_posix())
-                    etat.ecrire_prive(fichier, contenu)
+                    # Une ligne vide sépare l'affichage de la commande cat précédente.
+                    etat.ecrire_prive(fichier, '\n' + contenu)
                 os.chown(fichier, 0, gid)
                 os.chmod(fichier, 0o640)
 
