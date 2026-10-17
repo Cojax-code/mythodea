@@ -430,7 +430,9 @@ def _clore_tour_survie(configuration, gestion, aleatoire=None):
         if not resultat['defaite']:
             gestion.backend.annoncer(
                 'PHASE DE CONSULTATION — RAPPORTS DISPONIBLES\n'
-                'Les combats sont terminés. Les actions sont suspendues pendant cette phase.\n\n'
+                'Les combats sont terminés et les rapports sont disponibles.\n'
+                'Vous avez 1 minute pour consulter les rapports.\n'
+                'Il est impossible de fabriquer des unités pendant cette phase.\n\n'
                 f'Rapport court : cat {configuration["game_path"]}/village/$USER/hotel_de_ville/rapport.txt\n'
                 f'Suivi des phases : tail -f {configuration["game_path"]}/village/clocher/suivi_tour.log\n'
                 'Ce suivi indique les changements de phase, pas les détails des combats.'
