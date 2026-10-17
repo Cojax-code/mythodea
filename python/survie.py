@@ -428,12 +428,18 @@ def _clore_tour_survie(configuration, gestion, aleatoire=None):
                          'Rapports disponibles : phase de consultation (actions suspendues). '
                          'Faire cd ~ puis revenir sur la carte.')
         if not resultat['defaite']:
-            gestion.backend.annoncer(
-                'PHASE DE CONSULTATION — 1 MINUTE PAR DÉFAUT\n'
-                'Les combats sont terminés et les rapports sont publiés. '\n                'La création et les déplacements sont suspendus.\n\n'
-                f'Rapport court : cat {configuration["game_path"]}/village/j1/hotel_de_ville/rapport.txt\n'
-                f'Suivi des phases : tail -f {configuration["game_path"]}/village/clocher/suivi_tour.log\n'
-                'Le suivi des phases ne détaille pas encore les combats.')
+            import pwd
+            messages = {}
+            for joueur in configuration['joueurs']:
+                uid = pwd.getpwnam(configuration['acteurs'][joueur]['proprietaire_linux']).pw_uid
+                messages[uid] = (
+                    'PHASE DE CONSULTATION — RAPPORTS DISPONIBLES\n'
+                    'Les combats sont terminés. Les actions sont suspendues pendant cette phase.\n\n'
+                    f'Rapport court : cat {configuration["game_path"]}/village/{joueur}/hotel_de_ville/rapport.txt\n'
+                    f'Suivi des phases : tail -f {configuration["game_path"]}/village/clocher/suivi_tour.log\n'
+                    'Ce suivi indique les changements de phase, pas les détails des combats.'
+                )
+            gestion.backend.annoncer(messages)
         return resultat
     except BaseException as erreur:
         gestion.erreur(tour, erreur)
