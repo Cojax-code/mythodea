@@ -37,6 +37,28 @@ class NotificationsSurvie(unittest.TestCase):
         return dict(User=uid, Name=nom, Service='sshd', State='active',
                     TTY=tty, Leader=leader, **autres)
 
+    def test_proprietes_logind_demandees_separement(self):
+        appels = []
+
+        def commande(args, **kwargs):
+            appels.append(args)
+            if args[1] == 'list-sessions':
+                sortie = '5 1001 j1 - 3823 user - no -\n'
+            elif args[1] == 'show-session':
+                sortie = 'User=1001\nName=j1\nTTY=\nService=sshd\nLeader=3823\nState=active\n'
+            else:
+                sortie = '1001 sshd-session: j1@pts/2\n'
+            return subprocess.CompletedProcess(args, 0, sortie, '')
+
+        with patch.object(self.cycle_linux.subprocess, 'run', side_effect=commande):
+            self.assertEqual(self.linux.terminaux_ssh(), [(1001, 'pts/2')])
+
+        self.assertIn(
+            ['loginctl', 'show-session', '5', '--no-pager',
+             '-p', 'User', '-p', 'Name', '-p', 'Service',
+             '-p', 'State', '-p', 'TTY', '-p', 'Leader'],
+            appels)
+
     def test_pi_tty_vide_leader_root_et_toutes_sessions(self):
         sessions = {'1': self.session(), '2': self.session('1002', 'j2', leader='300'),
                     '3': self.session(leader='400')}
