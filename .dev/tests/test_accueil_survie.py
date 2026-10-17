@@ -29,6 +29,7 @@ class AccueilSurvie(unittest.TestCase):
             journal = self.hotel(j) / 'journal_du_Toonitruand'
             self.assertEqual([p.name for p in journal.iterdir()], ['vague_0.txt'])
             texte = (journal / 'vague_0.txt').read_text(encoding='utf-8')
+            self.assertTrue(texte.startswith('\n'), 'Une ligne vide doit précéder le titre')
             self.assertIn(f'ls -l /home/{j}', texte)
             self.assertIn('village/clocher/etat_tour.txt', texte)
         self.plateau.preparer_accueil(self.profil, 1)
