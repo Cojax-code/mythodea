@@ -471,7 +471,7 @@ class Generations:
 
     def initialiser_exploration(self):
         """Photographie initiale cohérente avant la première fenêtre ACTIONS."""
-        self.backend.annoncer('PRÉPARATION DU RAPPORT D’EXPLORATION\nBRÈVE PAUSE TECHNIQUE')
+        self.backend.annoncer('PRÉPARATION DU RAPPORT D’EXPLORATION\nGEL TEMPORAIRE : les actions sont momentanément suspendues.')
         self.backend.geler()
         try:
             self.backend.verifier_gel()
@@ -536,8 +536,8 @@ class Generations:
         journal = {'generation': self.generation.name, 'termine': False, 'operations': []}
         fichier = self.generation / 'publication.json'
         ecrire_json(fichier, journal)
-        self.backend.annoncer('PUBLICATION DU TOUR\nBRÈVE PAUSE TECHNIQUE')
-        self.afficher(tour, 'publication', detail='PUBLICATION DU TOUR\nBRÈVE PAUSE TECHNIQUE')
+        self.backend.annoncer('PUBLICATION DU TOUR\nGEL TEMPORAIRE : les rapports seront consultables après publication.')
+        self.afficher(tour, 'publication', detail='PUBLICATION DU TOUR\nGEL TEMPORAIRE : préparation des résultats')
         self.backend.geler()
         try:
             def remplacer(source, destination, ancien):
