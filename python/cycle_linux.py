@@ -188,7 +188,8 @@ class Linux:
                 continue
             session = subprocess.run(
                 ['loginctl', 'show-session', champs[0], '--no-pager',
-                 '--property=User,Name,Service,State,TTY,Leader'],
+                 '-p', 'User', '-p', 'Name', '-p', 'Service',
+                 '-p', 'State', '-p', 'TTY', '-p', 'Leader'],
                 capture_output=True, text=True, check=False, timeout=5)
             if session.returncode:
                 # Une déconnexion peut survenir entre l'inventaire et la lecture.
