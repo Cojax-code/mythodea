@@ -9,17 +9,6 @@ Entrée dans le jeu
 ----------------------------------------------------------
 
 CONSEIL
-Lire le journal  de bord du Toonitruand pour savoir quoi découvrir en priorité.
-
->>> COMMANDE
-
-cat {game_path}/village/{joueur}/hotel_de_ville/journal_du_Toonitruand/vague_0.txt
-
-NOTE : Le journal donne des conseils ; facultative mais lecture fortement recommande.
-
-----------------------------------------------------------
-
-CONSEIL
 Regarder ce qui se trouve dans votre home.
 
 >>> COMMANDE
