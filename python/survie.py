@@ -425,7 +425,15 @@ def _clore_tour_survie(configuration, gestion, aleatoire=None):
         gestion.publier(tour, public, stage, resultat['defaite'])
         gestion.afficher(tour, 'defaite' if resultat['defaite'] else 'consultation',
                          None if resultat['defaite'] else configuration['duree_consultation_secondes'],
-                         'Publication terminée. Faire cd ~ puis revenir sur la carte.')
+                         'Rapports disponibles : phase de consultation (actions suspendues). '
+                         'Faire cd ~ puis revenir sur la carte.')
+        if not resultat['defaite']:
+            gestion.backend.annoncer(
+                'PHASE DE CONSULTATION — 1 MINUTE PAR DÉFAUT\n'
+                'Les combats sont terminés et les rapports sont publiés. '\n                'La création et les déplacements sont suspendus.\n\n'
+                f'Rapport court : cat {configuration["game_path"]}/village/j1/hotel_de_ville/rapport.txt\n'
+                f'Suivi des phases : tail -f {configuration["game_path"]}/village/clocher/suivi_tour.log\n'
+                'Le suivi des phases ne détaille pas encore les combats.')
         return resultat
     except BaseException as erreur:
         gestion.erreur(tour, erreur)
