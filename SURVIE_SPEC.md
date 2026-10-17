@@ -508,10 +508,21 @@ Les joueurs créent ou finalisent les unités uniquement dans leur home ou dans
 les fronts, dans les renforts, au repli et dans la Crypte, y compris sa récompense.
 L'atelier pédagogique ne devient pas une zone de recrutement militaire.
 
-L'entraînement impose d'attendre la fin du tour avant de quitter sa zone :
-un général entraîné au tour N puis déplacé est remis au chemin d'origine avec
+L'entraînement d'un général ancien impose d'attendre la publication avant de
+quitter sa zone : un général entraîné au tour N puis déplacé est remis au chemin d'origine avec
 ses unités, sans fatigue ni sanction de repli. Au tour N+1, il peut partir
 normalement. L'interdiction inclut réserve/garnison et home/réserve.
+En réserve, tout ajout d'unités impose cette attente, y compris avant un départ
+hors du village ; après publication, la réorganisation puis le mouvement normal
+redeviennent possibles.
+
+Un général réellement nouveau, créé officiellement par le moteur dans le home
+avant la fenêtre ACTIONS courante et jamais encore publié, bénéficie d'une
+exception pour cette seule fenêtre : il peut créer légalement ses unités au home
+puis se déployer immédiatement au village (garnison ou réserve). Un général vide
+peut également se déployer. La règle commune `home -> village` reste applicable :
+aucun départ direct vers EST_1, EST_2 ou EST_3. L'exception expire à la première
+publication, même si le général est resté au home, ou dès son déploiement accepté.
 Les unités ajoutées hors d'une zone autorisée sont supprimées par l'audit privé ;
 les unités déjà présentes sont conservées. Chaque refus est expliqué au rapport.
 
@@ -523,15 +534,24 @@ par type ; le surplus reste un ajout. La publication rend les unités acceptées
 disponibles au tour suivant. Une reprise d'ACTIONS conserve la référence ; une
 republication ne rejoue pas l'entraînement. Une ancienne partie dépourvue de
 référence nécessite une récupération, sans inventaire rétroactif automatique.
+Les champs privés `premiers_deploiements` et `rappels_en_attente` enregistrent
+respectivement les identités issues de la création moteur et les rappels légaux
+constatés par l'audit. Une présence au home, un déplacement ou un renommage ne
+confère jamais l'exception à une identité ancienne. La publication expire ces
+marqueurs ; une reprise d'ACTIONS les conserve.
 
 Un général officiel peut être rappelé par `mv` d'une position légale au home de
 son propriétaire. L'audit valide l'UID, l'identité et l'origine. Le rappel n'ajoute
 ni fatigue ni combat. Le tempo est : tour N rappel, tour N+1 home vers village
-uniquement, tour N+2 départ normal vers le front. Un rappel depuis le repli est
-refusé et le dossier y retourne sans nouveau délai ; l'attente existante est
+uniquement, tour N+2 départ normal vers le front. Pendant le tour du rappel, le
+général reste au home jusqu'à la publication complète, même sans aucune nouvelle
+unité. Toute tentative de repartir constatée pendant cette attente est refusée,
+avec retour au home sans perte d'unités ni sanction de repli.
+Un rappel depuis le repli est refusé et le dossier y retourne sans nouveau délai ; l'attente existante est
 préservée. Un rappel adverse ou depuis une origine non officielle est refusé.
 Un rappel légal permet de renforcer au home ; les nouvelles unités suivent la
-même attente d'un tour. Sans entraînement, les déplacements normaux sont inchangés.
+même attente d'un tour. En dehors de cette attente de rappel et de l'entraînement,
+les déplacements normaux sont inchangés.
 
 L'audit observe les positions de départ et d'arrivée du tour, comme le moteur
 commun ; il n'enregistre pas l'historique de toutes les commandes `mv` intermédiaires.

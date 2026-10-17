@@ -293,14 +293,15 @@ class EntrainementRappelSurvie(unittest.TestCase):
         self.assertIn('rappel refusé', self.config.rapport_long_path.read_text(encoding='utf-8'))
 
     def test_capture_privee_et_publication_debloquent_entrainement(self):
-        self.nouvelle_partie()
+        # Général déjà publié : la première attribution a désormais une exception.
+        self.general(territoire='home', nombre=0)
         self.ajouter(self.chemin())
         self.chemin().rename(self.chemin('village'))
         self.resoudre()
         self.assertTrue(self.chemin().exists())
-        self.assertEqual(self.reference()['tour'], 1)
+        self.assertEqual(self.reference()['tour'], 2)
         self.assertNotIn('capture', self.reference())
-        self.etat.sauvegarder_cycle_survie({'tour': 1, 'phase': 'a_preparer'}, self.profil)
+        self.etat.sauvegarder_cycle_survie({'tour': 2, 'phase': 'a_preparer'}, self.profil)
         self.survie.ouvrir_tour_survie(self.profil)
         self.chemin().rename(self.chemin('village'))
         self.resoudre()
@@ -338,6 +339,206 @@ class EntrainementRappelSurvie(unittest.TestCase):
         self.assertTrue(self.chemin().exists())
         self.assertEqual(self.generaux.total_general_depuis_chemin(self.chemin()), 3)
         self.assertEqual(self.reference()['tour'], 2)
+
+    def test_nouveau_avec_20_unites_deploye_des_sa_premiere_fenetre(self):
+        self.nouvelle_partie()
+        self.assertEqual(self.reference()['premiers_deploiements'], ['j1:general1', 'j2:general1'])
+        for joueur, place in (('j1', '1'), ('j2', '2')):
+            origine = self.chemin(joueur=joueur)
+            for numero in range(1, 21):
+                self.ajouter(origine, numero)
+            origine.rename(self.chemin('village', joueur=joueur, place=place))
+        self.resoudre()
+        for joueur, place in (('j1', '1'), ('j2', '2')):
+            destination = self.chemin('village', joueur=joueur, place=place)
+            self.assertFalse(self.chemin(joueur=joueur).exists())
+            self.assertEqual(self.generaux.total_general_depuis_chemin(destination), 20)
+            self.assertEqual(self.etat.charger_positions_generaux()[f'{joueur}:general1'], 'village')
+            self.assertEqual(len(self.generaux.trouver_toutes_positions_general(
+                joueur, 'general1', self.profil)), 1)
+        self.assertFalse(self.reference().get('premiers_deploiements'))
+        self.assertEqual(self.etat.charger_generaux_fatigues(), set())
+
+    def test_nouveau_vide_deploiement_autorise(self):
+        self.nouvelle_partie()
+        self.chemin().rename(self.chemin('village'))
+        self.audit()
+        self.assertTrue(self.chemin('village').exists())
+        self.assertEqual(self.etat.charger_positions_generaux()['j1:general1'], 'village')
+        self.assertNotIn('j1:general1', self.reference()['premiers_deploiements'])
+
+    def test_nouveau_entrainement_home_vers_reserve_autorise(self):
+        self.nouvelle_partie()
+        self.ajouter(self.chemin())
+        self.chemin().rename(self.chemin('village', reserve=True))
+        self.audit()
+        self.assertEqual(self.etat.charger_positions_generaux()['j1:general1'], 'village')
+        self.assertEqual(self.generaux.total_general_depuis_chemin(
+            self.chemin('village', reserve=True)), 1)
+
+    def test_nouveau_inter_partition_conserve_toutes_les_unites(self):
+        self.nouvelle_partie()
+        self.ajouter(self.chemin())
+        reference = self.reference()
+        reference['generaux']['home/j1/general1']['device'] = -1
+        self.etat.sauvegarder_unites_actions(self.profil, reference)
+        shutil.copytree(self.chemin(), self.chemin('village'))
+        shutil.rmtree(self.chemin())
+        self.resoudre()
+        self.assertEqual(self.generaux.total_general_depuis_chemin(self.chemin('village')), 1)
+        self.assertFalse(self.chemin().exists())
+
+    def test_exception_expire_apres_publication_meme_si_reste_home(self):
+        self.nouvelle_partie()
+        self.resoudre()
+        self.etat.sauvegarder_cycle_survie({'tour': 1, 'phase': 'a_preparer'}, self.profil)
+        self.survie.ouvrir_tour_survie(self.profil)
+        self.assertNotIn('j1:general1', self.reference().get('premiers_deploiements', []))
+        self.ajouter(self.chemin())
+        self.chemin().rename(self.chemin('village'))
+        self.audit()
+        self.assertTrue(self.chemin().exists())
+        self.assertFalse(self.chemin('village').exists())
+        self.assertEqual(self.generaux.total_general_depuis_chemin(self.chemin()), 1)
+
+    def test_creation_tour_suivant_seule_nouvelle_identite_a_exception(self):
+        self.nouvelle_partie()
+        self.ajouter(self.chemin())
+        self.chemin().rename(self.chemin('village'))
+        self.resoudre()
+        self.etat.sauvegarder_cycle_survie({'tour': 1, 'phase': 'a_preparer'}, self.profil)
+        self.survie.ouvrir_tour_survie(self.profil)
+        self.assertEqual(self.reference()['premiers_deploiements'], ['j1:general2'])
+        nouveau = self.chemin().with_name('general2')
+        self.ajouter(nouveau)
+        destination = self.chemin('village', place='2').with_name('general2')
+        nouveau.rename(destination)
+        self.audit()
+        self.assertEqual(self.etat.charger_positions_generaux()['j1:general2'], 'village')
+        self.assertEqual(self.generaux.total_general_depuis_chemin(destination), 1)
+
+    def test_nouveau_ne_peut_pas_sauter_home_vers_front(self):
+        self.nouvelle_partie()
+        self.chemin().rename(self.chemin('est_1'))
+        self.audit()
+        self.assertEqual(self.etat.charger_positions_generaux()['j1:general1'], 'repli')
+        self.assertNotIn('j1:general1', self.reference()['premiers_deploiements'])
+
+    def test_nouveau_avec_unites_ne_peut_pas_sauter_home_vers_front(self):
+        self.nouvelle_partie()
+        self.ajouter(self.chemin())
+        self.chemin().rename(self.chemin('est_2'))
+        self.audit()
+        self.assertFalse(self.chemin('est_2').exists())
+        self.assertTrue(self.chemin().exists())
+        self.assertEqual(self.generaux.total_general_depuis_chemin(self.chemin()), 1)
+
+    def test_rappel_sans_entrainement_bloque_jusqua_publication(self):
+        origine = self.general(territoire='est_1', nombre=2)
+        origine.rename(self.chemin())
+        self.audit()
+        self.assertEqual(self.reference()['rappels_en_attente'], {'j1:general1': 'home/j1/general1'})
+        self.chemin().rename(self.chemin('village'))
+        self.audit()
+        self.assertTrue(self.chemin().exists())
+        self.assertFalse(self.chemin('village').exists())
+        self.assertEqual(self.etat.charger_positions_generaux()['j1:general1'], 'home')
+        self.assertEqual(self.etat.charger_attentes_repli(self.profil), {})
+        self.resoudre()
+        self.assertFalse(self.reference().get('rappels_en_attente'))
+        self.etat.sauvegarder_cycle_survie({'tour': 2, 'phase': 'a_preparer'}, self.profil)
+        self.survie.ouvrir_tour_survie(self.profil)
+        self.chemin().rename(self.chemin('village'))
+        self.resoudre()
+        self.assertEqual(self.etat.charger_positions_generaux()['j1:general1'], 'village')
+        self.assertEqual(self.generaux.total_general_depuis_chemin(self.chemin('village')), 2)
+
+    def test_rappel_attente_et_unites_preserves_apres_reprise_actions(self):
+        origine = self.general(territoire='est_2', nombre=2)
+        origine.rename(self.chemin())
+        self.audit()
+        self.ajouter(self.chemin())
+        avant = self.reference()
+        self.survie.ouvrir_tour_survie(self.profil)
+        self.assertEqual(self.reference(), avant)
+        self.chemin().rename(self.chemin('village'))
+        self.audit()
+        self.assertTrue(self.chemin().exists())
+        self.assertEqual(self.generaux.total_general_depuis_chemin(self.chemin()), 3)
+        self.assertEqual(self.reference()['rappels_en_attente'], avant['rappels_en_attente'])
+
+    def test_reprise_nouveau_conserve_exception_sans_recreer_general(self):
+        self.nouvelle_partie()
+        self.ajouter(self.chemin())
+        avant = self.reference()
+        self.survie.ouvrir_tour_survie(self.profil)
+        self.assertEqual(self.reference(), avant)
+        self.chemin().rename(self.chemin('village'))
+        self.resoudre()
+        self.assertEqual(self.generaux.total_general_depuis_chemin(self.chemin('village')), 1)
+        self.assertEqual(self.etat.lire_compteur_general('j1'), 1)
+
+    def test_reserve_entrainement_bloque_front_puis_publication_autorise(self):
+        origine = self.general(territoire='village', reserve=True, nombre=2)
+        self.ajouter(origine)
+        origine.rename(self.chemin('est_1'))
+        self.survie.ouvrir_tour_survie(self.profil)
+        self.resoudre()
+        self.assertTrue(origine.exists())
+        self.assertFalse(self.chemin('est_1').exists())
+        self.assertEqual(self.generaux.total_general_depuis_chemin(origine), 3)
+        self.etat.sauvegarder_cycle_survie({'tour': 2, 'phase': 'a_preparer'}, self.profil)
+        self.survie.ouvrir_tour_survie(self.profil)
+        origine.rename(self.chemin('village'))
+        self.chemin('village').rename(self.chemin('est_1'))
+        self.resoudre()
+        self.assertEqual(self.etat.charger_positions_generaux()['j1:general1'], 'est_1')
+        self.assertEqual(self.generaux.total_general_depuis_chemin(self.chemin('est_1')), 3)
+
+    def test_renommage_ancien_ne_cree_pas_exception(self):
+        origine = self.general(territoire='est_1', nombre=2)
+        origine.rename(self.chemin())
+        self.audit()
+        renomme = self.chemin().with_name('general2')
+        self.chemin().rename(renomme)
+        self.ajouter(renomme)
+        self.survie.ouvrir_tour_survie(self.profil)
+        self.assertFalse(self.reference().get('premiers_deploiements'))
+        # Reprendre le nom officiel ne supprime pas le rappel enregistré.
+        renomme.rename(self.chemin('village'))
+        self.audit()
+        self.assertTrue(self.chemin().exists())
+        self.assertEqual(self.generaux.total_general_depuis_chemin(self.chemin()), 3)
+        self.assertEqual(self.etat.lire_compteur_general('j1'), 1)
+
+    def test_faux_numero_nouveau_supprime_au_deploiement(self):
+        origine = self.general(territoire='home', nombre=2)
+        faux = self.chemin('village').with_name('general99')
+        origine.rename(faux)
+        self.audit()
+        self.assertFalse(faux.exists())
+        self.assertNotIn('j1:general99', self.etat.charger_positions_generaux())
+        self.assertFalse(self.reference().get('premiers_deploiements'))
+
+    def test_republication_apres_rappel_debloque_sans_rejouer_audit(self):
+        origine = self.general(territoire='est_1', nombre=2)
+        origine.rename(self.chemin())
+        with patch.object(self.rapports, 'publier_rapports_exploration', side_effect=RuntimeError('panne')):
+            with self.assertRaisesRegex(RuntimeError, 'panne'):
+                self.resoudre()
+        self.assertEqual(self.reference()['rappels_en_attente'], {'j1:general1': 'home/j1/general1'})
+        import survie_admin
+        cycle = self.etat.charger_cycle_survie(self.profil)
+        with patch.object(survie_admin.cycle_linux, 'Linux', return_value=GelSimule()), \
+                patch.object(self.securite, 'verifier_tous_les_deplacements', side_effect=AssertionError('rejeu')):
+            survie_admin.republier(self.profil, cycle['generation'])
+        self.assertFalse(self.reference().get('rappels_en_attente'))
+        self.etat.sauvegarder_cycle_survie({'tour': 2, 'phase': 'a_preparer'}, self.profil)
+        self.survie.ouvrir_tour_survie(self.profil)
+        self.chemin().rename(self.chemin('village'))
+        self.audit()
+        self.assertTrue(self.chemin('village').exists())
+        self.assertEqual(self.generaux.total_general_depuis_chemin(self.chemin('village')), 2)
 
 
 if __name__ == '__main__':

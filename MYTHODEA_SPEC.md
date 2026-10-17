@@ -527,6 +527,22 @@ lourde conserve les cinq paires d'identités des équipements.
 Un renommage ou changement de bloc conserve ces identités ; une copie, un nouvel
 équipement ou une finalisation est un ajout. Aucune date n'autorise une unité.
 
+Deux champs privés complètent cette référence en Survie :
+
+- `premiers_deploiements` : liste des identités `joueur:generalN` effectivement
+  retournées par la création moteur avant ACTIONS, au tour zéro comme aux suivants ;
+- `rappels_en_attente` : dictionnaire identité → chemin relatif du home, rempli
+  uniquement lorsqu'un rappel légal est accepté par l'audit.
+
+L'absence de ces champs équivaut à des collections vides : aucune exception de
+nouveauté n'est déduite de la seule présence dans le home, d'un renommage, du
+compteur ou de la fiche joueur. L'ajout d'une création officielle à la référence
+ne renouvelle pas les droits des anciens généraux. Le premier déploiement accepté
+consomme l'exception ; un rappel ne la réactive jamais. La publication complète
+renouvelle la référence sans ces champs, expirant toute exception inutilisée et
+libérant les rappels. Une reprise d'ACTIONS conserve ces informations ; elles
+suivent les captures privées et la récupération habituelle du cycle.
+
 Pour un `mv` entre deux systèmes de fichiers, les inodes changent : les unités
 équivalentes sont rapprochées par type, dans la limite des effectifs de départ.
 Seul le surplus est un renforcement ; remplacer une unité par une autre du même
@@ -538,9 +554,21 @@ Sous le gel de clôture, les identités vivantes sont relevées dans le champ
 L'audit supprime les seuls ajouts interdits et journalise la raison. Si un général
 a quitté une zone d'entraînement avec des ajouts, il revient à son chemin exact
 d'origine avec toutes ses unités, sans fatigue ni repli. Cela inclut les passages
-home/réserve et réserve/garnison. Un rappel légal vers home peut être suivi
-d'entraînement à l'arrivée. La publication suivante renouvelle la référence :
-les unités acceptées sont alors anciennes, et le départ au tour suivant est permis.
+home/réserve et réserve/garnison. Seule exception : un général officiellement créé
+avant la fenêtre ACTIONS courante et jamais encore publié peut créer ses unités
+dans le home puis se déployer au village pendant cette même fenêtre, en garnison
+ou en réserve. La validation commune de sortie du home reste obligatoire : aucun
+saut direct vers un front, ni exemption des contrôles d'identité ou de collision.
+L'exception vaut aussi pour un général vide ; elle expire à la publication même
+s'il est resté au home. Un général ancien au home qui ajoute des unités reste
+soumis à l'attente, tout comme un général entraîné en réserve.
+
+Un rappel légal vers home peut être suivi d'entraînement à l'arrivée. Tout général
+rappelé doit rester au home jusqu'à la prochaine publication, même sans ajout
+d'unités. Une tentative de départ pendant cette attente le ramène au home avec
+ses unités, sans fatigue ni sanction de repli. La publication suivante renouvelle
+la référence : les unités acceptées sont alors anciennes, et le départ au tour
+suivant est permis.
 
 La référence est relevée sous gel après installation de la génération, jamais
 reconstruite depuis des modifications pendant ACTIONS ou CONSULTATION. À l'ouverture
@@ -653,8 +681,10 @@ En mode Survie, les deux joueurs se déploient depuis `home` vers `village`.
 Le rappel Survie d'un général officiel depuis une position tactique légale vers
 le home de son propriétaire est explicite, instantané par `mv`, sans combat
 supplémentaire ni fatigue ajoutée. L'audit vérifie l'UID, l'identité et l'origine
-officielle ; la position devient `home`. Au tour suivant, seul `home -> village`
-est permis ; le départ du village vers le front attend le tour d'après. Le calcul
+officielle ; la position devient `home` et le rappel en attente est persisté.
+Le général reste au home jusqu'à la publication, même sans entraînement.
+Au tour suivant, seul `home -> village` est permis ; le départ du village vers le
+front attend le tour d'après. Le calcul
 normal de fatigue par tour reste applicable, sans dette propre au rappel.
 
 Un rappel depuis `repli` est refusé : le dossier revient au repli et son attente

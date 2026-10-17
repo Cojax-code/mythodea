@@ -73,7 +73,7 @@ def inventorier_unites_actions(configuration):
     return resultat
 
 
-def memoriser_unites_actions(configuration, tour, nouveaux=()):
+def memoriser_unites_actions(configuration, tour, nouveaux=(), creations=()):
     """Référence publiée ; ajouter un général moteur ne revalide pas les autres."""
     reference = etat.charger_unites_actions(configuration)
     inventaire = inventorier_unites_actions(configuration)
@@ -86,6 +86,11 @@ def memoriser_unites_actions(configuration, tour, nouveaux=()):
         reference['tour'] = tour
     else:
         reference = {'tour': tour, 'generaux': inventaire}
+    # Seul le préparateur transmet les identités que le moteur vient d'attribuer.
+    # Un inventaire ordinaire (publication) expire ces droits et les rappels.
+    if creations:
+        reference['premiers_deploiements'] = sorted(
+            set(reference.get('premiers_deploiements', ())) | set(creations))
     etat.sauvegarder_unites_actions(configuration, reference)
 
 
@@ -155,6 +160,17 @@ def auditer_entrainement(configuration, positions, punis):
         joueur = identifiant.split(':')[0]
         if not chemin.exists() or joueur_proprietaire_chemin(chemin) != joueur:
             continue
+        rappel = reference.get('rappels_en_attente', {}).get(identifiant)
+        if rappel and positions[identifiant] == 'home':
+            destination = chemin_general_actions(rappel, configuration)
+            if chemin != destination:
+                if destination.exists():
+                    raise RuntimeError(f'Retour après rappel impossible : {destination}')
+                shutil.move(str(chemin), str(destination))
+                rapports.afficher_et_ecrire(
+                    f'{identifiant} : départ refusé après rappel ; '
+                    'rester au home jusqu’à la prochaine publication.')
+            continue
         origine_cle, origine = origines.get(identifiant, (None, {}))
         nouvelles = [chemin / relatif for relatif in unites_nouvelles_actions(origine, actuel)
                      if (chemin / relatif).exists()]
@@ -163,12 +179,22 @@ def auditer_entrainement(configuration, positions, punis):
         deplacement, _, _ = mouvements.verifier_deplacement_general(
             joueur, positions[identifiant], actuel['position'],
             etat.charger_controle_territoires(configuration), configuration)
-        if actuel['entrainement'] and (cle == origine_cle or (
+        premier_deploiement = (
+            identifiant in reference.get('premiers_deploiements', ())
+            and origine.get('position') == 'home'
+            and positions[identifiant] == 'home')
+        if (premier_deploiement and deplacement
+                and actuel['position'] == configuration['bases_joueurs'][joueur]):
+            rapports.afficher_et_ecrire(
+                f'{identifiant} : premier déploiement home -> village autorisé '
+                f'avec {len(nouvelles)} nouvelle(s) unité(s).')
+        elif actuel['entrainement'] and (cle == origine_cle or (
                 not origine.get('entrainement') and deplacement)):
             # Un rappel légal permet d'entraîner dans le home à l'arrivée.
             rapports.afficher_et_ecrire(
                 f'{identifiant} : entraînement autorisé, {len(nouvelles)} unité(s) ; '
-                'départ possible au tour suivant.')
+                + ('premier déploiement vers le village possible ce tour.'
+                   if premier_deploiement else 'départ possible au tour suivant.'))
         elif origine.get('entrainement'):
             destination = chemin_general_actions(origine_cle, configuration)
             if destination.exists():
@@ -649,6 +675,8 @@ def verifier_tous_les_deplacements(configuration=None):
     )
 
     positions = etat.charger_positions_generaux()
+    reference_actions = (etat.charger_unites_actions(configuration)
+                         if configuration['mode'] == 'survie' else None)
     controle_avant = etat.charger_controle_territoires(configuration)
     attentes_avant = etat.charger_attentes_repli(configuration)
     auditer_cavalerie_lourde(configuration, positions)
@@ -776,6 +804,9 @@ def verifier_tous_les_deplacements(configuration=None):
                             and identifiant not in attentes_avant
                             and identifiant not in generaux_deja_punis):
                         nouvelles_positions[identifiant] = 'home'
+                        if reference_actions is not None:
+                            reference_actions.setdefault('rappels_en_attente', {})[identifiant] = (
+                                cle_general_actions(chemin_actuel, joueur, configuration))
                         rapports.afficher_et_ecrire(f'{identifiant} : {origine} -> home [{raison}]')
                     elif origine is not None:
                         nouvelles_positions[identifiant] = origine
@@ -900,6 +931,14 @@ def verifier_tous_les_deplacements(configuration=None):
     # ------------------------------------------
     # Sauvegarde
     # ------------------------------------------
+
+    if reference_actions is not None:
+        reference_actions['premiers_deploiements'] = [
+            identifiant for identifiant in reference_actions.get('premiers_deploiements', ())
+            if nouvelles_positions.get(identifiant) == 'home'
+            and identifiant not in reference_actions.get('rappels_en_attente', {})
+            and identifiant not in generaux_deja_punis]
+        etat.sauvegarder_unites_actions(configuration, reference_actions)
 
     etat.sauvegarder_positions_generaux(
         nouvelles_positions

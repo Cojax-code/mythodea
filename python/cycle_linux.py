@@ -512,9 +512,9 @@ class Generations:
                     raise RuntimeError(f'Première attribution bloquée pour {joueur} : vérifier le home.')
             generaux.scanner_ordres_surnombre(self.c)
             if reference is None:
-                securite.memoriser_unites_actions(self.c, tour)
+                securite.memoriser_unites_actions(self.c, tour, creations=nouveaux)
             elif nouveaux:
-                securite.memoriser_unites_actions(self.c, tour, nouveaux)
+                securite.memoriser_unites_actions(self.c, tour, nouveaux, creations=nouveaux)
         finally:
             self.backend.degeler()
 
