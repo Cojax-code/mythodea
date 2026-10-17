@@ -43,11 +43,11 @@ class NotificationsSurvie(unittest.TestCase):
         def commande(args, **kwargs):
             appels.append(args)
             if args[1] == 'list-sessions':
-                sortie = '5 1001 j1 - 3823 user - no -\\n'
+                sortie = '5 1001 j1 - 3823 user - no -\n'
             elif args[1] == 'show-session':
-                sortie = 'User=1001\\nName=j1\\nTTY=\\nService=sshd\\nLeader=3823\\nState=active\\n'
+                sortie = 'User=1001\nName=j1\nTTY=\nService=sshd\nLeader=3823\nState=active\n'
             else:
-                sortie = '1001 sshd-session: j1@pts/2\\n'
+                sortie = '1001 sshd-session: j1@pts/2\n'
             return subprocess.CompletedProcess(args, 0, sortie, '')
 
         with patch.object(self.cycle_linux.subprocess, 'run', side_effect=commande):
