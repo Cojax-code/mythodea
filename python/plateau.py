@@ -9,6 +9,7 @@ import config
 import etat
 import generaux
 import rapports
+import soldats
 
 
 def territoires_ravitailles(joueur, controle_territoires):
@@ -257,24 +258,6 @@ def lancer_bataille_v15():
                         "  fatigue : non"
                     )
 
-                if len(general["ordres"]) == 0:
-                    rapports.afficher_et_ecrire(
-                        "  ordres : aucun ordre valide"
-                    )
-                else:
-                    textes_ordres = [
-                        ordre["texte"]
-                        for ordre
-                        in general["ordres"]
-                    ]
-
-                    rapports.afficher_et_ecrire(
-                        "  ordres : "
-                        + ", ".join(
-                            textes_ordres
-                        )
-                    )
-
         # --------------------------------------
         # Combat
         # --------------------------------------
@@ -299,10 +282,8 @@ def lancer_bataille_v15():
                     f"{ancien_controle} défend."
                 )
 
-                combats.resoudre_combat_off_def(
-                    territory,
-                    ancien_controle
-                )
+                with soldats.bataille_complete():
+                    combats.resoudre_combat_off_def(territory, ancien_controle)
 
             else:
                 mode_combat = "OFF/OFF"
@@ -316,9 +297,8 @@ def lancer_bataille_v15():
                     "\nCombat détecté : OFF/OFF."
                 )
 
-                combats.resoudre_combat_v15(
-                    territory
-                )
+                with soldats.bataille_complete():
+                    combats.resoudre_combat_v15(territory)
 
         else:
             rapports.afficher_et_ecrire(

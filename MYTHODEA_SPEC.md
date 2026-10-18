@@ -90,6 +90,11 @@ Responsabilités :
 | `vagues.py` | compositions des vagues Est, sans accès au disque |
 | `survie.py` | cycle Survie Est, progression et rattrapage ennemis, vagues, cascades et retraites différées |
 | `minuterie.py` | validation de la durée et attente jusqu'à une échéance, sans logique métier |
+| `catalogues.py` | identifiants permanents, types d'unités, recettes, ordres et évolutions |
+| `progression.py` | caractéristiques officielles, tirages pondérés et montée de niveau configurable |
+| `commandement.py` | calculs entiers, sélection des QG et donneurs d'ordres, sans effets tactiques supplémentaires |
+| `soldats.py` | identité individuelle, blessures, sauvetages et batailles survécues |
+| `formation.py` | hôpital et École du village, relevés de séjour et mémoires partagées |
 | `cycle_linux.py` | gel Linux, capture privée, publication de générations et permissions des phases Survie |
 | `survie_admin.py` | diagnostic, dégel de secours et republication explicitement autorisée, sans rejeu métier |
 | `crypte.py` | collecteur privé Survie, recette pédagogique, cooldown et attribution différée |
@@ -403,7 +408,7 @@ et un compteur distinct `.systeme/compteur_general_bot.txt`. Il n'est pas soumis
 
 ### Fiche
 
-Format actuel :
+Champs historiques conservés :
 
 ```text
 nom=general1
@@ -423,6 +428,9 @@ hybride
 
 Les effets futurs de `strategie`, `force` et `experience` ne doivent pas être
 inventés tant qu'ils ne sont pas définis.
+
+Les nouvelles créations ajoutent les caractéristiques de la section 22.
+`orientation` reste un champ historique distinct de `nature`.
 
 Une fiche du bot Est ajoute `faction=est`, `vague=<numero>` et
 `nom_affichage=general<vague>_<numero_dans_la_vague>`. `nom` reste canonique.
@@ -973,6 +981,8 @@ Ordres enregistrés :
 | `3-1` | `fuir_avant_la_mort` | intrinsèque | réservé à une version ultérieure |
 
 Un ordre inconnu, mal écrit ou non applicable est ignoré.
+Son texte personnel n'est pas recopié dans les rapports, y compris dans les
+diagnostics d'erreur. Les effets observables d'un combat restent rapportés.
 
 La V1.5 n'a pas pour objectif de finaliser tout le système d'ordres. Les règles
 détaillées des ordres supplémentaires seront définies plus tard à partir de
@@ -1440,3 +1450,208 @@ Sans décision explicite, ne pas changer :
 Cette spécification décrit le comportement à préserver. Les nouvelles règles
 d'ordres et les futurs modes doivent être ajoutés explicitement lorsqu'ils sont
 validés.
+
+---
+
+## 22. Progression commune, blessures et formation
+
+### Identifiants et fabrication
+
+`catalogues.py` est la source des recettes reconnues et de la légende des ordres.
+Les identifiants sont universels, permanents et ne doivent jamais être recyclés.
+
+| Type générique | ID unité | ID d'évolution réservé | Référence de fabrication |
+| --- | --- | --- | --- |
+| Archer | 1 | 101 | 5 |
+| Piquier | 2 | 102 | 5 |
+| Cavalier | 3 | 103 | 5 |
+| Cavalerie lourde | 4 | 104 | non définie |
+
+Le moteur antérieur ne possède pas de comptabilité de fabrication. Sa valeur
+collective de combat de base de 1 n'est pas multipliée : triangle, fatigue,
+formation lourde, recettes et effectifs restent ceux des sections précédentes.
+La référence 5 est une donnée distincte du catalogue, sans monnaie. Les étiquettes
+multiples ne créent pas de types supplémentaires. Les emplacements de futures
+règles de terrain, positionnement ou restrictions ne produisent aucun effet.
+
+Les évolutions 201 et 202 désignent respectivement une récompense de commandement
+et de moral, dont le gain dépend du niveau. Les IDs 1001 à 1005 correspondent aux
+jetons historiques `1-1`, `1-2`, `2-1`, `2-2`, `3-1` ; `ordre.txt` garde son format.
+Les catégories préparées sont globale (armée), duel (formation) et individuelle
+(intrinsèque). Aucune unité ni aucun ordre n'est pour l'instant accordé comme
+nouvelle récompense de niveau. Les unités ordinaires gardent leurs accès existants,
+la cavalerie lourde reste une récompense spéciale et les autres ordres restent réservés.
+
+### Caractéristiques et niveaux des généraux
+
+Une création officielle apparaît au niveau 0, avec une nature `stratege` ou
+`instinctif` équiprobable. Nature et trait inné sont permanents. Leur aléatoire
+est indépendant de celui des combats existants.
+
+| Nature | Charismatique | Leader | Inventeur |
+| --- | --- | --- | --- |
+| Stratège | 50 % | 35 % | 15 % |
+| Instinctif | 50 % | 15 % | 35 % |
+
+Champs ajoutés à `fiche.txt` : `niveau`, `nature`, `trait_inne`,
+`points_commandement`, `moral`, `evolutions_acquises`, `evolution_apprise`.
+Les listes d'IDs sont séparées par des virgules ; l'absence d'évolution apprise
+est une valeur vide. Les anciens champs sont conservés. L'autorité est
+`.systeme/progression.json`, indexée par `joueur:generalN`. Modifier la fiche
+possédée par le joueur ne change pas les caractéristiques officielles.
+
+| Nature / trait | Commandement ou moral | Ordre | Unité |
+| --- | --- | --- | --- |
+| Stratège charismatique | 60 % commandement | 30 % | 10 % |
+| Stratège leader | 20 % commandement | 70 % | 10 % |
+| Stratège inventeur | 20 % commandement | 20 % | 60 % |
+| Instinctif charismatique | 60 % moral | 15 % | 25 % |
+| Instinctif leader | 20 % moral | 60 % | 20 % |
+| Instinctif inventeur | 20 % moral | 10 % | 70 % |
+
+Les récompenses indisponibles, incompatibles ou entièrement acquises sont exclues.
+Les poids restants sont redistribués proportionnellement par un tirage entier.
+Avec le catalogue actuel, un stratège reçoit donc du commandement et un instinctif
+du moral jusqu'au plafond. Si aucun choix n'est possible, une montée explicitement
+demandée n'accorde pas de récompense. Plusieurs évolutions dans une catégorie
+nécessitent une règle de choix fournie par l'appelant.
+
+Un stratège commence avec 11 à 20 points. Une récompense au niveau `n` utilise
+`tranche = 10 * (n // 5 + 1)` puis ajoute `tranche + randint(1, tranche)`.
+Un instinctif commence avec un moral nul ; une récompense au niveau `n` ajoute
+`1 + randint(0, n)`, plafonné à 100. Ces gains dépendent de la récompense obtenue,
+jamais du seul passage de niveau.
+
+`progression_due` accepte une condition configurable et retourne faux sans
+condition. `attribuer_niveau` persiste une montée explicitement demandée par le
+moteur. Aucun seuil de batailles ni séjour en caserne ne déclenche encore de niveau.
+Un ancien général sans profil officiel reste inchangé, avec un moral effectif
+nul ; sa montée de niveau exige une migration explicitement définie.
+
+### Commandement et QG : calculs prêts, raccordement tactique réservé
+
+Le commandement effectif vaut `points // max(1, nombre_types_generiques_distincts)`.
+Le global utilise le calcul entier exact
+`(2 * points_QG + somme_points_autres_strateges) // (2 * max(1, nombre_non_strateges))`.
+Les fonctions reçoivent les caractéristiques officielles. Le QG fourni au calcul
+est l'objet général sélectionné dans la liste de l'armée. Les points ne limitent
+pas le nombre d'ordres ; aucun bonus de messager n'est défini.
+
+`QuartierGeneral` sélectionne une seule fois le stratège éligible ayant le meilleur
+commandement pertinent, calcul fourni par le pilote. Une égalité au sommet ne
+sélectionne personne. Le QG n'ajoute aucune troupe. Si son bloc devient vide,
+il reste désactivé pour cette bataille sans relève automatique.
+
+Les fonctions prévoient les ordres globaux du QG actif stratège ; les ordres de
+duel personnels puis ceux du QG à défaut ; les ordres individuels personnels sans
+comparaison normale. Un contre-ordre reste dans sa catégorie et n'est sélectionné
+qu'en situation de comparaison perdue. Aucun effet de contre-ordre n'est inventé.
+Une égalité concurrente n'identifie aucun gagnant ni perdant.
+
+Ces fonctions testées ne remplacent pas la résolution historique de `1-2`.
+La matérialisation des QG, le commandement pertinent selon leur contexte, les
+effets concurrents à égalité et la transition des ordres historiques doivent
+être définis avant ce raccordement.
+
+### Blessures et batailles complètes
+
+Après chaque choc de blocs et chaque manœuvre, les pertes sont sélectionnées
+comme auparavant. Un instinctif tire `pertes * moral // 100` candidats distincts
+parmi ces pertes. Chaque candidat sous sa limite de blessures est conservé et
+reçoit une blessure. Une tentative échouée n'est pas réattribuée. Les autres
+pertes sont supprimées ; listes, effectifs et rapports sont actualisés avant
+l'affrontement suivant. Les blessés combattent sans pénalité supplémentaire.
+
+| Batailles survécues | Statut | Blessures maximales |
+| --- | --- | --- |
+| 0 à 4 | ordinaire | 1 |
+| 5 à 9 | vétéran | 2 |
+| 10 et plus | héroïque | 3 |
+
+Une bataille complète correspond à toute la résolution d'un territoire pendant
+un tour, frontal, rangé et cascades compris. Les unités des généraux effectivement
+engagés sont suivies ; leurs survivantes gagnent une seule bataille, sans condition
+de victoire. Les unités de réserve non engagées ne gagnent rien. Le gain est appliqué
+en fin de résolution territoriale : le nouveau statut ne change pas rétroactivement
+la limite de blessures des affrontements déjà résolus. Les retraites Survie sont
+différées jusqu'après ce comptage. L'ID Survie `survie:<tour>:<territoire>` empêche
+un double comptage ; le classique crée une identité unique par résolution.
+
+Le suivi est créé au premier sauvetage, comptage ou séjour à l'hôpital. Le dossier
+contient `identifiant_soldat.txt` (UUID stable), `batailles_survecues.txt`,
+`blessures.txt`, et les marqueurs `veteran` / `heroique` selon les seuils. Un
+héroïque conserve aussi son marqueur vétéran. Ces copies restent privées au joueur
+en 600 et ne sont jamais l'autorité.
+
+`.systeme/soldats.json` conserve par UUID le type, les compteurs, le chemin logique,
+les identités de périphérique/inode, les batailles déjà comptées, la dernière
+bataille et, au besoin, la destruction ou le dernier soin. Les inodes vivants
+authentifient les soldats avant capture Survie ; les UUID privés sont reliés aux
+nouveaux inodes à la publication. Le classique synchronise avant l'audit des
+déplacements. Modifier un compteur visible ne soigne pas et ne confère aucun statut.
+Une copie ne peut récupérer les droits de l'original présent. Les soldats détruits
+restent marqués dans le registre.
+
+Les transferts gardent leurs restrictions : bloc homogène, pas d'écrasement de
+nom, droits requis, plafonds d'effectifs et audit d'entraînement. Le suivi n'accorde
+aucun droit de renforcement supplémentaire. Un déplacement conservant l'inode
+garde l'état ; entre systèmes de fichiers, le marqueur d'identité doit accompagner
+le dossier complet. Une récupération ambiguë sans marqueur peut nécessiter une
+intervention explicite, sans remise à zéro silencieuse des blessures connues.
+
+### Hôpital et École du village
+
+Les bâtiments sont actifs dans le village Survie ; le mode classique réutilise
+les fonctions sans ajout de lieux à sa carte. Les dossiers physiques restent
+séparés par joueur, avec places logiquement partagées entre alliés :
+`village/<joueur>/hopital/1..20` et `village/<joueur>/ecole_officiers/1..6`.
+Les 20 places d'hôpital sont configurables par `emplacements_hopital` ; il n'existe
+aucun autre quota de soins simultanés. L'École a six places de généraux, distinctes
+des trois emplacements de son manuel. Les collisions appliquent la sanction commune
+d'emplacement, indépendamment des places de garnison. Les bâtiments sont hors combat.
+
+Entrer ou sortir d'un bâtiment est une réorganisation interne au village, sans
+déplacement normal. Se déplacer entre le village et un autre territoire conserve
+les règles existantes. Les bâtiments n'accordent pas de droit d'entraînement.
+
+Sous gel avant ACTIONS, le moteur enregistre les demandes et les preuves de
+présence. Sous gel de clôture, il relève les présences finales. Périphérique,
+inode et ctime du général et de sa place doivent rester identiques ; les unités
+d'hôpital ont aussi leurs propres preuves. Une entrée tardive, sortie/retour ou
+substitution invalide le séjour concerné. Modifier une demande pendant ACTIONS
+ne remplace pas celle du début. Une reprise ne réinitialise pas le début du séjour.
+
+Après l'audit de la génération privée, les soins valides remettent les blessures
+à zéro sans toucher aux batailles ni aux statuts. Toutes les unités admissibles
+de tous les généraux présents sont traitées. Une validation consommée ne peut
+soigner une nouvelle blessure.
+
+Les demandes personnelles sont `ecrire_ses_memoires.txt` (`e 001 201`) et
+`lire_les_memoires.txt` (`a 001 201`). Les actions acceptent les majuscules. La
+syntaxe historique `001 201` pour écrire et `001` pour lire reste acceptée.
+Une seule demande non vide est traitée par général. L'écriture nécessite une
+évolution acquise et remplace l'emplacement choisi. Le manuel partagé par camp
+a exactement `001`, `002`, `003`, avec `vide` pour un emplacement libre.
+
+Toutes les lectures valides du tour précèdent toutes les écritures. La lecture
+vérifie l'emplacement et l'ID demandé, puis mémorise l'ID réel, sans consommer le
+manuel. Une écriture ultérieure ne modifie pas cet apprentissage. L'ID remplace
+le tirage à la prochaine montée compatible ; s'il devient incompatible, la montée
+est refusée sans perte d'état. Deux écritures concurrentes au même emplacement
+sont refusées ensemble, sans choisir un gagnant implicite. Le remplacement d'un
+apprentissage encore en attente reste refusé tant que sa règle n'est pas définie.
+Le résultat individuel est écrit dans `formation_resultat.txt`, jamais dans le
+rapport public.
+
+`.systeme/formation.json` conserve les manuels par camp, séjours par
+`tour:joueur:generalN`, tours ouverts, relevés de clôture et validations consommées.
+Le profil conserve les apprentissages validés pour prévenir un double traitement.
+Le manuel visible est `village/ecole_officiers/memoire_des_generaux.txt`, publié
+`root:<groupe_allie> 640` dans un dossier 750. Aucun `chattr` n'est utilisé.
+
+Les trois nouveaux JSON utilisent l'écriture privée atomique existante, en 600,
+et font partie de `ETATS_METIER` : ils accompagnent capture et publication.
+Leur absence dans une ancienne sauvegarde signifie absence de suivi, sans
+effacement ni attribution rétroactive. Sauvegarder les états privés avec les unités
+est indispensable à la conservation de cette autorité. Voir `EVOLUTIONS.md` pour
+l'utilisation et les décisions de conception encore ouvertes.

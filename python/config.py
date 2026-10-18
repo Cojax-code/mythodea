@@ -2,6 +2,7 @@
 from pathlib import Path
 from contextlib import contextmanager
 from contextvars import ContextVar
+import catalogues
 
 
 _generation = ContextVar("generation_metier", default=None)
@@ -12,6 +13,9 @@ ETATS_METIER = (
     "crypte.json", "compteur_creation_normale_j1.txt", "compteur_creation_normale_j2.txt",
     "unites_actions.json",
     "defis.json",
+    "progression.json",
+    "soldats.json",
+    "formation.json",
 )
 
 
@@ -28,6 +32,10 @@ def racines_generation(plateau, homes):
 def racine_metier():
     courant = _generation.get()
     return courant[0] if courant else game_path
+
+
+def dans_generation_privee():
+    return _generation.get() is not None
 
 
 def home_generation(joueur):
@@ -119,10 +127,8 @@ max_generaux_par_joueur = 5
 # Représentations reconnues par le moteur ; ce catalogue n'accorde aucun droit
 # d'entraînement. La cavalerie lourde est réservée aux attributions privées.
 unites_equipements = {
-    'archer': ('infanterie', ('arc',)),
-    'piquier': ('infanterie', ('pique',)),
-    'cavalier': ('cavalerie', ('cheval',)),
-    'cavalerie_lourde': ('cavalerie_L', ('cheval', 'armure', 'cuirasse', 'bouclier', 'casque')),
+    unite['nom']: (unite['prefixe'], unite['recette'])
+    for unite in catalogues.UNITES.values()
 }
 
 orientations = ["stratege", "combattant"]
@@ -150,40 +156,14 @@ orientation_rare = "hybride"
 # est simplement ignoré.
 
 legende_ordres = {
-    "1-1": {
-        "type": 1,
-        "numero": 1,
-        "nom": "retraite_apres_premiere_manche",
-        "categorie": "armee",
-    },
-
-    "1-2": {
-        "type": 1,
-        "numero": 2,
-        "nom": "attaque_frontale",
-        "categorie": "armee",
-    },
-
-    "2-1": {
-        "type": 2,
-        "numero": 1,
-        "nom": "attaque_chirurgicale",
-        "categorie": "formation",
-    },
-
-    "2-2": {
-        "type": 2,
-        "numero": 2,
-        "nom": "pluie_de_fleches",
-        "categorie": "formation",
-    },
-
-    "3-1": {
-        "type": 3,
-        "numero": 1,
-        "nom": "fuir_avant_la_mort",
-        "categorie": "intrinseque",
-    },
+    ordre['jeton']: {
+        'type': int(ordre['jeton'].split('-')[0]),
+        'numero': int(ordre['jeton'].split('-')[1]),
+        'nom': ordre['nom'],
+        'categorie': {'globale': 'armee', 'duel': 'formation',
+                      'individuelle': 'intrinseque'}[ordre['categorie']],
+    }
+    for ordre in catalogues.ORDRES.values()
 }
 
 
@@ -297,6 +277,8 @@ def configuration_mode(mode):
         "positions_renforts_allies": [str(n) for n in range(5, 21)] if mode == "survie" else [],
         "emplacements_partages": mode == "survie",
         "villages": ["village"] if mode == "survie" else [],
+        "emplacements_hopital": [str(n) for n in range(1, 21)],
+        "emplacements_ecole": [str(n) for n in range(1, 7)],
         "permissions_generaux": {"dossiers": 0o700, "fichiers": 0o600},
         "duree_phase_action_secondes": duree_action,
         "duree_consultation_secondes": 60,

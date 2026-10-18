@@ -457,6 +457,8 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
     controle_avant = etat.charger_controle_territoires(configuration)
     profil_audit = dict(configuration, tour_preparation=(tour == 0))
     securite.verifier_tous_les_deplacements(profil_audit)
+    import formation
+    formation.resoudre_tour(configuration, tour)
     bloques = {}
     deplacements = avancer_ennemis(configuration, bloques)
     securite.controler_coherence_territoires(configuration)
@@ -473,7 +475,9 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
             territoire = configuration["game_path"] / nom
             rapports.definir_territoire_rapport(territoire)
             mode = "OFF/DEF" if controle_avant.get(nom) in ("allies", "bot") else "OFF/OFF"
-            batailles[nom] = resoudre_cascade(territoire, configuration, mode, en_cours_de_fuite)
+            import soldats
+            with soldats.bataille_complete(f'survie:{tour}:{nom}'):
+                batailles[nom] = resoudre_cascade(territoire, configuration, mode, en_cours_de_fuite)
     finally:
         rapports.definir_territoire_rapport(None)
     mouvements.appliquer_retraites_surnombre(en_cours_de_fuite, configuration)

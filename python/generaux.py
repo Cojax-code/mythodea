@@ -9,6 +9,10 @@ import shutil
 import config
 import etat
 import rapports
+import progression
+
+
+aleatoire_caracteristiques = random.Random()
 
 
 def choisir_orientation_general():
@@ -21,6 +25,7 @@ def choisir_orientation_general():
 
 
 def creer_general(chemin_general, nom_general):
+    nouveau = not chemin_general.exists()
     chemin_general.mkdir(exist_ok=True)
 
     for bloc in config.ordre_blocs:
@@ -41,6 +46,15 @@ def creer_general(chemin_general, nom_general):
         ]
 
         fiche.write_text("\n".join(texte), encoding="utf-8")
+
+    if nouveau:
+        caracteristiques = progression.nouvelles_caracteristiques(aleatoire_caracteristiques)
+        # Les racines des acteurs existent dans les homes et dans les générations.
+        joueur = next((p.name for p in chemin_general.parents
+                       if p.name in (*config.joueurs, 'bot')), None)
+        if joueur is not None:
+            caracteristiques = progression.enregistrer_creation(joueur, nom_general, caracteristiques)
+        progression.publier_fiche(chemin_general, caracteristiques)
 
     ordre = chemin_general / "ordre.txt"
 
@@ -276,7 +290,6 @@ def lire_ordres_general(chemin_general):
             rapports.afficher_et_ecrire(
                 f"Ordre ignoré pour "
                 f"{chemin_general.name} : "
-                f"{ligne} "
                 f"[format invalide]"
             )
 
@@ -290,7 +303,6 @@ def lire_ordres_general(chemin_general):
             rapports.afficher_et_ecrire(
                 f"Ordre ignoré pour "
                 f"{chemin_general.name} : "
-                f"{ligne} "
                 f"[valeur non numérique]"
             )
 
@@ -314,7 +326,6 @@ def lire_ordres_general(chemin_general):
             rapports.afficher_et_ecrire(
                 f"Ordre ignoré pour "
                 f"{chemin_general.name} : "
-                f"{ligne} "
                 f"[ordre inconnu]"
             )
 
@@ -386,6 +397,11 @@ def zones_generaux_territoire(territory, joueur, configuration=None):
     ]
     if village:
         zones.append({"position": territory.name, "chemin": joueur_dir / "reserve"})
+        for batiment, option in (('hopital', 'emplacements_hopital'),
+                                  ('ecole_officiers', 'emplacements_ecole')):
+            zones.extend({'position': territory.name, 'chemin': joueur_dir / batiment / place,
+                          'emplacement': f'{batiment}/{place}', 'batiment': batiment}
+                         for place in configuration[option])
         if configuration['mode'] == 'survie':
             zones.append({'position': territory.name, 'chemin': joueur_dir / 'crypte/recompense',
                           'crypte': True})

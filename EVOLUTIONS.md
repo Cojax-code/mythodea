@@ -1,0 +1,112 @@
+# Généraux, blessures et formation
+
+Les nouveaux généraux reçoivent un niveau 0, une nature et un trait permanent.
+Leurs champs apparaissent dans `fiche.txt`. Les anciennes fiches sont conservées.
+La référence de fabrication des trois unités ordinaires vaut 5 ; les recettes
+et la valeur collective de combat ne changent pas.
+
+Les soldats survivant à la résolution complète d'un territoire gagnent une
+bataille. À 5 batailles ils deviennent vétérans, à 10 héroïques. Le moral d'un
+instinctif peut sauver des pertes en leur donnant une blessure ; leurs limites
+sont respectivement 1, 2 et 3 blessures. Un nouveau général a un moral nul.
+
+## Aller à l'hôpital
+
+Depuis le village, déplacer le dossier complet dans une place libre :
+
+```bash
+mv /game/village/j1/garnison/1/general1 /game/village/j1/hopital/1/
+```
+
+Les places `1..20` sont disponibles par défaut. Chaque numéro est partagé
+logiquement entre j1 et j2 : ne pas occuper une place déjà prise par un allié.
+Tous les généraux ayant passé un tour complet à l'hôpital sont soignés ensemble.
+Les blessures reviennent à zéro ; batailles, expérience et statuts sont conservés.
+Consulter `formation_resultat.txt` dans le dossier du général après publication.
+
+Une entrée pendant ACTIONS commence son séjour complet au début du tour suivant.
+Une sortie, même suivie d'un retour, annule le séjour. Les passages entre réserve,
+garnison et bâtiments restent des réorganisations internes au village sans coût
+de mouvement ; les déplacements entre territoires gardent leurs règles.
+
+Le contrôle de présence est conservateur : changer le général de place ou
+réorganiser les unités pendant les soins peut invalider la preuve de séjour.
+Pour garantir sa validation, garder les dossiers à leur place pendant ce tour.
+
+## Apprendre ou écrire à l'École
+
+L'École possède six places de généraux, partagées logiquement entre alliés :
+`/game/village/j1/ecole_officiers/1` à `6`, et les dossiers équivalents de j2.
+Le manuel commun possède seulement trois emplacements, `001`, `002`, `003` :
+
+```bash
+cat /game/village/ecole_officiers/memoire_des_generaux.txt
+```
+
+Dans le dossier du général, préparer **une seule demande** avant le début du
+tour complet de présence :
+
+```bash
+# Apprendre l'évolution 201 actuellement inscrite en 001 :
+printf '%s\n' 'a 001 201' > lire_les_memoires.txt
+: > ecrire_ses_memoires.txt
+
+# Ou écrire une évolution 201 déjà acquise dans l'emplacement 001 :
+printf '%s\n' 'e 001 201' > ecrire_ses_memoires.txt
+: > lire_les_memoires.txt
+```
+
+`A` et `E` sont également acceptés. Un ID de lecture différent de celui du manuel
+est refusé. Les anciennes demandes sans lettre restent compatibles.
+Les demandes sont figées au début du tour : les modifier ensuite ne raccourcit
+pas l'attente. Toutes les lectures se déroulent avant les écritures du même tour.
+Ainsi, apprendre et remplacer simultanément la même entrée conserve l'ancien ID
+sur la fiche de l'élève. Le manuel reste disponible aux autres généraux.
+
+Consulter `formation_resultat.txt`, puis vider la demande après traitement si
+aucun nouveau séjour n'est souhaité. Deux écritures concurrentes de la même entrée
+sont refusées ensemble. Un apprentissage déjà en attente n'est pas écrasé.
+
+## Ce qui attend encore une décision
+
+- Les conditions de gain de niveaux : batailles, caserne et barèmes. Le moteur
+  possède les fonctions de progression, mais ne donne aucun niveau automatiquement.
+- Les nouveaux ordres et unités à gagner. Seules les catégories commandement 201
+  et moral 202 sont actuellement disponibles comme récompenses de progression.
+- La matérialisation des QG et le raccordement de leurs priorités aux effets des
+  ordres historiques. Les calculs et la sélection sont testés, sans nouvelle
+  tactique activée dans les parties.
+- Le départage de deux écritures simultanées et le remplacement d'un apprentissage
+  en attente ; actuellement ces cas sont refusés explicitement.
+- La migration des caractéristiques des généraux déjà existants. Aucun tirage
+  rétroactif ni gain d'expérience antérieure n'est appliqué.
+
+## Sauvegardes et transferts
+
+Conserver ensemble les dossiers des unités et `.systeme/progression.json`,
+`.systeme/soldats.json`, `.systeme/formation.json`. Les fichiers visibles de
+blessures sont des copies : les éditer ne guérit pas les soldats. Le manuel
+validé est également contrôlé par le moteur.
+
+Déplacer un dossier d'unité complet conserve ses métadonnées. Cela n'ajoute
+aucun droit de transfert : bloc homogène, noms sans collision, permissions,
+plafonds d'effectifs et audit d'entraînement restent applicables. Un déplacement
+entre systèmes de fichiers doit conserver `identifiant_soldat.txt`.
+
+Les détails techniques et les tables de progression figurent dans la section 22
+de `MYTHODEA_SPEC.md` ; les bâtiments sont actuellement raccordés au village Survie.
+
+## Vérifier le moteur
+
+Depuis la racine du dépôt, sous Linux :
+
+```bash
+python3 -B -m unittest discover -s .dev/tests -v
+```
+
+`test_progression.py` couvre les catalogues, probabilités, niveaux et QG.
+`test_soldats_formation.py` couvre les pertes, compteurs, transferts, soins,
+mémoires, séjours incomplets et publication privée. Les tests temporaires n'utilisent
+pas une vraie partie. Le test `python/tests_linux/test_progression_isolee.py`
+vérifie séparément les droits Linux avec root et des UID de processus, sans créer
+de comptes. Une validation sur Raspberry Pi reste à réaliser.

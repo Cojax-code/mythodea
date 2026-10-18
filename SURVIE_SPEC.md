@@ -1649,3 +1649,32 @@ les unités en `cavalerie_LN`, avec une numérotation robuste évitant les colli
 Le joueur n'aura pas à renommer chaque dossier. Cette mécanique, ses contrôles
 et la méthode d'entraînement ne sont pas implémentés ; aucun accès ni cycle
 d'armurerie n'est actif.
+
+## Progression, hôpital et École des officiers
+
+Les généraux et soldats utilisent les règles communes de la section 22 de
+`MYTHODEA_SPEC.md`. Une bataille survécue correspond à toute la résolution d'un
+territoire pendant le tour, cascades comprises. Seuls les généraux réellement
+engagés y participent ; les retraites différées conservent les compteurs obtenus.
+Les seuils de montée de niveau restent ouverts : aucune attribution automatique
+n'est déclenchée par ces compteurs.
+
+Le village possède des sous-zones `hopital/1..20` (nombre configurable) et
+`ecole_officiers/1..6` sous chaque dossier joueur. Leurs positions sont partagées
+logiquement entre alliés, comme la garnison, mais numérotées indépendamment.
+Entrée et sortie sont des réorganisations internes sans consommation de mouvement.
+Ces zones sont hors combat et ne permettent pas l'entraînement de nouvelles unités.
+
+Le manuel commun, avec trois emplacements distincts des six places de généraux,
+est publié sous `village/ecole_officiers/memoire_des_generaux.txt`. Les joueurs
+préparent `a/A <emplacement> <ID>` ou `e/E <emplacement> <ID>` dans les demandes
+personnelles du général. Le séjour et la demande sont relevés avant ACTIONS et
+contrôlés sous gel de clôture ; les lectures précèdent les écritures dans la
+résolution privée. Tous les séjours de soins valides sont traités simultanément,
+sans plafond supplémentaire. Les résultats individuels restent privés.
+
+Les profils, soldats et séjours suivent le protocole commun des générations ;
+le document partagé est régénéré depuis l'état officiel après publication.
+Les fonctions de commandement et de QG sont communes, mais leur raccordement
+aux effets des ordres attend les règles de matérialisation et de priorité encore
+ouvertes. Les bots conservent leur résolution tactique classique.

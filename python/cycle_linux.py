@@ -431,6 +431,10 @@ class Generations:
             import defis
             defis.scanner(self.c, self.horloge, cloture=True)
             import securite
+            import soldats
+            soldats.synchroniser(self.c)
+            import formation
+            formation.clore_tour(self.c, tour)
             reference = etat.charger_unites_actions(self.c)
             if reference is None or reference['tour'] != tour:
                 raise RuntimeError('Référence des unités du tour absente : récupération requise.')
@@ -516,6 +520,10 @@ class Generations:
                 securite.memoriser_unites_actions(self.c, tour, creations=nouveaux)
             elif nouveaux:
                 securite.memoriser_unites_actions(self.c, tour, nouveaux, creations=nouveaux)
+            if not reprise:
+                import formation
+                formation.preparer(self.c)
+                formation.ouvrir_tour(self.c, tour)
         finally:
             self.backend.degeler()
 
@@ -589,6 +597,10 @@ class Generations:
             defis.publier_acces(self.c)
             defis.synchroniser_courrier_publie(self.c)
             import securite
+            import soldats
+            soldats.synchroniser(self.c, publication=True)
+            import formation
+            formation.preparer(self.c)
             securite.memoriser_unites_actions(self.c, tour + 1)
             self.permissions_consultation()
             journal['termine'] = True
@@ -627,6 +639,8 @@ class Generations:
         vague = 0 if cycle is None else cycle['tour'] + (
             cycle['phase'] in ('consultation', 'defaite'))
         plateau.preparer_accueil(self.c, vague)
+        import formation
+        formation.preparer(self.c)
 
     def erreur(self, tour, erreur):
         self.marquer(tour, 'recuperation', erreur=str(erreur))

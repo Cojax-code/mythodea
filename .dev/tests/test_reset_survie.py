@@ -44,6 +44,7 @@ class ResetSurvie(unittest.TestCase):
             (self.repo / 'bash' / name).write_text(texte, encoding='utf-8', newline='\n')
         config = (REPO / 'python/config.py').read_text(encoding='utf-8').replace('/game', self.game.as_posix())
         (self.repo / 'python/config.py').write_text(config, encoding='utf-8')
+        shutil.copy2(REPO / 'python/catalogues.py', self.repo / 'python/catalogues.py')
         (self.repo / 'python/crypte_installer.py').touch()
         self.envfile = self.root / 'simulation.bash'
         self.envfile.write_text(r'''

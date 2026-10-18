@@ -1,11 +1,12 @@
 """Calcul des combats, choc initial, manœuvres et combat rangé."""
 import random
-import shutil
 
 import config
 import etat
 import generaux
 import rapports
+import progression
+import soldats
 
 
 def adversaire_du_duel(armee, joueur):
@@ -35,6 +36,9 @@ def combat_entre_generaux(general_1, general_2):
     camp_2 = general_2.get("camp", joueur_2)
     if camp_1 == camp_2 or joueur_1 == joueur_2:
         raise ValueError("Un duel doit opposer deux généraux de camps différents.")
+
+    soldats.participer(general_1)
+    soldats.participer(general_2)
 
     chemin_1 = general_1["chemin"]
     chemin_2 = general_2["chemin"]
@@ -743,24 +747,11 @@ def trouver_cible_faible(armee, joueur_ennemi):
     return cible
 
 
-def supprimer_unites(infos, survivants):
-    nombre_actuel = infos["nombre"]
-    pertes = nombre_actuel - survivants
-
-    unites_supprimees = []
-
-    if pertes <= 0:
-        return unites_supprimees
-
-    type_unite = infos["type"]
-
-    unites_a_supprimer = random.sample(infos["unites"], pertes)
-
-    for unite in unites_a_supprimer:
-        unites_supprimees.append(f"{unite.name} ({type_unite})")
-        shutil.rmtree(unite)
-
-    return unites_supprimees
+def supprimer_unites(infos, survivants, general=None):
+    caracteristiques = progression.caracteristiques_general(general) if general else None
+    moral = (caracteristiques['moral'] if caracteristiques and
+             caracteristiques['nature'] == 'instinctif' else 0)
+    return soldats.pertes(infos, survivants, moral, random)
 
 
 def confrontation_directe(
@@ -813,6 +804,10 @@ def confrontation_directe(
         bloc, bloc,
     )
 
+    pertes_1 = supprimer_unites(infos_1, survivants_1, general_1)
+    pertes_2 = supprimer_unites(infos_2, survivants_2, general_2)
+    survivants_1, survivants_2 = infos_1['nombre'], infos_2['nombre']
+
     rapports.afficher_et_ecrire("\nRésultat :")
     rapports.afficher_et_ecrire(
         f"{nom_1} : {rapports.formater_survivants(survivants_1, type_1)}"
@@ -820,9 +815,6 @@ def confrontation_directe(
     rapports.afficher_et_ecrire(
         f"{nom_2} : {rapports.formater_survivants(survivants_2, type_2)}"
     )
-
-    pertes_1 = supprimer_unites(infos_1, survivants_1)
-    pertes_2 = supprimer_unites(infos_2, survivants_2)
 
     rapports.afficher_tableau_pertes(pertes_1, pertes_2, nom_1, nom_2)
 
@@ -983,6 +975,10 @@ def attaque_ciblee(
         bloc_attaquant, bloc_cible,
     )
 
+    pertes_attaquant = supprimer_unites(infos_attaquant, survivants_attaquant, general_attaquant)
+    pertes_defenseur = supprimer_unites(infos_defenseur, survivants_defenseur, general_defenseur)
+    survivants_attaquant, survivants_defenseur = infos_attaquant['nombre'], infos_defenseur['nombre']
+
     rapports.afficher_et_ecrire("\nRésultat :")
     rapports.afficher_et_ecrire(
         f"{nom_attaquant} {bloc_attaquant} : "
@@ -991,15 +987,6 @@ def attaque_ciblee(
     rapports.afficher_et_ecrire(
         f"{nom_defenseur} {bloc_cible} : "
         f"{rapports.formater_survivants(survivants_defenseur, type_defenseur)}"
-    )
-
-    pertes_attaquant = supprimer_unites(
-        infos_attaquant,
-        survivants_attaquant
-    )
-    pertes_defenseur = supprimer_unites(
-        infos_defenseur,
-        survivants_defenseur
     )
 
     rapports.afficher_tableau_pertes(

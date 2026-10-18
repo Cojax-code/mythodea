@@ -435,9 +435,17 @@ class DefisSurvie(unittest.TestCase):
         armee = {'j1': self.generaux.lire_blocs_general(chemin),
                  'bot': self.generaux.lire_blocs_general(adverse)}
         original = self.combats.combat_bloc
-        with patch.object(self.combats, 'supprimer_unites', return_value=[]), \
+        def simuler_pertes(infos, survivants, general=None):
+            # Les effectifs après pertes incluent désormais les sauvetages.
+            # Simuler leur actualisation sans modifier les dossiers de ce test.
+            infos['nombre'] = survivants
+            infos['unites'] = infos['unites'][:survivants]
+            return []
+        with patch.object(self.combats, 'supprimer_unites', side_effect=simuler_pertes), \
                 patch.object(self.combats, 'combat_bloc', wraps=original) as calcul:
             choc = self.combats.confrontation_directe(armee, g1, g2, 'avant')
+            armee = {'j1': self.generaux.lire_blocs_general(chemin),
+                     'bot': self.generaux.lire_blocs_general(adverse)}
             manoeuvre = self.combats.attaque_ciblee(armee, g1, g2, 'avant', 'avant')
         self.assertEqual(choc['final_1'], 15)
         self.assertEqual(manoeuvre['final_attaquant'], 15)

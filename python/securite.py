@@ -670,6 +670,12 @@ def verifier_tous_les_deplacements(configuration=None):
         configuration = config.configuration_mode("classique")
     config.verifier_structure_actuelle(configuration)
 
+    if configuration['mode'] == 'classique':
+        # La Survie authentifie ces copies sous gel avant sa capture privée.
+        # Le mode classique les relève ici avant de résoudre les combats.
+        import soldats
+        soldats.synchroniser(configuration)
+
     rapports.afficher_et_ecrire(
         "\n=== Vérification des déplacements ==="
     )
