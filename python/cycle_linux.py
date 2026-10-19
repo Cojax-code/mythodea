@@ -428,6 +428,8 @@ class Generations:
                 derniere[0] = int(ecoule)
         try:
             crypte.clore(self.c)
+            import formation
+            formation.migrer_ancienne_ecole(self.c)
             import defis
             defis.scanner(self.c, self.horloge, cloture=True)
             import securite
@@ -503,6 +505,8 @@ class Generations:
         try:
             self.backend.verifier_gel()
             nouveaux = []
+            import formation
+            formation.migrer_ancienne_ecole(self.c)
             for joueur in self.c['joueurs']:
                 if reprise and joueur not in manquants:
                     continue
@@ -578,6 +582,9 @@ class Generations:
                     for acteur in self.c['acteurs']:
                         remplacer(public / 'game' / nom / acteur, self.game / nom / acteur,
                                   public / 'anciens' / nom / acteur)
+                    for batiment in ('ecole_officiers', 'forge'):
+                        remplacer(public / 'game' / nom / batiment, self.game / nom / batiment,
+                                  public / 'anciens' / nom / batiment)
                 else:
                     remplacer(public / 'game' / nom, self.game / nom, public / 'anciens' / nom)
             for j, home in self.homes.items():
@@ -616,6 +623,8 @@ class Generations:
         # peuvent rétablir leurs modes. Les homes eux-mêmes restent intacts.
         racines = [p / j for p in (*self.c['territoires'], self.c['repli_path']) for j in self.homes]
         racines += [p for home in self.homes.values() for p in entrees_home(home)]
+        racines += [z['chemin'] for j in self.homes for z in generaux.zones_generaux(j, self.c)
+                    if z.get('commun')]
         for racine in racines:
             if racine.exists():
                 for p in [racine, *racine.rglob('*')]:
@@ -626,6 +635,8 @@ class Generations:
         # Restaure seulement les permissions des entrées du jeu, jamais leur UID.
         racines = [p / j for p in (*self.c['territoires'], self.c['repli_path']) for j in self.homes]
         racines += [p for home in self.homes.values() for p in entrees_home(home)]
+        racines += [z['chemin'] for j in self.homes for z in generaux.zones_generaux(j, self.c)
+                    if z.get('commun')]
         for racine in racines:
             if racine.exists():
                 for p in [racine, *racine.rglob('*')]:

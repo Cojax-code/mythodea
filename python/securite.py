@@ -109,8 +109,10 @@ def unites_nouvelles_actions(origine, actuel):
 
 
 def auditer_cavalerie_lourde(configuration, positions):
-    """Seules les unités d'une récompense officielle déjà publiée sont admises."""
+    """Admet les récompenses et transformations officielles déjà publiées."""
     import defis
+    import soldats
+    registre = soldats.charger()
     d = defis.charger(configuration)
     reference = etat.charger_unites_actions(configuration) or {'generaux': {}}
     origines = {g['identifiant']: g for g in reference['generaux'].values()
@@ -131,11 +133,15 @@ def auditer_cavalerie_lourde(configuration, positions):
         nouvelles = set(unites_nouvelles_actions(origines.get(identifiant, {}), actuel))
         for relatif in sorted(lourdes if not autorise else lourdes & nouvelles):
             unite = chemin / relatif
+            soldat = soldats.retrouver(unite, registre, config.dans_generation_privee()) if unite.exists() else None
+            if (soldat and registre[soldat].get('forge') and
+                    registre[soldat]['type'] == 'cavalerie_lourde' and relatif not in nouvelles):
+                continue
             if unite.exists():
                 shutil.rmtree(unite)
                 rapports.afficher_et_ecrire(
                     f'{identifiant} : cavalerie lourde supprimée, construction verrouillée ; '
-                    'seules les unités de la récompense officielle sont autorisées.')
+                    'récompense officielle ou transformation de Forge validée requise.')
 
 
 def auditer_entrainement(configuration, positions, punis):

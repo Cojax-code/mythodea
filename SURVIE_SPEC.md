@@ -520,8 +520,10 @@ Un général réellement nouveau, créé officiellement par le moteur dans le ho
 avant la fenêtre ACTIONS courante et jamais encore publié, bénéficie d'une
 exception pour cette seule fenêtre : il peut créer légalement ses unités au home
 puis se déployer immédiatement au village (garnison ou réserve). Un général vide
-peut également se déployer. La règle commune `home -> village` reste applicable :
-aucun départ direct vers EST_1, EST_2 ou EST_3. L'exception expire à la première
+peut également se déployer. Cette exception d'entraînement est limitée à
+`home -> village`, y compris ses places et bâtiments autorisés. Aucun déplacement
+direct vers `est_1`, `est_2` ou `est_3` n'est autorisé depuis home, même après le
+tour 0, et aucune marche forcée ne contourne le village. L'exception expire à la première
 publication, même si le général est resté au home, ou dès son déploiement accepté.
 Les unités ajoutées hors d'une zone autorisée sont supprimées par l'audit privé ;
 les unités déjà présentes sont conservées. Chaque refus est expliqué au rapport.
@@ -1055,10 +1057,11 @@ Physiquement, les positions actives restent dans les emplacements habituels. Les
 positions `5..20` sont stockées dans une zone `renforts/` propre à chaque joueur,
 par exemple `est_1/j1/renforts/5/`. Cette file 1..20 concerne uniquement les
 territoires ouverts. Au village, la recherche est limitée à la garnison 1..4 ;
-aucune zone de renforts alliés n'est créée. La réserve ne reçoit jamais
-automatiquement une retraite. Sans place libre à partir de la préférence, le
-général reste sur son territoire, sans perte ni sanction de repli. Une préférence
-valide 5..20 n'offre donc aucune place au village et reste inchangée dans la fiche.
+aucune zone de renforts alliés n'est créée. Sans place libre à partir de la
+préférence, le général est accueilli dans la réserve privée de son joueur au
+village, sans création ni perte de données. Sur les autres territoires, une file
+pleine le laisse à l'origine, sans sanction de repli. Une préférence valide 5..20
+reste inchangée dans la fiche et conduit donc à la réserve à l'arrivée au village.
 
 La fiche d'un général joueur peut contenir le champ optionnel :
 
@@ -1640,15 +1643,15 @@ général ne réouvrent pas le droit à récompense. j1 et j2 ont chacun leur at
 Les règles de récupération Crypte et le moteur commun restent applicables ; la
 représentation et les valeurs de combat sont définies dans `MYTHODEA_SPEC.md`.
 
-### Armurerie future — conception uniquement
+### Forge du village
 
-Une future armurerie pourra transformer les cavaliers ordinaires : déplacer un
-général dans l'armurerie, l'y laisser un tour, ajouter l'équipement requis, puis
-faire vérifier la transformation par le moteur. Le moteur devra renommer lui-même
-les unités en `cavalerie_LN`, avec une numérotation robuste évitant les collisions.
-Le joueur n'aura pas à renommer chaque dossier. Cette mécanique, ses contrôles
-et la méthode d'entraînement ne sont pas implémentés ; aucun accès ni cycle
-d'armurerie n'est actif.
+La transformation est assurée par la Forge commune `village/forge/1/<joueur>/`,
+une seule place tous joueurs confondus. Elle nécessite un tour complet, un général
+d'orientation instinctive possédant la technologie 104, et un cavalier existant
+équipé de `cheval`, `cuirasse`, `armure`, `casque`, `bouclier`. Le moteur renomme
+le dossier en `cavalerie_LN` sans collision, conserve son identité et ses états,
+puis rapporte la conversion. Les règles détaillées et les scans sont communs
+avec les autres bâtiments, dans la section 22 de `MYTHODEA_SPEC.md`.
 
 ## Progression, hôpital et École des officiers
 
@@ -1659,9 +1662,11 @@ engagés y participent ; les retraites différées conservent les compteurs obte
 Les seuils de montée de niveau restent ouverts : aucune attribution automatique
 n'est déclenchée par ces compteurs.
 
-Le village possède des sous-zones `hopital/1..20` (nombre configurable) et
-`ecole_officiers/1..6` sous chaque dossier joueur. Leurs positions sont partagées
-logiquement entre alliés, comme la garnison, mais numérotées indépendamment.
+Le village possède les sous-zones `hopital/1..20` sous chaque dossier joueur
+(nombre configurable, places logiquement partagées), six places physiques communes
+`ecole_officiers/1..6/<joueur>/` et une Forge `forge/1/<joueur>/`.
+Les compartiments joueurs restent privés ; la capacité est partagée entre alliés,
+indépendamment de la garnison.
 Entrée et sortie sont des réorganisations internes sans consommation de mouvement.
 Ces zones sont hors combat et ne permettent pas l'entraînement de nouvelles unités.
 

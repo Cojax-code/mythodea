@@ -26,14 +26,17 @@ class Progression(unittest.TestCase):
         self.assertEqual(catalogues.EVOLUTIONS[201]['categorie'], 'commandement')
 
     def test_nature_et_traits_aux_frontieres_exactes(self):
-        for nature, tirage in (('stratege', 50), ('instinctif', 51)):
+        for nature, tirage in (('stratege', 45), ('instinctif', 90),
+                              ('stratege_hybride', 95), ('instinctif_hybride', 100)):
             for trait, valeur in (('charismatique', 50), ('leader', 51), ('inventeur', 100)):
                 rng = Mock()
                 rng.randint.side_effect = [tirage, valeur, 1]
                 fiche = progression.nouvelles_caracteristiques(rng)
                 self.assertEqual((fiche['nature'], fiche['trait_inne'], fiche['niveau']), (nature, trait, 0))
                 self.assertEqual(fiche['moral'], 0)
-                self.assertEqual(fiche['points_commandement'], 11 if nature == 'stratege' else 0)
+                orientation = nature.removesuffix('_hybride')
+                self.assertEqual(fiche['orientation_principale'], orientation)
+                self.assertEqual(fiche['points_commandement'], 11 if orientation == 'stratege' else 0)
 
     def test_distribution_ponderee_exacte(self):
         for nature in progression.RECOMPENSES:
@@ -60,8 +63,9 @@ class Progression(unittest.TestCase):
 
     def test_recompenses_impossibles_exclues_et_redistribution(self):
         fiche = self.fiche()
+        fiche['evolutions_acquises'] = [1002]  # L'ordre disponible est déjà acquis.
         apres, recompense = progression.monter_niveau(fiche, Mock(randint=lambda a, b: b))
-        self.assertEqual(recompense, 201)  # Catalogue actuel : aucun déblocage inventé.
+        self.assertEqual(recompense, 201)
         self.assertEqual(apres['points_commandement'], 35)
         self.assertEqual(apres['moral'], 0)
 

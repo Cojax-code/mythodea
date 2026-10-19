@@ -23,6 +23,19 @@ RECOMPENSES = {
     },
 }
 
+NATURES = {'stratege': 45, 'instinctif': 45,
+           'stratege_hybride': 5, 'instinctif_hybride': 5}
+
+
+def orientation_principale(fiche):
+    # Dérivée de la nature officielle immuable, jamais d'un fichier joueur.
+    return fiche['nature'].removesuffix('_hybride')
+
+
+def compatible(fiche, natures, apprentissage=True):
+    return (natures is None or orientation_principale(fiche) in natures or
+            (apprentissage and fiche['nature'] in ('stratege_hybride', 'instinctif_hybride')))
+
 
 def tirer_pondere(poids, aleatoire=None):
     """Tirage entier exact ; les catégories exclues ne conservent aucun poids."""
@@ -46,20 +59,21 @@ def gain_commandement(niveau, aleatoire=None):
 
 def nouvelles_caracteristiques(aleatoire=None):
     aleatoire = random if aleatoire is None else aleatoire
-    nature = tirer_pondere({'stratege': 50, 'instinctif': 50}, aleatoire)
-    trait = tirer_pondere(TRAITS[nature], aleatoire)
-    return dict(niveau=0, nature=nature, trait_inne=trait,
-                points_commandement=gain_commandement(0, aleatoire) if nature == 'stratege' else 0,
+    nature = tirer_pondere(NATURES, aleatoire)
+    orientation = nature.removesuffix('_hybride')
+    trait = tirer_pondere(TRAITS[orientation], aleatoire)
+    return dict(niveau=0, nature=nature, orientation_principale=orientation, trait_inne=trait,
+                points_commandement=gain_commandement(0, aleatoire) if orientation == 'stratege' else 0,
                 moral=0, evolutions_acquises=[], evolution_apprise=None)
 
 
-def evolutions_eligibles(fiche, catalogue=None):
+def evolutions_eligibles(fiche, catalogue=None, apprentissage=True):
     catalogue = catalogues.EVOLUTIONS if catalogue is None else catalogue
     resultat = {}
     for identifiant, evolution in catalogue.items():
         if not evolution['disponible']:
             continue
-        if evolution['natures'] is not None and fiche['nature'] not in evolution['natures']:
+        if not compatible(fiche, evolution['natures'], apprentissage):
             continue
         categorie = evolution['categorie']
         if categorie == 'moral' and fiche['moral'] >= 100:
@@ -84,7 +98,8 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
     if identifiant is not None and identifiant not in eligibles:
         raise ValueError('Évolution mémorisée incompatible ou indisponible ; progression conservée.')
     if identifiant is None:
-        poids = RECOMPENSES[resultat['nature']][resultat['trait_inne']]
+        eligibles = evolutions_eligibles(resultat, catalogue, apprentissage=False)
+        poids = RECOMPENSES[orientation_principale(resultat)][resultat['trait_inne']]
         poids = {categorie: p for categorie, p in poids.items()
                  if any(e['categorie'] == categorie for e in eligibles.values())}
         if poids:

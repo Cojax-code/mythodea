@@ -26,7 +26,8 @@ class Village(unittest.TestCase):
         sys.modules["pwd"] = SimpleNamespace(
             getpwnam=lambda joueur: SimpleNamespace(pw_uid=self.uids[joueur]))
         sys.modules["grp"] = SimpleNamespace(
-            getgrnam=lambda joueur: SimpleNamespace(gr_gid=self.uids[joueur]))
+            getgrnam=lambda groupe: SimpleNamespace(
+                gr_gid=1003 if groupe == 'mythodea_allies' else self.uids[groupe]))
         for nom in noms:
             setattr(self, nom, importlib.import_module(nom))
         self.config.game_path = self.racine / "game"

@@ -252,7 +252,8 @@ def destination_retraite_surnombre(origine, configuration):
     return meilleurs[0]
 
 
-def planifier_positions_surnombre(arrivants, positions_occupees, territoire=None, capacite=20):
+def planifier_positions_surnombre(arrivants, positions_occupees, territoire=None, capacite=20,
+                                 reserve=False):
     """Calcule tout le placement avant de déplacer un seul général."""
     priorites = []
     cles = set()
@@ -280,8 +281,9 @@ def planifier_positions_surnombre(arrivants, positions_occupees, territoire=None
         debut = rang if categorie == 0 else 1
         place = next((n for n in range(debut, capacite + 1) if n not in occupees), None)
         if place is None:
-            message = (f"Avertissement : retraite impossible pour {general['joueur']}:{general['nom']}, "
-                       f"aucune place libre entre {debut} et {capacite} ; reste sur son territoire.")
+            message = (f"Avertissement : placement tactique impossible pour {general['joueur']}:{general['nom']}, "
+                       f"aucune place libre entre {debut} et {capacite} ; "
+                       + ("accueil en réserve." if reserve else "reste sur son territoire."))
             rapports.afficher_et_ecrire(message)
             if territoire is not None:
                 rapports.ecrire_rapport_territoire(territoire, message)
@@ -294,7 +296,7 @@ def planifier_positions_surnombre(arrivants, positions_occupees, territoire=None
 def preparer_retraites_surnombre(arrivants, territoire, configuration, reservations=()):
     """Prépare les destinations d'une retraite dans la file alliée, sans déplacer.
 
-    Les occupants déjà présents gardent leur place. La réserve est exclue.
+    Les occupants déjà présents gardent leur place. La réserve accueille le surplus au village.
     Toutes les destinations sont vérifiées avant le premier déplacement.
     """
     if not arrivants:
@@ -313,11 +315,12 @@ def preparer_retraites_surnombre(arrivants, territoire, configuration, reservati
                 continue
             presents = [p for p in zone["chemin"].iterdir() if p.is_dir()]
             identites.update((joueur, p.name) for p in presents)
-            if presents and "emplacement" in zone:
+            if presents and zone.get('emplacement', '').isdigit():
                 occupees.add(zone["emplacement"])
     for general, destination in reservations:
         if destination.is_relative_to(territoire_arrivee):
-            occupees.add(destination.parent.name)
+            if destination.parent.name.isdigit():
+                occupees.add(destination.parent.name)
             identites.add((general["joueur"], general["nom"]))
     for general in arrivants:
         if general["joueur"] not in configuration["joueurs"]:
@@ -327,7 +330,8 @@ def preparer_retraites_surnombre(arrivants, territoire, configuration, reservati
             raise FileExistsError(f"Une identité existe déjà à l'arrivée : {identite}")
         identites.add(identite)
     capacite = 4 if arrivee in configuration["villages"] else 20
-    placements = planifier_positions_surnombre(arrivants, occupees, territoire, capacite)
+    placements = planifier_positions_surnombre(arrivants, occupees, territoire, capacite,
+                                              reserve=arrivee in configuration['villages'])
     destinations = []
     for general, place in placements:
         zone = next(z for z in zones[general["joueur"]] if z.get("emplacement") == place)
@@ -337,6 +341,18 @@ def preparer_retraites_surnombre(arrivants, territoire, configuration, reservati
         if not general["chemin"].is_dir():
             raise FileNotFoundError(general["chemin"])
         destinations.append((general, destination))
+
+    if arrivee in configuration['villages']:
+        places = {id(general) for general, _ in destinations}
+        for general in arrivants:
+            if id(general) in places:
+                continue
+            destination = territoire_arrivee / general['joueur'] / 'reserve' / general['nom']
+            if destination.exists():
+                raise FileExistsError(destination)
+            if not general['chemin'].is_dir():
+                raise FileNotFoundError(general['chemin'])
+            destinations.append((general, destination))
 
     return destinations
 

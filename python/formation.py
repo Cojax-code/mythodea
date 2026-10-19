@@ -1,4 +1,4 @@
-"""Hôpital et École du village : relevés vivants, validation privée et publication."""
+"""Hôpital, École et Forge : relevés vivants, validation privée et publication."""
 import json
 import stat
 
@@ -8,6 +8,61 @@ import soldats
 
 
 EMPLACEMENTS = ('001', '002', '003')
+
+
+def preparer_emplacements(configuration, migrer=True):
+    """Six places d'École et une Forge communes, avec accès privés par joueur.
+
+    Migration des anciens dossiers d'École par renommage, sans écrasement.
+    Une destination déjà existante réclame une récupération explicite, sans perte.
+    """
+    import os
+    import pwd
+    import grp
+    import generaux
+    from cycle_linux import sans_liens
+    migrations = []
+    anciens = []
+    for territoire in configuration['territoires']:
+        if territoire.name not in configuration['villages']:
+            continue
+        for joueur in configuration['joueurs']:
+            acteur = configuration['acteurs'][joueur]
+            uid = pwd.getpwnam(acteur['proprietaire_linux']).pw_uid
+            gid = grp.getgrnam(acteur['groupe_linux']).gr_gid
+            groupe = grp.getgrnam(configuration['groupes_camps'][acteur['camp']]).gr_gid
+            for zone in generaux.zones_generaux_territoire(territoire, joueur, configuration):
+                if not zone.get('commun'):
+                    continue
+                dossier = zone['chemin']
+                for commun in (dossier.parent.parent, dossier.parent):
+                    sans_liens(commun)
+                    commun.mkdir(parents=True, exist_ok=True)
+                    os.chown(commun, 0, groupe)
+                    os.chmod(commun, 0o750)
+                sans_liens(dossier)
+                dossier.mkdir(exist_ok=True)
+                os.chown(dossier, uid, gid)
+                os.chmod(dossier, 0o700)
+                if zone['batiment'] != 'ecole_officiers' or not migrer:
+                    continue
+                ancien = territoire / joueur / 'ecole_officiers' / dossier.parent.name
+                sans_liens(ancien)
+                if ancien.is_dir():
+                    anciens.append(ancien)
+                    for source in ancien.iterdir():
+                        sans_liens(source)
+                        destination = dossier / source.name
+                        if destination.exists():
+                            raise RuntimeError(f'Migration École ambiguë : {destination}')
+                        migrations.append((source, destination))
+    # Contrôler tous les chemins avant le premier transfert.
+    for source, destination in migrations:
+        source.rename(destination)
+    for ancien in anciens:
+        ancien.rmdir()
+        if not any(ancien.parent.iterdir()):
+            ancien.parent.rmdir()
 
 
 def charger():
@@ -62,11 +117,13 @@ def commencer_sejour(tour, general, lieu, camp, preuve_presence,
     donnees = charger()
     if cle in donnees['sejours'] or cle in donnees['valides']:
         return False
-    if lieu not in ('ecole_officiers', 'hopital'):
+    if lieu not in ('ecole_officiers', 'hopital', 'forge'):
         raise ValueError('Lieu de formation inconnu.')
     if not preuve_presence:
         raise ValueError('Preuve de présence moteur requise.')
     action, emplacement, evolution = 'soins', None, None
+    if lieu == 'forge':
+        action = 'forge'
     if lieu == 'ecole_officiers':
         if bool(ecrire.strip()) == bool(lire.strip()):
             raise ValueError('Une seule demande de lecture ou écriture est nécessaire.')
@@ -133,6 +190,10 @@ def valider_sejour(tour, general, lieu, camp, preuve_presence, tour_termine=Fals
             fiche.setdefault('apprentissages_valides', []).append(cle)
             progression.sauvegarder(officielles)
         progression.publier_fiche(general['chemin'], fiche)
+    elif sejour['action'] == 'forge':
+        if unites is None:
+            return False
+        forger(general, cle, sejour['unites'], unites)
     else:
         # La présence du général ne prouve pas celle des unités : le pilote doit
         # relever séparément leur présence continue, avant toute copie privée.
@@ -230,9 +291,77 @@ def relever_unites(general, initialiser=False):
                 soldats.publier(unite, identifiant, registre[identifiant])
             if identifiant is not None:
                 resultat[identifiant] = preuve(unite)
+                if general.get('lieu') == 'forge':
+                    for nom in catalogues.UNITES[4]['recette']:
+                        fichier = unite / nom
+                        sans_liens(fichier)
+                        resultat[identifiant].extend(preuve(fichier) if fichier.is_file() else [None])
     if initialiser:
         soldats.sauvegarder(registre)
     return resultat
+
+
+def forger(general, sejour, initiales, finales):
+    """Renomme les soldats validés ; une recette refusée ne détruit rien."""
+    import config
+    import generaux
+    import rapports
+    from cycle_linux import sans_liens
+    fiche = progression.caracteristiques_general(general)
+    if (not fiche or progression.orientation_principale(fiche) != 'instinctif'
+            or 104 not in fiche['evolutions_acquises']):
+        raise ValueError('Forge refusée : orientation instinctive et technologie 104 requises.')
+    registre = soldats.charger()
+    transformees = 0
+    for bloc in config.ordre_blocs:
+        dossier = general['chemin'] / bloc
+        if not dossier.is_dir():
+            continue
+        for unite in sorted(dossier.iterdir()):
+            sans_liens(unite)
+            if generaux.identifier_unite(unite) != 'cavalier':
+                continue
+            identifiant = soldats.retrouver(unite, registre, config.dans_generation_privee())
+            if (identifiant not in initiales or not initiales[identifiant] or
+                    initiales[identifiant] != list(finales.get(identifiant, ()))):
+                continue
+            valide = True
+            for nom in catalogues.UNITES[4]['recette']:
+                fichier = unite / nom
+                sans_liens(fichier)
+                if (not fichier.is_file() or not stat.S_ISREG(fichier.stat().st_mode)
+                        or fichier.stat().st_nlink != 1):
+                    valide = False
+            if not valide:
+                continue
+            suffixe = unite.name.removeprefix('cavalerie')
+            numero = int(suffixe) if suffixe.isascii() and suffixe.isdecimal() else 1
+            destination = dossier / f'cavalerie_L{numero}'
+            while destination.exists() or destination.is_symlink():
+                numero += 1
+                destination = dossier / f'cavalerie_L{numero}'
+            unite.rename(destination)
+            valeur = registre[identifiant]
+            valeur.update(type='cavalerie_lourde', chemin=soldats.cle(destination),
+                          device=destination.stat().st_dev, inode=destination.stat().st_ino,
+                          forge=sejour)
+            soldats.publier(destination, identifiant, valeur)
+            transformees += 1
+            rapports.ecrire_rapport_court(
+                f"Forge : {general['joueur']}:{general['nom']}, {bloc}/{unite.name} "
+                f"transformée en {destination.name} ; identité et états conservés.")
+    soldats.sauvegarder(registre)
+    if not transformees:
+        raise ValueError('Forge : aucune cavalerie légère avec recette et séjour complets ; unités conservées.')
+
+
+def migrer_ancienne_ecole(configuration):
+    """Appelé sous gel uniquement ; ne touche pas les preuves des parties à jour."""
+    if any((territoire / joueur / 'ecole_officiers' / place).is_dir() or
+           (territoire / joueur / 'ecole_officiers' / place).is_symlink()
+           for territoire in configuration['territoires'] if territoire.name in configuration['villages']
+           for joueur in configuration['joueurs'] for place in configuration['emplacements_ecole']):
+        preparer_emplacements(configuration)
 
 
 def preparer(configuration):
@@ -275,7 +404,7 @@ def ouvrir_tour(configuration, tour):
                 if not stat.S_ISREG(infos.st_mode) or infos.st_nlink != 1:
                     raise ValueError('Une demande doit être un fichier ordinaire sans lien physique.')
                 textes.append(chemin.read_text(encoding='utf-8'))
-            unites = relever_unites(general, initialiser=True) if general['lieu'] == 'hopital' else {}
+            unites = relever_unites(general, initialiser=True) if general['lieu'] in ('hopital', 'forge') else {}
             commencer_sejour(tour, general, general['lieu'], general['camp'], preuve_general(general),
                              ecrire=textes[0], lire=textes[1], unites=unites)
         except ValueError as erreur:
@@ -326,7 +455,7 @@ def resoudre_tour(configuration, tour):
         if sejour['action'] == 'ecriture':
             places_ecrites.setdefault((sejour['camp'], sejour['emplacement']), []).append(cle)
     conflits = {cle for cles in places_ecrites.values() if len(cles) > 1 for cle in cles}
-    sejours.sort(key=lambda item: {'lecture': 0, 'ecriture': 1, 'soins': 2}[item[1]['action']])
+    sejours.sort(key=lambda item: {'lecture': 0, 'ecriture': 1, 'soins': 2, 'forge': 3}[item[1]['action']])
     for cle, sejour in sejours:
         general = presents.get(sejour['identite'])
         observation = cloture.get(sejour['identite'])

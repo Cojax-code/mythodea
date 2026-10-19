@@ -542,6 +542,8 @@ def reparer_structure(configuration=None):
         configuration = config.configuration_mode("classique")
     config.verifier_structure_actuelle(configuration)
 
+    import formation
+    formation.preparer_emplacements(configuration, migrer=False)
     for territory in configuration["territoires"]:
         if configuration["mode"] == "survie":
             territory.mkdir(parents=True, exist_ok=True)
@@ -549,6 +551,8 @@ def reparer_structure(configuration=None):
             joueur_dir = territory / joueur
             dossiers = [joueur_dir]
             for zone in generaux.zones_generaux_territoire(territory, joueur, configuration):
+                if zone.get('commun'):
+                    continue  # Parents communs root, compartiments privés déjà préparés.
                 # Inclure garnison/ avant ses emplacements, une seule fois.
                 parent = zone["chemin"].parent
                 if parent not in dossiers:

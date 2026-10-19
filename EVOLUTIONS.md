@@ -2,6 +2,9 @@
 
 Les nouveaux généraux reçoivent un niveau 0, une nature et un trait permanent.
 Leurs champs apparaissent dans `fiche.txt`. Les anciennes fiches sont conservées.
+Les natures sont stratège (45 %), instinctif (45 %), stratège hybride (5 %) et
+instinctif hybride (5 %). Les hybrides gardent les traits et récompenses ordinaires
+de leur orientation principale, et peuvent apprendre ceux de l'autre à l'École.
 La référence de fabrication des trois unités ordinaires vaut 5 ; les recettes
 et la valeur collective de combat ne changent pas.
 
@@ -35,8 +38,9 @@ Pour garantir sa validation, garder les dossiers à leur place pendant ce tour.
 
 ## Apprendre ou écrire à l'École
 
-L'École possède six places de généraux, partagées logiquement entre alliés :
-`/game/village/j1/ecole_officiers/1` à `6`, et les dossiers équivalents de j2.
+L'École possède six places physiques communes : `/game/village/ecole_officiers/1`
+à `6`. Déposer le général dans le sous-dossier privé `j1/` ou `j2/` de la place.
+Un seul général peut occuper chaque numéro, tous joueurs confondus.
 Le manuel commun possède seulement trois emplacements, `001`, `002`, `003` :
 
 ```bash
@@ -67,12 +71,36 @@ Consulter `formation_resultat.txt`, puis vider la demande après traitement si
 aucun nouveau séjour n'est souhaité. Deux écritures concurrentes de la même entrée
 sont refusées ensemble. Un apprentissage déjà en attente n'est pas écrasé.
 
+## Transformer des cavaliers à la Forge
+
+La Forge accueille un seul général, dans `/game/village/forge/1/j1/` ou le
+compartiment `j2/`. Il doit être instinctif ou instinctif hybride et posséder
+la technologie 104 dans ses évolutions acquises.
+
+Avant son tour complet, équiper les cavaliers existants avec les quatre fichiers
+`cuirasse`, `armure`, `casque`, `bouclier`, en conservant `cheval`. Après validation,
+le moteur renomme les dossiers en `cavalerie_LN`. Blessures, batailles et statuts
+sont conservés. Une recette incomplète laisse le cavalier intact. La conversion
+est annoncée dans le rapport du tour. Après une conversion partielle, séparer les
+types de cavalerie en blocs homogènes avant de les engager au combat.
+
+## Déplacements et retraites
+
+Depuis home, le passage par le village est obligatoire, à tous les tours. Les
+places et bâtiments autorisés du village sont accessibles sans coût territorial,
+y compris aux nouveaux généraux. Aucun déplacement direct vers `est_1` ni aucune
+marche forcée ne permet de sauter cette étape. Les délais d'entraînement et de
+rappel restent applicables ; les restrictions du tour 0 sont conservées.
+Une récompense peut effectuer un déplacement normal dès sa publication.
+Un fuyard arrivant au village rejoint la réserve si la garnison ne peut l'accueillir,
+avec toutes ses unités et ses données.
+
 ## Ce qui attend encore une décision
 
 - Les conditions de gain de niveaux : batailles, caserne et barèmes. Le moteur
   possède les fonctions de progression, mais ne donne aucun niveau automatiquement.
-- Les nouveaux ordres et unités à gagner. Seules les catégories commandement 201
-  et moral 202 sont actuellement disponibles comme récompenses de progression.
+- Les autres ordres et unités à gagner. Commandement 201, moral 202, technologie
+  de Forge 104 et attaque frontale 1002 sont disponibles comme évolutions.
 - La matérialisation des QG et le raccordement de leurs priorités aux effets des
   ordres historiques. Les calculs et la sélection sont testés, sans nouvelle
   tactique activée dans les parties.
@@ -106,7 +134,9 @@ python3 -B -m unittest discover -s .dev/tests -v
 
 `test_progression.py` couvre les catalogues, probabilités, niveaux et QG.
 `test_soldats_formation.py` couvre les pertes, compteurs, transferts, soins,
-mémoires, séjours incomplets et publication privée. Les tests temporaires n'utilisent
+mémoires, séjours incomplets et publication privée. `test_complements_moteur.py`
+couvre les hybrides, la Forge, les bâtiments partagés et les nouveaux déplacements.
+Les tests temporaires n'utilisent
 pas une vraie partie. Le test `python/tests_linux/test_progression_isolee.py`
 vérifie séparément les droits Linux avec root et des UID de processus, sans créer
 de comptes. Une validation sur Raspberry Pi reste à réaliser.

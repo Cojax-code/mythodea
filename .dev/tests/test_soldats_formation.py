@@ -254,7 +254,7 @@ class SoldatsFormation(unittest.TestCase):
         self.assertEqual({v['blessures'] for v in self.soldats.charger().values()}, {0})
         # Les bâtiments sont des sous-zones du village : aucun coût de mouvement.
         general = generaux[0]
-        destination = self.config.game_path / 'village/j1/ecole_officiers/1/general1'
+        destination = self.config.game_path / 'village/ecole_officiers/1/j1/general1'
         general['chemin'].rename(destination)
         self.assertEqual(self.generaux.trouver_position_general('j1', 'general1', self.profil),
                          ('village', destination))

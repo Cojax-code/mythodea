@@ -397,11 +397,15 @@ def zones_generaux_territoire(territory, joueur, configuration=None):
     ]
     if village:
         zones.append({"position": territory.name, "chemin": joueur_dir / "reserve"})
-        for batiment, option in (('hopital', 'emplacements_hopital'),
-                                  ('ecole_officiers', 'emplacements_ecole')):
-            zones.extend({'position': territory.name, 'chemin': joueur_dir / batiment / place,
-                          'emplacement': f'{batiment}/{place}', 'batiment': batiment}
-                         for place in configuration[option])
+        zones.extend({'position': territory.name, 'chemin': joueur_dir / 'hopital' / place,
+                      'emplacement': f'hopital/{place}', 'batiment': 'hopital'}
+                     for place in configuration['emplacements_hopital'])
+        for batiment, places in (('ecole_officiers', configuration['emplacements_ecole']),
+                                 ('forge', ('1',))):
+            zones.extend({'position': territory.name, 'chemin': territory / batiment / place / joueur,
+                          'emplacement': f'{batiment}/{place}', 'batiment': batiment,
+                          'commun': True}
+                         for place in places)
         if configuration['mode'] == 'survie':
             zones.append({'position': territory.name, 'chemin': joueur_dir / 'crypte/recompense',
                           'crypte': True})

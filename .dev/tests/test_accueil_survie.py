@@ -115,7 +115,8 @@ class AccueilSurvie(unittest.TestCase):
                 for absent in (autre, '{joueur}', '/chemin/vers/', 'À expliquer librement',
                                'crypte_commence', 'crypte_fin', 'mkdir appel', 'chmod 660 rempart'):
                     self.assertNotIn(absent, texte)
-            self.assertIn('déroulement du jeu petit à petit', textes[0].splitlines()[0])
+            self.assertIn('déroulement du jeu petit à petit',
+                          next(ligne for ligne in textes[0].splitlines() if ligne.strip()))
             self.assertLess(textes[0].index('À chaque nouvelle vague'), textes[0].index('CONSEIL'))
             for bloc, unite, equipement in (('arriere', 'infanterie1', 'arc'),
                                              ('droite', 'infanterie2', 'pique'),
@@ -271,7 +272,8 @@ class AccueilSurvie(unittest.TestCase):
             f.write('\nposition_surnombre=5\n')
         general = {'chemin': chemin, 'nom': chemin.name, 'joueur': 'j1', 'emplacement': '1'}
         self.assertEqual(self.mouvements.preparer_retraites_surnombre(
-            [general], self.config.game_path / 'est_1', self.profil), [])
+            [general], self.config.game_path / 'est_1', self.profil),
+            [(general, self.config.game_path / 'village/j1/reserve/general1')])
         self.assertTrue(chemin.exists())
         self.assertEqual(self.etat.charger_attentes_repli(self.profil), {})
 

@@ -750,7 +750,7 @@ def trouver_cible_faible(armee, joueur_ennemi):
 def supprimer_unites(infos, survivants, general=None):
     caracteristiques = progression.caracteristiques_general(general) if general else None
     moral = (caracteristiques['moral'] if caracteristiques and
-             caracteristiques['nature'] == 'instinctif' else 0)
+             caracteristiques['nature'] in ('instinctif', 'instinctif_hybride', 'stratege_hybride') else 0)
     return soldats.pertes(infos, survivants, moral, random)
 
 

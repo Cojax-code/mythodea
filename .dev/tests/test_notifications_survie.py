@@ -170,7 +170,9 @@ class NotificationsSurvie(unittest.TestCase):
                 patch.object(self.linux, 'ecrire_terminal', side_effect=ecrire), \
                 patch.object(self.cycle_linux.time, 'sleep'):
             self.survie.resoudre_tour_survie(self.profil, gestion=gestion)
-        self.assertEqual(evenements, ['ecriture', 'ecriture', 'gel'] * 2)
+        # Deux annonces précèdent leurs gels, puis l'annonce de consultation
+        # introduite par les notifications de phase arrive après le dégel final.
+        self.assertEqual(evenements, ['ecriture', 'ecriture', 'gel'] * 2 + ['ecriture', 'ecriture'])
 
     def test_echec_annonce_empeche_le_gel(self):
         gel = GelSimule()

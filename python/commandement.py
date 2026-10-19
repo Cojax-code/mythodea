@@ -1,5 +1,6 @@
 """Calculs et sélection des donneurs d'ordres, sans inventer leurs effets."""
 import catalogues
+import progression
 
 
 def effectif(points, types_unites):
@@ -14,8 +15,8 @@ def effectif(points, types_unites):
 
 def global_armee(generaux, qg):
     """Les caractéristiques reçues doivent provenir de l'état privé du moteur."""
-    strateges = [g for g in generaux if g['nature'] == 'stratege']
-    autres = sum(g['nature'] != 'stratege' for g in generaux)
+    strateges = [g for g in generaux if progression.orientation_principale(g) == 'stratege']
+    autres = sum(progression.orientation_principale(g) != 'stratege' for g in generaux)
     points_qg = qg['points_commandement'] if qg is not None else 0
     points_autres = sum(g['points_commandement'] for g in strateges if g is not qg)
     return (2 * points_qg + points_autres) // (2 * max(1, autres))
@@ -23,7 +24,7 @@ def global_armee(generaux, qg):
 
 def selectionner_qg(candidats, points):
     """Aucun départage implicite. Le calcul pertinent est fourni par l'appelant."""
-    eligibles = [g for g in candidats if g['nature'] == 'stratege'
+    eligibles = [g for g in candidats if g['nature'] in ('stratege', 'stratege_hybride', 'instinctif_hybride')
                  and g.get('qg') and g.get('effectif_bloc_qg', 0) > 0]
     if not eligibles:
         return None
@@ -52,7 +53,7 @@ def comparer(points_1, points_2):
     return (points_1 > points_2) - (points_1 < points_2)
 
 
-def ordres_applicables(identifiants, nature, categorie, comparaison=None, catalogue=None):
+def ordres_applicables(identifiants, nature, categorie, comparaison=None, catalogue=None, acquis=()):
     """Sélection seulement : les effets réservés ne deviennent jamais exécutables.
 
     Une égalité n'est pas une défaite. Les contre-ordres individuels nécessitent
@@ -61,10 +62,12 @@ def ordres_applicables(identifiants, nature, categorie, comparaison=None, catalo
     catalogue = catalogues.ORDRES if catalogue is None else catalogue
     if categorie not in ('globale', 'duel', 'individuelle'):
         raise ValueError('Catégorie inconnue.')
-    if categorie == 'globale' and nature != 'stratege':
+    if categorie == 'globale' and nature not in ('stratege', 'stratege_hybride', 'instinctif_hybride'):
         return []
     resultat = []
     for identifiant in dict.fromkeys(identifiants):
+        if categorie == 'globale' and nature == 'instinctif_hybride' and identifiant not in acquis:
+            continue
         ordre = catalogue.get(identifiant)
         if not ordre or not ordre['disponible'] or ordre['categorie'] != categorie:
             continue
@@ -83,5 +86,7 @@ def confronter_globaux(armee_1, qg_1, ordres_1, armee_2, qg_2, ordres_2, catalog
     points_1 = global_armee(armee_1, qg_1)
     points_2 = global_armee(armee_2, qg_2)
     comparaison = comparer(points_1, points_2)
-    return (ordres_applicables(ordres_1, 'stratege', 'globale', comparaison, catalogue) if qg_1 else [],
-            ordres_applicables(ordres_2, 'stratege', 'globale', -comparaison, catalogue) if qg_2 else [])
+    return (ordres_applicables(ordres_1, qg_1['nature'], 'globale', comparaison, catalogue,
+                              qg_1.get('evolutions_acquises', ())) if qg_1 else [],
+            ordres_applicables(ordres_2, qg_2['nature'], 'globale', -comparaison, catalogue,
+                              qg_2.get('evolutions_acquises', ())) if qg_2 else [])

@@ -94,7 +94,7 @@ Responsabilités :
 | `progression.py` | caractéristiques officielles, tirages pondérés et montée de niveau configurable |
 | `commandement.py` | calculs entiers, sélection des QG et donneurs d'ordres, sans effets tactiques supplémentaires |
 | `soldats.py` | identité individuelle, blessures, sauvetages et batailles survécues |
-| `formation.py` | hôpital et École du village, relevés de séjour et mémoires partagées |
+| `formation.py` | hôpital, École et Forge du village, séjours, mémoires et transformations |
 | `cycle_linux.py` | gel Linux, capture privée, publication de générations et permissions des phases Survie |
 | `survie_admin.py` | diagnostic, dégel de secours et republication explicitement autorisée, sans rejeu métier |
 | `crypte.py` | collecteur privé Survie, recette pédagogique, cooldown et attribution différée |
@@ -178,11 +178,12 @@ position d'origine.
 À préférence égale, l'origine logique croissante départage les généraux, sans
 priorité liée à `j1` ou `j2`. Une préférence vide, invalide ou hors de `1..20`
 produit un avertissement et est traitée comme absente, sans réécrire la fiche.
-Les places déjà occupées ou réservées à l'arrivée restent indisponibles. La réserve
-n'entre pas dans ce placement. Un général sans place libre entre son début de
-recherche et la capacité d'arrivée (`4` au village, `20` ailleurs)
-reste sur son territoire d'origine avec un avertissement, sans suppression ni
-repli ; les autres retraites possibles continuent. Les unités, fichiers et fatigue sont
+Les places déjà occupées ou réservées à l'arrivée restent indisponibles. Un général
+sans place libre entre son début de recherche et la capacité d'arrivée (`4` au
+village, `20` ailleurs) rejoint la réserve de son joueur si l'arrivée est le village.
+Ailleurs, il reste sur son territoire d'origine avec un avertissement, sans suppression
+ni repli ; les autres retraites possibles continuent. Aucun nouveau motif de fuite
+n'est ajouté. Les unités, identités, profils, ordres, blessures, statuts, fichiers et fatigue sont
 conservés ; les positions officielles sont mises à jour après chaque déplacement.
 `mouvements.appliquer_retraites_surnombre()` déplace les dossiers aux places
 réservées. La cascade n'applique pas de sanction de collision aux retraites tactiques.
@@ -504,6 +505,9 @@ unité ancienne renommée ou déplacée entre blocs est conservée. Le rapproche
 inter-systèmes de fichiers garde la limite des effectifs déjà publiés. La
 publication renouvelle la référence après pertes : les morts ne peuvent pas être
 réentraînés. Une validation du défi ne déverrouille aucune construction.
+Les transformations officielles de Forge sont également admises : le registre privé
+du soldat porte leur validation, et la référence publiée authentifie leurs unités.
+Un renommage manuel ou une copie ne reçoit pas cette autorisation.
 
 ### Bloc mixte
 
@@ -757,6 +761,20 @@ autres profils).
 ### Mouvement normal
 
 Un territoire adjacent par tour.
+
+En Survie, aucun trajet direct `home → est_1` n'est autorisé, à aucun tour.
+Le passage par le village est obligatoire, y compris pour une nouvelle identité.
+L'accès depuis home aux places et bâtiments autorisés du village est sans coût
+de déplacement territorial ; leur capacité et leurs conditions restent contrôlées.
+La marche forcée ne permet jamais de sauter le village. Les restrictions du tour 0,
+l'attente après entraînement ou rappel et l'exception de premier entraînement
+vers le village restent applicables. Une position officielle au village est
+nécessaire avant la validation d'un départ vers le front.
+
+Un général récompensé peut quitter sa zone de récompense dès sa publication pour
+un déplacement normal valide, sans tour d'attente. Sa position officielle et ses
+unités publiées passent dans l'audit commun ; aucune exemption persistante de
+distance, capacité, fatigue ou nombre de déplacements n'est créée.
 
 ### Marche forcée
 
@@ -1460,7 +1478,7 @@ validés.
 `catalogues.py` est la source des recettes reconnues et de la légende des ordres.
 Les identifiants sont universels, permanents et ne doivent jamais être recyclés.
 
-| Type générique | ID unité | ID d'évolution réservé | Référence de fabrication |
+| Type générique | ID unité | ID d'évolution | Référence de fabrication |
 | --- | --- | --- | --- |
 | Archer | 1 | 101 | 5 |
 | Piquier | 2 | 102 | 5 |
@@ -1478,22 +1496,26 @@ Les évolutions 201 et 202 désignent respectivement une récompense de commande
 et de moral, dont le gain dépend du niveau. Les IDs 1001 à 1005 correspondent aux
 jetons historiques `1-1`, `1-2`, `2-1`, `2-2`, `3-1` ; `ordre.txt` garde son format.
 Les catégories préparées sont globale (armée), duel (formation) et individuelle
-(intrinsèque). Aucune unité ni aucun ordre n'est pour l'instant accordé comme
-nouvelle récompense de niveau. Les unités ordinaires gardent leurs accès existants,
-la cavalerie lourde reste une récompense spéciale et les autres ordres restent réservés.
+(intrinsèque). La technologie de Forge 104 est disponible comme évolution d'unité
+pour l'orientation instinctive ; elle autorise une transformation, sans créer de
+soldats. Les unités ordinaires gardent leurs accès existants. Les autres déblocages
+d'unités et d'ordres restent réservés, sauf l'attaque frontale existante 1002,
+également disponible comme évolution d'ordre. Aucun nouvel effet de combat n'est ajouté.
 
 ### Caractéristiques et niveaux des généraux
 
-Une création officielle apparaît au niveau 0, avec une nature `stratege` ou
-`instinctif` équiprobable. Nature et trait inné sont permanents. Leur aléatoire
-est indépendant de celui des combats existants.
+Une création officielle apparaît au niveau 0 : `stratege` 45 %, `instinctif` 45 %,
+`stratege_hybride` 5 %, `instinctif_hybride` 5 %. Nature, orientation principale et
+trait inné sont permanents. L'orientation d'un hybride est celle de son préfixe ;
+elle détermine ses traits et ses récompenses ordinaires, avec les mêmes poids.
+Cet aléatoire est indépendant de celui des combats existants.
 
 | Nature | Charismatique | Leader | Inventeur |
 | --- | --- | --- | --- |
 | Stratège | 50 % | 35 % | 15 % |
 | Instinctif | 50 % | 15 % | 35 % |
 
-Champs ajoutés à `fiche.txt` : `niveau`, `nature`, `trait_inne`,
+Champs ajoutés à `fiche.txt` : `niveau`, `nature`, `orientation_principale`, `trait_inne`,
 `points_commandement`, `moral`, `evolutions_acquises`, `evolution_apprise`.
 Les listes d'IDs sont séparées par des virgules ; l'absence d'évolution apprise
 est une valeur vide. Les anciens champs sont conservés. L'autorité est
@@ -1511,8 +1533,10 @@ possédée par le joueur ne change pas les caractéristiques officielles.
 
 Les récompenses indisponibles, incompatibles ou entièrement acquises sont exclues.
 Les poids restants sont redistribués proportionnellement par un tirage entier.
-Avec le catalogue actuel, un stratège reçoit donc du commandement et un instinctif
-du moral jusqu'au plafond. Si aucun choix n'est possible, une montée explicitement
+Avec le catalogue actuel, un stratège reçoit du commandement ou l'ordre 1002
+encore non acquis ; un instinctif peut
+recevoir du moral jusqu'au plafond ou la technologie 104 encore non acquise.
+Si aucun choix n'est possible, une montée explicitement
 demandée n'accorde pas de récompense. Plusieurs évolutions dans une catégorie
 nécessitent une règle de choix fournie par l'appelant.
 
@@ -1521,6 +1545,14 @@ Un stratège commence avec 11 à 20 points. Une récompense au niveau `n` utilis
 Un instinctif commence avec un moral nul ; une récompense au niveau `n` ajoute
 `1 + randint(0, n)`, plafonné à 100. Ces gains dépendent de la récompense obtenue,
 jamais du seul passage de niveau.
+
+À l'École, les hybrides peuvent mémoriser une évolution disponible de l'autre
+orientation. Une mémoire 201 ou 202 donne le même gain au prochain niveau,
+sans changer nature ni trait. Moral et commandement peuvent coexister. Ces
+capacités croisées ne deviennent jamais des récompenses aléatoires ordinaires.
+Les non-hybrides restent soumis aux restrictions de nature. Aucune capacité
+croisée n'est accordée automatiquement. Les profils antérieurs gardent leur nature ;
+leur orientation se déduit de celle-ci sans nouveau tirage.
 
 `progression_due` accepte une condition configurable et retourne faux sans
 condition. `attribuer_niveau` persiste une montée explicitement demandée par le
@@ -1537,7 +1569,7 @@ Les fonctions reçoivent les caractéristiques officielles. Le QG fourni au calc
 est l'objet général sélectionné dans la liste de l'armée. Les points ne limitent
 pas le nombre d'ordres ; aucun bonus de messager n'est défini.
 
-`QuartierGeneral` sélectionne une seule fois le stratège éligible ayant le meilleur
+`QuartierGeneral` sélectionne une seule fois le stratège ou hybride éligible ayant le meilleur
 commandement pertinent, calcul fourni par le pilote. Une égalité au sommet ne
 sélectionne personne. Le QG n'ajoute aucune troupe. Si son bloc devient vide,
 il reste désactivé pour cette bataille sans relève automatique.
@@ -1548,6 +1580,12 @@ comparaison normale. Un contre-ordre reste dans sa catégorie et n'est sélectio
 qu'en situation de comparaison perdue. Aucun effet de contre-ordre n'est inventé.
 Une égalité concurrente n'identifie aucun gagnant ni perdant.
 
+Le stratège hybride garde l'accès natif aux trois catégories. L'instinctif hybride
+ne peut utiliser un ordre global que si son ID figure parmi ses évolutions
+effectivement acquises ; une mémoire encore en attente ne suffit pas. La formule
+globale continue de distinguer les orientations principales ; les points du QG,
+y compris instinctif hybride, sont comptés intégralement.
+
 Ces fonctions testées ne remplacent pas la résolution historique de `1-2`.
 La matérialisation des QG, le commandement pertinent selon leur contexte, les
 effets concurrents à égalité et la transition des ordres historiques doivent
@@ -1556,7 +1594,8 @@ effets concurrents à égalité et la transition des ordres historiques doivent
 ### Blessures et batailles complètes
 
 Après chaque choc de blocs et chaque manœuvre, les pertes sont sélectionnées
-comme auparavant. Un instinctif tire `pertes * moral // 100` candidats distincts
+comme auparavant. Un instinctif, instinctif hybride ou stratège hybride disposant
+de moral tire `pertes * moral // 100` candidats distincts
 parmi ces pertes. Chaque candidat sous sa limite de blessures est conservé et
 reçoit une blessure. Une tentative échouée n'est pas réattribuée. Les autres
 pertes sont supprimées ; listes, effectifs et rapports sont actualisés avant
@@ -1585,7 +1624,9 @@ en 600 et ne sont jamais l'autorité.
 
 `.systeme/soldats.json` conserve par UUID le type, les compteurs, le chemin logique,
 les identités de périphérique/inode, les batailles déjà comptées, la dernière
-bataille et, au besoin, la destruction ou le dernier soin. Les inodes vivants
+bataille et, au besoin, la destruction, le dernier soin ou le séjour de Forge
+validé (`forge`). Une transformation met à jour le type sans changer l'UUID.
+Les inodes vivants
 authentifient les soldats avant capture Survie ; les UUID privés sont reliés aux
 nouveaux inodes à la publication. Le classique synchronise avant l'audit des
 déplacements. Modifier un compteur visible ne soigne pas et ne confère aucun statut.
@@ -1599,16 +1640,26 @@ garde l'état ; entre systèmes de fichiers, le marqueur d'identité doit accomp
 le dossier complet. Une récupération ambiguë sans marqueur peut nécessiter une
 intervention explicite, sans remise à zéro silencieuse des blessures connues.
 
-### Hôpital et École du village
+### Hôpital, École et Forge du village
 
 Les bâtiments sont actifs dans le village Survie ; le mode classique réutilise
-les fonctions sans ajout de lieux à sa carte. Les dossiers physiques restent
-séparés par joueur, avec places logiquement partagées entre alliés :
-`village/<joueur>/hopital/1..20` et `village/<joueur>/ecole_officiers/1..6`.
+les fonctions sans ajout de lieux à sa carte. L'hôpital conserve les dossiers
+`village/<joueur>/hopital/1..20`, avec places logiquement partagées entre alliés.
+L'École a exactement six dossiers physiques `village/ecole_officiers/1..6` ; la
+Forge un seul, `village/forge/1`. Chaque place commune contient un compartiment
+privé `<joueur>/` : un seul général peut occuper la place, tous joueurs confondus.
+Les parents communs sont `root:<groupe_allie> 750` ; les compartiments et généraux
+restent possédés par leur joueur, en 700 (fichiers 600).
 Les 20 places d'hôpital sont configurables par `emplacements_hopital` ; il n'existe
 aucun autre quota de soins simultanés. L'École a six places de généraux, distinctes
 des trois emplacements de son manuel. Les collisions appliquent la sanction commune
 d'emplacement, indépendamment des places de garnison. Les bâtiments sont hors combat.
+
+Les anciens dossiers d'École sont transférés sous gel par renommage, sans
+écrasement ni recréation d'identité. Une destination ambiguë interrompt la migration
+pour récupération. Un séjour traversant une migration doit recommencer un tour
+complet. Capture et publication incluent les deux bâtiments communs ; le Clocher
+reste préservé. Les phases de consultation/actions couvrent leurs compartiments privés.
 
 Entrer ou sortir d'un bâtiment est une réorganisation interne au village, sans
 déplacement normal. Se déplacer entre le village et un autre territoire conserve
@@ -1617,7 +1668,8 @@ les règles existantes. Les bâtiments n'accordent pas de droit d'entraînement.
 Sous gel avant ACTIONS, le moteur enregistre les demandes et les preuves de
 présence. Sous gel de clôture, il relève les présences finales. Périphérique,
 inode et ctime du général et de sa place doivent rester identiques ; les unités
-d'hôpital ont aussi leurs propres preuves. Une entrée tardive, sortie/retour ou
+d'hôpital et de Forge ont aussi leurs propres preuves. À la Forge, les équipements
+doivent également être présents et inchangés pendant le tour. Une entrée tardive, sortie/retour ou
 substitution invalide le séjour concerné. Modifier une demande pendant ACTIONS
 ne remplace pas celle du début. Une reprise ne réinitialise pas le début du séjour.
 
@@ -1655,3 +1707,22 @@ Leur absence dans une ancienne sauvegarde signifie absence de suivi, sans
 effacement ni attribution rétroactive. Sauvegarder les états privés avec les unités
 est indispensable à la conservation de cette autorité. Voir `EVOLUTIONS.md` pour
 l'utilisation et les décisions de conception encore ouvertes.
+
+### Transformation à la Forge
+
+Le général doit avoir une orientation principale instinctive et posséder l'évolution
+104 dans son profil officiel. Un stratège hybride ne peut pas fabriquer, même
+après avoir appris cette évolution. Après un tour complet, les cavaliers légers
+existants possédant `cheval`, `cuirasse`, `armure`, `casque`, `bouclier` sont renommés
+par le moteur en `cavalerie_LN`. Aucun coût ni ressource supplémentaire n'est ajouté.
+Une collision choisit le prochain numéro libre sans écraser l'existant. La recette
+doit être constituée de fichiers ordinaires sans liens.
+
+Les fichiers, UUID, batailles, blessures et statuts sont conservés ; seules les
+données de type et de localisation changent dans le registre privé. Une recette,
+autorisation ou présence invalide ne supprime pas l'unité. Une conversion validée
+apparaît dans le rapport court du tour ; le résultat du séjour est aussi individuel.
+Une unité déjà lourde n'est pas transformée à nouveau. Le combat réutilise les
+valeurs de cavalerie lourde déjà définies, sans nouveau multiplicateur. En cas de
+conversion partielle d'un bloc, réorganiser ses types avant déploiement : les règles
+historiques de nettoyage des blocs de combat homogènes restent applicables.

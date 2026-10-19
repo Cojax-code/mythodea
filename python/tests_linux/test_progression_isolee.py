@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import config
@@ -16,6 +17,30 @@ import soldats
 
 @unittest.skipUnless(sys.platform == 'linux' and os.geteuid() == 0, 'Linux et root requis')
 class ProgressionIsolee(unittest.TestCase):
+    def test_places_communes_et_confidentialite_reelle_des_compartiments(self):
+        with tempfile.TemporaryDirectory(prefix='mythodea-batiments-') as dossier:
+            racine = Path(dossier)
+            racine.chmod(0o755)
+            with patch.object(config, 'game_path', racine), \
+                    patch('pwd.getpwnam', side_effect=lambda j: SimpleNamespace(pw_uid={'j1': 60001, 'j2': 60002}[j])), \
+                    patch('grp.getgrnam', return_value=SimpleNamespace(gr_gid=0)):
+                configuration = config.configuration_mode('survie')
+                formation.preparer_emplacements(configuration)
+                for batiment, nombre in (('ecole_officiers', 6), ('forge', 1)):
+                    lieu = racine / 'village' / batiment
+                    self.assertEqual(len(list(lieu.iterdir())), nombre)
+                    self.assertEqual((lieu.stat().st_uid, lieu.stat().st_mode & 0o777), (0, 0o750))
+                    for joueur, uid, adverse in (('j1', 60001, 60002), ('j2', 60002, 60001)):
+                        compartiment = lieu / '1' / joueur
+                        self.assertEqual((compartiment.stat().st_uid, compartiment.stat().st_mode & 0o777),
+                                         (uid, 0o700))
+                        code = ('import os,sys; os.setgroups([]); os.setgid(0); '
+                                'os.setuid(int(sys.argv[1])); os.listdir(sys.argv[2])')
+                        for compte, attendu in ((uid, True), (adverse, False)):
+                            resultat = subprocess.run([sys.executable, '-c', code, str(compte), str(compartiment)],
+                                                      capture_output=True)
+                            self.assertEqual(resultat.returncode == 0, attendu)
+
     def test_etats_prives_et_manuel_non_modifiables_par_joueurs(self):
         with tempfile.TemporaryDirectory(prefix='mythodea-progression-') as dossier:
             racine = Path(dossier)
