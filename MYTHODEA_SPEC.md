@@ -487,12 +487,13 @@ ni reconnu comme cavalerie lourde ; aucune conversion automatique n'est effectu�
 n'autorise pas leur construction. Il s'agit d'un format interne, sans recette
 joueur déverrouillée. L'unité est comptée et nettoyée comme les autres unités.
 
-Sa valeur de base est 1. Depuis le bloc `avant`, au moins 15 cavaliers lourds
-participant ensemble portent cette valeur à 2 pour cet affrontement. Le seuil
+Sa valeur de combat individuelle de base est 5, définie dans `catalogues.UNITES`.
+Depuis le bloc `avant`, au moins 15 cavaliers lourds
+participant ensemble doublent cette valeur, soit 10 pour cet affrontement. Le seuil
 est recalculé avec les survivants avant chaque affrontement, en CHOC comme en
 MANŒUVRE ; aucun bonus ne s'applique depuis les autres blocs. L'avantage de type
 multiplie ensuite la valeur par 2 contre archer et cavalier : une formation
-éligible vaut donc 4 par unité contre ces types. Le piquier bénéficie de son
+éligible vaut donc 20 par unité contre ces types. Le piquier bénéficie de son
 avantage x2 contre la cavalerie lourde. La règle commune de fatigue entre blocs
 du même type s'applique à la valeur contextuelle. Aucun attribut permanent de
 force n'est ajouté ; le champ historique `force` de la fiche reste inchangé.
@@ -861,6 +862,61 @@ cavalier > archer
 ```
 
 Un type avantagé utilise actuellement un multiplicateur `x2`, sinon `x1`.
+
+### Valeurs individuelles, puissances et pertes
+
+Chaque définition de `catalogues.UNITES` possède `valeur_combat`, un entier
+strictement positif. Les booléens, flottants, chaînes, valeurs nulles ou négatives
+sont refusés. Les quatre types actuels ont une valeur de 5 : archer, piquier,
+cavalier et cavalerie lourde. Ce champ est indépendant de `fabrication`, et
+n'est jamais lu dans les fichiers modifiables du général ou des soldats.
+
+Pour un bloc homogène de `n` unités encore présentes, la puissance de base est
+`n * valeur_combat`. Dix archers valent donc 50, vingt archers 100. Le moteur
+relit les survivants avant chaque affrontement ; un bloc vide a une puissance
+nulle et un affrontement avec un bloc vide ne produit aucune perte.
+
+La valeur effective individuelle est calculée ainsi :
+
+```text
+vA = valeur_combat_A * formation_A * avantage_A * fatigue_A
+vB = valeur_combat_B * formation_B * avantage_B * fatigue_B
+puissance_A = effectif_A * vA
+puissance_B = effectif_B * vB
+pertes_A = min(effectif_A, puissance_B // vA)
+pertes_B = min(effectif_B, puissance_A // vB)
+survivants_A = effectif_A - pertes_A
+survivants_B = effectif_B - pertes_B
+```
+
+`formation` vaut 2 uniquement pour la cavalerie lourde dans Avant avec au moins
+15 survivants, sinon 1. `avantage` garde le triangle et les interactions lourdes
+existantes. `fatigue` vaut 2 pour le bloc frais face à un bloc fatigué du même
+type, sinon 1 ; la fatigue ne supprime pas les avantages entre types différents.
+Chaque facteur est appliqué une seule fois à la valeur effective. Comme dans
+le moteur historique, celle-ci sert également de résistance au dénominateur.
+Utiliser seulement la valeur brute au dénominateur changerait les pertes
+historiques et n'est pas la règle retenue.
+
+Les pertes sont calculées simultanément à partir des deux effectifs initiaux,
+arrondies vers le bas par division entière, puis plafonnées à ces effectifs.
+Sans facteur particulier, on retrouve `pertes_A = min(nA, (nB * valeur_B) // valeur_A)`
+et la formule symétrique. Dix unités de valeur 3 contre dix de valeur 5 donnent
+donc zéro et quatre survivants ; pour les valeurs 5 contre 7, zéro et trois.
+Ces exemples n'ajoutent aucun type d'unité au jeu.
+
+Le passage uniforme de l'ancienne échelle 1 à 5 multiplie les puissances et
+résistances par le même facteur : les pertes historiques restent identiques.
+Les sauvetages par le moral et les blessures sont appliqués ensuite par le
+traitement existant des pertes, sans nouveau bonus.
+
+Pour définir ultérieurement une unité de puissance différente, attribuer un ID
+permanent, renseigner sa définition dans `catalogues.UNITES` avec un entier positif
+`valeur_combat`, puis suivre les règles de représentation et de déblocage du moteur.
+Les avantages et effets éventuels doivent être définis explicitement : modifier
+la valeur ne crée ni avantage, ni recette autorisée, ni effet de terrain ou d'ordre.
+`verifier_catalogues` contrôle les valeurs au chargement ; l'accès au combat les
+valide également. Aucun nouveau format persistant de soldat n'est nécessaire.
 
 La fatigue n'annule pas les avantages naturels. Pour deux blocs du même type,
 un bloc frais obtient l'avantage sur un bloc fatigué.
@@ -1477,17 +1533,18 @@ validés.
 `catalogues.py` est la source des recettes reconnues et de la légende des ordres.
 Les identifiants sont universels, permanents et ne doivent jamais être recyclés.
 
-| Type générique | ID unité | ID d'évolution | Référence de fabrication |
-| --- | --- | --- | --- |
-| Archer | 1 | 101 | 5 |
-| Piquier | 2 | 102 | 5 |
-| Cavalier | 3 | 103 | 5 |
-| Cavalerie lourde | 4 | 104 | non définie |
+| Type générique | ID unité | ID d'évolution | Référence de fabrication | Valeur de combat |
+| --- | --- | --- | --- | --- |
+| Archer | 1 | 101 | 5 | 5 |
+| Piquier | 2 | 102 | 5 | 5 |
+| Cavalier | 3 | 103 | 5 | 5 |
+| Cavalerie lourde | 4 | 104 | non définie | 5 |
 
-Le moteur antérieur ne possède pas de comptabilité de fabrication. Sa valeur
-collective de combat de base de 1 n'est pas multipliée : triangle, fatigue,
-formation lourde, recettes et effectifs restent ceux des sections précédentes.
-La référence 5 est une donnée distincte du catalogue, sans monnaie. Les étiquettes
+Le moteur ne possède pas de comptabilité de fabrication. La référence de
+fabrication reste une donnée documentaire, sans monnaie, distincte de
+`valeur_combat`. Le combat utilise l'échelle individuelle de la section 11,
+avec triangle, fatigue et formation lourde conservés. Les recettes et effectifs
+ne changent pas. Les étiquettes
 multiples ne créent pas de types supplémentaires. Les emplacements de futures
 règles de terrain, positionnement ou restrictions ne produisent aucun effet.
 

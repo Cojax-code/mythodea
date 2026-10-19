@@ -5,8 +5,11 @@ Leurs champs apparaissent dans `fiche.txt`. Les anciennes fiches sont conservée
 Les natures sont stratège (45 %), instinctif (45 %), stratège hybride (5 %) et
 instinctif hybride (5 %). Les hybrides gardent les traits et récompenses ordinaires
 de leur orientation principale, et peuvent apprendre ceux de l'autre à l'École.
-La référence de fabrication des trois unités ordinaires vaut 5 ; les recettes
-et la valeur collective de combat ne changent pas.
+La référence de fabrication des trois unités ordinaires vaut 5. La propriété
+distincte `valeur_combat` vaut également 5 pour les quatre types actuels.
+Un bloc de 10 archers a une puissance de base de 50. Les avantages, la fatigue
+et la formation lourde gardent leurs effets ; changer uniformément d'échelle
+conserve les pertes historiques. Les recettes ne changent pas.
 
 Les soldats survivant à la résolution complète d'un territoire gagnent une
 bataille. À 5 batailles ils deviennent vétérans, à 10 héroïques. Le moral d'un

@@ -1642,6 +1642,12 @@ général ne réouvrent pas le droit à récompense. j1 et j2 ont chacun leur at
 Les règles de récupération Crypte et le moteur commun restent applicables ; la
 représentation et les valeurs de combat sont définies dans `MYTHODEA_SPEC.md`.
 
+La valeur individuelle de combat est centralisée dans `catalogues.UNITES` :
+5 pour chaque type actuel, cavalerie lourde comprise. Le passage à cette échelle
+conserve exactement les pertes historiques, les avantages naturels et le doublement
+de la cavalerie lourde à partir de 15 unités dans Avant. Les bots et joueurs
+utilisent le même calcul commun, sans effet tactique supplémentaire.
+
 ### Forge du village
 
 La transformation est assurée par la Forge commune `village/forge/1/<joueur>/`,

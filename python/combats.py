@@ -1,6 +1,7 @@
 """Calcul des combats, choc initial, manœuvres et combat rangé."""
 import random
 
+import catalogues
 import config
 import etat
 import generaux
@@ -649,9 +650,13 @@ def multiplicateur(type_attaquant, type_defenseur):
 
 
 def valeur_base_bloc(infos, bloc=None):
-    """Bonus contextuel recalculé avec les survivants de chaque affrontement."""
-    return 2 if (infos['type'] == 'cavalerie_lourde' and bloc == 'avant'
-                 and infos['nombre'] >= 15) else 1
+    """Valeur individuelle, avec la formation lourde recalculée à chaque choc."""
+    if infos['nombre'] == 0:
+        return 0
+    valeur = catalogues.valeur_combat(infos['type'])
+    if infos['type'] == 'cavalerie_lourde' and bloc == 'avant' and infos['nombre'] >= 15:
+        valeur *= 2
+    return valeur
 
 
 def combat_bloc(
@@ -676,6 +681,9 @@ def combat_bloc(
 
     nombre_1 = infos_1["nombre"]
     nombre_2 = infos_2["nombre"]
+
+    if nombre_1 == 0 or nombre_2 == 0:
+        return nombre_1, nombre_2
 
     valeur_1 = valeur_base_bloc(infos_1, bloc_1) * multiplicateur(
         type_1,
@@ -704,8 +712,10 @@ def combat_bloc(
     degats_1 = nombre_1 * valeur_1
     degats_2 = nombre_2 * valeur_2
 
-    pertes_1 = degats_2 // valeur_1
-    pertes_2 = degats_1 // valeur_2
+    # Comme dans le moteur historique, la valeur effective sert aussi de
+    # résistance : conserver les avantages et la fatigue au dénominateur.
+    pertes_1 = min(nombre_1, degats_2 // valeur_1)
+    pertes_2 = min(nombre_2, degats_1 // valeur_2)
 
     survivants_1 = max(
         0,

@@ -1,24 +1,24 @@
 """Identifiants permanents et définitions ; aucun accès au plateau.
 
 Ne jamais recycler un identifiant supprimé. La valeur de fabrication est une
-référence documentaire, distincte de la valeur collective employée au combat.
+référence documentaire, distincte de la valeur de combat individuelle.
 """
 
 UNITES = {
-    1: dict(nom='archer', prefixe='infanterie', recette=('arc',), fabrication=5,
+    1: dict(nom='archer', prefixe='infanterie', recette=('arc',), fabrication=5, valeur_combat=5,
             etiquettes=('infanterie', 'distance'), forces=('piquier',),
             faiblesses=('cavalier', 'cavalerie_lourde'), effets=(), natures=None,
             terrain=None, positionnement=None, progression=False),
-    2: dict(nom='piquier', prefixe='infanterie', recette=('pique',), fabrication=5,
+    2: dict(nom='piquier', prefixe='infanterie', recette=('pique',), fabrication=5, valeur_combat=5,
             etiquettes=('infanterie',), forces=('cavalier', 'cavalerie_lourde'),
             faiblesses=('archer',), effets=(), natures=None,
             terrain=None, positionnement=None, progression=False),
-    3: dict(nom='cavalier', prefixe='cavalerie', recette=('cheval',), fabrication=5,
+    3: dict(nom='cavalier', prefixe='cavalerie', recette=('cheval',), fabrication=5, valeur_combat=5,
             etiquettes=('cavalerie',), forces=('archer',),
             faiblesses=('piquier', 'cavalerie_lourde'), effets=(), natures=None,
             terrain=None, positionnement=None, progression=False),
     4: dict(nom='cavalerie_lourde', prefixe='cavalerie_L',
-            recette=('cheval', 'armure', 'cuirasse', 'bouclier', 'casque'), fabrication=None,
+            recette=('cheval', 'armure', 'cuirasse', 'bouclier', 'casque'), fabrication=None, valeur_combat=5,
             etiquettes=('cavalerie', 'lourde'), forces=('archer', 'cavalier'),
             faiblesses=('piquier',), effets=('formation_avant_15',), natures=None,
             terrain=None, positionnement=None, progression=False),
@@ -56,11 +56,21 @@ EVOLUTIONS = {
 UNITE_PAR_NOM = {definition['nom']: identifiant for identifiant, definition in UNITES.items()}
 
 
+def valeur_combat(type_unite):
+    """Valeur individuelle officielle ; ni coût, ni donnée de la fiche joueur."""
+    valeur = UNITES[UNITE_PAR_NOM[type_unite]].get('valeur_combat')
+    if type(valeur) is not int or valeur <= 0:
+        raise ValueError('La valeur de combat doit être un entier strictement positif.')
+    return valeur
+
+
 def verifier_catalogues():
     if len(UNITE_PAR_NOM) != len(UNITES) or set(UNITES) & set(EVOLUTIONS):
         raise ValueError('Identifiants ou noms de catalogue ambigus.')
     if any(type(i) is not int or i <= 0 for i in (*UNITES, *EVOLUTIONS)):
         raise ValueError('Les identifiants permanents sont des entiers positifs.')
+    for definition in UNITES.values():
+        valeur_combat(definition['nom'])
 
 
 verifier_catalogues()

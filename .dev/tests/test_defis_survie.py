@@ -411,12 +411,12 @@ class DefisSurvie(unittest.TestCase):
         self.assertEqual(c.multiplicateur('cavalerie_lourde', 'piquier'), 1)
         for nombre in (1, 14, 15, 20):
             infos = {'type': 'cavalerie_lourde', 'nombre': nombre}
-            self.assertEqual(c.valeur_base_bloc(infos, 'avant'), 2 if nombre >= 15 else 1)
+            self.assertEqual(c.valeur_base_bloc(infos, 'avant'), 10 if nombre >= 15 else 5)
             for bloc in ('droite', 'gauche', 'arriere', None):
-                self.assertEqual(c.valeur_base_bloc(infos, bloc), 1)
+                self.assertEqual(c.valeur_base_bloc(infos, bloc), 5)
         lourd = {'type': 'cavalerie_lourde', 'nombre': 15}
         archer = {'type': 'archer', 'nombre': 20}
-        self.assertEqual(c.valeur_base_bloc(lourd, 'avant') * c.multiplicateur(lourd['type'], archer['type']), 4)
+        self.assertEqual(c.valeur_base_bloc(lourd, 'avant') * c.multiplicateur(lourd['type'], archer['type']), 20)
         self.assertEqual(c.combat_bloc(lourd, archer, bloc_1='avant', bloc_2='avant'), (10, 0))
         self.assertEqual(c.combat_bloc(lourd, archer, bloc_1='gauche', bloc_2='avant'), (5, 0))
         lourd['nombre'] = 14

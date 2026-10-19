@@ -15,7 +15,7 @@ Faiblesse :
 
 Effet spécial :
 Si au moins 15 cavaliers lourds frappent ensemble depuis le bloc avant,
-chaque unité vaut 2 au lieu de 1 pour cette résolution.
+la valeur de combat individuelle est doublée pour cette résolution.
 L'avantage de type multiplie ensuite cette valeur par 2.
 
 Construction :
