@@ -1,4 +1,4 @@
-"""Hôpital, École et Forge : relevés vivants, validation privée et publication."""
+"""Réserve et bâtiments : relevés vivants, validation privée et publication."""
 import json
 import stat
 
@@ -105,7 +105,7 @@ def demande_lecture(texte):
 
 
 def commencer_sejour(tour, general, lieu, camp, preuve_presence,
-                     ecrire='', lire='', unites=None):
+                     ecrire='', lire='', unites=None, eligibles_forge=()):
     """Appelé une fois au début du tour ; aucune modification tardive de demande.
 
     preuve_presence est relevée par le moteur sur le disque vivant (inode et
@@ -117,13 +117,15 @@ def commencer_sejour(tour, general, lieu, camp, preuve_presence,
     donnees = charger()
     if cle in donnees['sejours'] or cle in donnees['valides']:
         return False
-    if lieu not in ('ecole_officiers', 'hopital', 'forge'):
+    if lieu not in ('ecole_officiers', 'hopital', 'forge', 'reserve'):
         raise ValueError('Lieu de formation inconnu.')
     if not preuve_presence:
         raise ValueError('Preuve de présence moteur requise.')
     action, emplacement, evolution = 'soins', None, None
     if lieu == 'forge':
         action = 'forge'
+    if lieu == 'reserve':
+        action = 'formation'
     if lieu == 'ecole_officiers':
         if bool(ecrire.strip()) == bool(lire.strip()):
             raise ValueError('Une seule demande de lecture ou écriture est nécessaire.')
@@ -142,7 +144,8 @@ def commencer_sejour(tour, general, lieu, camp, preuve_presence,
             action = 'lecture'
     donnees['sejours'][cle] = dict(tour=tour, identite=identite, lieu=lieu, camp=camp,
         preuve=list(preuve_presence), action=action, emplacement=emplacement,
-        evolution=evolution, unites={i: list(preuve) for i, preuve in (unites or {}).items()})
+        evolution=evolution, unites={i: list(preuve) for i, preuve in (unites or {}).items()},
+        eligibles_forge=sorted(eligibles_forge))
     sauvegarder(donnees)
     return True
 
@@ -193,7 +196,9 @@ def valider_sejour(tour, general, lieu, camp, preuve_presence, tour_termine=Fals
     elif sejour['action'] == 'forge':
         if unites is None:
             return False
-        forger(general, cle, sejour['unites'], unites)
+        forger(general, cle, sejour['unites'], unites, sejour.get('eligibles_forge', ()))
+    elif sejour['action'] == 'formation':
+        progression.valider_evenement(general, 'formation', cle)
     else:
         # La présence du général ne prouve pas celle des unités : le pilote doit
         # relever séparément leur présence continue, avant toute copie privée.
@@ -245,7 +250,11 @@ def occupants(configuration):
     for joueur in configuration['joueurs']:
         camp = configuration['acteurs'][joueur]['camp']
         for zone in generaux.zones_generaux(joueur, configuration):
-            if not zone.get('batiment'):
+            lieu = zone.get('batiment')
+            if (zone['position'] in configuration['villages']
+                    and zone['chemin'].name == 'reserve'):
+                lieu = 'reserve'
+            if not lieu:
                 continue
             parent = zone['chemin']
             sans_liens(parent)
@@ -254,9 +263,10 @@ def occupants(configuration):
             for chemin in parent.iterdir():
                 sans_liens(chemin)
                 if chemin.is_dir() and generaux.numero_general_depuis_nom(chemin.name) is not None:
-                    places.setdefault((zone['position'], camp, zone['emplacement']), []).append(
+                    place = (joueur, chemin.name) if lieu == 'reserve' else zone['emplacement']
+                    places.setdefault((zone['position'], camp, place), []).append(
                         dict(joueur=joueur, nom=chemin.name, chemin=chemin,
-                             lieu=zone['batiment'], camp=camp))
+                             lieu=lieu, camp=camp))
     return [gs[0] for gs in places.values() if len(gs) == 1]
 
 
@@ -266,6 +276,10 @@ def preuve(chemin):
 
 
 def preuve_general(general):
+    if general.get('lieu') == 'reserve':
+        # L'arrivée d'un autre général ne rompt pas ce séjour. Le ctime du
+        # général détecte sa propre sortie/retour ; l'inode du parent le situe.
+        return [*preuve(general['chemin']), *preuve(general['chemin'].parent)[:2]]
     return [*preuve(general['chemin']), *preuve(general['chemin'].parent)]
 
 
@@ -301,7 +315,34 @@ def relever_unites(general, initialiser=False):
     return resultat
 
 
-def forger(general, sejour, initiales, finales):
+def unites_forge_validees(configuration, general):
+    """Rapproche les inodes vivants de la référence officiellement publiée.
+
+    Ni l'inscription du séjour, ni un UUID copié par le joueur ne prouvent une
+    validation antérieure. Le relevé se fait sous gel AVANT la capture privée.
+    """
+    import etat
+    import securite
+    reference = etat.charger_unites_actions(configuration) or {'generaux': {}}
+    nouveaux = set(reference.get('premiers_deploiements', ()))
+    anciennes = {tuple(u) for g in reference['generaux'].values()
+                 if g['identifiant'] not in nouveaux
+                 for u in g['unites'].values() if u[-1] == 'cavalier'}
+    registre = soldats.charger()
+    resultat = set()
+    identite = f"{general['joueur']}:{general['nom']}"
+    for g in securite.inventorier_unites_actions(configuration).values():
+        if g['identifiant'] != identite:
+            continue
+        for relatif, signature in g['unites'].items():
+            if tuple(signature) in anciennes:
+                identifiant = soldats.retrouver(general['chemin'] / relatif, registre)
+                if identifiant is not None:
+                    resultat.add(identifiant)
+    return resultat
+
+
+def forger(general, sejour, initiales, finales, eligibles=()):
     """Renomme les soldats validés ; une recette refusée ne détruit rien."""
     import config
     import generaux
@@ -313,6 +354,11 @@ def forger(general, sejour, initiales, finales):
         raise ValueError('Forge refusée : orientation instinctive et technologie 104 requises.')
     registre = soldats.charger()
     transformees = 0
+    def refuser(unite, raison):
+        rapports.ecrire_rapport_long(
+            f"Forge refusée : {general['joueur']}:{general['nom']}, "
+            f"{unite.parent.name}/{unite.name} : {raison} ; unité conservée.")
+
     for bloc in config.ordre_blocs:
         dossier = general['chemin'] / bloc
         if not dossier.is_dir():
@@ -322,8 +368,12 @@ def forger(general, sejour, initiales, finales):
             if generaux.identifier_unite(unite) != 'cavalier':
                 continue
             identifiant = soldats.retrouver(unite, registre, config.dans_generation_privee())
+            if identifiant not in eligibles:
+                refuser(unite, 'absence de validation officielle au tour précédent')
+                continue
             if (identifiant not in initiales or not initiales[identifiant] or
                     initiales[identifiant] != list(finales.get(identifiant, ()))):
+                refuser(unite, 'séjour ou recette non constants pendant le tour complet')
                 continue
             valide = True
             for nom in catalogues.UNITES[4]['recette']:
@@ -333,6 +383,7 @@ def forger(general, sejour, initiales, finales):
                         or fichier.stat().st_nlink != 1):
                     valide = False
             if not valide:
+                refuser(unite, 'recette incomplète ou équipement non ordinaire')
                 continue
             suffixe = unite.name.removeprefix('cavalerie')
             numero = int(suffixe) if suffixe.isascii() and suffixe.isdecimal() else 1
@@ -352,7 +403,8 @@ def forger(general, sejour, initiales, finales):
                 f"transformée en {destination.name} ; identité et états conservés.")
     soldats.sauvegarder(registre)
     if not transformees:
-        raise ValueError('Forge : aucune cavalerie légère avec recette et séjour complets ; unités conservées.')
+        raise ValueError('Forge : aucune cavalerie légère validée au tour précédent avec '
+                         'recette et séjour complets ; unités conservées. Voir le rapport long.')
 
 
 def migrer_ancienne_ecole(configuration):
@@ -405,8 +457,9 @@ def ouvrir_tour(configuration, tour):
                     raise ValueError('Une demande doit être un fichier ordinaire sans lien physique.')
                 textes.append(chemin.read_text(encoding='utf-8'))
             unites = relever_unites(general, initialiser=True) if general['lieu'] in ('hopital', 'forge') else {}
+            eligibles = unites_forge_validees(configuration, general) if general['lieu'] == 'forge' else ()
             commencer_sejour(tour, general, general['lieu'], general['camp'], preuve_general(general),
-                             ecrire=textes[0], lire=textes[1], unites=unites)
+                             ecrire=textes[0], lire=textes[1], unites=unites, eligibles_forge=eligibles)
         except ValueError as erreur:
             soldats.ecrire_copie(general['chemin'] / 'formation_resultat.txt', str(erreur) + '\n')
     donnees = charger()
@@ -455,7 +508,8 @@ def resoudre_tour(configuration, tour):
         if sejour['action'] == 'ecriture':
             places_ecrites.setdefault((sejour['camp'], sejour['emplacement']), []).append(cle)
     conflits = {cle for cles in places_ecrites.values() if len(cles) > 1 for cle in cles}
-    sejours.sort(key=lambda item: {'lecture': 0, 'ecriture': 1, 'soins': 2, 'forge': 3}[item[1]['action']])
+    sejours.sort(key=lambda item: (
+        {'lecture': 0, 'ecriture': 1, 'soins': 2, 'forge': 3, 'formation': 4}[item[1]['action']], item[0]))
     for cle, sejour in sejours:
         general = presents.get(sejour['identite'])
         observation = cloture.get(sejour['identite'])

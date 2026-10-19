@@ -803,6 +803,7 @@ def confrontation_directe(
         fatigue_2,
         bloc, bloc,
     )
+    soldats.affrontement(general_1, general_2)
 
     pertes_1 = supprimer_unites(infos_1, survivants_1, general_1)
     pertes_2 = supprimer_unites(infos_2, survivants_2, general_2)
@@ -974,6 +975,8 @@ def attaque_ciblee(
         fatigue_defenseur,
         bloc_attaquant, bloc_cible,
     )
+    if initial_attaquant > 0 and initial_defenseur > 0:
+        soldats.affrontement(general_attaquant, general_defenseur)
 
     pertes_attaquant = supprimer_unites(infos_attaquant, survivants_attaquant, general_attaquant)
     pertes_defenseur = supprimer_unites(infos_defenseur, survivants_defenseur, general_defenseur)

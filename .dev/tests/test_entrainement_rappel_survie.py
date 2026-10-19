@@ -151,7 +151,7 @@ class EntrainementRappelSurvie(unittest.TestCase):
         self.assertFalse(nouvelle.exists())
         self.assertEqual(self.generaux.total_general_depuis_chemin(destination), 2)
 
-    def test_deplacement_inter_partition_conserve_effectif_et_bloque_surplus(self):
+    def test_deplacement_inter_partition_home_conserve_effectif_et_ajouts_autorises(self):
         origine = self.general(territoire='home', nombre=2)
         destination = self.chemin('village')
         shutil.copytree(origine, destination)
@@ -162,7 +162,7 @@ class EntrainementRappelSurvie(unittest.TestCase):
         self.audit()
         self.assertTrue(destination.exists())
         self.assertEqual(self.generaux.total_general_depuis_chemin(destination), 2)
-        # Une autre traversée avec un renfort net reste un entraînement mobile.
+        # La règle Home validée autorise aussi les ajouts avant l'accès au village.
         destination.rename(origine)
         self.etat.sauvegarder_positions_generaux({'j1:general1': 'home'})
         self.securite.memoriser_unites_actions(self.profil, 2)
@@ -172,22 +172,21 @@ class EntrainementRappelSurvie(unittest.TestCase):
         self.ajouter(origine)
         origine.rename(destination)
         self.audit()
-        self.assertTrue(origine.exists())
-        self.assertEqual(self.generaux.total_general_depuis_chemin(origine), 3)
+        self.assertTrue(destination.exists())
+        self.assertEqual(self.generaux.total_general_depuis_chemin(destination), 3)
 
-    def test_entrainement_home_deplacement_refuse_puis_tour_suivant_autorise(self):
+    def test_entrainement_home_acces_village_immediat(self):
         origine = self.general(territoire='home', nombre=2)
         self.ajouter(origine)
         destination = self.chemin('village')
         origine.rename(destination)
         self.audit()
-        self.assertTrue(origine.exists())
-        self.assertFalse(destination.exists())
-        self.assertEqual(self.generaux.total_general_depuis_chemin(origine), 3)
-        self.assertEqual(self.etat.charger_positions_generaux()['j1:general1'], 'home')
+        self.assertFalse(origine.exists())
+        self.assertTrue(destination.exists())
+        self.assertEqual(self.generaux.total_general_depuis_chemin(destination), 3)
+        self.assertEqual(self.etat.charger_positions_generaux()['j1:general1'], 'village')
         self.assertEqual(self.etat.charger_generaux_fatigues(), set())
         self.activer(2)
-        origine.rename(destination)
         self.audit()
         self.assertTrue(destination.exists())
         self.assertEqual(self.etat.charger_positions_generaux()['j1:general1'], 'village')
@@ -205,15 +204,16 @@ class EntrainementRappelSurvie(unittest.TestCase):
         self.audit()
         self.assertTrue(destination.exists())
 
-    def test_home_vers_reserve_apres_entrainement_attend_aussi(self):
+    def test_home_vers_reserve_apres_entrainement_immediat(self):
         origine = self.general(territoire='home', nombre=2)
         self.ajouter(origine)
         origine.rename(self.chemin('village', reserve=True))
         self.audit()
-        self.assertTrue(origine.exists())
+        self.assertFalse(origine.exists())
+        self.assertTrue(self.chemin('village', reserve=True).exists())
 
     def test_entrainement_refuse_avant_collision_avec_general_innocent(self):
-        origine = self.general(territoire='home', nombre=2)
+        origine = self.general(territoire='village', reserve=True, nombre=2)
         innocent = self.general('j2', territoire='village', nombre=2)
         self.ajouter(origine)
         origine.rename(self.chemin('village'))
@@ -292,18 +292,17 @@ class EntrainementRappelSurvie(unittest.TestCase):
         self.assertEqual(self.etat.charger_positions_generaux()['j1:general1'], 'position_invalide')
         self.assertIn('rappel refusé', self.config.rapport_long_path.read_text(encoding='utf-8'))
 
-    def test_capture_privee_et_publication_debloquent_entrainement(self):
-        # Général déjà publié : la première attribution a désormais une exception.
+    def test_capture_privee_et_publication_conservent_acces_home_immediat(self):
+        # Général déjà publié : mêmes droits de village qu'une nouvelle création.
         self.general(territoire='home', nombre=0)
         self.ajouter(self.chemin())
         self.chemin().rename(self.chemin('village'))
         self.resoudre()
-        self.assertTrue(self.chemin().exists())
+        self.assertTrue(self.chemin('village').exists())
         self.assertEqual(self.reference()['tour'], 2)
         self.assertNotIn('capture', self.reference())
         self.etat.sauvegarder_cycle_survie({'tour': 2, 'phase': 'a_preparer'}, self.profil)
         self.survie.ouvrir_tour_survie(self.profil)
-        self.chemin().rename(self.chemin('village'))
         self.resoudre()
         self.assertTrue(self.chemin('village').exists())
         self.assertEqual(self.generaux.total_general_depuis_chemin(self.chemin('village')), 1)
@@ -336,8 +335,8 @@ class EntrainementRappelSurvie(unittest.TestCase):
         with patch.object(survie_admin.cycle_linux, 'Linux', return_value=GelSimule()), \
                 patch.object(self.securite, 'verifier_tous_les_deplacements', side_effect=AssertionError('rejeu')):
             survie_admin.republier(self.profil, cycle['generation'])
-        self.assertTrue(self.chemin().exists())
-        self.assertEqual(self.generaux.total_general_depuis_chemin(self.chemin()), 3)
+        self.assertTrue(self.chemin('village').exists())
+        self.assertEqual(self.generaux.total_general_depuis_chemin(self.chemin('village')), 3)
         self.assertEqual(self.reference()['tour'], 2)
 
     def test_nouveau_avec_20_unites_deploye_des_sa_premiere_fenetre(self):
@@ -388,7 +387,7 @@ class EntrainementRappelSurvie(unittest.TestCase):
         self.assertEqual(self.generaux.total_general_depuis_chemin(self.chemin('village')), 1)
         self.assertFalse(self.chemin().exists())
 
-    def test_exception_expire_apres_publication_meme_si_reste_home(self):
+    def test_marqueur_nouveaute_expire_mais_home_valide_conserve_acces(self):
         self.nouvelle_partie()
         self.resoudre()
         self.etat.sauvegarder_cycle_survie({'tour': 1, 'phase': 'a_preparer'}, self.profil)
@@ -397,9 +396,9 @@ class EntrainementRappelSurvie(unittest.TestCase):
         self.ajouter(self.chemin())
         self.chemin().rename(self.chemin('village'))
         self.audit()
-        self.assertTrue(self.chemin().exists())
-        self.assertFalse(self.chemin('village').exists())
-        self.assertEqual(self.generaux.total_general_depuis_chemin(self.chemin()), 1)
+        self.assertFalse(self.chemin().exists())
+        self.assertTrue(self.chemin('village').exists())
+        self.assertEqual(self.generaux.total_general_depuis_chemin(self.chemin('village')), 1)
 
     def test_creation_tour_suivant_seule_nouvelle_identite_a_exception(self):
         self.nouvelle_partie()

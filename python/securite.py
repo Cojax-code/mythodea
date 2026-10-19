@@ -185,22 +185,21 @@ def auditer_entrainement(configuration, positions, punis):
         deplacement, _, _ = mouvements.verifier_deplacement_general(
             joueur, positions[identifiant], actuel['position'],
             etat.charger_controle_territoires(configuration), configuration)
-        premier_deploiement = (
-            identifiant in reference.get('premiers_deploiements', ())
-            and origine.get('position') == 'home'
+        acces_depuis_home = (
+            origine.get('position') == 'home'
             and positions[identifiant] == 'home')
-        if (premier_deploiement and deplacement
+        if (acces_depuis_home and deplacement
                 and actuel['position'] == configuration['bases_joueurs'][joueur]):
             rapports.afficher_et_ecrire(
-                f'{identifiant} : premier déploiement home -> village autorisé '
+                f'{identifiant} : accès home -> village autorisé '
                 f'avec {len(nouvelles)} nouvelle(s) unité(s).')
         elif actuel['entrainement'] and (cle == origine_cle or (
                 not origine.get('entrainement') and deplacement)):
             # Un rappel légal permet d'entraîner dans le home à l'arrivée.
             rapports.afficher_et_ecrire(
                 f'{identifiant} : entraînement autorisé, {len(nouvelles)} unité(s) ; '
-                + ('premier déploiement vers le village possible ce tour.'
-                   if premier_deploiement else 'départ possible au tour suivant.'))
+                + ('accès au village possible ce tour.'
+                   if acces_depuis_home else 'départ possible au tour suivant.'))
         elif origine.get('entrainement'):
             destination = chemin_general_actions(origine_cle, configuration)
             if destination.exists():

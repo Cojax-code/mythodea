@@ -94,7 +94,7 @@ Responsabilités :
 | `progression.py` | caractéristiques officielles, tirages pondérés et montée de niveau configurable |
 | `commandement.py` | calculs entiers, sélection des QG et donneurs d'ordres, sans effets tactiques supplémentaires |
 | `soldats.py` | identité individuelle, blessures, sauvetages et batailles survécues |
-| `formation.py` | hôpital, École et Forge du village, séjours, mémoires et transformations |
+| `formation.py` | formation en réserve, hôpital, École et Forge, séjours, mémoires et transformations |
 | `cycle_linux.py` | gel Linux, capture privée, publication de générations et permissions des phases Survie |
 | `survie_admin.py` | diagnostic, dégel de secours et republication explicitement autorisée, sans rejeu métier |
 | `crypte.py` | collecteur privé Survie, recette pédagogique, cooldown et attribution différée |
@@ -546,13 +546,13 @@ Deux champs privés complètent cette référence en Survie :
 - `rappels_en_attente` : dictionnaire identité → chemin relatif du home, rempli
   uniquement lorsqu'un rappel légal est accepté par l'audit.
 
-L'absence de ces champs équivaut à des collections vides : aucune exception de
-nouveauté n'est déduite de la seule présence dans le home, d'un renommage, du
-compteur ou de la fiche joueur. L'ajout d'une création officielle à la référence
-ne renouvelle pas les droits des anciens généraux. Le premier déploiement accepté
-consomme l'exception ; un rappel ne la réactive jamais. La publication complète
-renouvelle la référence sans ces champs, expirant toute exception inutilisée et
-libérant les rappels. Une reprise d'ACTIONS conserve ces informations ; elles
+L'absence de ces champs équivaut à des collections vides : aucune création
+officielle n'est déduite de la seule présence dans le home, d'un renommage, du
+compteur ou de la fiche joueur. Le premier déploiement accepté consomme le marqueur
+de nouveauté. Les généraux déjà validés au home ont également accès au village,
+même avec des ajouts d'unités ; un rappel du tour courant impose toujours son attente.
+La publication complète renouvelle la référence sans ces champs et libère les
+rappels. Une reprise d'ACTIONS conserve ces informations ; elles
 suivent les captures privées et la récupération habituelle du cycle.
 
 Pour un `mv` entre deux systèmes de fichiers, les inodes changent : les unités
@@ -566,14 +566,13 @@ Sous le gel de clôture, les identités vivantes sont relevées dans le champ
 L'audit supprime les seuls ajouts interdits et journalise la raison. Si un général
 a quitté une zone d'entraînement avec des ajouts, il revient à son chemin exact
 d'origine avec toutes ses unités, sans fatigue ni repli. Cela inclut les passages
-home/réserve et réserve/garnison. Seule exception : un général officiellement créé
-avant la fenêtre ACTIONS courante et jamais encore publié peut créer ses unités
-dans le home puis se déployer au village pendant cette même fenêtre, en garnison
-ou en réserve. La validation commune de sortie du home reste obligatoire : aucun
-saut direct vers un front, ni exemption des contrôles d'identité ou de collision.
-L'exception vaut aussi pour un général vide ; elle expire à la publication même
-s'il est resté au home. Un général ancien au home qui ajoute des unités reste
-soumis à l'attente, tout comme un général entraîné en réserve.
+réserve/garnison. Depuis home, un général nouvellement créé ou déjà enregistré
+dans la référence officielle précédente peut créer ses unités puis accéder
+immédiatement aux places et bâtiments autorisés du village, sans mouvement
+territorial. Le droit vaut aussi pour un général vide. La validation commune
+de sortie du home reste obligatoire : aucun saut direct vers un front, ni
+exemption des contrôles d'identité ou de collision. Les séjours complets des
+bâtiments et l'attente après entraînement en réserve restent applicables.
 
 Un rappel légal vers home peut être suivi d'entraînement à l'arrivée. Tout général
 rappelé doit rester au home jusqu'à la prochaine publication, même sans ajout
@@ -1516,7 +1515,8 @@ Cet aléatoire est indépendant de celui des combats existants.
 | Instinctif | 50 % | 15 % | 35 % |
 
 Champs ajoutés à `fiche.txt` : `niveau`, `nature`, `orientation_principale`, `trait_inne`,
-`points_commandement`, `moral`, `evolutions_acquises`, `evolution_apprise`.
+`points_commandement`, `moral`, `evolutions_acquises`, `evolution_apprise`,
+`progression_combat`, `progression_formation`.
 Les listes d'IDs sont séparées par des virgules ; l'absence d'évolution apprise
 est une valeur vide. Les anciens champs sont conservés. L'autorité est
 `.systeme/progression.json`, indexée par `joueur:generalN`. Modifier la fiche
@@ -1536,8 +1536,8 @@ Les poids restants sont redistribués proportionnellement par un tirage entier.
 Avec le catalogue actuel, un stratège reçoit du commandement ou l'ordre 1002
 encore non acquis ; un instinctif peut
 recevoir du moral jusqu'au plafond ou la technologie 104 encore non acquise.
-Si aucun choix n'est possible, une montée explicitement
-demandée n'accorde pas de récompense. Plusieurs évolutions dans une catégorie
+Si aucun choix n'est possible, la montée
+n'accorde pas de récompense. Plusieurs évolutions dans une catégorie
 nécessitent une règle de choix fournie par l'appelant.
 
 Un stratège commence avec 11 à 20 points. Une récompense au niveau `n` utilise
@@ -1554,9 +1554,38 @@ Les non-hybrides restent soumis aux restrictions de nature. Aucune capacité
 croisée n'est accordée automatiquement. Les profils antérieurs gardent leur nature ;
 leur orientation se déduit de celle-ci sans nouveau tirage.
 
-`progression_due` accepte une condition configurable et retourne faux sans
-condition. `attribuer_niveau` persiste une montée explicitement demandée par le
-moteur. Aucun seuil de batailles ni séjour en caserne ne déclenche encore de niveau.
+Les deux jauges indépendantes commencent à zéro :
+
+- Combat : un point si le général a personnellement participé à au moins un
+  affrontement de blocs adverses et possède encore des unités à la fin de toute
+  la résolution territoriale. Choc, manœuvres, duels et cascades ne comptent
+  ensemble qu'une fois. Défaite survécue et fuite après combat comptent ; fuite
+  sans engagement, bloc vide ou destruction avant la fin ne comptent pas.
+  Deux points donnent un niveau et remettent seulement cette jauge à zéro.
+- Formation : un point par tour complet validé dans la caserne militaire, dont
+  le dossier technique reste `village/<joueur>/reserve/`. Trois points donnent
+  un niveau et remettent seulement cette jauge à zéro.
+
+Le pilote traite les formations avant les combats, dans un ordre déterministe.
+Chaque niveau réutilise `monter_niveau` et les récompenses ci-dessus ; la mémoire
+apprise remplace le tirage du premier niveau concerné. Les tirages automatiques
+utilisent un générateur indépendant de celui des combats.
+
+`valider_evenement` persiste ensemble jauges, niveau, récompense et reçu privé
+`progressions_validees` dans `progression.json`, par écriture atomique. Les clés
+sont `formation:<tour>:<joueur>:<generalN>` et
+`combat:survie:<tour>:<territoire>` ; chaque profil a ses propres reçus.
+Représenter une même clé répare la copie de fiche sans redonner de point ou
+de récompense. Les reçus ne sont pas publiés dans `fiche.txt` et accompagnent
+les captures et sauvegardes. Le cycle Survie interrompu pendant la résolution
+reste bloqué pour récupération ; la republication ne rejoue pas les combats.
+En classique, chaque résolution appelée reçoit un UUID distinct : il n'existe
+pas de reprise automatique d'un tour classique interrompu.
+
+`progression_due` reste une API de condition administrative ; des observations
+brutes ne valident aucun événement. `attribuer_niveau` conserve son rôle d'appel
+explicite. Les profils existants commencent les jauges manquantes à zéro lors
+de leur première validation, sans reconstituer d'expérience antérieure.
 Un ancien général sans profil officiel reste inchangé, avec un moral effectif
 nul ; sa montée de niveau exige une migration explicitement définie.
 
@@ -1673,6 +1702,12 @@ doivent également être présents et inchangés pendant le tour. Une entrée ta
 substitution invalide le séjour concerné. Modifier une demande pendant ACTIONS
 ne remplace pas celle du début. Une reprise ne réinitialise pas le début du séjour.
 
+La formation en réserve utilise les mêmes relevés et validations. Comme plusieurs
+généraux partagent ce dossier, sa preuve conserve le périphérique et l'inode du
+parent, mais pas son ctime : l'arrivée d'un voisin n'annule pas le séjour.
+Le ctime du général lui-même reste contrôlé pour détecter sa sortie et son retour.
+Une arrivée pendant ACTIONS ne donne pas de point de formation pour ce tour.
+
 Après l'audit de la génération privée, les soins valides remettent les blessures
 à zéro sans toucher aux batailles ni aux statuts. Toutes les unités admissibles
 de tous les généraux présents sont traitées. Une validation consommée ne peut
@@ -1715,6 +1750,15 @@ Le général doit avoir une orientation principale instinctive et posséder l'é
 après avoir appris cette évolution. Après un tour complet, les cavaliers légers
 existants possédant `cheval`, `cuirasse`, `armure`, `casque`, `bouclier` sont renommés
 par le moteur en `cavalerie_LN`. Aucun coût ni ressource supplémentaire n'est ajouté.
+L'unité doit figurer dans la référence officiellement publiée au tour précédent
+de `unites_actions.json`. Sous gel d'ouverture, les signatures du cavalier et
+de son cheval sont rapprochées de cette référence ; les créations du tour courant
+sont exclues. Les UUID admissibles sont figés dans `eligibles_forge` du séjour.
+Le simple relevé d'entrée, une copie d'UUID ou une recette complète ne valident
+pas l'ancienneté. Un renommage ou déplacement conservant les identités physiques
+préserve l'éligibilité ; une copie ne la crée pas. Un transfert entre partitions
+sans correspondance d'identité attend la prochaine publication officielle.
+Un ancien séjour sans liste d'éligibilité ne transforme aucune unité.
 Une collision choisit le prochain numéro libre sans écraser l'existant. La recette
 doit être constituée de fichiers ordinaires sans liens.
 
@@ -1722,6 +1766,9 @@ Les fichiers, UUID, batailles, blessures et statuts sont conservés ; seules les
 données de type et de localisation changent dans le registre privé. Une recette,
 autorisation ou présence invalide ne supprime pas l'unité. Une conversion validée
 apparaît dans le rapport court du tour ; le résultat du séjour est aussi individuel.
+Les refus par cavalier sont expliqués dans le rapport long ; le résultat individuel
+signale un séjour sans transformation. L'audit commun des créations illégales reste
+distinct : un refus de Forge n'autorise pas le recrutement dans un bâtiment interdit.
 Une unité déjà lourde n'est pas transformée à nouveau. Le combat réutilise les
 valeurs de cavalerie lourde déjà définies, sans nouveau multiplicateur. En cas de
 conversion partielle d'un bloc, réorganiser ses types avant déploiement : les règles

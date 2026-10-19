@@ -10,19 +10,49 @@ from contextvars import ContextVar
 
 
 _participants = ContextVar('soldats_bataille_complete', default=None)
+_generaux_engages = ContextVar('generaux_bataille_complete', default=None)
 
 
 @contextmanager
-def bataille_complete(identifiant=None):
+def bataille_complete(identifiant=None, configuration=None):
     """Une résolution territoriale ; les duels n'incrémentent aucun compteur."""
     participants = set()
     jeton = _participants.set(participants)
+    engages = {}
+    jeton_generaux = _generaux_engages.set(engages)
     try:
         yield
+        identifiant = identifiant or 'classique:' + uuid.uuid4().hex
         if participants:
-            terminer_bataille(participants, identifiant or 'classique:' + uuid.uuid4().hex)
+            terminer_bataille(participants, identifiant)
+        import generaux
+        import progression
+        import etat
+        for cle in sorted(engages):
+            general = engages[cle]
+            if (not general['chemin'].is_dir() and configuration is not None
+                    and general['joueur'] in configuration['joueurs']):
+                officielle = etat.charger_positions_generaux().get(':'.join(cle))
+                if officielle in configuration['villages'] or officielle in {
+                        t.name for t in configuration['territoires']}:
+                    position, chemin = generaux.trouver_position_general(*cle, configuration)
+                    if chemin is not None and position == officielle:
+                        general = dict(general, chemin=chemin)
+            if (general['chemin'].is_dir() and
+                    any(sum(bloc.values()) for bloc in
+                        generaux.lire_composition_general(general['chemin']).values())):
+                progression.valider_evenement(general, 'combat', identifiant)
     finally:
+        _generaux_engages.reset(jeton_generaux)
         _participants.reset(jeton)
+
+
+def affrontement(general_1, general_2):
+    """Appelé uniquement pour deux blocs adverses effectivement confrontés."""
+    engages = _generaux_engages.get()
+    if engages is not None:
+        for general in (general_1, general_2):
+            engages[(general['joueur'], general['nom'])] = dict(general)
 
 
 def participer(general):

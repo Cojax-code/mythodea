@@ -508,23 +508,22 @@ Les joueurs créent ou finalisent les unités uniquement dans leur home ou dans
 les fronts, dans les renforts, au repli et dans la Crypte, y compris sa récompense.
 L'atelier pédagogique ne devient pas une zone de recrutement militaire.
 
-L'entraînement d'un général ancien impose d'attendre la publication avant de
+L'entraînement en réserve impose d'attendre la publication avant de
 quitter sa zone : un général entraîné au tour N puis déplacé est remis au chemin d'origine avec
 ses unités, sans fatigue ni sanction de repli. Au tour N+1, il peut partir
-normalement. L'interdiction inclut réserve/garnison et home/réserve.
+normalement. L'interdiction inclut réserve/garnison.
 En réserve, tout ajout d'unités impose cette attente, y compris avant un départ
 hors du village ; après publication, la réorganisation puis le mouvement normal
 redeviennent possibles.
 
-Un général réellement nouveau, créé officiellement par le moteur dans le home
-avant la fenêtre ACTIONS courante et jamais encore publié, bénéficie d'une
-exception pour cette seule fenêtre : il peut créer légalement ses unités au home
-puis se déployer immédiatement au village (garnison ou réserve). Un général vide
-peut également se déployer. Cette exception d'entraînement est limitée à
+Un général officiellement créé pendant le tour courant ou déjà validé au home
+dans l'état précédent peut créer légalement ses unités au home puis accéder
+immédiatement au village. Un général vide peut également se déployer.
+Ce droit d'accès sans consommation de mouvement territorial est limité à
 `home -> village`, y compris ses places et bâtiments autorisés. Aucun déplacement
 direct vers `est_1`, `est_2` ou `est_3` n'est autorisé depuis home, même après le
-tour 0, et aucune marche forcée ne contourne le village. L'exception expire à la première
-publication, même si le général est resté au home, ou dès son déploiement accepté.
+tour 0, et aucune marche forcée ne contourne le village. Les séjours complets
+imposés par les bâtiments restent obligatoires.
 Les unités ajoutées hors d'une zone autorisée sont supprimées par l'audit privé ;
 les unités déjà présentes sont conservées. Chaque refus est expliqué au rapport.
 
@@ -538,8 +537,8 @@ republication ne rejoue pas l'entraînement. Une ancienne partie dépourvue de
 référence nécessite une récupération, sans inventaire rétroactif automatique.
 Les champs privés `premiers_deploiements` et `rappels_en_attente` enregistrent
 respectivement les identités issues de la création moteur et les rappels légaux
-constatés par l'audit. Une présence au home, un déplacement ou un renommage ne
-confère jamais l'exception à une identité ancienne. La publication expire ces
+constatés par l'audit. Une simple présence physique ou un renommage ne remplace
+jamais la validation officielle de l'identité et de sa position. La publication expire ces
 marqueurs ; une reprise d'ACTIONS les conserve.
 
 Un général officiel peut être rappelé par `mv` d'une position légale au home de
@@ -1647,7 +1646,8 @@ représentation et les valeurs de combat sont définies dans `MYTHODEA_SPEC.md`.
 
 La transformation est assurée par la Forge commune `village/forge/1/<joueur>/`,
 une seule place tous joueurs confondus. Elle nécessite un tour complet, un général
-d'orientation instinctive possédant la technologie 104, et un cavalier existant
+d'orientation instinctive possédant la technologie 104, et un cavalier déjà validé
+dans l'état officiel du tour précédent,
 équipé de `cheval`, `cuirasse`, `armure`, `casque`, `bouclier`. Le moteur renomme
 le dossier en `cavalerie_LN` sans collision, conserve son identité et ses états,
 puis rapporte la conversion. Les règles détaillées et les scans sont communs
@@ -1659,8 +1659,12 @@ Les généraux et soldats utilisent les règles communes de la section 22 de
 `MYTHODEA_SPEC.md`. Une bataille survécue correspond à toute la résolution d'un
 territoire pendant le tour, cascades comprises. Seuls les généraux réellement
 engagés y participent ; les retraites différées conservent les compteurs obtenus.
-Les seuils de montée de niveau restent ouverts : aucune attribution automatique
-n'est déclenchée par ces compteurs.
+Un point de combat est attribué au général survivant ayant personnellement affronté
+un bloc adverse, au plus une fois par résolution territoriale. Deux points donnent
+un niveau. Trois tours complets validés dans la réserve donnent également un niveau
+par une jauge de formation indépendante. Le dossier technique reste `reserve/`.
+Seule la jauge déclenchée revient à zéro. Les formations précèdent les combats et
+les reçus privés persistants empêchent les doubles points et récompenses à la reprise.
 
 Le village possède les sous-zones `hopital/1..20` sous chaque dossier joueur
 (nombre configurable, places logiquement partagées), six places physiques communes

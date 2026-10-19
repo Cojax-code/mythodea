@@ -1,4 +1,4 @@
-"""Caractéristiques et récompenses des généraux ; aucun barème automatique."""
+"""Caractéristiques, jauges indépendantes et récompenses officielles des généraux."""
 from copy import deepcopy
 import json
 import random
@@ -25,6 +25,9 @@ RECOMPENSES = {
 
 NATURES = {'stratege': 45, 'instinctif': 45,
            'stratege_hybride': 5, 'instinctif_hybride': 5}
+SEUILS = {'combat': 2, 'formation': 3}
+# Les récompenses ne modifient pas la suite des tirages des combats.
+aleatoire_progression = random.Random()
 
 
 def orientation_principale(fiche):
@@ -64,7 +67,8 @@ def nouvelles_caracteristiques(aleatoire=None):
     trait = tirer_pondere(TRAITS[orientation], aleatoire)
     return dict(niveau=0, nature=nature, orientation_principale=orientation, trait_inne=trait,
                 points_commandement=gain_commandement(0, aleatoire) if orientation == 'stratege' else 0,
-                moral=0, evolutions_acquises=[], evolution_apprise=None)
+                moral=0, evolutions_acquises=[], evolution_apprise=None,
+                progression_combat=0, progression_formation=0)
 
 
 def evolutions_eligibles(fiche, catalogue=None, apprentissage=True):
@@ -127,7 +131,11 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
 
 
 def progression_due(fiche, observations, condition=None):
-    """Aucun niveau automatique tant qu'un barème n'a pas été configuré."""
+    """Compatibilité des conditions administratives ; aucun compteur brut ne fait foi.
+
+    Le pilote valide désormais les événements par valider_evenement, après les
+    preuves de combat ou de séjour. Cette API seule n'accorde aucun niveau.
+    """
     return bool(condition and condition(deepcopy(fiche), deepcopy(observations)))
 
 
@@ -171,7 +179,7 @@ def publier_fiche(chemin_general, caracteristiques):
     lignes = chemin.read_text(encoding='utf-8').splitlines() if chemin.exists() else []
     lignes = [l for l in lignes if l.split('=', 1)[0].strip() not in caracteristiques]
     for cle, valeur in caracteristiques.items():
-        if cle == 'apprentissages_valides':
+        if cle in ('apprentissages_valides', 'progressions_validees'):
             continue  # Journal de reprise privé, sans utilité dans la fiche joueur.
         if isinstance(valeur, list):
             valeur = ','.join(map(str, valeur))
@@ -193,3 +201,37 @@ def attribuer_niveau(general, aleatoire=None, catalogue=None, choisir_evolution=
     sauvegarder(donnees)
     publier_fiche(general['chemin'], nouvelle)
     return recompense
+
+
+def valider_evenement(general, voie, evenement, aleatoire=None):
+    """Un événement moteur attesté ; jauge, récompense et reçu atomiques.
+
+    Une reprise après l'enregistrement répare seulement la copie joueur. Les
+    anciens généraux sans profil ne reçoivent aucune caractéristique inventée.
+    """
+    seuil = SEUILS[voie]
+    donnees = charger()
+    identite = f"{general['joueur']}:{general['nom']}"
+    fiche = donnees.get(identite)
+    if fiche is None:
+        return False
+    cle = f'{voie}:{evenement}'
+    if cle in fiche.get('progressions_validees', {}):
+        publier_fiche(general['chemin'], fiche)
+        return False
+    fiche = deepcopy(fiche)
+    for source in SEUILS:
+        fiche.setdefault(f'progression_{source}', 0)
+    jauge = f'progression_{voie}'
+    fiche[jauge] += 1
+    recompense = None
+    if fiche[jauge] == seuil:
+        fiche, recompense = monter_niveau(
+            fiche, aleatoire_progression if aleatoire is None else aleatoire)
+        fiche[jauge] = 0
+    fiche.setdefault('progressions_validees', {})[cle] = {
+        'niveau': fiche['niveau'], 'recompense': recompense}
+    donnees[identite] = fiche
+    sauvegarder(donnees)
+    publier_fiche(general['chemin'], fiche)
+    return True

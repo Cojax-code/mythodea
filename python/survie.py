@@ -476,7 +476,7 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
             rapports.definir_territoire_rapport(territoire)
             mode = "OFF/DEF" if controle_avant.get(nom) in ("allies", "bot") else "OFF/OFF"
             import soldats
-            with soldats.bataille_complete(f'survie:{tour}:{nom}'):
+            with soldats.bataille_complete(f'survie:{tour}:{nom}', configuration):
                 batailles[nom] = resoudre_cascade(territoire, configuration, mode, en_cours_de_fuite)
     finally:
         rapports.definir_territoire_rapport(None)

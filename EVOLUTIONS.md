@@ -13,6 +13,23 @@ bataille. À 5 batailles ils deviennent vétérans, à 10 héroïques. Le moral 
 instinctif peut sauver des pertes en leur donnant une blessure ; leurs limites
 sont respectivement 1, 2 et 3 blessures. Un nouveau général a un moral nul.
 
+## Gagner des niveaux
+
+Deux jauges indépendantes apparaissent sur la fiche du général :
+
+- Deux résolutions territoriales survécues donnent un niveau, à condition d'avoir
+  personnellement affronté au moins un bloc adverse à chaque résolution.
+  Plusieurs duels dans un même territoire ne comptent qu'une fois. Une défaite
+  survécue ou une fuite après combat compte ; une fuite avant combat ne compte pas.
+- Trois tours complets dans `village/<joueur>/reserve/` donnent un niveau de
+  formation. Ce dossier reste le nom technique de la caserne militaire.
+
+Seule la jauge ayant déclenché le niveau revient à zéro. La formation est traitée
+avant les combats. Chaque niveau donne la récompense prévue par la nature et le
+trait ; un apprentissage de l'École remplace le tirage du prochain niveau.
+Les validations privées empêchent de réattribuer le même point ou la même récompense
+lors d'une reprise. Les compteurs visibles ne peuvent pas modifier l'état officiel.
+
 ## Aller à l'hôpital
 
 Depuis le village, déplacer le dossier complet dans une place libre :
@@ -84,21 +101,29 @@ sont conservés. Une recette incomplète laisse le cavalier intact. La conversio
 est annoncée dans le rapport du tour. Après une conversion partielle, séparer les
 types de cavalerie en blocs homogènes avant de les engager au combat.
 
+Le cavalier doit déjà avoir été accepté dans l'état officiel du tour précédent.
+Un cavalier créé pendant le tour actuel est refusé, même équipé et présent dès
+le début du séjour. Copier ou renommer un dossier ne lui donne pas cette ancienneté.
+Le refus de transformation conserve le dossier et ses fichiers ; sa raison figure
+dans le rapport long et le bilan du séjour dans `formation_resultat.txt`.
+Après un transfert entre partitions sans identité physique correspondante,
+attendre la prochaine publication officielle avant de commencer le séjour de Forge.
+
 ## Déplacements et retraites
 
 Depuis home, le passage par le village est obligatoire, à tous les tours. Les
 places et bâtiments autorisés du village sont accessibles sans coût territorial,
-y compris aux nouveaux généraux. Aucun déplacement direct vers `est_1` ni aucune
-marche forcée ne permet de sauter cette étape. Les délais d'entraînement et de
-rappel restent applicables ; les restrictions du tour 0 sont conservées.
+y compris aux nouveaux généraux et à ceux déjà validés dans home au tour précédent,
+même après ajout d'unités. Aucun déplacement direct vers `est_1` ni aucune
+marche forcée ne permet de sauter cette étape. Les délais des bâtiments, l'attente
+après entraînement en réserve et celle d'un rappel du tour courant restent
+applicables ; les restrictions du tour 0 sont conservées.
 Une récompense peut effectuer un déplacement normal dès sa publication.
 Un fuyard arrivant au village rejoint la réserve si la garnison ne peut l'accueillir,
 avec toutes ses unités et ses données.
 
 ## Ce qui attend encore une décision
 
-- Les conditions de gain de niveaux : batailles, caserne et barèmes. Le moteur
-  possède les fonctions de progression, mais ne donne aucun niveau automatiquement.
 - Les autres ordres et unités à gagner. Commandement 201, moral 202, technologie
   de Forge 104 et attaque frontale 1002 sont disponibles comme évolutions.
 - La matérialisation des QG et le raccordement de leurs priorités aux effets des
@@ -136,6 +161,8 @@ python3 -B -m unittest discover -s .dev/tests -v
 `test_soldats_formation.py` couvre les pertes, compteurs, transferts, soins,
 mémoires, séjours incomplets et publication privée. `test_complements_moteur.py`
 couvre les hybrides, la Forge, les bâtiments partagés et les nouveaux déplacements.
+`test_niveaux_home_forge.py` couvre les jauges, les engagements effectifs, les reprises
+sans double récompense, les accès depuis Home et l'ancienneté exigée par la Forge.
 Les tests temporaires n'utilisent
 pas une vraie partie. Le test `python/tests_linux/test_progression_isolee.py`
 vérifie séparément les droits Linux avec root et des UID de processus, sans créer
