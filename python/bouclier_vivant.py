@@ -190,6 +190,11 @@ def convertir_spore(general_zombie, adversaire, bloc_adverse, evenement, rng=Non
                   origine_officielle={'spore': evenement, 'territoire': territoire})
     soldats.sauvegarder(registre)
     soldats.publier(destination, identifiant, valeur)
+    # Le soldat transformé a survécu à son affrontement et doit recevoir
+    # exactement le crédit de cette bataille territoriale, pas deux.
+    participants = soldats._participants.get()
+    if participants is not None:
+        participants.add(destination)
     preuves[evenement]['terminee'] = True
     unites.sauver_capacites(donnees)
     return identifiant
