@@ -1735,6 +1735,8 @@ temporaires dus à `spore` ou `propagation` ne sont régulés qu'après l'ensemb
 de la résolution territoriale : les créations de ce territoire sont supprimées
 en premier et les soldats historiques sont préservés.
 
-**Point restant ouvert :** si deux généraux adverses possèdent chacun un
-Bouclier vivant, la priorité mutuelle n'a pas encore de règle validée ; la
-résolution refuse ce cas plutôt que d'inventer un résultat.
+**Précision validée :** Propagation et Spore sont sans effet entre Zombies.
+Lorsque deux généraux zombies adverses possèdent chacun un Bouclier vivant,
+les deux Gros zombies s'ignorent, et les autres Zombies combattent selon les
+règles ordinaires, sans intervention de Spore ni de Propagation entre eux.
+L'étiquette `infatigable` n'a pas encore d'effet activé.
