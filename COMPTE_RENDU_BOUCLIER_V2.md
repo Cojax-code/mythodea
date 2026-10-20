@@ -24,7 +24,7 @@
 4. Vérifier interruption à chaque point d'écriture de Spore, Propagation et résistance : la reprise doit refuser le rejeu partiel et ne publier aucun état incomplet.
 5. Vérifier plusieurs duels contre différents généraux dans une **même** bataille territoriale, puis une seconde bataille où la résistance repart à 250.
 6. Vérifier les effets du moral, fatigue, ordres actuellement existants, fuite, autres unités et rapport progressif.
-7. **Règle encore ouverte :** affrontement de deux généraux adverses ayant chacun un Bouclier vivant. Le moteur le refuse explicitement.
+7. **Décision validée :** deux Boucliers vivants adverses s'ignorent, les Zombies ordinaires combattent normalement ; aucune Spore ni Propagation ne s'applique entre Zombies. Vérifier toutefois que les boucliers sont bien exclus de toutes les confrontations ordinaires.
 8. Lorsque plusieurs blocs sont favorables aux Zombies ordinaires, le code utilise l'ordre de parcours des blocs actuel ; vérifier avec le joueur s'il souhaite un autre départage.
 9. Vérifier que le bouclier détruit n'est jamais traité à tort comme une unité ordinaire de valeur 250 dans les autres fonctions de combat.
 
