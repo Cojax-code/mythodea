@@ -313,11 +313,6 @@ def terminer_territoire(territoire, evenement, configuration):
 
 @contextmanager
 def duel(general_1, general_2):
-    import generaux
-    for general in (general_1, general_2):
-        composition = generaux.lire_composition_general(general['chemin'])
-        if any(bloc.get('Trop_gros_zombie') for bloc in composition.values()):
-            raise ValueError('Bouclier vivant prioritaire : absorption des ripostes et partage entre boucliers à définir.')
     identifiant = uuid.uuid4().hex
     memoriser_sauvageons((general_1, general_2), identifiant)
     courant = {'id': identifiant, 'confrontation': 0, 'propagation': False}
