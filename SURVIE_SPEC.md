@@ -1693,3 +1693,48 @@ le document partagé est régénéré depuis l'état officiel après publication
 Les fonctions de commandement et de QG sont communes, mais leur raccordement
 aux effets des ordres attend les règles de matérialisation et de priorité encore
 ouvertes. Les bots conservent leur résolution tactique classique.
+
+
+## Unités zombies — Bouclier vivant et progression (décision du 20 octobre 2026)
+
+Lors de sa mort définitive, un général joueur dispose d'un unique tirage de
+5 % pour réapparaître comme général zombie à la Morgue. Cette transformation
+est permanente ; elle crée un cadavre officiel consommable une fois pour fabriquer
+un Trop gros zombie. La Morgue ouvre dès la première résurrection zombie.
+À la montée de niveau, un général zombie n'obtient aucun ordre ni autre récompense,
+mais sa capacité globale augmente définitivement de deux places par niveau gagné
+**après** la transformation. La capacité initiale demeure 20 places.
+
+Une armée de général zombie ne peut posséder qu'un seul
+`Trop_gros_zombie`. Celui-ci occupe dix places, n'inflige pas de pertes
+directes et porte les étiquettes `bouclier_vivant` et `spore`.
+Sa réserve de résistance est 250. Durant sa priorité avant le choc initial,
+il affronte successivement les blocs adverses : un bloc de puissance effective
+P le détruit immédiatement si P est supérieur ou égal à sa résistance R ;
+sinon sa résistance devient R - P/4 (valeur rationnelle, sans arrondi).
+Les rapports de force intègrent la faiblesse ×2 subie par les Zombies,
+sans diminuer deux fois la réserve. La résistance résiduelle est conservée
+entre tous les duels du même territoire, puis rétablie à 250 à la fin des combats
+territoriaux, si le bouclier existe toujours.
+
+Chaque rencontre du Bouclier vivant avec un bloc adverse applique `spore`,
+même lorsque le bouclier est détruit : parmi les soldats adverses réellement
+présents, le moins expérimenté est transformé en Zombie (tirage aléatoire à
+égalité), conserve son identité et rejoint le plus gros bloc zombie compatible.
+L'affrontement ne tue pas directement d'autres soldats adverses.
+Les Zombies ordinaires attaquent ensuite un bloc présentant une possibilité
+favorable d'affrontement ; à défaut, les positions identiques prévalent, puis
+une autre cible vivante. Le Bouclier reprend ensuite contre les survivants.
+S'il meurt, le moteur reprend le déroulement normal, ordres compris, sans rejouer
+sa phase prioritaire. Si aucun Zombie combattant ordinaire ne subsiste, le bouclier
+disparaît et son général est vaincu.
+
+Après chaque affrontement d'un bloc de Zombies ordinaires non décimé,
+`propagation` crée ceil(pertes adverses/2) Zombies dans ce bloc. Les débordements
+temporaires dus à `spore` ou `propagation` ne sont régulés qu'après l'ensemble
+de la résolution territoriale : les créations de ce territoire sont supprimées
+en premier et les soldats historiques sont préservés.
+
+**Point restant ouvert :** si deux généraux adverses possèdent chacun un
+Bouclier vivant, la priorité mutuelle n'a pas encore de règle validée ; la
+résolution refuse ce cas plutôt que d'inventer un résultat.
