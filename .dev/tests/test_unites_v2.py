@@ -65,7 +65,7 @@ class UnitesV2(unittest.TestCase):
         self.assertEqual(self.unites.occupation({'avant': {'Trop_gros_zombie': 1},
                                                 'arriere': {'zombie': 10}}), 20)
         self.assertEqual(self.combats.combat_bloc(dict(type='Trop_gros_zombie', nombre=1),
-                                                 dict(type='archer', nombre=5)), (0, 5))
+                                                 dict(type='archer', nombre=5)), (1, 5))
 
     def test_non_combattant_ne_cause_aucun_degat_ni_division_zero(self):
         a, b = dict(type='messager_du_QG', nombre=10), dict(type='archer', nombre=1)
@@ -384,6 +384,8 @@ class UnitesV2(unittest.TestCase):
         apres, recompense = self.progression.monter_niveau(fiche, Mock())
         self.assertIsNone(recompense)
         self.assertEqual(apres['niveau'], fiche['niveau'] + 1)
+        self.assertEqual(apres['niveaux_zombie'], 1)
+        self.assertEqual(self.progression.capacite_maximale(apres), 22)
         self.assertEqual(apres['evolutions_acquises'], fiche['evolutions_acquises'])
         fiche.pop('etat_zombie')
         catalogue = {105: dict(categorie='unite', disponible=True, natures=None),
