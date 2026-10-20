@@ -68,6 +68,13 @@ def _combat_entre_generaux(general_1, general_2):
             or bouclier_vivant.presence_bouclier(general_2)):
         zombie, ennemi = (general_1, general_2) if bouclier_vivant.presence_bouclier(general_1) else (general_2, general_1)
         termine, details_bouclier = bouclier_vivant.resoudre_priorite(zombie, ennemi)
+        if zombie is general_2:
+            # Les colonnes des rapports suivent general_1 / general_2.
+            details_bouclier = [
+                dict(d, **{f'{cle}_1': d[f'{cle}_2'] for cle in ('bloc', 'type', 'initial', 'final')},
+                     **{f'{cle}_2': d[f'{cle}_1'] for cle in ('bloc', 'type', 'initial', 'final')})
+                for d in details_bouclier
+            ]
         if termine:
             return {
                 "joueur_1": joueur_1, "camp_1": camp_1, "camp_2": camp_2,
