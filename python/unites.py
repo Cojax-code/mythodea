@@ -340,7 +340,11 @@ def apres_confrontation(general_1, general_2, bloc_1, bloc_2, infos_1, infos_2, 
     contexte['confrontation'] += 1
     for general, bloc, infos, pertes in (
             (general_1, bloc_1, infos_1, pertes_2), (general_2, bloc_2, infos_2, pertes_1)):
-        if not etiquette(infos['type'], 'propagation') or infos['nombre'] <= 0 or not pertes:
+        adversaire = infos_2 if general is general_1 else infos_1
+        # Aucun Zombie, même un Gros zombie, ne se propage contre un autre Zombie.
+        if (etiquette(adversaire['type'], 'mort_vivant') or
+                not etiquette(infos['type'], 'propagation') or
+                infos['nombre'] <= 0 or not pertes):
             continue
         evenement = f"{contexte['id']}:{contexte['confrontation']}:{general['joueur']}:{general['nom']}"
         nombre = propager(general, bloc, len(pertes), infos['nombre'], evenement, contexte['id'])
