@@ -116,7 +116,7 @@ def materialiser(c):
         fiches = progression.charger()
         fiches[cle]['mort'] = True
         historique = deepcopy(mort['historique'])
-        historique.update(etat_zombie=True, origine_zombie=cle, mort=False)
+        historique.update(etat_zombie=True, niveaux_zombie=0, origine_zombie=cle, mort=False)
         fiches[f'{joueur}:{nom}'] = historique
         progression.sauvegarder(fiches)
         progression.publier_fiche(chemin, historique)
@@ -205,7 +205,11 @@ def consommer_rituel(c, preuve, general):
             raise RuntimeError('Rituel déjà consommé sans unité présente : vérifier la génération, sans rejeu.')
         return False
     import generaux
-    if unites.occupation(generaux.lire_composition_general(general['chemin'])) + 10 > config.max_unites_par_general:
+    if any(bloc.get('Trop_gros_zombie', 0) for bloc in
+           generaux.lire_composition_general(general['chemin']).values()):
+        raise ValueError('Un seul Trop gros zombie par général.')
+    if (unites.occupation(generaux.lire_composition_general(general['chemin'])) + 10
+            > progression.capacite_maximale_general(general)):
         raise ValueError('Dix places libres sont nécessaires au Trop gros zombie.')
     destination = general['chemin'] / preuve['bloc'] / ('Trop_gros_zombie_' + identifiant)
     # Réserver d'abord la ressource : jamais de seconde unité après interruption.
