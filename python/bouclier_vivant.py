@@ -304,7 +304,13 @@ def resoudre_priorite(general_zombie, adversaire):
         }
         detail = combats.attaque_ciblee(armee, general_zombie, adversaire,
                                        bloc_zombie, bloc_adverse)
-        details.append(dict(detail, moment='Zombies ordinaires'))
+        details.append(dict(moment='Zombies ordinaires',
+                            bloc_1=bloc_zombie, type_1=detail['type_attaquant'],
+                            initial_1=detail['initial_attaquant'],
+                            final_1=detail['final_attaquant'],
+                            bloc_2=bloc_adverse, type_2=detail['type_defenseur'],
+                            initial_2=detail['initial_defenseur'],
+                            final_2=detail['final_defenseur']))
         generaux.supprimer_general_si_vide(adversaire)
         if not adversaire['chemin'].is_dir():
             return True, details
