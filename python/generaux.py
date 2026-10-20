@@ -997,14 +997,21 @@ def verifier_limite_unites_general(chemin_general):
     import unites
     total = unites.occupation(lire_composition_general(chemin_general))
 
-    if total <= config.max_unites_par_general:
+    import progression
+    # Le nom du propriétaire se trouve dans le chemin, y compris à la Morgue.
+    joueurs = [j for j in config.joueurs if j in chemin_general.parts]
+    fiche = (progression.caracteristiques_general(
+        {'joueur': joueurs[0], 'nom': chemin_general.name}) if len(joueurs) == 1
+        else None)
+    limite = progression.capacite_maximale(fiche)
+    if total <= limite:
         return
 
-    surplus = total - config.max_unites_par_general
+    surplus = total - limite
 
     rapports.afficher_et_ecrire(
         f"{chemin_general.name} dépasse la limite : "
-        f"{total}/{config.max_unites_par_general} unités. "
+        f"{total}/{limite} unités. "
         f"{surplus} unité(s) supprimée(s)."
     )
 
