@@ -398,6 +398,61 @@ class UnitesV2(unittest.TestCase):
             self.assertEqual(rng.randint.call_args.args, (0, 1))
 
 
+    def test_spore_transforme_le_moins_experimente_et_garde_identite(self):
+        bouclier = importlib.import_module('bouclier_vivant')
+        zombie = self.creer(nombre=0)
+        self.speciale(zombie, 'zombie', bloc='arriere')
+        chemin = self.general('bot', numero=1, territoire='est_3',
+                              nombre=2, equipement='pique')
+        ennemi = dict(joueur='bot', nom=chemin.name, chemin=chemin)
+        registre = self.soldats.charger()
+        candidats = sorted((chemin / 'avant').iterdir())
+        ids = []
+        for i, dossier in enumerate(candidats):
+            identifiant = self.soldats.enregistrer(dossier, registre, 'piquier')
+            registre[identifiant]['batailles'] = 8 if i == 0 else 1
+            self.soldats.publier(dossier, identifiant, registre[identifiant])
+            ids.append(identifiant)
+        self.soldats.sauvegarder(registre)
+        choix = bouclier.convertir_spore(zombie, ennemi, 'avant', 'spore:test')
+        self.assertEqual(choix, ids[1])
+        resultat = self.soldats.charger()[choix]
+        self.assertEqual((resultat['type'], resultat['batailles']), ('zombie', 1))
+        self.assertEqual(self.generaux.lire_composition_general(zombie['chemin'])['arriere'],
+                         {'zombie': 2})
+        self.assertEqual(self.generaux.lire_composition_general(chemin)['avant'],
+                         {'piquier': 1})
+        self.assertIsNone(bouclier.convertir_spore(zombie, ennemi, 'avant', 'spore:test'))
+
+    def test_bouclier_intervient_avant_choc_et_spore_agit(self):
+        zombie = self.creer(nombre=0)
+        self.speciale(zombie, 'Trop_gros_zombie', bloc='avant')
+        for n in range(1, 11):
+            self.speciale(zombie, 'zombie', n, bloc='arriere')
+        chemin = self.general('bot', numero=1, territoire='est_3',
+                              nombre=3, equipement='pique')
+        ennemi = dict(joueur='bot', nom=chemin.name, chemin=chemin)
+        registre = self.soldats.charger()
+        for dossier in (chemin / 'avant').iterdir():
+            identifiant = self.soldats.enregistrer(dossier, registre, 'piquier')
+            self.soldats.publier(dossier, identifiant, registre[identifiant])
+        self.soldats.sauvegarder(registre)
+        with self.soldats.bataille_complete('survie:0:est_3', self.profil):
+            resultat = self.combats.combat_entre_generaux(zombie, ennemi)
+        self.assertTrue(resultat['chocs'])
+        self.assertEqual(resultat['chocs'][0]['type_1'], 'Trop_gros_zombie')
+        self.assertIn('spores', self.unites.charger_capacites())
+
+    def test_resistance_reste_entre_duels_d_un_territoire(self):
+        bouclier = importlib.import_module('bouclier_vivant')
+        zombie = self.creer(nombre=0)
+        with self.soldats.bataille_complete('survie:9:est_3', self.profil):
+            bouclier._sauver_resistance(zombie, 212.5)
+            self.assertEqual(bouclier._lire_resistance(zombie), 212.5)
+        self.assertEqual(bouclier._lire_resistance(zombie), 250)
+
+
+
 class CryptePlaines(unittest.TestCase):
     gestion = test_crypte.Crypte.gestion
     general = test_crypte.Crypte.general
