@@ -2,6 +2,7 @@
 import random
 
 import catalogues
+import bouclier_vivant
 import config
 import etat
 import generaux
@@ -62,10 +63,30 @@ def _combat_entre_generaux(general_1, general_2):
         f"{joueur_2} {rapports.nom_affichage_general(general_2)}"
     )
 
+    details_bouclier = []
+    if (bouclier_vivant.presence_bouclier(general_1)
+            or bouclier_vivant.presence_bouclier(general_2)):
+        zombie, ennemi = (general_1, general_2) if bouclier_vivant.presence_bouclier(general_1) else (general_2, general_1)
+        termine, details_bouclier = bouclier_vivant.resoudre_priorite(zombie, ennemi)
+        if termine:
+            return {
+                "joueur_1": joueur_1, "camp_1": camp_1, "camp_2": camp_2,
+                "general_1": general_1["nom"],
+                "affichage_1": rapports.nom_affichage_general(general_1),
+                "initial_1": initial_1,
+                "final_1": generaux.total_general_depuis_chemin(chemin_1),
+                "joueur_2": joueur_2, "general_2": general_2["nom"],
+                "affichage_2": rapports.nom_affichage_general(general_2),
+                "initial_2": initial_2,
+                "final_2": generaux.total_general_depuis_chemin(chemin_2),
+                "chocs": details_bouclier, "manoeuvres": [],
+            }
+
     initiative_avant, details_choc = phase_engagement_initial(
         general_1,
         general_2
     )
+    details_choc = details_bouclier + details_choc
 
     details_manoeuvre = []
 
