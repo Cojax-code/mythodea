@@ -191,7 +191,7 @@ def sauver_capacites(donnees):
 def propager(general, bloc, pertes_adverses, survivants, evenement, duel):
     """Le résolveur fournit le bloc destinataire et une identité de confrontation.
 
-    Aucune limite ici : elle s'applique exclusivement à la fermeture du duel.
+    Aucune limite ici : elle s'applique exclusivement après la bataille territoriale.
     Une décision réservée n'est jamais tirée ni appliquée une seconde fois.
     """
     import config
@@ -220,7 +220,7 @@ def propager(general, bloc, pertes_adverses, survivants, evenement, duel):
         registre[identifiant] = dict(type='zombie', chemin=soldats.cle(chemin),
             device=infos.st_dev, inode=infos.st_ino, blessures=0, batailles=0,
             derniere_bataille=None, batailles_comptees=[],
-            origine_officielle={'propagation': evenement, 'duel': duel})
+            origine_officielle={'propagation': evenement, 'duel': duel, 'territoire': territoire})
         soldats.publier(chemin, identifiant, registre[identifiant])
     soldats.sauvegarder(registre)
     d['propagations'][evenement]['terminee'] = True
