@@ -49,7 +49,7 @@ def ecrire_json(chemin, valeur):
     etat.ecrire_prive(chemin, json.dumps(valeur, ensure_ascii=False, indent=2) + "\n")
 
 
-def copier(source, destination, verifier=lambda: None, exclure=()):
+def copier(source, destination, verifier=lambda: None, exclure=(), exercices=()):
     """Copie physique vérifiée ; garde UID/GID/modes, jamais les liens source."""
     verifier()
     sans_liens(source)
@@ -58,9 +58,9 @@ def copier(source, destination, verifier=lambda: None, exclure=()):
     if stat.S_ISDIR(infos.st_mode):
         destination.mkdir(mode=0o700)
         for enfant in sorted(source.iterdir()):
-            if enfant.name in exclure:
+            if enfant.name in exclure or enfant in exercices:
                 continue
-            copier(enfant, destination / enfant.name, verifier)
+            copier(enfant, destination / enfant.name, verifier, exercices=exercices)
         synchroniser_dossier(destination)
     elif stat.S_ISREG(infos.st_mode):
         empreinte = hashlib.sha256()
@@ -434,6 +434,8 @@ class Generations:
             defis.scanner(self.c, self.horloge, cloture=True)
             import securite
             import soldats
+            import morgue
+            morgue.relever_rituels(self.c, tour)
             soldats.synchroniser(self.c)
             import formation
             formation.clore_tour(self.c, tour)
@@ -448,7 +450,8 @@ class Generations:
             for source in (*self.c['territoires'], self.c['repli_path']):
                 if source.exists():
                     copier(source, capture / 'game' / source.name, verifier,
-                           exclure=('clocher',) if source.name in self.c['villages'] else ())
+                           exclure=('clocher',) if source.name in self.c['villages'] else (),
+                           exercices=tuple(morgue.zone(self.c, j) / 'rituels' for j in self.c['joueurs']))
             dossier_prive(capture / 'game/.systeme')
             for nom in config.ETATS_METIER:
                 source = self.game / '.systeme' / nom
@@ -606,6 +609,9 @@ class Generations:
             import securite
             import soldats
             soldats.synchroniser(self.c, publication=True)
+            import morgue
+            morgue.actualiser_cadavres(self.c)
+            morgue.preparer(self.c)
             import formation
             formation.preparer(self.c)
             securite.memoriser_unites_actions(self.c, tour + 1)

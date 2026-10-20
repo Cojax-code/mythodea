@@ -11,11 +11,14 @@ ETATS_METIER = (
     "positions_generaux.txt", "fatigue_generaux.txt", "controle_territoires.txt",
     "attente_repli.txt", "meteo.txt",
     "crypte.json", "compteur_creation_normale_j1.txt", "compteur_creation_normale_j2.txt",
+    "crypte_des_plaines.json",
     "unites_actions.json",
     "defis.json",
     "progression.json",
     "soldats.json",
     "formation.json",
+    "morgue.json",
+    "capacites_unites.json",
 )
 
 
@@ -280,6 +283,8 @@ def configuration_mode(mode):
         "emplacements_hopital": [str(n) for n in range(1, 21)],
         "emplacements_ecole": [str(n) for n in range(1, 7)],
         "permissions_generaux": {"dossiers": 0o700, "fichiers": 0o600},
+        "probabilite_general_zombie": 0.05,
+        "acces_morgue": 'premiere_apparition',
         "duree_phase_action_secondes": duree_action,
         "duree_consultation_secondes": 60,
         "duree_gel_secondes": 10,

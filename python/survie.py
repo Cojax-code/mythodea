@@ -457,6 +457,8 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
     controle_avant = etat.charger_controle_territoires(configuration)
     profil_audit = dict(configuration, tour_preparation=(tour == 0))
     securite.verifier_tous_les_deplacements(profil_audit)
+    import morgue
+    morgue.resoudre_rituels(configuration, tour)
     import formation
     formation.resoudre_tour(configuration, tour)
     bloques = {}
@@ -481,6 +483,10 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
     finally:
         rapports.definir_territoire_rapport(None)
     mouvements.appliquer_retraites_surnombre(en_cours_de_fuite, configuration)
+    import unites
+    for nom in conflits:
+        unites.soigner_victoire_territoriale(configuration, configuration['game_path'] / nom,
+                                           f'survie:{tour}:{nom}')
     rattrapages = rattraper_ennemis(bloques, configuration)
     securite.controler_coherence_territoires(configuration)
     plateau.sauvegarder_controle_territoires(configuration)
@@ -491,6 +497,7 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
     if defaite:
         rapports.afficher_et_ecrire("DÉFAITE : le bot contrôle le village.")
         rapports.ecrire_rapport_court("DÉFAITE : le bot contrôle le village.")
+    morgue.materialiser(configuration)
     crypte.materialiser(configuration, tour)
     import defis
     defis.materialiser(configuration, tour)

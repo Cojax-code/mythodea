@@ -7,10 +7,12 @@ import stat
 import uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
+from fractions import Fraction
 
 
 _participants = ContextVar('soldats_bataille_complete', default=None)
 _generaux_engages = ContextVar('generaux_bataille_complete', default=None)
+_bataille = ContextVar('identite_bataille_complete', default=None)
 
 
 @contextmanager
@@ -20,6 +22,7 @@ def bataille_complete(identifiant=None, configuration=None):
     jeton = _participants.set(participants)
     engages = {}
     jeton_generaux = _generaux_engages.set(engages)
+    jeton_bataille = _bataille.set((identifiant, configuration))
     try:
         yield
         identifiant = identifiant or 'classique:' + uuid.uuid4().hex
@@ -43,8 +46,16 @@ def bataille_complete(identifiant=None, configuration=None):
                         generaux.lire_composition_general(general['chemin']).values())):
                 progression.valider_evenement(general, 'combat', identifiant)
     finally:
+        _bataille.reset(jeton_bataille)
         _generaux_engages.reset(jeton_generaux)
         _participants.reset(jeton)
+
+
+def mort_general(general):
+    contexte = _bataille.get()
+    if contexte and contexte[1] is not None:
+        import morgue
+        morgue.enregistrer_mort(contexte[1], general, contexte[0])
 
 
 def affrontement(general_1, general_2):
@@ -61,6 +72,8 @@ def participer(general):
     if participants is not None:
         for bloc in generaux.lire_blocs_general(general['chemin']).values():
             participants.update(bloc['unites'])
+            participants.update(bloc.get('soutiens', ()))
+            participants.update(bloc.get('boucliers', ()))
 
 
 def limite_blessures(batailles):
@@ -158,10 +171,12 @@ def synchroniser(configuration, publication=False):
     """
     import config
     import generaux
+    import etat
     from cycle_linux import sans_liens
     donnees = charger()
-    if not donnees:
-        return
+    reference = etat.charger_unites_actions(configuration) or {'generaux': {}}
+    validees = {(u[0], u[1], u[-1]) for g in reference['generaux'].values()
+                for u in g['unites'].values()}
     presents = set()
     observations = []
     for joueur in configuration['acteurs']:
@@ -209,7 +224,10 @@ def synchroniser(configuration, publication=False):
                    and joueur in Path(v['chemin']).parts
                    for i, v in donnees.items()):
                 raise RuntimeError('Transfert sans identité de soldat : récupération explicite requise.')
-            continue
+            if publication or (infos.st_dev, infos.st_ino, type_unite) in validees:
+                identifiant = enregistrer(unite, donnees, type_unite)
+            else:
+                continue
         presents.add(identifiant)
         valeur = donnees[identifiant]
         infos = unite.stat()
@@ -224,8 +242,9 @@ def pertes(infos, survivants, moral=0, aleatoire=None):
     import config
     import generaux
     import shutil
+    import unites
     aleatoire = random if aleatoire is None else aleatoire
-    if type(moral) is not int or not 0 <= moral <= 100:
+    if (type(moral) is not int and not isinstance(moral, Fraction)) or not 0 <= moral <= 100:
         raise ValueError('Moral entier de 0 à 100 requis.')
     nombre_pertes = infos['nombre'] - survivants
     if nombre_pertes <= 0:
@@ -239,7 +258,8 @@ def pertes(infos, survivants, moral=0, aleatoire=None):
         if identifiant is None and unite in tentatives:
             identifiant = enregistrer(unite, donnees, generaux.identifier_unite(unite))
         valeur = donnees.get(identifiant)
-        if unite in tentatives and valeur['blessures'] < limite_blessures(valeur['batailles']):
+        if (unite in tentatives and valeur['blessures'] <
+                unites.blessures_max(valeur['type'], valeur['batailles'])):
             valeur['blessures'] += 1
             publier(unite, identifiant, valeur)
         else:
@@ -247,10 +267,20 @@ def pertes(infos, survivants, moral=0, aleatoire=None):
             shutil.rmtree(unite)
             if valeur is not None:
                 valeur['detruit'] = True
-    if donnees:
-        sauvegarder(donnees)
     infos['unites'] = [u for u in infos['unites'] if u.exists()]
     infos['nombre'] = len(infos['unites'])
+    if infos['nombre'] == 0 and not any(u.exists() for u in infos.get('boucliers', ())):
+        for unite in infos.get('soutiens', ()):
+            identifiant = retrouver(unite, donnees, config.dans_generation_privee())
+            if unite.exists():
+                shutil.rmtree(unite)
+            if identifiant in donnees:
+                donnees[identifiant]['detruit'] = True
+            supprimes.append(f'{unite.name} (messager_du_QG)')
+        if 'soutiens' in infos:
+            infos['soutiens'] = []
+    if donnees:
+        sauvegarder(donnees)
     return supprimes
 
 

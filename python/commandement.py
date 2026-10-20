@@ -13,6 +13,14 @@ def effectif(points, types_unites):
     return points // max(1, len(types))
 
 
+def effectif_general(fiche, composition):
+    """Applique une fois l'effet racial à l'armée avant la diversité des types."""
+    import unites
+    ajustee = unites.caracteristiques_armee(fiche, composition)
+    return effectif(ajustee['points_commandement'],
+                    [t for bloc in composition.values() for t, nombre in bloc.items() if nombre])
+
+
 def global_armee(generaux, qg):
     """Les caractéristiques reçues doivent provenir de l'état privé du moteur."""
     strateges = [g for g in generaux if progression.orientation_principale(g) == 'stratege']

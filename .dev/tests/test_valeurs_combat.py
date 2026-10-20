@@ -23,7 +23,7 @@ class ValeursCombat(unittest.TestCase):
         return dict(type=type_unite, nombre=nombre)
 
     def test_catalogue_valeurs_separees_de_fabrication_et_validation_stricte(self):
-        self.assertEqual([u['valeur_combat'] for u in self.catalogues.UNITES.values()], [5] * 4)
+        self.assertEqual([self.catalogues.UNITES[i]['valeur_combat'] for i in (1, 2, 3, 4)], [5] * 4)
         self.assertIsNone(self.catalogues.UNITES[4]['fabrication'])
         definition = self.catalogues.UNITES[1]
         for valeur in (0, -1, True, False, 5.0, '5', None):

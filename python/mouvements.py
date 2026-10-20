@@ -367,6 +367,8 @@ def appliquer_retraites_surnombre(destinations, configuration):
 
     positions = etat.charger_positions_generaux()
     for general, destination in destinations:
+        import unites
+        unites.regenerer_fuite(general, configuration)
         territoire_arrivee = next(t for t in configuration["territoires"]
                                   if destination.is_relative_to(t))
         arrivee = territoire_arrivee.name

@@ -97,6 +97,9 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
     """
     aleatoire = random if aleatoire is None else aleatoire
     resultat = deepcopy(fiche)
+    if resultat.get('etat_zombie'):
+        resultat['niveau'] += 1
+        return resultat, None
     eligibles = evolutions_eligibles(resultat, catalogue)
     identifiant = resultat.get('evolution_apprise')
     if identifiant is not None and identifiant not in eligibles:
@@ -115,6 +118,8 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
                 identifiant = choisir_evolution(tuple(candidats), aleatoire)
                 if identifiant not in candidats:
                     raise ValueError('Évolution sélectionnée hors catalogue éligible.')
+            elif categorie == 'unite':
+                identifiant = candidats[aleatoire.randint(0, len(candidats) - 1)]
             else:
                 raise ValueError('Règle de choix dans la catégorie à configurer.')
     resultat['niveau'] += 1

@@ -107,7 +107,7 @@ def lire_etat_exploration(configuration, vague):
                     libelle = 'Récompense Crypte (hors combat)'
                 elif zone.get('batiment'):
                     libelle = {'hopital': 'Hôpital', 'ecole_officiers': 'École des officiers',
-                               'forge': 'Forge'}[zone['batiment']] + ' (hors combat)'
+                                 'forge': 'Forge', 'crypte_des_plaines': 'Crypte des plaines'}[zone['batiment']] + ' (hors combat)'
                 elif village and joueur in configuration['joueurs']:
                     libelle = 'Réserve (hors combat)'
                 else:

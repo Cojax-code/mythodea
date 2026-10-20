@@ -368,6 +368,11 @@ def general_possede_ordre(
     if general is None:
         return False
 
+    if general.get('chemin'):
+        import morgue
+        if morgue.est_zombie(general):
+            return False
+
     for ordre in general.get("ordres", []):
         if (
             ordre["identifiant"]
@@ -407,9 +412,16 @@ def zones_generaux_territoire(territory, joueur, configuration=None):
                           'commun': True}
                          for place in places)
         if configuration['mode'] == 'survie':
+            zones.append({'position': territory.name,
+                          'chemin': joueur_dir / 'hopital/morgue/generaux', 'morgue': True})
             zones.append({'position': territory.name, 'chemin': joueur_dir / 'crypte/recompense',
                           'crypte': True})
     if configuration["mode"] == "survie" and joueur in configuration["joueurs"] and not village:
+        if territory.name == 'est_1':
+            zones.append({'position': territory.name,
+                          'chemin': territory / 'crypte_des_plaines/1' / joueur,
+                          'emplacement': 'crypte_des_plaines/1', 'batiment': 'crypte_des_plaines',
+                          'commun': True})
         zones.extend(
             {"position": territory.name, "chemin": joueur_dir / "renforts" / place,
              "emplacement": place}
@@ -729,6 +741,21 @@ def lire_blocs_general(chemin_general):
 
             rapports.afficher_et_ecrire(f"Unité invalide supprimée : {unite.name}")
 
+        import unites as capacites
+        soutiens = [u for u, t in zip(unites_trouvees, type_trouves)
+                    if capacites.etiquette(t, 'non_combattant')]
+        boucliers = [u for u, t in zip(unites_trouvees, type_trouves)
+                     if t == 'Trop_gros_zombie'] if 'zombie' in type_trouves else []
+        if len(soutiens) < len(unites_trouvees):
+            combattants = [(u, t) for u, t in zip(unites_trouvees, type_trouves)
+                          if u not in soutiens and u not in boucliers]
+            unites_trouvees = [u for u, _ in combattants]
+            type_trouves = [t for _, t in combattants]
+            if soutiens:
+                blocs_general[bloc]['soutiens'] = soutiens
+            if boucliers:
+                blocs_general[bloc]['boucliers'] = boucliers
+
         if len(type_trouves) > 0:
             effectifs = {}
             for type_unite in type_trouves:
@@ -744,6 +771,9 @@ def lire_blocs_general(chemin_general):
             if len(types_majoritaires) > 1:
                 for unite in unites_trouvees:
                     shutil.rmtree(unite)
+                for unite in soutiens:
+                    shutil.rmtree(unite)
+                blocs_general[bloc].pop('soutiens', None)
                 rapports.afficher_et_ecrire(
                     f"Bloc mixte invalide (égalité) : {bloc_dir}. "
                     f"{len(unites_trouvees)} unité(s) supprimée(s)."
@@ -782,7 +812,8 @@ def total_unites_general(blocs_general):
     total = 0
 
     for bloc in config.ordre_blocs:
-        total += blocs_general[bloc]["nombre"]
+        total += (blocs_general[bloc]["nombre"] + len(blocs_general[bloc].get('soutiens', ()))
+                  + len(blocs_general[bloc].get('boucliers', ())))
 
     return total
 
@@ -942,6 +973,8 @@ def supprimer_general_si_vide(general):
         f"n'a plus d'unités. Général supprimé."
     )
 
+    import soldats
+    soldats.mort_general(general)
     shutil.rmtree(chemin_general)
 
     # Retirer l'identité dès la destruction, avant le prochain tour.
@@ -961,7 +994,8 @@ def verifier_limite_unites_general(chemin_general):
     # réparties librement entre avant, droite, gauche, arriere.
 
     blocs_general = lire_blocs_general(chemin_general)
-    total = total_unites_general(blocs_general)
+    import unites
+    total = unites.occupation(lire_composition_general(chemin_general))
 
     if total <= config.max_unites_par_general:
         return
@@ -984,15 +1018,16 @@ def verifier_limite_unites_general(chemin_general):
         blocs_general = lire_blocs_general(chemin_general)
         infos = blocs_general[bloc]
 
-        for unite in infos["unites"]:
+        for unite in [*infos["unites"], *infos.get('soutiens', ()), *infos.get('boucliers', ())]:
             if surplus <= 0:
                 break
 
+            places = unites.definition(identifier_unite(unite))['places']
             shutil.rmtree(unite)
             rapports.afficher_et_ecrire(
                 f"Unité supprimée pour limite de général : {unite.name}"
             )
-            surplus -= 1
+            surplus -= places
 
 
 def identifier_unite(unite):

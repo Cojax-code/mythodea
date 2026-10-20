@@ -8,6 +8,7 @@ import generaux
 import rapports
 import progression
 import soldats
+import unites
 
 
 def adversaire_du_duel(armee, joueur):
@@ -25,6 +26,14 @@ def camps_du_combat(configuration):
 
 
 def combat_entre_generaux(general_1, general_2):
+    with unites.duel(general_1, general_2):
+        resultat = _combat_entre_generaux(general_1, general_2)
+    for numero, general in enumerate((general_1, general_2), 1):
+        resultat[f'final_{numero}'] = generaux.total_general_depuis_chemin(general['chemin'])
+    return resultat
+
+
+def _combat_entre_generaux(general_1, general_2):
     # Affrontement complet entre deux généraux.
     #
     # Déroulement :
@@ -639,14 +648,7 @@ def cible_facile(type_unite):
 
 
 def multiplicateur(type_attaquant, type_defenseur):
-    if type_attaquant == 'cavalerie_lourde' and type_defenseur in ('archer', 'cavalier'):
-        return 2
-    if type_attaquant == 'piquier' and type_defenseur == 'cavalerie_lourde':
-        return 2
-    if cible_facile(type_attaquant) == type_defenseur:
-        return 2
-
-    return 1
+    return unites.avantage(type_attaquant, type_defenseur)
 
 
 def valeur_base_bloc(infos, bloc=None):
@@ -654,6 +656,8 @@ def valeur_base_bloc(infos, bloc=None):
     if infos['nombre'] == 0:
         return 0
     valeur = catalogues.valeur_combat(infos['type'])
+    if bloc == 'avant':
+        valeur = unites.definition(infos['type']).get('valeur_avant', valeur)
     if infos['type'] == 'cavalerie_lourde' and bloc == 'avant' and infos['nombre'] >= 15:
         valeur *= 2
     return valeur
@@ -685,6 +689,12 @@ def combat_bloc(
     if nombre_1 == 0 or nombre_2 == 0:
         return nombre_1, nombre_2
 
+    # Les soutiens isolés ne frappent pas et disparaissent avec leur bloc.
+    soutien_1 = unites.etiquette(type_1, 'non_combattant')
+    soutien_2 = unites.etiquette(type_2, 'non_combattant')
+    if soutien_1 or soutien_2:
+        return (0 if soutien_1 else nombre_1, 0 if soutien_2 else nombre_2)
+
     valeur_1 = valeur_base_bloc(infos_1, bloc_1) * multiplicateur(
         type_1,
         type_2
@@ -711,6 +721,10 @@ def combat_bloc(
 
     degats_1 = nombre_1 * valeur_1
     degats_2 = nombre_2 * valeur_2
+    if 'sans_degats' in unites.definition(type_1)['effets']:
+        degats_1 = 0
+    if 'sans_degats' in unites.definition(type_2)['effets']:
+        degats_2 = 0
 
     # Comme dans le moteur historique, la valeur effective sert aussi de
     # résistance : conserver les avantages et la fatigue au dénominateur.
@@ -736,7 +750,7 @@ def trouver_cible_facile(armee, joueur_attaquant, type_attaquant):
     for bloc in config.ordre_blocs:
         infos_ennemi = armee[joueur_ennemi][bloc]
 
-        if multiplicateur(type_attaquant, infos_ennemi['type']) == 2 and infos_ennemi["nombre"] > 0:
+        if multiplicateur(type_attaquant, infos_ennemi['type']) > 1 and infos_ennemi["nombre"] > 0:
             return bloc
 
     return None
@@ -759,8 +773,13 @@ def trouver_cible_faible(armee, joueur_ennemi):
 
 def supprimer_unites(infos, survivants, general=None):
     caracteristiques = progression.caracteristiques_general(general) if general else None
-    moral = (caracteristiques['moral'] if caracteristiques and
-             caracteristiques['nature'] in ('instinctif', 'instinctif_hybride', 'stratege_hybride') else 0)
+    moral = 0
+    if caracteristiques and general['chemin'].is_dir():
+        if caracteristiques['nature'] == 'stratege':
+            caracteristiques['moral'] = 0
+        composition = generaux.lire_composition_general(general['chemin'])
+        bloc = infos['unites'][0].parent.name if infos['unites'] else None
+        moral = unites.moral_bloc(caracteristiques, composition, bloc)
     return soldats.pertes(infos, survivants, moral, random)
 
 
@@ -817,6 +836,7 @@ def confrontation_directe(
 
     pertes_1 = supprimer_unites(infos_1, survivants_1, general_1)
     pertes_2 = supprimer_unites(infos_2, survivants_2, general_2)
+    unites.apres_confrontation(general_1, general_2, bloc, bloc, infos_1, infos_2, pertes_1, pertes_2)
     survivants_1, survivants_2 = infos_1['nombre'], infos_2['nombre']
 
     rapports.afficher_et_ecrire("\nRésultat :")
@@ -990,6 +1010,8 @@ def attaque_ciblee(
 
     pertes_attaquant = supprimer_unites(infos_attaquant, survivants_attaquant, general_attaquant)
     pertes_defenseur = supprimer_unites(infos_defenseur, survivants_defenseur, general_defenseur)
+    unites.apres_confrontation(general_attaquant, general_defenseur, bloc_attaquant, bloc_cible,
+                              infos_attaquant, infos_defenseur, pertes_attaquant, pertes_defenseur)
     survivants_attaquant, survivants_defenseur = infos_attaquant['nombre'], infos_defenseur['nombre']
 
     rapports.afficher_et_ecrire("\nRésultat :")

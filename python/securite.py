@@ -217,6 +217,36 @@ def auditer_entrainement(configuration, positions, punis):
                 'entraînement interdit hors home/réserve ; unités anciennes conservées.')
 
 
+def auditer_unites_speciales(configuration):
+    """Un nom de dossier ou un marqueur copié ne débloque jamais une unité."""
+    import catalogues
+    import soldats
+    registre = soldats.charger()
+    for joueur in configuration['joueurs']:
+        for zone in generaux.zones_generaux(joueur, configuration):
+            if not zone['chemin'].is_dir():
+                continue
+            for general in zone['chemin'].iterdir():
+                if not general.is_dir() or generaux.numero_general_depuis_nom(general.name) is None:
+                    continue
+                for bloc in config.ordre_blocs:
+                    if not (general / bloc).is_dir():
+                        continue
+                    for unite in (general / bloc).iterdir():
+                        type_unite = generaux.identifier_unite(unite)
+                        if catalogues.UNITE_PAR_NOM.get(type_unite, 0) < 5:
+                            continue
+                        identifiant = soldats.retrouver(unite, registre, config.dans_generation_privee())
+                        officiel = registre.get(identifiant, {})
+                        if (officiel.get('type') == type_unite and
+                                officiel.get('origine_officielle') and not officiel.get('detruit')):
+                            continue
+                        shutil.rmtree(unite)
+                        rapports.afficher_et_ecrire(
+                            f'{joueur}:{general.name} : unité spéciale {unite.name} supprimée, '
+                            'origine officielle absente ou type falsifié.')
+
+
 def controler_coherence_territoires(configuration):
     """Inspecte les présences sans réparer, sanctionner ni modifier les compteurs."""
     officielles = etat.charger_positions_generaux()
@@ -690,7 +720,12 @@ def verifier_tous_les_deplacements(configuration=None):
                          if configuration['mode'] == 'survie' else None)
     controle_avant = etat.charger_controle_territoires(configuration)
     attentes_avant = etat.charger_attentes_repli(configuration)
+    import morgue
+    import unites
+    unites.scanner_messagers(configuration)
+    morgue.convertir_deplacements(configuration)
     auditer_cavalerie_lourde(configuration, positions)
+    auditer_unites_speciales(configuration)
 
     # ------------------------------------------
     # Sécurité générale
