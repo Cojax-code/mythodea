@@ -71,6 +71,33 @@ def verifier_un_seul_bouclier(composition):
     return nombre
 
 
+
+def _cle_resistance(general):
+    import soldats
+    bataille = soldats._bataille.get()
+    if bataille is None or not bataille[0]:
+        return None
+    return f"{bataille[0]}:{general['joueur']}:{general['nom']}"
+
+
+def _lire_resistance(general):
+    import unites
+    cle = _cle_resistance(general)
+    if cle is None:
+        return RESISTANCE_INITIALE
+    valeur = unites.charger_capacites().get('resistances_boucliers', {}).get(cle)
+    return RESISTANCE_INITIALE if valeur is None else Fraction(valeur)
+
+
+def _sauver_resistance(general, resistance):
+    import unites
+    cle = _cle_resistance(general)
+    if cle is not None:
+        donnees = unites.charger_capacites()
+        donnees.setdefault('resistances_boucliers', {})[cle] = str(Fraction(resistance))
+        unites.sauver_capacites(donnees)
+
+
 def presence_bouclier(general):
     """Repérage sans lecture destructive des blocs."""
     import generaux
@@ -237,7 +264,7 @@ def resoudre_priorite(general_zombie, adversaire):
     if contexte is None:
         raise RuntimeError('Bouclier vivant hors duel officiel.')
     details = []
-    resistance = RESISTANCE_INITIALE
+    resistance = _lire_resistance(general_zombie)
     if _zombies_vivants(general_zombie) == 0:
         retirer_bouclier(general_zombie)
         generaux.supprimer_general_si_vide(general_zombie)
@@ -263,6 +290,7 @@ def resoudre_priorite(general_zombie, adversaire):
             force = _puissance_bloc_adverse(infos, bloc)
             avant = resistance
             survit, resistance = resistance_apres_choc(resistance, force)
+            _sauver_resistance(general_zombie, resistance)
             soldats.affrontement(general_zombie, adversaire)
             contexte['confrontation'] += 1
             evenement = (f"spore:{contexte['id']}:{contexte['confrontation']}:"
