@@ -1009,6 +1009,26 @@ def verifier_limite_unites_general(chemin_general):
 
     surplus = total - limite
 
+    # Pendant une bataille territoriale, les zombies engendrés par Spore et
+    # Propagation ne sont régulés qu'après le dernier affrontement du territoire.
+    # L'exception n'autorise pas un dépassement d'origine inconnue.
+    import soldats
+    contexte = soldats._bataille.get()
+    if contexte and contexte[0]:
+        registre = soldats.charger()
+        recents = 0
+        for bloc in config.ordre_blocs:
+            for soldat in (chemin_general / bloc).iterdir():
+                if identifier_unite(soldat) != 'zombie':
+                    continue
+                identifiant = soldats.retrouver(soldat, registre, config.dans_generation_privee())
+                origine = registre.get(identifiant, {}).get('origine_officielle', {})
+                if (origine.get('territoire') == contexte[0]
+                        and ('propagation' in origine or 'spore' in origine)):
+                    recents += 1
+        if recents >= surplus:
+            return
+
     rapports.afficher_et_ecrire(
         f"{chemin_general.name} dépasse la limite : "
         f"{total}/{limite} unités. "
