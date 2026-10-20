@@ -151,13 +151,23 @@ def convertir_spore(general_zombie, adversaire, bloc_adverse, evenement, rng=Non
     registre = soldats.charger()
     dossier = adversaire['chemin'] / bloc_adverse
     candidats = []
+    nouveaux_bot = False
     for chemin in dossier.iterdir():
-        if generaux.identifier_unite(chemin) in ('inconnu', 'Trop_gros_zombie'):
+        type_unite = generaux.identifier_unite(chemin)
+        if type_unite in ('inconnu', 'Trop_gros_zombie'):
             continue
         identifiant = soldats.retrouver(chemin, registre, config.dans_generation_privee())
+        if identifiant is None and adversaire['joueur'] == 'bot' and soldats._bataille.get():
+            # Les vagues officielles du bot sont matérialisées avant leur
+            # première bataille et n'ont pas toujours encore d'UUID de soldat.
+            identifiant = soldats.enregistrer(chemin, registre, type_unite)
+            soldats.publier(chemin, identifiant, registre[identifiant])
+            nouveaux_bot = True
         if identifiant and not registre[identifiant].get('detruit'):
             candidats.append(dict(id=identifiant, batailles=registre[identifiant]['batailles'],
                                   chemin=chemin))
+    if nouveaux_bot:
+        soldats.sauvegarder(registre)
     victime = choisir_spore(candidats, rng)
     if victime is None:
         return None
