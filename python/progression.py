@@ -71,6 +71,18 @@ def nouvelles_caracteristiques(aleatoire=None):
                 progression_combat=0, progression_formation=0)
 
 
+def capacite_maximale(fiche):
+    """Capacité propre au général : +2 par niveau gagné après zombification."""
+    import config
+    if fiche and fiche.get('etat_zombie'):
+        return config.max_unites_par_general + 2 * fiche.get('niveaux_zombie', 0)
+    return config.max_unites_par_general
+
+
+def capacite_maximale_general(general):
+    return capacite_maximale(caracteristiques_general(general))
+
+
 def evolutions_eligibles(fiche, catalogue=None, apprentissage=True):
     catalogue = catalogues.EVOLUTIONS if catalogue is None else catalogue
     resultat = {}
@@ -99,6 +111,7 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
     resultat = deepcopy(fiche)
     if resultat.get('etat_zombie'):
         resultat['niveau'] += 1
+        resultat['niveaux_zombie'] = resultat.get('niveaux_zombie', 0) + 1
         return resultat, None
     eligibles = evolutions_eligibles(resultat, catalogue)
     identifiant = resultat.get('evolution_apprise')
