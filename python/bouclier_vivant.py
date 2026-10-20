@@ -154,7 +154,7 @@ def convertir_spore(general_zombie, adversaire, bloc_adverse, evenement, rng=Non
     nouveaux_bot = False
     for chemin in dossier.iterdir():
         type_unite = generaux.identifier_unite(chemin)
-        if type_unite in ('inconnu', 'Trop_gros_zombie'):
+        if type_unite in ('inconnu', 'Trop_gros_zombie', 'zombie'):
             continue
         identifiant = soldats.retrouver(chemin, registre, config.dans_generation_privee())
         if identifiant is None and adversaire['joueur'] == 'bot' and soldats._bataille.get():
@@ -274,7 +274,9 @@ def resoudre_priorite(general_zombie, adversaire):
     if not presence_bouclier(general_zombie):
         return False, []
     if presence_bouclier(adversaire):
-        raise ValueError('Deux généraux opposés possèdent Bouclier vivant : règle de priorité mutuelle non validée.')
+        # Deux Boucliers vivants s'ignorent : seuls les Zombies ordinaires
+        # combattent, suivant les règles classiques. Aucun Spore entre Zombies.
+        return False, []
     contexte = unites._duel.get()
     if contexte is None:
         raise RuntimeError('Bouclier vivant hors duel officiel.')
@@ -300,7 +302,7 @@ def resoudre_priorite(general_zombie, adversaire):
         ennemis = _infos(adversaire)
         for bloc in config.ordre_blocs:
             infos = ennemis[bloc]
-            if infos['nombre'] <= 0 or infos['type'] in ('vide', 'messager_du_QG'):
+            if infos['nombre'] <= 0 or infos['type'] in ('vide', 'messager_du_QG', 'zombie', TYPE_BOUCLIER):
                 continue
             force = _puissance_bloc_adverse(infos, bloc)
             avant = resistance
