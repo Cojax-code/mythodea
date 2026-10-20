@@ -480,6 +480,8 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
             import soldats
             with soldats.bataille_complete(f'survie:{tour}:{nom}', configuration):
                 batailles[nom] = resoudre_cascade(territoire, configuration, mode, en_cours_de_fuite)
+                import unites
+                unites.terminer_territoire(territoire, f'survie:{tour}:{nom}', configuration)
     finally:
         rapports.definir_territoire_rapport(None)
     mouvements.appliquer_retraites_surnombre(en_cours_de_fuite, configuration)
