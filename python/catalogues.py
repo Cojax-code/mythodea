@@ -60,9 +60,9 @@ UNITES.update({
     11: dict(nom='zombie', prefixe='zombi', recette=(), valeur_combat=5,
              etiquettes=('mort_vivant', 'sans_cerveau', 'propagation', 'mauvais_nageur', 'infatigable'),
              forces=(), faiblesses=('tout',), effets=(), natures=None, blessures=0, soins=None),
-    12: dict(nom='Trop_gros_zombie', prefixe='Trop_gros_zombie', recette=(), valeur_combat=30,
+    12: dict(nom='Trop_gros_zombie', prefixe='Trop_gros_zombie', recette=(), valeur_combat=250,
              etiquettes=('mort_vivant', 'sans_cerveau', 'propagation', 'mauvais_nageur',
-                         'infatigable', 'bouclier_vivant'),
+                         'infatigable', 'bouclier_vivant', 'spore'),
              forces=(), faiblesses=('tout',), effets=('sans_degats', 'bouclier_vivant'),
              natures=None, blessures=0, soins=None, places=10),
 })
