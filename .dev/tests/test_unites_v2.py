@@ -32,7 +32,7 @@ class UnitesV2(unittest.TestCase):
     def test_catalogue_valeurs_positions_et_soutien_zero(self):
         valeurs = {'sauvageon': (3, 3), 'chevalier_clinquant': (6, 5),
                    'orc_assaillant': (7, 6), 'orc_archer': (6, 6), 'orc_chaman': (2, 2),
-                   'messager_du_QG': (0, 0), 'zombie': (5, 5), 'Trop_gros_zombie': (30, 30)}
+                   'messager_du_QG': (0, 0), 'zombie': (5, 5), 'Trop_gros_zombie': (250, 250)}
         for nom, attendu in valeurs.items():
             infos = dict(type=nom, nombre=1)
             self.assertEqual(tuple(self.combats.valeur_base_bloc(infos, b)
