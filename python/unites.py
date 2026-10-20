@@ -207,6 +207,8 @@ def propager(general, bloc, pertes_adverses, survivants, evenement, duel):
         return 0
     nombre = (pertes_adverses + 1) // 2
     identifiants = [uuid.uuid4().hex for _ in range(nombre)]
+    contexte_bataille = soldats._bataille.get()
+    territoire = contexte_bataille[0] if contexte_bataille else None
     d['propagations'][evenement] = dict(duel=duel, joueur=general['joueur'],
         general=general['nom'], bloc=bloc, soldats=identifiants, terminee=False)
     sauver_capacites(d)
@@ -234,7 +236,8 @@ def terminer_duel(general, duel):
     if not general['chemin'].is_dir():
         return 0
     composition = generaux.lire_composition_general(general['chemin'])
-    surplus = occupation(composition) - config.max_unites_par_general
+    import progression
+    surplus = occupation(composition) - progression.capacite_maximale_general(general)
     if surplus <= 0:
         return 0
     registre = soldats.charger()
@@ -258,6 +261,56 @@ def terminer_duel(general, duel):
     return retires
 
 
+def terminer_territoire(territoire, evenement, configuration):
+    """Limite les unités apparues pendant cette bataille complète, après la cascade.
+
+    Ne touche jamais aux soldats historiques, et n'efface pas les unités d'un
+    autre territoire ou d'une autre bataille.
+    """
+    import config
+    import generaux
+    import progression
+    import shutil
+    import soldats
+    registre = soldats.charger()
+    retires = 0
+    for joueur in configuration['joueurs']:
+        for zone in generaux.zones_generaux_territoire(territoire, joueur, configuration):
+            if not zone['chemin'].is_dir():
+                continue
+            for chemin_general in zone['chemin'].iterdir():
+                if not chemin_general.is_dir() or generaux.numero_general_depuis_nom(chemin_general.name) is None:
+                    continue
+                general = {'joueur': joueur, 'nom': chemin_general.name, 'chemin': chemin_general}
+                surplus = occupation(generaux.lire_composition_general(chemin_general)) - progression.capacite_maximale_general(general)
+                if surplus <= 0:
+                    continue
+                candidats = []
+                for bloc in config.ordre_blocs:
+                    dossier = chemin_general / bloc
+                    if not dossier.is_dir():
+                        continue
+                    for soldat in dossier.iterdir():
+                        if generaux.identifier_unite(soldat) != 'zombie':
+                            continue
+                        identifiant = soldats.retrouver(soldat, registre, config.dans_generation_privee())
+                        preuve = registre.get(identifiant, {}).get('origine_officielle', {})
+                        if preuve.get('territoire') == evenement and ('propagation' in preuve or 'spore' in preuve):
+                            candidats.append((identifiant, soldat))
+                for identifiant, soldat in sorted(candidats, reverse=True):
+                    if surplus <= 0:
+                        break
+                    shutil.rmtree(soldat)
+                    registre[identifiant]['detruit'] = True
+                    surplus -= 1
+                    retires += 1
+                if surplus > 0:
+                    raise RuntimeError(
+                        f'Surplus non régulable sans supprimer de soldats historiques : {joueur} {chemin_general.name}')
+    soldats.sauvegarder(registre)
+    return retires
+
+
 @contextmanager
 def duel(general_1, general_2):
     import generaux
@@ -271,9 +324,8 @@ def duel(general_1, general_2):
     jeton = _duel.set(courant)
     try:
         yield
-        if courant['propagation']:
-            for general in (general_1, general_2):
-                terminer_duel(general, identifiant)
+        # Les nouvelles unités ne sont plus régulées ici : un duel n'est pas
+        # nécessairement le dernier du territoire.
     finally:
         _duel.reset(jeton)
 
