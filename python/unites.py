@@ -308,6 +308,13 @@ def terminer_territoire(territoire, evenement, configuration):
                     raise RuntimeError(
                         f'Surplus non régulable sans supprimer de soldats historiques : {joueur} {chemin_general.name}')
     soldats.sauvegarder(registre)
+    # Le territoire est fini : la prochaine bataille redémarre à 250.
+    capacites = charger_capacites()
+    resistances = capacites.get('resistances_boucliers', {})
+    for cle in tuple(resistances):
+        if cle.startswith(evenement + ':'):
+            resistances.pop(cle)
+    sauver_capacites(capacites)
     return retires
 
 
