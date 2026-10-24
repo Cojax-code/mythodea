@@ -44,10 +44,11 @@ def caracteristiques_armee(fiche, composition):
     resultat = dict(fiche)
     orcs = sum(n for bloc in composition.values() for t, n in bloc.items() if etiquette(t, 'orc'))
     chevaliers = sum(bloc.get('chevalier_clinquant', 0) for bloc in composition.values())
-    # Aucune pénalité pour une armée sans Orc.
-    resultat['points_commandement'] = max(0, fiche['points_commandement'] -
-                                         (max(0, 10 - orcs) if orcs else 0))
-    resultat['moral'] = min(100, fiche['moral'] + max(0, orcs - 10) + chevaliers)
+    # Les Orcs modifient uniquement le moral, jamais les points de commandement.
+    # Sans Orc, aucun malus ; avec 1..9 Orcs, malus de (10 - orcs).
+    # Au-delà de 10 Orcs, bonus de (orcs - 10).
+    resultat['moral'] = max(0, min(100, fiche['moral'] +
+                                  (orcs - 10 if orcs else 0) + chevaliers))
     return resultat
 
 
