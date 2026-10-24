@@ -46,7 +46,7 @@ UNITES.update({
             valeur_combat=6, etiquettes=('orc', 'distance', 'cruelle', 'mauvais_nageur'),
             forces=('piquier', 'sauvageon'),
             faiblesses=('chevalier_clinquant', 'cavalerie_lourde', 'cavalier', 'orc_chaman'),
-            effets=(), natures=None, blessures=1, soins='chaman'),
+            effets=(), natures=('instinctif',), blessures=1, soins='chaman'),
     9: dict(nom='orc_chaman', prefixe='orc_chaman', recette=('tome_du_orc_chaman',),
             valeur_combat=2, etiquettes=('orc', 'cruelle', 'mauvais_nageur', 'chaman', 'soutien'),
             forces=('orc_assaillant', 'orc_archer'), multiplicateur=3,
