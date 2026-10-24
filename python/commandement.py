@@ -61,40 +61,99 @@ def comparer(points_1, points_2):
     return (points_1 > points_2) - (points_1 < points_2)
 
 
-def ordres_applicables(identifiants, nature, categorie, comparaison=None, catalogue=None, acquis=()):
-    """Sélection seulement : les effets réservés ne deviennent jamais exécutables.
-
-    Une égalité n'est pas une défaite. Les contre-ordres individuels nécessitent
-    eux aussi une situation explicite ; aucune comparaison n'est créée pour eux.
-    """
-    catalogue = catalogues.ORDRES if catalogue is None else catalogue
+def _ordres_eligibles(identifiants, nature, categorie, catalogue, acquis):
+    """Préserve l'ordre d'un seul donneur : ne fusionne jamais deux généraux."""
     if categorie not in ('globale', 'duel', 'individuelle'):
         raise ValueError('Catégorie inconnue.')
-    if categorie == 'globale' and nature not in ('stratege', 'stratege_hybride', 'instinctif_hybride'):
+    if categorie == 'globale' and nature not in (
+            'stratege', 'stratege_hybride', 'instinctif_hybride'):
         return []
     resultat = []
     for identifiant in dict.fromkeys(identifiants):
         if categorie == 'globale' and nature == 'instinctif_hybride' and identifiant not in acquis:
             continue
         ordre = catalogue.get(identifiant)
-        if not ordre or not ordre['disponible'] or ordre['categorie'] != categorie:
-            continue
-        if ordre['contre']:
-            if comparaison != -1:
-                continue
-        elif categorie != 'individuelle' and comparaison != 1:
-            # Une égalité concurrente reste sans gagnant tant qu'aucune règle
-            # de départage des effets n'est définie.
-            continue
-        resultat.append(identifiant)
+        if ordre and ordre['disponible'] and ordre['categorie'] == categorie:
+            resultat.append(identifiant)
     return resultat
+
+
+def ordres_applicables(identifiants, nature, categorie, comparaison=None,
+                       catalogue=None, acquis=(), ordres_adverses=None):
+    """Sélection des ordres d'UN général, sans exécuter leurs effets.
+
+    ordres_adverses doit être la liste éligible du donneur adverse de la même
+    catégorie. None conserve une comparaison ancienne, sans inventer d'absence
+    d'ordres. Sans ordre adverse : les ordres ordinaires et les contre-ordres
+    sont candidats. En duel ordre/contre-ordre, les deux sont candidats.
+    Les ordres normaux et les contre-ordres d'un même donneur ne se cumulent pas :
+    le groupe incompatible est écarté, sans priorité arbitraire.
+    """
+    catalogue = catalogues.ORDRES if catalogue is None else catalogue
+    propres = _ordres_eligibles(identifiants, nature, categorie, catalogue, acquis)
+    if not propres:
+        return []
+    if ordres_adverses is None:
+        # Compatibilité avec les appels historiques : l'absence d'ordre adverse
+        # n'est jamais déduite d'une comparaison de PC.
+        adverses = None
+    else:
+        adverses = [catalogue[i] for i in ordres_adverses
+                    if i in catalogue and catalogue[i]['disponible']
+                    and catalogue[i]['categorie'] == categorie]
+    if any(catalogue[i]['contre'] for i in propres) and any(
+            not catalogue[i]['contre'] for i in propres):
+        return []
+    resultat = []
+    for identifiant in propres:
+        contre = catalogue[identifiant]['contre']
+        if adverses is not None and not adverses:
+            actif = True
+        elif adverses is not None and any(
+                autre['contre'] != contre for autre in adverses):
+            actif = True
+        elif contre:
+            actif = comparaison == -1
+        elif categorie == 'individuelle' and comparaison is None:
+            actif = True
+        else:
+            actif = comparaison == 1
+        if actif:
+            resultat.append(identifiant)
+    return resultat
+
+
+def confronter_donneurs(ordres_1, nature_1, acquis_1,
+                        ordres_2, nature_2, acquis_2, categorie,
+                        comparaison, catalogue=None):
+    """Confronte deux donneurs sans agréger d'ordres entre généraux.
+
+    Ordre contre ordre à PC égaux : annulation. Ordre contre contre-ordre :
+    les deux peuvent fonctionner. Les incompatibilités d'effets entre plusieurs
+    ordres normaux restent à contrôler lorsque leurs effets seront définis.
+    """
+    catalogue = catalogues.ORDRES if catalogue is None else catalogue
+    candidats_1 = _ordres_eligibles(ordres_1, nature_1, categorie, catalogue, acquis_1)
+    candidats_2 = _ordres_eligibles(ordres_2, nature_2, categorie, catalogue, acquis_2)
+    return (
+        ordres_applicables(candidats_1, nature_1, categorie, comparaison,
+                          catalogue, acquis_1, candidats_2),
+        ordres_applicables(candidats_2, nature_2, categorie, -comparaison,
+                          catalogue, acquis_2, candidats_1),
+    )
 
 
 def confronter_globaux(armee_1, qg_1, ordres_1, armee_2, qg_2, ordres_2, catalogue=None):
     points_1 = global_armee(armee_1, qg_1)
     points_2 = global_armee(armee_2, qg_2)
     comparaison = comparer(points_1, points_2)
-    return (ordres_applicables(ordres_1, qg_1['nature'], 'globale', comparaison, catalogue,
-                              qg_1.get('evolutions_acquises', ())) if qg_1 else [],
-            ordres_applicables(ordres_2, qg_2['nature'], 'globale', -comparaison, catalogue,
-                              qg_2.get('evolutions_acquises', ())) if qg_2 else [])
+    if not qg_1 and not qg_2:
+        return [], []
+    # Un seul QG donne les ordres globaux de chaque camp. Aucun amalgame
+    # avec les ordres des autres généraux de l'armée.
+    return confronter_donneurs(
+        ordres_1 if qg_1 else (), qg_1['nature'] if qg_1 else '',
+        qg_1.get('evolutions_acquises', ()) if qg_1 else (),
+        ordres_2 if qg_2 else (), qg_2['nature'] if qg_2 else '',
+        qg_2.get('evolutions_acquises', ()) if qg_2 else (),
+        'globale', comparaison, catalogue)
