@@ -84,9 +84,9 @@ def permissions_messager(chemin):
 def creer_officielle(chemin, type_unite, origine, contenu=None):
     """Création moteur dans une génération privée ; aucune entrée joueur."""
     import soldats
-    chemin.mkdir()
+    soldats.creer_dossier_unite(chemin)
     for nom in definition(type_unite)['recette']:
-        (chemin / nom).write_text((contenu or {}).get(nom, ''), encoding='utf-8')
+        soldats.ecrire_copie(chemin / nom, (contenu or {}).get(nom, ''))
     registre = soldats.charger()
     identifiant = soldats.enregistrer(chemin, registre, type_unite)
     registre[identifiant]['origine_officielle'] = origine
@@ -216,7 +216,7 @@ def propager(general, bloc, pertes_adverses, survivants, evenement, duel):
     registre = soldats.charger()
     for identifiant in identifiants:
         chemin = general['chemin'] / bloc / ('zombi_' + identifiant)
-        chemin.mkdir()
+        soldats.creer_dossier_unite(chemin)
         infos = chemin.stat()
         registre[identifiant] = dict(type='zombie', chemin=soldats.cle(chemin),
             device=infos.st_dev, inode=infos.st_ino, blessures=0, batailles=0,
@@ -467,8 +467,8 @@ def regenerer_fuite(general, configuration):
             chemin = general['chemin'] / bloc / initial['nom']
             if chemin.exists():
                 raise RuntimeError('Régénération interrompue ou destination occupée ; récupération requise.')
-            chemin.mkdir()
-            (chemin / 'sauvageon.txt').write_text('boueux\net\ncrasseux\n', encoding='utf-8')
+            soldats.creer_dossier_unite(chemin)
+            soldats.ecrire_copie(chemin / 'sauvageon.txt', 'boueux\net\ncrasseux\n')
             infos = chemin.stat()
             valeur.update(detruit=False, chemin=soldats.cle(chemin), device=infos.st_dev, inode=infos.st_ino)
             valeur.setdefault('regenerations', []).append(souvenir['duel'])

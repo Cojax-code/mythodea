@@ -30,6 +30,7 @@ def combat_entre_generaux(general_1, general_2):
     with unites.duel(general_1, general_2):
         resultat = _combat_entre_generaux(general_1, general_2)
     for numero, general in enumerate((general_1, general_2), 1):
+        generaux.supprimer_general_si_vide(general)
         resultat[f'final_{numero}'] = generaux.total_general_depuis_chemin(general['chemin'])
     return resultat
 

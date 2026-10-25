@@ -1,0 +1,108 @@
+test_bouclier_disparait_apres_destruction_mutuelle_des_zombies (test_audit_v2.AuditUnites.test_bouclier_disparait_apres_destruction_mutuelle_des_zombies) ... ok
+test_bouclier_seul_disparait_meme_face_a_un_bouclier (test_audit_v2.AuditUnites.test_bouclier_seul_disparait_meme_face_a_un_bouclier) ... ok
+test_chaman_fraction_de_moral_utilisable_pour_les_pertes (test_audit_v2.AuditUnites.test_chaman_fraction_de_moral_utilisable_pour_les_pertes) ... ok
+test_cible_duel_est_une_position_pas_un_numero_general (test_audit_v2.AuditUnites.test_cible_duel_est_une_position_pas_un_numero_general) ... ok
+test_deux_boucliers_isoles_laissent_combattre_les_zombies (test_audit_v2.AuditUnites.test_deux_boucliers_isoles_laissent_combattre_les_zombies) ... ok
+test_orcs_zero_a_vingt_moral_borne_pc_constants (test_audit_v2.AuditUnites.test_orcs_zero_a_vingt_moral_borne_pc_constants) ... ok
+test_ordres_malformes_ne_bloquent_pas_le_tour (test_audit_v2.AuditUnites.test_ordres_malformes_ne_bloquent_pas_le_tour) ... ok
+test_spore_ne_convertit_aucun_zombie (test_audit_v2.AuditUnites.test_spore_ne_convertit_aucun_zombie) ... ok
+test_trois_orcs_instinctifs_exception_hybride (test_audit_v2.AuditUnites.test_trois_orcs_instinctifs_exception_hybride) ... ok
+test_aucune_place_aucune_creation (test_unites_v2.CryptePlaines.test_aucune_place_aucune_creation) ... ok
+test_bibliotheque_stable_et_occurrences_nombreuses (test_unites_v2.CryptePlaines.test_bibliotheque_stable_et_occurrences_nombreuses) ... ok
+test_catalogues_distincts_et_pdf_nouvelles_recettes (test_unites_v2.CryptePlaines.test_catalogues_distincts_et_pdf_nouvelles_recettes) ... ok
+test_connaissance_absente_ne_consomme_pas_recompense (test_unites_v2.CryptePlaines.test_connaissance_absente_ne_consomme_pas_recompense) ... ok
+test_ligne_non_correspondante_et_fichiers_sans_commandes_refuses (test_unites_v2.CryptePlaines.test_ligne_non_correspondante_et_fichiers_sans_commandes_refuses) ... ok
+test_livraison_capacite_et_bloc_de_remplacement (test_unites_v2.CryptePlaines.test_livraison_capacite_et_bloc_de_remplacement) ... ok
+test_livraison_quatre_unites_au_general_existant_et_rejeu (test_unites_v2.CryptePlaines.test_livraison_quatre_unites_au_general_existant_et_rejeu) ... ok
+test_recettes_assailant_chaman_sauvageon_et_rejeu (test_unites_v2.CryptePlaines.test_recettes_assailant_chaman_sauvageon_et_rejeu) ... ok
+test_toutes_lignes_orc_archer_acceptees_par_collecteur (test_unites_v2.CryptePlaines.test_toutes_lignes_orc_archer_acceptees_par_collecteur) ... ok
+test_bouclier_intervient_avant_choc_et_spore_agit (test_unites_v2.UnitesV2.test_bouclier_intervient_avant_choc_et_spore_agit) ... ok
+test_catalogue_valeurs_positions_et_soutien_zero (test_unites_v2.UnitesV2.test_catalogue_valeurs_positions_et_soutien_zero) ... ok
+test_chaman_moral_proportionnel_sans_mutation_et_fraction_exacte (test_unites_v2.UnitesV2.test_chaman_moral_proportionnel_sans_mutation_et_fraction_exacte) ... ok
+test_chaman_soins_territoire_allies_uniquement_et_rejeu (test_unites_v2.UnitesV2.test_chaman_soins_territoire_allies_uniquement_et_rejeu) ... ok
+test_chevalier_transformation_tour_complet_identite_et_blessures (test_unites_v2.UnitesV2.test_chevalier_transformation_tour_complet_identite_et_blessures) ... ok
+test_construction_manuelle_zombie_sans_conversion_refusee (test_unites_v2.UnitesV2.test_construction_manuelle_zombie_sans_conversion_refusee) ... ok
+test_faiblesses_distance_validee_et_non_magie (test_unites_v2.UnitesV2.test_faiblesses_distance_validee_et_non_magie) ... ok
+test_gros_zombie_dix_places_et_aucune_perte_adverse (test_unites_v2.UnitesV2.test_gros_zombie_dix_places_et_aucune_perte_adverse) ... ok
+test_messager_coexiste_sans_degats_et_meurt_avec_bloc (test_unites_v2.UnitesV2.test_messager_coexiste_sans_degats_et_meurt_avec_bloc) ... ok
+test_messager_ne_permet_pas_melange_combattant (test_unites_v2.UnitesV2.test_messager_ne_permet_pas_melange_combattant) ... ok
+test_messager_permissions_recrutement_et_copie_frauduleuse (test_unites_v2.UnitesV2.test_messager_permissions_recrutement_et_copie_frauduleuse) ... ok
+test_mort_declenchee_par_resolution_reelle (test_unites_v2.UnitesV2.test_mort_declenchee_par_resolution_reelle) ... ok
+test_mort_sans_probabilite_ne_tire_ni_ne_reanime (test_unites_v2.UnitesV2.test_mort_sans_probabilite_ne_tire_ni_ne_reanime) ... ok
+test_non_combattant_ne_cause_aucun_degat_ni_division_zero (test_unites_v2.UnitesV2.test_non_combattant_ne_cause_aucun_degat_ni_division_zero) ... ok
+test_orcs_comptes_sur_armee_sans_cumuler_blocs (test_unites_v2.UnitesV2.test_orcs_comptes_sur_armee_sans_cumuler_blocs) ... ok
+test_propagation_depassement_illimite_puis_trim_sans_historique (test_unites_v2.UnitesV2.test_propagation_depassement_illimite_puis_trim_sans_historique) ... ok
+test_propagation_interrompue_ne_cree_pas_deux_fois (test_unites_v2.UnitesV2.test_propagation_interrompue_ne_cree_pas_deux_fois) ... ok
+test_propager_arrondi_survie_et_rejeu (test_unites_v2.UnitesV2.test_propager_arrondi_survie_et_rejeu) ... ok
+test_regeneration_fuite_restaure_effectif_initial_et_identites (test_unites_v2.UnitesV2.test_regeneration_fuite_restaure_effectif_initial_et_identites) ... ok
+test_resistance_reste_entre_duels_d_un_territoire (test_unites_v2.UnitesV2.test_resistance_reste_entre_duels_d_un_territoire) ... ok
+test_rituel_copie_et_lien_absolu_refuses (test_unites_v2.UnitesV2.test_rituel_copie_et_lien_absolu_refuses) ... ok
+test_rituel_ne_permet_pas_copie_ni_liens_hors_zone_capture (test_unites_v2.UnitesV2.test_rituel_ne_permet_pas_copie_ni_liens_hors_zone_capture) ... ok
+test_rituel_vrais_inodes_lien_relatif_et_consommation_unique (test_unites_v2.UnitesV2.test_rituel_vrais_inodes_lien_relatif_et_consommation_unique) ... ok
+test_sejour_chevalier_interrompu_ne_cumule_pas (test_unites_v2.UnitesV2.test_sejour_chevalier_interrompu_ne_cumule_pas) ... ok
+test_soins_interdits_aux_orcs_et_deux_tours_chevalier (test_unites_v2.UnitesV2.test_soins_interdits_aux_orcs_et_deux_tours_chevalier) ... ok
+test_spore_transforme_le_moins_experimente_et_garde_identite (test_unites_v2.UnitesV2.test_spore_transforme_le_moins_experimente_et_garde_identite) ... ok
+test_zombie_blessures_anciennes_conservees_sans_nouveau_sauvetage (test_unites_v2.UnitesV2.test_zombie_blessures_anciennes_conservees_sans_nouveau_sauvetage) ... ok
+test_zombie_mv_valide_conserve_identite_blessures_et_experience (test_unites_v2.UnitesV2.test_zombie_mv_valide_conserve_identite_blessures_et_experience) ... ok
+test_zombie_niveau_sans_recompense_et_tirage_uniforme_unites (test_unites_v2.UnitesV2.test_zombie_niveau_sans_recompense_et_tirage_uniforme_unites) ... ok
+test_zombification_cadavre_uniques_historique_et_ordres (test_unites_v2.UnitesV2.test_zombification_cadavre_uniques_historique_et_ordres) ... ok
+test_confrontation_globale (test_progression.Commandement.test_confrontation_globale) ... ok
+test_contre_ordres_uniquement_perdant_et_individuel_sans_priorite (test_progression.Commandement.test_contre_ordres_uniquement_perdant_et_individuel_sans_priorite) ... ok
+test_duel_personnel_puis_qg (test_progression.Commandement.test_duel_personnel_puis_qg) ... ok
+test_effectif_types_generiques_et_diviseur_minimum (test_progression.Commandement.test_effectif_types_generiques_et_diviseur_minimum) ... ok
+test_global_entier_sans_arrondi_flottant (test_progression.Commandement.test_global_entier_sans_arrondi_flottant) ... ok
+test_qg_egalite_destruction_sans_releve (test_progression.Commandement.test_qg_egalite_destruction_sans_releve) ... ok
+test_aucun_bareme_automatique (test_progression.Progression.test_aucun_bareme_automatique) ... ok
+test_commandement_par_tranches (test_progression.Progression.test_commandement_par_tranches) ... ok
+test_distribution_ponderee_exacte (test_progression.Progression.test_distribution_ponderee_exacte) ... ok
+test_ids_uniques_et_recettes_inchangees (test_progression.Progression.test_ids_uniques_et_recettes_inchangees) ... ok
+test_memoire_incompatible_ne_perd_aucun_etat (test_progression.Progression.test_memoire_incompatible_ne_perd_aucun_etat) ... ok
+test_memoire_prime_sur_le_tirage_et_est_consommee (test_progression.Progression.test_memoire_prime_sur_le_tirage_et_est_consommee) ... ok
+test_moral_entier_plafond_et_pas_de_gain_commandement (test_progression.Progression.test_moral_entier_plafond_et_pas_de_gain_commandement) ... ok
+test_nature_et_traits_aux_frontieres_exactes (test_progression.Progression.test_nature_et_traits_aux_frontieres_exactes) ... ok
+test_recompense_unite_najoute_pas_commandement (test_progression.Progression.test_recompense_unite_najoute_pas_commandement) ... ok
+test_recompenses_impossibles_exclues_et_redistribution (test_progression.Progression.test_recompenses_impossibles_exclues_et_redistribution) ... ok
+test_aucune_recompense_disponible_ninvente_pas_de_gain (test_niveaux_home_forge.NiveauxHomeForge.test_aucune_recompense_disponible_ninvente_pas_de_gain) ... ok
+test_cascade_reelle_comptabilisee_une_fois (test_niveaux_home_forge.NiveauxHomeForge.test_cascade_reelle_comptabilisee_une_fois) ... ok
+test_combat_cycle_capture_publie_niveau_et_recu (test_niveaux_home_forge.NiveauxHomeForge.test_combat_cycle_capture_publie_niveau_et_recu) ... ok
+test_cycle_formation_avant_combat_et_republication_idempotente (test_niveaux_home_forge.NiveauxHomeForge.test_cycle_formation_avant_combat_et_republication_idempotente) ... ok
+test_defaite_survecue_et_destruction_tardive (test_niveaux_home_forge.NiveauxHomeForge.test_defaite_survecue_et_destruction_tardive) ... ok
+test_deux_resolutions_recompense_garantie_et_plusieurs_blocs_un_point (test_niveaux_home_forge.NiveauxHomeForge.test_deux_resolutions_recompense_garantie_et_plusieurs_blocs_un_point) ... ok
+test_forge_cavalier_valide_deplace_renomme_reste_eligible (test_niveaux_home_forge.NiveauxHomeForge.test_forge_cavalier_valide_deplace_renomme_reste_eligible) ... ok
+test_forge_copie_uuid_et_renommage_ne_valident_pas_un_soldat (test_niveaux_home_forge.NiveauxHomeForge.test_forge_copie_uuid_et_renommage_ne_valident_pas_un_soldat) ... ok
+test_forge_nouveau_recette_complete_refuse_puis_publication_autorise (test_niveaux_home_forge.NiveauxHomeForge.test_forge_nouveau_recette_complete_refuse_puis_publication_autorise) ... ok
+test_forge_sans_reference_et_nouveau_general_ne_prouvent_pas_anciennete (test_niveaux_home_forge.NiveauxHomeForge.test_forge_sans_reference_et_nouveau_general_ne_prouvent_pas_anciennete) ... ok
+test_formation_cycle_capture_publication_reprise_sans_rejeu (test_niveaux_home_forge.NiveauxHomeForge.test_formation_cycle_capture_publication_reprise_sans_rejeu) ... ok
+test_fuite_avant_ou_apres_affrontement (test_niveaux_home_forge.NiveauxHomeForge.test_fuite_avant_ou_apres_affrontement) ... ok
+test_general_detruit_copie_home_ne_donne_pas_de_survie (test_niveaux_home_forge.NiveauxHomeForge.test_general_detruit_copie_home_ne_donne_pas_de_survie) ... ok
+test_home_ancien_nouvelles_unites_toutes_activites_gratuites (test_niveaux_home_forge.NiveauxHomeForge.test_home_ancien_nouvelles_unites_toutes_activites_gratuites) ... ok
+test_hybrides_progression_automatique_native_et_garantie_croisee (test_niveaux_home_forge.NiveauxHomeForge.test_hybrides_progression_automatique_native_et_garantie_croisee) ... FAIL
+test_manoeuvre_seule_compte_et_bloc_vide_ne_compte_pas (test_niveaux_home_forge.NiveauxHomeForge.test_manoeuvre_seule_compte_et_bloc_vide_ne_compte_pas) ... ok
+test_reprise_apres_persistance_repare_fiche_sans_double_recompense (test_niveaux_home_forge.NiveauxHomeForge.test_reprise_apres_persistance_repare_fiche_sans_double_recompense) ... ok
+test_reprise_formation_apres_niveau_avant_cloture_du_sejour (test_niveaux_home_forge.NiveauxHomeForge.test_reprise_formation_apres_niveau_avant_cloture_du_sejour) ... ok
+test_reprise_meme_bataille_ni_point_ni_experience_soldat_en_double (test_niveaux_home_forge.NiveauxHomeForge.test_reprise_meme_bataille_ni_point_ni_experience_soldat_en_double) ... ok
+test_sejour_reserve_incomplet_et_voisin_independant (test_niveaux_home_forge.NiveauxHomeForge.test_sejour_reserve_incomplet_et_voisin_independant) ... ok
+test_trois_tours_reserve_et_independance_jauges (test_niveaux_home_forge.NiveauxHomeForge.test_trois_tours_reserve_et_independance_jauges) ... ok
+test_append_interrompu_octet_utf8_repris_sans_perte_ni_doublon (test_rapports_prives_v2.RapportsPrives.test_append_interrompu_octet_utf8_repris_sans_perte_ni_doublon) ... ok
+test_calcul_prive_ne_touche_aucun_rapport_public (test_rapports_prives_v2.RapportsPrives.test_calcul_prive_ne_touche_aucun_rapport_public) ... ok
+test_deux_tours_meme_inode_historique_conserve (test_rapports_prives_v2.RapportsPrives.test_deux_tours_meme_inode_historique_conserve) ... ok
+test_journal_divergent_refuse_sans_effacement (test_rapports_prives_v2.RapportsPrives.test_journal_divergent_refuse_sans_effacement) ... ok
+test_phase_actions_ne_diffuse_pas_les_evenements (test_rapports_prives_v2.RapportsPrives.test_phase_actions_ne_diffuse_pas_les_evenements) ... ok
+test_publication_et_diffusion_sans_secret_ni_remplacement_inode (test_rapports_prives_v2.RapportsPrives.test_publication_et_diffusion_sans_secret_ni_remplacement_inode) ... ok
+test_republication_meme_generation_ne_repete_pas_les_evenements (test_rapports_prives_v2.RapportsPrives.test_republication_meme_generation_ne_repete_pas_les_evenements) ... ok
+test_resolution_interrompue_conserve_les_anciens_rapports (test_rapports_prives_v2.RapportsPrives.test_resolution_interrompue_conserve_les_anciens_rapports) ... ok
+test_zero_delai_diffuse_tout_sans_attente (test_rapports_prives_v2.RapportsPrives.test_zero_delai_diffuse_tout_sans_attente) ... ok
+
+======================================================================
+FAIL: test_hybrides_progression_automatique_native_et_garantie_croisee (test_niveaux_home_forge.NiveauxHomeForge.test_hybrides_progression_automatique_native_et_garantie_croisee)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/mnt/c/Users/marti/1.cree_manuel/perso/OTW/linux/Mythodea/Mythodea_code/.dev/tests/test_niveaux_home_forge.py", line 179, in test_hybrides_progression_automatique_native_et_garantie_croisee
+    self.assertIn(recompense, (201, 1002) if numero == 1 else (202, 104))
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 110 not found in (201, 1002)
+
+----------------------------------------------------------------------
+Ran 94 tests in 42.276s
+
+FAILED (failures=1)

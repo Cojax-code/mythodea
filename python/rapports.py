@@ -2,6 +2,8 @@
 from pathlib import Path
 import os
 import grp
+import json
+import stat
 from contextlib import contextmanager
 from contextvars import ContextVar
 
@@ -12,6 +14,113 @@ import etat
 territoire_rapport_actuel = None
 meteo_tour = None
 _groupe_lecture = ContextVar('groupe_lecture_rapports', default=None)
+_preparation = ContextVar('preparation_privee_rapports', default=None)
+
+
+@contextmanager
+def preparation_privee(repertoire):
+    """Les sorties d'une résolution ne deviennent visibles qu'à publication."""
+    from cycle_linux import dossier_prive
+    dossier_prive(repertoire)
+    jeton = _preparation.set(repertoire)
+    try:
+        yield
+    finally:
+        _preparation.reset(jeton)
+
+
+def chemin_sortie(chemin):
+    repertoire = _preparation.get()
+    return repertoire / chemin.relative_to(config.rapport_dir) if repertoire else chemin
+
+
+def ouvrir_suivi(configuration, gid):
+    """Inode permanent, sans liens ; l'appelant sérialise les écritures."""
+    from cycle_linux import sans_liens, synchroniser_dossier
+    chemin = configuration['game_path'] / 'rapport/suivi_combats.log'
+    sans_liens(chemin)
+    fd = os.open(chemin, os.O_RDWR | os.O_CREAT | getattr(os, 'O_NOFOLLOW', 0), 0o600)
+    try:
+        infos = os.fstat(fd)
+        if not stat.S_ISREG(infos.st_mode) or infos.st_nlink != 1:
+            raise RuntimeError('Journal de combat non ordinaire ou lié.')
+        os.chown(chemin, 0, gid)
+        os.chmod(chemin, 0o640)
+        synchroniser_dossier(chemin.parent)
+        return os.fdopen(fd, 'r+b')
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def publier_preparation(configuration, generation, gid, debut, defaite=False):
+    """Installation sous gel ; une reprise réutilise les mêmes sorties privées."""
+    from cycle_linux import sans_liens
+    import minuterie
+    intervalle = minuterie.valider_duree(configuration.get('delai_evenements_combats_secondes', 1))
+    source = generation / 'rapports'
+    fichiers = ['rapport_court.txt', 'rapport_long.txt',
+                *(f'territoires/{t.name}.txt' for t in configuration['territoires'])]
+    for relatif in fichiers:
+        sans_liens(source / relatif)
+        if not (source / relatif).is_file():
+            raise RuntimeError('Rapports privés incomplets : récupération requise.')
+    with droits_allies(gid):
+        for relatif in fichiers:
+            destination = configuration['game_path'] / 'rapport' / relatif
+            etat.ecrire_prive(destination, (source / relatif).read_text(encoding='utf-8'))
+            proteger_rapport(destination)
+    plan = configuration['game_path'] / '.systeme/diffusion_rapports.json'
+    precedent = json.loads(plan.read_text(encoding='utf-8')) if plan.exists() else None
+    if precedent and precedent['generation'] == generation.name:
+        return  # Ne réinitialiser ni le point de départ ni le journal à la reprise.
+    if precedent:
+        diffuser(configuration, gid, debut, terminer=True)
+    evenements = [f"=== TOUR {json.loads((generation / 'resultat.json').read_text())['tour']} ===\n"]
+    evenements.extend(json.loads(ligne) for ligne in
+                      (source / 'evenements.jsonl').read_text(encoding='utf-8').splitlines())
+    duree = 0 if defaite else configuration['duree_consultation_secondes']
+    intervalle = min(intervalle, duree / max(1, len(evenements) - 1))
+    with ouvrir_suivi(configuration, gid) as fichier:
+        infos = os.fstat(fichier.fileno())
+        donnees = dict(generation=generation.name, debut=debut, intervalle=intervalle,
+                       position=infos.st_size, device=infos.st_dev, inode=infos.st_ino,
+                       evenements=evenements)
+    # Le plan immuable est durable AVANT le premier append. À la reprise,
+    # les octets déjà écrits font foi, même après une écriture partielle.
+    etat.ecrire_prive(plan, json.dumps(donnees, ensure_ascii=False) + '\n')
+
+
+def diffuser(configuration, gid, maintenant, terminer=False):
+    """Appelé par le minuteur de consultation, sans attente ni processus séparé.
+
+    Le préfixe exact du flux permet de reprendre après append/fsync interrompu,
+    sans fenêtre entre un curseur privé et les octets effectivement publiés.
+    """
+    plan = configuration['game_path'] / '.systeme/diffusion_rapports.json'
+    if not plan.exists():
+        return
+    donnees = json.loads(plan.read_text(encoding='utf-8'))
+    evenements = [texte.encode('utf-8') for texte in donnees['evenements']]
+    intervalle = donnees['intervalle']
+    nombre = len(evenements) if terminer or intervalle == 0 else min(
+        len(evenements), max(0, int((maintenant - donnees['debut']) / intervalle) + 1))
+    attendu = b''.join(evenements)
+    voulu = sum(map(len, evenements[:nombre]))
+    with ouvrir_suivi(configuration, gid) as fichier:
+        infos = os.fstat(fichier.fileno())
+        if ((infos.st_dev, infos.st_ino) != (donnees['device'], donnees['inode'])
+                or infos.st_size < donnees['position']):
+            raise RuntimeError('Journal de combat remplacé ou tronqué : récupération requise.')
+        fichier.seek(donnees['position'])
+        present = fichier.read()
+        if not attendu.startswith(present):
+            raise RuntimeError('Journal de combat divergent : récupération requise.')
+        if len(present) < voulu:
+            fichier.seek(0, os.SEEK_END)
+            fichier.write(attendu[len(present):voulu])
+            fichier.flush()
+            os.fsync(fichier.fileno())
 
 
 @contextmanager
@@ -26,14 +135,15 @@ def droits_allies(gid):
 def proteger_rapport(chemin):
     gid = _groupe_lecture.get()
     if gid is not None:
-        technique = chemin == config.rapport_long_path
+        technique = _preparation.get() is not None or chemin.name == config.rapport_long_path.name
         os.chown(chemin, 0, 0 if technique else gid)
         os.chmod(chemin, 0o600 if technique else 0o640)
 
 
 def vider_rapport(chemin):
     """Garde l'inode pour les lecteurs tail ; privé dès la création."""
-    mode = 0o600 if _groupe_lecture.get() is not None else 0o666
+    chemin = chemin_sortie(chemin)
+    mode = 0o600 if _groupe_lecture.get() is not None or _preparation.get() else 0o666
     fd = os.open(chemin, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, 'O_NOFOLLOW', 0), mode)
     try:
         proteger_rapport(chemin)
@@ -237,6 +347,7 @@ def afficher_tableau_pertes(pertes_joueur_1, pertes_joueur_2, nom_joueur_1, nom_
 
 def ajouter_ligne_fichier(chemin, texte):
     # Ajoute une ligne dans un fichier de rapport.
+    chemin = chemin_sortie(chemin)
 
     chemin.parent.mkdir(
         parents=True,
@@ -305,6 +416,13 @@ def ecrire_rapport_territoire(
         chemin,
         texte
     )
+    repertoire = _preparation.get()
+    if repertoire is not None:
+        # Uniquement les événements déjà destinés aux alliés. Le journal
+        # technique et les ordres personnels n'entrent jamais dans ce flux.
+        fichier = repertoire / 'evenements.jsonl'
+        with fichier.open('a', encoding='utf-8') as sortie:
+            sortie.write(json.dumps(f'[{Path(territoire).name}] {texte}\n', ensure_ascii=False) + '\n')
 
 
 def definir_territoire_rapport(territoire):
@@ -588,12 +706,12 @@ def preparer_rapports(configuration=None):
 
     territoire_rapport_actuel = None
 
-    config.rapport_dir.mkdir(
+    chemin_sortie(config.rapport_dir).mkdir(
         parents=True,
         exist_ok=True
     )
 
-    config.rapports_territoires_dir.mkdir(
+    chemin_sortie(config.rapports_territoires_dir).mkdir(
         parents=True,
         exist_ok=True
     )

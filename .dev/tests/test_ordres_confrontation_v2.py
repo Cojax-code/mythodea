@@ -54,6 +54,40 @@ class TestConfrontationOrdres(unittest.TestCase):
             commandement.confronter_donneurs(
                 [1], 'stratege', (), [], 'stratege', (), 'inconnue', 0, CAT)
 
+    def test_memes_regles_dans_les_trois_categories(self):
+        for categorie in ('globale', 'duel', 'individuelle'):
+            catalogue = {i: dict(o, categorie=categorie) for i, o in CAT.items()}
+            def confronter(a, b, comparaison):
+                return commandement.confronter_donneurs(a, 'stratege', (), b, 'stratege', (),
+                                                        categorie, comparaison, catalogue)
+            with self.subTest(categorie=categorie):
+                self.assertEqual(confronter([1, 2], [5], 1), ([1, 2], []))
+                self.assertEqual(confronter([1, 2], [5], 0), ([], []))
+                for comparaison in (-1, 0, 1):
+                    self.assertEqual(confronter([1], [3], comparaison), ([1], [3]))
+                    self.assertEqual(confronter([3], [], comparaison), ([3], []))
+                    self.assertEqual(confronter([1, 3], [], comparaison), ([], []))
+
+    def test_donneur_personnel_ne_cumule_pas_avec_qg(self):
+        general, qg = dict(ordres=[1]), dict(ordres=[2])
+        donneur = commandement.donneur_duel(general, qg, lambda g: g['ordres'])
+        self.assertEqual(self.confrontation(donneur['ordres'], [], 1), ([1], []))
+        general['ordres'] = []
+        donneur = commandement.donneur_duel(general, qg, lambda g: g['ordres'])
+        self.assertEqual(self.confrontation(donneur['ordres'], [], 1), ([2], []))
+
+    def test_ordres_des_generaux_sans_qg_non_transmis(self):
+        a = dict(nature='stratege', points_commandement=200, ordres=[5])
+        b = dict(nature='stratege', points_commandement=1, ordres=[5])
+        self.assertEqual(commandement.confronter_globaux(
+            [a], None, a['ordres'], [b], b, b['ordres'], CAT), ([], [5]))
+
+    def test_ordres_desactives_exclus_avant_comparaison(self):
+        catalogue = dict(CAT, **{})
+        catalogue[1] = dict(CAT[1], disponible=False)
+        self.assertEqual(commandement.confronter_donneurs(
+            [1], 'stratege', (), [3], 'stratege', (), 'duel', 1, catalogue), ([], [3]))
+
 
 if __name__ == '__main__':
     unittest.main()

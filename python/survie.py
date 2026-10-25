@@ -416,7 +416,8 @@ def _clore_tour_survie(configuration, gestion, aleatoire=None):
         gestion.marquer(tour, 'resolution')
         gestion.afficher(tour, 'resolution', detail='JOUEURS DEGELÉS')
         etat.sauvegarder_cycle_survie({'tour': tour, 'phase': 'actions'}, prive)
-        with config.racines_generation(prive['game_path'], homes):
+        with config.racines_generation(prive['game_path'], homes), \
+                rapports.preparation_privee(gestion.generation / 'rapports'):
             resultat = _resoudre_tour_capture(prive, aleatoire)
         from cycle_linux import ecrire_json
         ecrire_json(gestion.generation / 'resultat.json',
@@ -431,11 +432,12 @@ def _clore_tour_survie(configuration, gestion, aleatoire=None):
             gestion.backend.annoncer(
                 'PHASE DE CONSULTATION — RAPPORTS DISPONIBLES\n'
                 'Les combats sont terminés et les rapports sont disponibles.\n'
-                'Vous avez 1 minute pour consulter les rapports.\n'
+                f"Vous avez {configuration['duree_consultation_secondes']:g} secondes pour consulter les rapports.\n"
                 'Il est impossible de fabriquer des unités pendant cette phase.\n\n'
                 f'Rapport court : cat {configuration["game_path"]}/village/$USER/hotel_de_ville/rapport.txt\n'
                 f'Suivi des phases : tail -f {configuration["game_path"]}/village/clocher/suivi_tour.log\n'
-                'Ce suivi indique les changements de phase, pas les détails des combats.'
+                f'Combats détaillés : cat {configuration["game_path"]}/rapport/territoires/est_1.txt\n'
+                f'Journal progressif : tail -f {configuration["game_path"]}/rapport/suivi_combats.log'
             )
         return resultat
     except BaseException as erreur:
@@ -505,7 +507,7 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
     defis.materialiser(configuration, tour)
     rapports.ecrire_rapport_court(f"Fin du tour {tour} — vague {tour + 1}.")
     plateau.preparer_accueil(configuration, tour + 1,
-                            config.rapport_court_path.read_text(encoding='utf-8'))
+                            rapports.chemin_sortie(config.rapport_court_path).read_text(encoding='utf-8'))
     etat.sauvegarder_cycle_survie(
         {"tour": tour if defaite else tour + 1, "phase": "defaite" if defaite else "a_preparer"},
         configuration)

@@ -1,8 +1,4 @@
-"""Calculs purs pour le Bouclier vivant V2.
-
-Aucun changement de disque ici : le résolveur territorial effectuera ensuite
-les conversions, les combats et les écritures officielles.
-"""
+"""Calculs du Bouclier vivant et résolution de sa priorité dans le duel commun."""
 from fractions import Fraction
 import random
 
@@ -192,7 +188,7 @@ def convertir_spore(general_zombie, adversaire, bloc_adverse, evenement, rng=Non
     unites.sauver_capacites(donnees)
     # Nouveau dossier sans ancien équipement ; identité historique conservée.
     shutil.rmtree(victime['chemin'])
-    destination.mkdir()
+    soldats.creer_dossier_unite(destination)
     infos = destination.stat()
     valeur = registre[identifiant]
     valeur.update(type='zombie', chemin=soldats.cle(destination),
@@ -273,6 +269,11 @@ def resoudre_priorite(general_zombie, adversaire):
     import unites
     if not presence_bouclier(general_zombie):
         return False, []
+    for general in (general_zombie, adversaire):
+        if presence_bouclier(general) and _zombies_vivants(general) == 0:
+            generaux.supprimer_general_si_vide(general)
+    if not general_zombie['chemin'].is_dir() or not adversaire['chemin'].is_dir():
+        return True, []
     if presence_bouclier(adversaire):
         # Deux Boucliers vivants s'ignorent : seuls les Zombies ordinaires
         # combattent, suivant les règles classiques. Aucun Spore entre Zombies.

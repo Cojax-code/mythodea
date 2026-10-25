@@ -93,6 +93,17 @@ def sauvegarder(donnees):
                       json.dumps(donnees, ensure_ascii=False) + '\n')
 
 
+def creer_dossier_unite(chemin):
+    """Une création moteur appartient au propriétaire du bloc destinataire."""
+    for parent in chemin.parents:
+        if parent.is_symlink():
+            raise RuntimeError(f'Bloc lié interdit : {chemin.parent}')
+    proprietaire = chemin.parent.stat()
+    chemin.mkdir(mode=0o700)
+    os.chown(chemin, proprietaire.st_uid, proprietaire.st_gid)
+    os.chmod(chemin, 0o700)
+
+
 def ecrire_copie(chemin, texte):
     """Copie de consultation, jamais l'autorité des blessures ou des soins."""
     for p in (chemin, *chemin.parents):

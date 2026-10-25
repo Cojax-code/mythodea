@@ -63,7 +63,11 @@ class Progression(unittest.TestCase):
 
     def test_recompenses_impossibles_exclues_et_redistribution(self):
         fiche = self.fiche()
-        fiche['evolutions_acquises'] = [1002]  # L'ordre disponible est déjà acquis.
+        # Épuiser aussi les unités ajoutées au catalogue V2 : ce scénario
+        # vérifie la redistribution lorsqu'il ne reste que du commandement.
+        fiche['evolutions_acquises'] = [i for i, e in
+            progression.evolutions_eligibles(fiche, apprentissage=False).items()
+            if e['categorie'] in ('unite', 'ordre')]
         apres, recompense = progression.monter_niveau(fiche, Mock(randint=lambda a, b: b))
         self.assertEqual(recompense, 201)
         self.assertEqual(apres['points_commandement'], 35)
@@ -142,9 +146,13 @@ class Commandement(unittest.TestCase):
             1: dict(categorie='globale', disponible=True, contre=False),
             2: dict(categorie='globale', disponible=True, contre=True),
             3: dict(categorie='individuelle', disponible=True, contre=False)}
-        for comparaison, attendu in ((1, [1]), (0, []), (-1, [2])):
+        for comparaison in (1, 0, -1):
             self.assertEqual(commandement.ordres_applicables([1, 2], 'stratege', 'globale',
-                                                            comparaison, catalogue), attendu)
+                                                            comparaison, catalogue), [])
+            self.assertEqual(commandement.ordres_applicables([1], 'stratege', 'globale',
+                comparaison, catalogue), [1] if comparaison == 1 else [])
+            self.assertEqual(commandement.ordres_applicables([2], 'stratege', 'globale',
+                comparaison, catalogue), [2] if comparaison == -1 else [])
         self.assertEqual(commandement.ordres_applicables([3], 'instinctif', 'individuelle',
                                                         catalogue=catalogue), [3])
         self.assertEqual(commandement.ordres_applicables([1], 'instinctif', 'globale', 1, catalogue), [])

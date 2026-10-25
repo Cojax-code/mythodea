@@ -54,7 +54,7 @@ class UnitesV2(unittest.TestCase):
     def test_orcs_comptes_sur_armee_sans_cumuler_blocs(self):
         fiche = dict(points_commandement=20, moral=4)
         petits = dict(avant={'orc_assaillant': 3}, droite={'orc_archer': 2}, gauche={'orc_chaman': 2})
-        self.assertEqual(self.unites.caracteristiques_armee(fiche, petits), dict(points_commandement=17, moral=4))
+        self.assertEqual(self.unites.caracteristiques_armee(fiche, petits), dict(points_commandement=20, moral=1))
         grands = dict(avant={'orc_assaillant': 5}, droite={'orc_archer': 5}, gauche={'orc_chaman': 5},
                       arriere={'chevalier_clinquant': 2})
         self.assertEqual(self.unites.caracteristiques_armee(fiche, grands), dict(points_commandement=20, moral=11))
@@ -337,14 +337,14 @@ class UnitesV2(unittest.TestCase):
         from fractions import Fraction
         fiche = dict(points_commandement=20, moral=50)
         composition = dict(avant={'sauvageon': 5}, droite={'orc_chaman': 1})
-        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'avant'), 51)
+        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'avant'), Fraction(2091, 50))
         composition['droite']['orc_chaman'] = 2
-        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'avant'), 52)
-        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'avant'), 52)
+        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'avant'), Fraction(1092, 25))
+        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'avant'), Fraction(1092, 25))
         self.assertEqual(fiche['moral'], 50)
         fiche['moral'] = 11
-        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'avant'), Fraction(286, 25))
-        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'droite'), 11)
+        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'avant'), Fraction(78, 25))
+        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'droite'), 3)
 
     def test_chaman_soins_territoire_allies_uniquement_et_rejeu(self):
         g = self.creer(nombre=0, territoire='est_1')
@@ -554,6 +554,18 @@ class CryptePlaines(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'personnellement'):
             self.message('end')
         self.assertIsNone(self.crypte.charger(self.plaines)['j1']['dernier_tour'])
+
+    def test_connaissance_autre_general_et_fiche_falsifiee_ne_debloquent_pas(self):
+        autre = self.general(numero=2, territoire='village', place='2', nombre=0)
+        fiches = self.progression.charger()
+        fiches['j1:general1']['evolutions_acquises'] = []
+        fiches['j1:general2']['evolutions_acquises'] = [108]
+        self.progression.sauvegarder(fiches)
+        with (self.beneficiaire['chemin'] / 'fiche.txt').open('a') as fichier:
+            fichier.write('\nevolutions_acquises=108\n')
+        with self.assertRaisesRegex(ValueError, 'personnellement'):
+            self.crypte.verifier_connaissance_plaines(self.plaines, 'j1', 108)
+        self.assertTrue(autre.exists())
 
     def test_livraison_quatre_unites_au_general_existant_et_rejeu(self):
         self.executer('orc_archer')

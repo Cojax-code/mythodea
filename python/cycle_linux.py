@@ -316,6 +316,7 @@ class Generations:
         config.verifier_structure_actuelle(self.c)
         for nom in ('duree_gel_secondes', 'duree_consultation_secondes', 'seuil_capture_secondes'):
             minuterie.valider_duree(self.c[nom])
+        minuterie.valider_duree(self.c.get('delai_evenements_combats_secondes', 1))
         if self.c['seuil_capture_secondes'] <= self.c['duree_gel_secondes']:
             raise ValueError('Le seuil de capture doit dépasser le gel minimum.')
         for chemin in (self.game, *self.homes.values()):
@@ -345,6 +346,8 @@ class Generations:
                     if fichier.stat().st_nlink != 1:
                         raise RuntimeError(f'Rapport lié à un autre fichier : {fichier}')
                     rapports.proteger_rapport(fichier)
+        with rapports.ouvrir_suivi(self.c, self.gid):
+            pass
         self.backend.preparer()
 
     def afficher(self, tour, phase, restant=None, detail=''):
@@ -389,6 +392,8 @@ class Generations:
             nonlocal prochain_scan
             self.afficher(cycle['tour'], cycle['phase'], restant)
             maintenant = self.horloge()
+            if cycle['phase'] == 'consultation':
+                rapports.diffuser(self.c, self.gid, maintenant, terminer=restant <= 0)
             if cycle['phase'] == 'actions' and maintenant >= prochain_scan:
                 defis.scanner(self.c, self.horloge)
                 prochain_scan = maintenant + defis.INTERVALLE_SCAN
@@ -616,11 +621,15 @@ class Generations:
             formation.preparer(self.c)
             securite.memoriser_unites_actions(self.c, tour + 1)
             self.permissions_consultation()
+            debut_consultation = self.horloge()
+            rapports.publier_preparation(self.c, self.generation, self.gid,
+                                         debut_consultation, defaite)
             journal['termine'] = True
             ecrire_json(fichier, journal)
             self.marquer(tour, 'defaite' if defaite else 'consultation',
                          generation_active=self.generation.name,
-                         **({} if defaite else {'echeance': self.horloge() + self.c['duree_consultation_secondes']}))
+                         **({} if defaite else {'echeance': debut_consultation + self.c['duree_consultation_secondes']}))
+            rapports.diffuser(self.c, self.gid, self.horloge(), terminer=defaite)
         finally:
             self.backend.degeler()
 
@@ -661,4 +670,6 @@ class Generations:
 
     def erreur(self, tour, erreur):
         self.marquer(tour, 'recuperation', erreur=str(erreur))
-        self.afficher(tour, 'recuperation', detail='INTERVENTION ADMINISTRATEUR REQUISE\n' + str(erreur))
+        # L'exception peut mentionner une donnée de la génération privée.
+        # Son détail est conservé dans cycle_survie.json, jamais au Clocher public.
+        self.afficher(tour, 'recuperation', detail='INTERVENTION ADMINISTRATEUR REQUISE')

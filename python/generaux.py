@@ -273,9 +273,21 @@ def lire_ordres_general(chemin_general):
     if not ordre_path.exists():
         return ordres
 
-    lignes = ordre_path.read_text(
-        encoding="utf-8"
-    ).splitlines()
+    import stat
+    from cycle_linux import sans_liens
+    try:
+        sans_liens(ordre_path)
+        infos = ordre_path.lstat()
+        if not stat.S_ISREG(infos.st_mode) or infos.st_nlink != 1:
+            raise ValueError('Fichier non ordinaire.')
+        with ordre_path.open('rb') as fichier:
+            contenu = fichier.read(65537)
+        if len(contenu) > 65536:
+            raise ValueError('Fichier trop volumineux.')
+        lignes = contenu.decode('utf-8').splitlines()
+    except (OSError, ValueError, RuntimeError):
+        rapports.afficher_et_ecrire(f'Ordres ignorés pour {chemin_general.name} : [fichier invalide]')
+        return ordres
 
     for ligne in lignes:
         ligne = ligne.strip()
@@ -297,7 +309,7 @@ def lire_ordres_general(chemin_general):
 
         # Tous les éléments doivent être numériques.
         if not all(
-            morceau.isdigit()
+            morceau.isascii() and morceau.isdecimal()
             for morceau in morceaux
         ):
             rapports.afficher_et_ecrire(
@@ -308,13 +320,13 @@ def lire_ordres_general(chemin_general):
 
             continue
 
-        type_ordre = int(morceaux[0])
-        numero_ordre = int(morceaux[1])
-
-        specification = None
-
-        if len(morceaux) == 3:
-            specification = int(morceaux[2])
+        try:
+            type_ordre = int(morceaux[0])
+            numero_ordre = int(morceaux[1])
+            specification = int(morceaux[2]) if len(morceaux) == 3 else None
+        except ValueError:
+            rapports.afficher_et_ecrire(f'Ordre ignoré pour {chemin_general.name} : [nombre invalide]')
+            continue
 
         identifiant = (
             f"{type_ordre}-"
@@ -745,7 +757,7 @@ def lire_blocs_general(chemin_general):
         soutiens = [u for u, t in zip(unites_trouvees, type_trouves)
                     if capacites.etiquette(t, 'non_combattant')]
         boucliers = [u for u, t in zip(unites_trouvees, type_trouves)
-                     if t == 'Trop_gros_zombie'] if 'zombie' in type_trouves else []
+                     if t == 'Trop_gros_zombie']
         if len(soutiens) < len(unites_trouvees):
             combattants = [(u, t) for u, t in zip(unites_trouvees, type_trouves)
                           if u not in soutiens and u not in boucliers]
@@ -964,6 +976,13 @@ def supprimer_general_si_vide(general):
 
     blocs_general = lire_blocs_general(chemin_general)
     total = total_unites_general(blocs_general)
+
+    # Un bouclier reste hors des confrontations ordinaires, même seul dans
+    # son bloc. Sans combattant ordinaire, il disparaît et le général est vaincu.
+    import bouclier_vivant
+    if bouclier_vivant.seulement_bouclier(lire_composition_general(chemin_general)):
+        bouclier_vivant.retirer_bouclier(general)
+        total = 0
 
     if total > 0:
         return False
