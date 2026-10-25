@@ -5,6 +5,7 @@ différents et ignore les ordres désactivés. Le vieux 1-2 reste exécuté
 par le moteur historique jusqu'à sa migration explicite.
 """
 import catalogues
+import commandement
 
 _CATEGORIES = {"globale", "duel", "individuelle"}
 
@@ -68,3 +69,38 @@ def ordres_par_donneur(forces, categorie=None, catalogue=None):
                 groupes.append(dict(camp=camp, position=position,
                                     general=general, identifiants=demandes))
     return groupes
+
+
+def confronter_intentions(donneur_1, donneur_2, categorie, points_1, points_2,
+                         catalogue=None):
+    """Compare deux donneurs explicitement identifiés, sans effet de combat.
+
+    donneur_N : dict avec un champ « general » (dictionnaire moteur)
+    ou None si ce camp n'a aucun donneur pour CETTE confrontation.
+    Les PC sont calculés et transmis par l'appelant : aucune règle de
+    calcul globale/duel n'est supposée ici.
+    Cette API n'est PAS un mécanisme de sélection automatique du QG.
+    """
+    if categorie not in _CATEGORIES:
+        raise ValueError("Catégorie inconnue.")
+    if any(type(p) is not int or p < 0 for p in (points_1, points_2)):
+        raise ValueError("Les points de commandement doivent être des entiers positifs ou nuls.")
+    catalogue = catalogues.ORDRES if catalogue is None else catalogue
+
+    def intentions(donneur):
+        if donneur is None:
+            return (), "", ()
+        general = donneur["general"]
+        fiche = general.get("caracteristiques")
+        if not isinstance(fiche, dict) or not isinstance(fiche.get("nature"), str):
+            raise ValueError("Caractéristiques officielles du général requises.")
+        return (ordres_du_general(general, categorie, catalogue),
+                fiche["nature"], fiche.get("evolutions_acquises", ()))
+
+    ids_1, nature_1, acquis_1 = intentions(donneur_1)
+    ids_2, nature_2, acquis_2 = intentions(donneur_2)
+    comparaison = commandement.comparer(points_1, points_2)
+    retenus_1, retenus_2 = commandement.confronter_donneurs(
+        ids_1, nature_1, acquis_1, ids_2, nature_2, acquis_2,
+        categorie, comparaison, catalogue)
+    return {"comparaison": comparaison, "camp_1": retenus_1, "camp_2": retenus_2}
