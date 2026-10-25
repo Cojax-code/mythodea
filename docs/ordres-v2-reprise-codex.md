@@ -83,3 +83,12 @@ Deux ordres ne se neutralisent qu'à l'intérieur d'une **même confrontation et
 - Tests ajoutés : composition officielle, ignorance de la fiche publique, égalité des PC, refus de progression privée absente.
 - **Limite impérative :** pas encore de connexion de cette API à `combat_entre_generaux`. Les autres catégories (globale/individuelle), l'autorisation de QG, les cibles de duel et l'exécution des effets ne sont pas réglées.
 - Ne pas fusionner le chantier tant que Codex n'a pas validé les tests et le raccordement en Linux.
+
+## Décision confirmée : PC du QG émetteur pour les duels
+
+- Lorsque le **QG émet un ordre de duel à la place du combattant**, comparer les PC du **général possédant le QG**, PAS ceux du combattant.
+- La fonction `confronter_duel_officiel` applique désormais ce principe en calculant les PC de chaque **donneur** par `points_duel_officiels` (qui appelle `commandement.effectif_general` et compte les types d'unités présents).
+- **Ne pas confondre** ce calcul avec la formule déjà codée pour les **ordres globaux** dans `commandement.global_armee` : `(2 * PC_QG + somme_PC_autres_strateges) // (2 * max(1, nombre_autres_generaux))`. Conserver cette formule tant qu'aucune autre modification n'a été validée.
+- Le choix du QG actif reste externe et doit être lié à la sélection officielle `selectionner_qg` et à sa disparition éventuelle. Il n'est PAS encore connecté au combat.
+- Le test `test_qg_donneur_duel_utilise_ses_pc_pas_ceux_du_combattant` protège cette décision.
+- Aucun effet des 21 ordres encore activé ; tests ajoutés mais pas exécutés sous Linux dans cette session.
