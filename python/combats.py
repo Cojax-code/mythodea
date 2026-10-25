@@ -8,6 +8,7 @@ import etat
 import generaux
 import rapports
 import progression
+import ordres_pipeline
 import soldats
 import unites
 
@@ -384,6 +385,14 @@ def resoudre_affrontement_actif(
             territory, configuration
         )
     )
+
+    # Point de raccordement des ordres V2 : capture des intentions par
+    # général, sans exécuter les effets encore en conception. Le comportement
+    # historique de l'ordre 1-2 reste volontairement inchangé.
+    intentions_v2 = ordres_pipeline.ordres_par_donneur(generaux_depart)
+    # La sélection/confrontation ne sera branchée ici que lorsque les
+    # donneurs, cibles et effets auront été validés et testés.
+    del intentions_v2
 
     ordre_frontal_camp_1 = (
         generaux.joueur_possede_ordre_armee(
