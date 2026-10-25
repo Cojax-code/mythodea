@@ -129,3 +129,34 @@ def donneurs_officiels(forces, categorie=None, catalogue=None):
             "identifiants": list(groupe["identifiants"]),
         })
     return donneurs
+
+
+def points_duel_officiels(general):
+    """Calcule les PC d'un général depuis les données moteur authentiques.
+
+    Ne sélectionne ni QG ni ordre ; applique simplement le calcul V2 existant
+    de commandement.effectif_general aux unités réellement présentes.
+    """
+    fiche = progression.caracteristiques_general(general)
+    if not isinstance(fiche, dict) or type(fiche.get("points_commandement")) is not int:
+        raise ValueError("PC officiels introuvables pour le duel.")
+    if fiche["points_commandement"] < 0:
+        raise ValueError("PC officiels négatifs.")
+    import generaux
+    composition = generaux.lire_composition_general(general["chemin"])
+    return commandement.effectif_general(fiche, composition)
+
+
+def confronter_duel_officiel(general_1, general_2, donneur_1, donneur_2,
+                            catalogue=None):
+    """Confrontation duel sans effet entre deux généraux *déjà choisis*.
+
+    Les deux généraux engagés peuvent être différents des donneurs si un QG
+    intervient ; la sélection du QG reste explicitement extérieure. PC calculés
+    pour les généraux engagés, pas pour un donneur de secours arbitraire.
+    Aucune écriture disque ni modification des unités.
+    """
+    points_1 = points_duel_officiels(general_1)
+    points_2 = points_duel_officiels(general_2)
+    return confronter_intentions(donneur_1, donneur_2, "duel",
+                                points_1, points_2, catalogue)
