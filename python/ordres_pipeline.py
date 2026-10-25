@@ -151,12 +151,20 @@ def confronter_duel_officiel(general_1, general_2, donneur_1, donneur_2,
                             catalogue=None):
     """Confrontation duel sans effet entre deux généraux *déjà choisis*.
 
-    Les deux généraux engagés peuvent être différents des donneurs si un QG
-    intervient ; la sélection du QG reste explicitement extérieure. PC calculés
-    pour les généraux engagés, pas pour un donneur de secours arbitraire.
-    Aucune écriture disque ni modification des unités.
+    Un ordre de duel est confronté avec les PC de son DONNEUR : si le QG
+    transmet l'ordre à la place du général engagé, ce sont les PC du général
+    possédant le QG qui comptent, en appliquant effectif_general.
+    Le calcul global d'armée (global_armee) est distinct, réservé aux ordres
+    globaux. Les deux engagés restent des arguments explicites pour contrôler
+    plus tard la provenance, les cibles et la validité des donneurs.
+    Aucun choix automatique de QG ni effet de combat.
     """
-    points_1 = points_duel_officiels(general_1)
-    points_2 = points_duel_officiels(general_2)
+    if donneur_1 is None and donneur_2 is None:
+        points_1 = points_2 = 0
+    else:
+        points_1 = points_duel_officiels(
+            donneur_1["general"]) if donneur_1 is not None else 0
+        points_2 = points_duel_officiels(
+            donneur_2["general"]) if donneur_2 is not None else 0
     return confronter_intentions(donneur_1, donneur_2, "duel",
                                 points_1, points_2, catalogue)
