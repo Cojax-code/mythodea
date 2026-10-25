@@ -74,3 +74,11 @@ Cette note est une photographie des décisions prises et des questions ouvertes 
 
 - **Muraille humaine :** les unités de blocs d'autres généraux engagées temporairement dans la formation collective **retournent à leur général d'origine** après l'intervention. Les pertes éventuelles ne sont pas annulées. Cela ne résout pas à lui seul l'état exact des unités du général vaincu ni la répartition des pertes collectives : ne pas les inventer.
 - **Dernière charge :** déclenchement interdit si le général précédent **n'a pas perdu** son duel. La défaite de ce général est une condition nécessaire, pas seulement une condition de disponibilité du flanc. La règle de retour des unités de Muraille humaine ne s'applique pas automatiquement à Dernière charge.
+
+### Muraille humaine — précision sur les phases (25 octobre 2026)
+
+- L'ordre vise à favoriser le **choc initial**, puis à faire se dérouler **la manœuvre sans les blocs Avant des deux camps**.
+- Les unités d'autres généraux engagées temporairement pour constituer la ligne commune retournent à leur général d'origine après leur intervention, sans effacer les pertes subies.
+- Les unités des blocs Avant engagés dans le choc initial « disparaissent » pour la suite de cet affrontement : **elles n'interviennent plus en manœuvre**, même si elles ont gagné le choc initial. Ne pas inventer une participation ultérieure dans ce duel.
+- La disparition du combat n'est pas automatiquement une mort permanente ou une destruction des fichiers des soldats : cette conséquence n'a pas encore été explicitement fixée.
+- La répartition exacte des pertes dans la ligne collective et le traitement des unités qui reviennent à leur général restent à tester/définir sans hypothèse implicite.
