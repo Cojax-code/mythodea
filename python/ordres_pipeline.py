@@ -6,6 +6,7 @@ par le moteur historique jusqu'à sa migration explicite.
 """
 import catalogues
 import commandement
+import progression
 
 _CATEGORIES = {"globale", "duel", "individuelle"}
 
@@ -104,3 +105,27 @@ def confronter_intentions(donneur_1, donneur_2, categorie, points_1, points_2,
         ids_1, nature_1, acquis_1, ids_2, nature_2, acquis_2,
         categorie, comparaison, catalogue)
     return {"comparaison": comparaison, "camp_1": retenus_1, "camp_2": retenus_2}
+
+
+def donneurs_officiels(forces, categorie=None, catalogue=None):
+    """Prépare les donneurs depuis la progression PRIVÉE, sans effets.
+
+    Renvoie une entrée par général et par catégorie demandée. Aucun champ
+    fiche.txt du joueur ne sert d'autorité ; l'absence de fiche privée est
+    une erreur, jamais une permission implicite. Sans ordre disponible,
+    le général n'est pas retenu comme donneur.
+    """
+    groupes = ordres_par_donneur(forces, categorie, catalogue)
+    donneurs = []
+    for groupe in groupes:
+        general = groupe["general"]
+        fiche = progression.caracteristiques_general(general)
+        if not isinstance(fiche, dict) or not isinstance(fiche.get("nature"), str):
+            raise ValueError("Progression privée absente pour un donneur d'ordres.")
+        donneurs.append({
+            "camp": groupe["camp"],
+            "position": groupe["position"],
+            "general": {**general, "caracteristiques": fiche},
+            "identifiants": list(groupe["identifiants"]),
+        })
+    return donneurs
