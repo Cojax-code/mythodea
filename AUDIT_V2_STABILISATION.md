@@ -1,40 +1,57 @@
-# Audit et stabilisation V2 — 25 octobre 2026
+# Audit et stabilisation V2 — clôture de la reprise
 
-Branche `v2.0`, départ `84802b1`. Arbre Git initial propre. Aucun nouveau
-ordre ne doit être ajouté ni activé. Les règles ouvertes restent ouvertes.
+Audit initial sur `v2.0`, départ `84802b1`, corrections conservées dans
+`eb5c302` (« verification codex »). Reprise et validation sur `feat/ordres-v2`
+à partir de `0ad6ec6`. Aucun merge vers `v2.0`.
 
-## Avancement
+## Résultats vérifiés
 
-- Spécifications commune et Survie, architecture et comptes rendus précédents lus.
-- Historique examiné : les derniers changements Orcs/ordres/Bouclier avaient
-  été intégrés sans validation complète (compte rendu du 20 octobre).
-- Suite initiale Windows : 529 tests, 2 échecs, 896 erreurs (certaines en
-  nettoyage), 38 ignorés. Environnement incompatible avec les dépendances Unix ;
-  ce résultat ne mesure pas la stabilité Linux du moteur.
-- Suite initiale Ubuntu WSL lancée, journal `/tmp/mythodea-audit-initial-linux.txt`.
-- Lecture des rapports : écritures publiques pendant le calcul privé confirmées.
-  Publication groupée et diffusion pendant CONSULTATION à terminer.
-- Lecture des combats : un bouclier isolé dans son bloc reste une cible ordinaire
-  lorsque deux boucliers adverses sont présents. Régression à couvrir.
-- Tests Orcs/commandement/progression à confronter aux décisions nouvelles.
+- Le journal précédemment interrompu est complet : **558 tests en 191,454 s,
+  aucun échec, un ignoré réservé à root** (`.dev/audit-tests-complets.txt`).
+- La reprise, incluant les modules préparatoires des ordres, exécute
+  **584 tests en 215,103 s, aucun échec, le même ignoré**
+  (`.dev/ordres-v2-baseline.txt`). Les préparations enregistrées sur GitHub
+  ont donc été testées sous Linux.
+- Vérifications réelles Linux isolées sous root : **4 tests réussis en 9,128 s**,
+  dont le test ignoré dans la suite ordinaire. Journal :
+  `.dev/ordres-v2-permissions-linux.txt`.
+- Total avant nouveaux effets : **587 tests distincts réussis**
+  (583 ordinaires + 4 root). Aucun test root compté deux fois.
+- Les nouveaux effets et leurs résultats sont suivis dans
+  `docs/ordres-v2-reprise-codex.md`.
 
-## Plan de validation
+## Corrections conservées et revérifiées
 
-1. Conserver le bilan initial Linux et reproduire les anomalies.
-2. Corriger les unités et la sélection des ordres sans activer de nouveaux effets.
-3. Isoler les rapports privés ; publier sous gel ; diffuser sans ralentir le
-   calcul et sans processus permanent, avec reprise du même fichier.
-4. Compléter les régressions, parties complètes déterministes et interruptions.
-5. Compiler, exécuter toute la suite et les tests Linux isolés possibles.
-6. Actualiser ce rapport avec résultats exacts et décisions encore nécessaires.
+- Boucliers séparés des unités ordinaires, disparition lorsqu'ils restent seuls,
+  deux boucliers adverses ignorés par les unités ordinaires.
+- Moral racial Orc borné, PC inchangés ; fractions de moral Chaman conservées.
+- Ordres malformés, Unicode non numérique, nombres excessifs et UTF-8 invalide
+  ignorés sans bloquer la résolution.
+- Rapports calculés dans la génération privée ; publication sous gel ; journal
+  progressif à inode stable, reprenant les écritures partielles sans doublon.
+  Les détails techniques restent privés et les erreurs ne fuient plus au Clocher.
+- Unités créées par le moteur : propriétaire du bloc, dossier `700`, fichiers
+  `600`. Spore conserve identité et expérience ; surplus Zombie régulés en fin
+  de territoire, sans sacrifier les soldats historiques.
+- Trois parties déterministes jusqu'à la défaite, avec redémarrage entre tours :
+  sans défense, un joueur, coopération. Capture/publication interrompues testées.
 
-## Limites connues à qualifier
+Les anciennes attentes incompatibles avec les décisions Orcs et commandement
+ont été corrigées avec des régressions dédiées. Les tests d'épuisement des
+récompenses utilisent les apprentissages effectivement disponibles.
 
-- Le QG/commandement V2 est une API préparatoire, distincte de l'attaque frontale
-  historique. Matérialisation et transition tactique restent à décider.
-- Le journal technique long est privé root selon la SPEC ; les rapports
-  territoriaux détaillés sont les rapports longs accessibles aux alliés.
-- La Survie n'a pas de victoire finale définie, seulement une défaite par
-  contrôle final du village par le bot.
-- WSL n'est pas une validation Raspberry Pi/SSH réel. Les tests ne doivent
-  jamais utiliser une vraie partie sous `/game`.
+## Portée de la clôture
+
+L'audit automatisé repris est terminé et ses corrections sont conservées.
+Ubuntu sous WSL, plateaux temporaires, jamais une partie réelle `/game`.
+Les tests root emploient des UID isolés sans créer de comptes. Une recette
+Raspberry Pi avec connexions SSH et gel réel des comptes reste à faire sur une
+machine dédiée ; la simulation du gel ne la remplace pas.
+
+Les décisions de gameplay ouvertes le restent : victoire finale en Survie,
+autres fronts, ordres non intégrés. Bibliothèque et Crypte des plaines existent ;
+elles ne confèrent aucun apprentissage personnel implicite.
+
+La suite Windows initiale (529 tests, erreurs de dépendances Unix) ne mesure pas
+la stabilité Linux. Les traces intermédiaires sont conservées sans les présenter
+comme les résultats finaux.
