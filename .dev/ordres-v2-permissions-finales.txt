@@ -1,0 +1,9 @@
+test_creations_propagation_spore_et_regeneration_accessibles_au_proprietaire (test_unites_permissions_isolees.PermissionsUnites.test_creations_propagation_spore_et_regeneration_accessibles_au_proprietaire) ... ok
+test_etats_prives_et_manuel_non_modifiables_par_joueurs (test_progression_isolee.ProgressionIsolee.test_etats_prives_et_manuel_non_modifiables_par_joueurs) ... ok
+test_places_communes_et_confidentialite_reelle_des_compartiments (test_progression_isolee.ProgressionIsolee.test_places_communes_et_confidentialite_reelle_des_compartiments) ... ok
+test_17_script_administrateur_non_modifiable (test_crypte_scanner.ScannerCrypte.test_17_script_administrateur_non_modifiable) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 7.632s
+
+OK

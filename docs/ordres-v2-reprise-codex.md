@@ -4,21 +4,32 @@
 
 Cette section prévaut sur le journal historique ci-dessous.
 
-- Branche unique : `feat/ordres-v2`. Base vérifiée : `0ad6ec6`.
+- Branche unique : `feat/ordres-v2`. Reprise du WIP poussé `a67057d`, sans
+  modification du moteur depuis cette sauvegarde. La suite d'effets et ses
+  journaux étaient encore non suivis : ils doivent être inclus dans le commit
+  de validation, pas seulement présents sur le poste local.
 - Ancien audit clôturé dans `AUDIT_V2_STABILISATION.md` : 584 tests avant
   modifications, aucun échec, un test root ignoré puis validé parmi les 4 tests
   Linux isolés. Soit 587 tests distincts réussis avant nouveaux effets.
-- Lot en cours : Hérisson (`1006`, `3-2`), Discours de la mort (`1007`, `3-3`),
+- Lot intégré : Hérisson (`1006`, `3-2`), Discours de la mort (`1007`, `3-3`),
   Orc_un_jour_orc_toujour (`1008`, `2-3`), Rafale (`1009`, `3-4`),
   Cruelle (`1010`, `2-4`).
   Les effets sont raccordés aux duels réels, avec apprentissages privés,
   confrontation par catégorie, cumul personnel et contexte temporaire.
-- Les 70 tests ciblés des ordres passent (27,750 s), ainsi que 63 tests de
-  progression, niveaux et défis (22,089 s). Deux parties complètes supplémentaires
-  utilisent les nouveaux ordres avec reprise entre tours. Derniers ajouts :
-  facteurs fractionnaires mutualisés et Cruelle en duel réel. La suite complète
-  finale est en cours.
-  Ne pas déclarer ce lot stable sur la seule base de ce résultat intermédiaire.
+- Validation finale retrouvée : **618 tests en 268,762 s, aucun échec, un
+  ignoré réservé à root**, journal `.dev/ordres-v2-complets.txt`.
+- **72 tests ciblés d'ordres réussis en 26,153 s**, dont les **31 tests** du
+  nouveau fichier `test_ordres_effets_v2.py`. Également 63 tests de progression,
+  niveaux et défis en 22,089 s, sans échec.
+- **4 tests Linux root réussis en 7,632 s**, dont le test ignoré dans la suite
+  complète : `.dev/ordres-v2-permissions-finales.txt`. Soit **621 tests distincts
+  réussis**, sans compter deux fois les vérifications ciblées.
+- Cinq parties complètes déterministes, avec reprise entre tours : trois
+  scénarios d'audit historiques, plus une défense avec Rafale/Discours et une
+  défense coopérative avec ordres. Incluses dans les 618 tests.
+- Compilation Python des modules et tests modifiés réussie, caches hors dépôt.
+  Nouvelle exécution de reprise de `a67057d` en cours, journal séparé
+  `.dev/ordres-v2-reprise-a67057d.txt`.
 - Correction du comparateur : un groupe mixte ordre/contre-ordre invalide est
   retiré AVANT comparaison, afin de ne pas neutraliser les ordres adverses.
 - Rafale peut éliminer un général avant le choc : terminaison précoce explicite,
@@ -31,8 +42,9 @@ Cette section prévaut sur le journal historique ci-dessous.
 - Les nouvelles récompenses sont accessibles par les voies d'apprentissage
   existantes. Une mémoire en attente ou une fiche publique falsifiée n'autorise
   pas l'exécution. Aucun droit nouveau aux anciens généraux sans profil privé.
-- Dernier commit intégralement vérifié : `e99918a` (clôture audit, moteur `0ad6ec6`) ; prochain jalon après suite
-  complète, compilation et revue du diff. Aucun merge ni push effectué.
+- Moteur vérifié : `a67057d`, avec les tests d'effets présents localement.
+  Leur ajout à Git est indispensable pour rendre la validation reproductible
+  après un clone. Aucun merge ni push effectué par Codex.
 
 ### Décisions confirmées pendant la reprise
 
@@ -76,8 +88,12 @@ calculée. Le registre `ordres_conception.py` reste documentaire et immuable ;
 seul le catalogue explicite active les effets testés. Le comportement de `1-2`
 est conservé et comparé avec/sans pipeline dans une bataille territoriale.
 
-Prochaine étape : terminer la validation complète, enregistrer le résultat et
-commiter le lot ; poursuivre seulement les ordres dont les décisions sont closes.
+Prochaine étape : enregistrer la seconde validation et les tests manquants dans
+Git. Trois questions posées à la reprise pour poursuivre sans invention :
+déclaration du QG et calcul de sélection ; troupes du général tué par Charge
+suicidaire et tirages simultanés ; destination exacte de Choca_fuite, notamment
+au village. Aucune des propositions de syntaxe posées en question n'est validée
+ou implémentée à ce stade.
 
 ## Journal historique de préparation (non applicable comme bilan courant)
 
