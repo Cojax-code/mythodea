@@ -49,5 +49,51 @@ class PipelineOrdresTest(unittest.TestCase):
             ordres_pipeline.index_jetons(cat)
 
 
+    def test_confrontation_egalite_annule_deux_ordres_normaux(self):
+        a = {"general": {"ordres": [{"identifiant": "1-2"}],
+                         "caracteristiques": {"nature": "stratege", "evolutions_acquises": []}}}
+        b = {"general": {"ordres": [{"identifiant": "2-3"}],
+                         "caracteristiques": {"nature": "stratege", "evolutions_acquises": []}}}
+        # Même catégorie nécessaire : deux ordres de catégories différentes
+        # ne sont pas comparés entre eux.
+        self.assertEqual(ordres_pipeline.confronter_intentions(
+            a, b, "globale", 10, 10, self.cat)["camp_1"], [])
+        duel_cat = {
+            10: dict(jeton="2-1", categorie="duel", disponible=True, contre=False),
+            11: dict(jeton="2-2", categorie="duel", disponible=True, contre=False),
+        }
+        a["general"]["ordres"] = [{"identifiant": "2-1"}]
+        b["general"]["ordres"] = [{"identifiant": "2-2"}]
+        self.assertEqual(ordres_pipeline.confronter_intentions(
+            a, b, "duel", 10, 10, duel_cat),
+            {"comparaison": 0, "camp_1": [], "camp_2": []})
+
+    def test_contre_ordre_face_a_ordre_agissent_ensemble(self):
+        cat = {
+            10: dict(jeton="2-1", categorie="duel", disponible=True, contre=False),
+            11: dict(jeton="2-2", categorie="duel", disponible=True, contre=True),
+        }
+        def donneur(jeton):
+            return {"general": {
+                "ordres": [{"identifiant": jeton}],
+                "caracteristiques": {"nature": "instinctif", "evolutions_acquises": []}}}
+        self.assertEqual(ordres_pipeline.confronter_intentions(
+            donneur("2-1"), donneur("2-2"), "duel", 2, 12, cat),
+            {"comparaison": -1, "camp_1": [10], "camp_2": [11]})
+
+    def test_contre_ordre_sans_adversaire_et_rejet_entree_sans_fiche(self):
+        cat = {11: dict(jeton="2-2", categorie="duel",
+                        disponible=True, contre=True)}
+        donneur = {"general": {
+            "ordres": [{"identifiant": "2-2"}],
+            "caracteristiques": {"nature": "stratege", "evolutions_acquises": []}}}
+        self.assertEqual(ordres_pipeline.confronter_intentions(
+            donneur, None, "duel", 9, 10, cat)["camp_1"], [11])
+        with self.assertRaises(ValueError):
+            ordres_pipeline.confronter_intentions(
+                {"general": {"ordres": [{"identifiant": "2-2"}]}},
+                None, "duel", 9, 10, cat)
+
+
 if __name__ == "__main__":
     unittest.main()
