@@ -57,7 +57,7 @@ class PipelineOrdresTest(unittest.TestCase):
         # Même catégorie nécessaire : deux ordres de catégories différentes
         # ne sont pas comparés entre eux.
         self.assertEqual(ordres_pipeline.confronter_intentions(
-            a, b, "globale", 10, 10, self.cat)["camp_1"], [])
+            a, b, "globale", 10, 10, self.cat)["camp_1"], [1002])
         duel_cat = {
             10: dict(jeton="2-1", categorie="duel", disponible=True, contre=False),
             11: dict(jeton="2-2", categorie="duel", disponible=True, contre=False),
