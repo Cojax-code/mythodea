@@ -39,3 +39,19 @@ Ces questions sont de véritables décisions de gameplay. Un programmeur ne doit
 3. `b7dcc35` — tests de contrat et d'absence d'activation.
 
 Statut : modifications GitHub enregistrées, **tests non exécutés dans WSL par cette session**.
+
+## Raccordement initial effectué après la préparation
+
+- `python/ordres_pipeline.py` convertit les jetons connus et **actifs seulement** en IDs internes, sans regrouper plusieurs généraux et sans exécuter d'effet. Le module écarte volontairement les variantes avec paramètre : leur contrat (position/flanc/ordre) doit être défini pour chaque effet.
+- `python/combats.py:resoudre_affrontement_actif` collecte au début de la résolution territoriale un instantané des intentions par général, **sans en faire usage** pour l'instant. La logique historique de `1-2` n'a pas été remplacée.
+- `.dev/tests/test_ordres_pipeline_v2.py` teste la non-fusion, le filtrage des ordres indisponibles, le rejet des paramètres non validés et les jetons ambigus.
+- Ce raccordement est un **jalon d'architecture**, pas l'intégration des nouveaux effets ni de leur opposition PC. Ne pas prétendre que les catégories de duel fonctionnent déjà en jeu.
+- Aucune suite de tests exécutée depuis cette session ; Codex devra les lancer sur WSL à son retour.
+
+### Prochaine implémentation
+
+1. Construire une représentation explicite des intentions de chaque camp avec propriétaire, général donneur, catégorie, cibles et origine QG, sans dépendre des champs de texte libres.
+2. Confronter les intentions sur une phase réelle avec une identité de donneur stable, puis produire une décision testable. Attention à ne pas sélectionner le QG à partir d'une donnée joueur falsifiable.
+3. Tester les conditions d'opposition et d'absence d'ordre, y compris les catégories individuelles sans adversaire explicite.
+4. Unifier uniquement ensuite le chemin historique `1-2` avec la sélection nouvelle, en comparant les résultats d'une même bataille avant/après.
+5. Ajouter les effets dont les règles sont closes, un par un. Laisser les autres inactifs, sans hypothèse implicite.
