@@ -92,3 +92,12 @@ Deux ordres ne se neutralisent qu'à l'intérieur d'une **même confrontation et
 - Le choix du QG actif reste externe et doit être lié à la sélection officielle `selectionner_qg` et à sa disparition éventuelle. Il n'est PAS encore connecté au combat.
 - Le test `test_qg_donneur_duel_utilise_ses_pc_pas_ceux_du_combattant` protège cette décision.
 - Aucun effet des 21 ordres encore activé ; tests ajoutés mais pas exécutés sous Linux dans cette session.
+
+## Cinquième étape : premières formules V2 isolées
+
+- `python/ordres_calculs_v2.py` contient seulement deux calculs purs dont la règle est complète : **Charge suicidaire** (`pertes_du_duel // 4`, pourcentage entier) et **Ralliement** (pour chaque type déjà présent chez le bénéficiaire, `pertes_du_type // 5`).
+- `.dev/tests/test_ordres_calculs_v2.py` couvre les seuils, les arrondis et des données invalides. Tests **non exécutés sous Linux**.
+- Les fonctions n'ont aucune mutation, tirage aléatoire, attribution d'unités ou application d'effet. Elles **ne sont pas appelées par le combat**. Le tirage de Charge suicidaire interviendra à la fin du seul duel lorsque l'ordre sera correctement activé.
+- **Ne pas déduire** les effets « +10 % de moral » et « -1 % par unité cruelle » en points de moral bruts sans confirmer s'il s'agit de points de pourcentage ou d'un facteur multiplicatif. Aucun code de ces bonus n'a été conservé.
+- Pour Ralliement, la provenance des pertes, les éventuelles identités, les blessures et le devenir des renforts doivent encore être spécifiés avant toute manipulation des soldats.
+- Les commits sont exclusivement sur `feat/ordres-v2`; aucun effet supplémentaire n'est activé.
