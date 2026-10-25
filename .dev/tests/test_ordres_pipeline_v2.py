@@ -123,5 +123,41 @@ class PipelineOrdresTest(unittest.TestCase):
                 ordres_pipeline.donneurs_officiels(forces, catalogue=self.cat)
 
 
+    def test_calcul_pc_duel_depuis_donnees_officielles(self):
+        general = {"joueur": "j1", "nom": "g1", "chemin": "/factice/g1",
+                   "fiche": {"points_commandement": 999}}
+        prive = {"nature": "stratege", "points_commandement": 18}
+        composition = {"avant": {"piquier": 2}, "arriere": {"archer": 1}}
+        with patch.object(ordres_pipeline.progression, "caracteristiques_general",
+                          return_value=prive), patch(
+                "generaux.lire_composition_general", return_value=composition), patch.object(
+                ordres_pipeline.commandement, "effectif_general",
+                return_value=9) as calcul:
+            self.assertEqual(ordres_pipeline.points_duel_officiels(general), 9)
+        calcul.assert_called_once_with(prive, composition)
+
+    def test_duel_avec_comparaison_reelle_et_donneurs_explicites(self):
+        cat = {
+            10: dict(jeton="2-1", categorie="duel", disponible=True, contre=False),
+            11: dict(jeton="2-2", categorie="duel", disponible=True, contre=False),
+        }
+        def donneur(jeton):
+            return {"general": {
+                "ordres": [{"identifiant": jeton}],
+                "caracteristiques": {"nature": "stratege", "evolutions_acquises": []}}}
+        with patch.object(ordres_pipeline, "points_duel_officiels", side_effect=[7, 7]) as pts:
+            resultat = ordres_pipeline.confronter_duel_officiel(
+                {"nom": "g1"}, {"nom": "g2"},
+                donneur("2-1"), donneur("2-2"), cat)
+        self.assertEqual(resultat, {"comparaison": 0, "camp_1": [], "camp_2": []})
+        self.assertEqual(pts.call_count, 2)
+
+    def test_refuse_pc_prives_absents(self):
+        with patch.object(ordres_pipeline.progression, "caracteristiques_general",
+                          return_value=None):
+            with self.assertRaises(ValueError):
+                ordres_pipeline.points_duel_officiels({"chemin": "/factice"})
+
+
 if __name__ == "__main__":
     unittest.main()
