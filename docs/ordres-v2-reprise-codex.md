@@ -6,8 +6,8 @@ Cette section prévaut sur le journal historique ci-dessous.
 
 - Branche unique : `feat/ordres-v2`. Reprise du WIP poussé `a67057d`, sans
   modification du moteur depuis cette sauvegarde. La suite d'effets et ses
-  journaux étaient encore non suivis : ils doivent être inclus dans le commit
-  de validation, pas seulement présents sur le poste local.
+  journaux étaient encore non suivis : ils sont maintenant enregistrés dans
+  **`c8cca1c`**, et non plus seulement présents sur le poste local.
 - Ancien audit clôturé dans `AUDIT_V2_STABILISATION.md` : 584 tests avant
   modifications, aucun échec, un test root ignoré puis validé parmi les 4 tests
   Linux isolés. Soit 587 tests distincts réussis avant nouveaux effets.
@@ -28,8 +28,8 @@ Cette section prévaut sur le journal historique ci-dessous.
   scénarios d'audit historiques, plus une défense avec Rafale/Discours et une
   défense coopérative avec ordres. Incluses dans les 618 tests.
 - Compilation Python des modules et tests modifiés réussie, caches hors dépôt.
-  Nouvelle exécution de reprise de `a67057d` en cours, journal séparé
-  `.dev/ordres-v2-reprise-a67057d.txt`.
+  Nouvelle exécution à la reprise : **618 tests en 250,459 s, aucun échec,
+  un ignoré root**, journal `.dev/ordres-v2-reprise-a67057d.txt`.
 - Correction du comparateur : un groupe mixte ordre/contre-ordre invalide est
   retiré AVANT comparaison, afin de ne pas neutraliser les ordres adverses.
 - Rafale peut éliminer un général avant le choc : terminaison précoce explicite,
@@ -42,9 +42,10 @@ Cette section prévaut sur le journal historique ci-dessous.
 - Les nouvelles récompenses sont accessibles par les voies d'apprentissage
   existantes. Une mémoire en attente ou une fiche publique falsifiée n'autorise
   pas l'exécution. Aucun droit nouveau aux anciens généraux sans profil privé.
-- Moteur vérifié : `a67057d`, avec les tests d'effets présents localement.
-  Leur ajout à Git est indispensable pour rendre la validation reproductible
-  après un clone. Aucun merge ni push effectué par Codex.
+- Dernier commit stable du moteur et de sa suite complète : **`c8cca1c`**
+  (moteur `a67057d`, tests d'effets et preuves ajoutés). Le commit suivant ne
+  change que ce compte rendu et la trace de revalidation. Aucun merge ni push
+  effectué par Codex. `Mythodea-web` n'a pas été modifié.
 
 ### Décisions confirmées pendant la reprise
 
@@ -88,12 +89,25 @@ calculée. Le registre `ordres_conception.py` reste documentaire et immuable ;
 seul le catalogue explicite active les effets testés. Le comportement de `1-2`
 est conservé et comparé avec/sans pipeline dans une bataille territoriale.
 
-Prochaine étape : enregistrer la seconde validation et les tests manquants dans
-Git. Trois questions posées à la reprise pour poursuivre sans invention :
+Prochaine étape : appliquer les réponses aux trois questions posées à la reprise
+pour poursuivre sans invention :
 déclaration du QG et calcul de sélection ; troupes du général tué par Charge
 suicidaire et tirages simultanés ; destination exacte de Choca_fuite, notamment
 au village. Aucune des propositions de syntaxe posées en question n'est validée
 ou implémentée à ce stade.
+
+### Statut de livraison
+
+L'ancien audit automatisé est terminé. Les cinq ordres personnels ci-dessus
+sont intégrés et testés, y compris les rapports privés et les interruptions.
+Le moteur est stable dans ce périmètre de régression. **16 ordres restent
+désactivés**, ainsi que la transmission des ordres par le QG ; les fonctions
+préparatoires ne sont pas comptées comme effets opérationnels.
+
+Les permissions ont été vérifiées sous Linux avec de vrais UID isolés, sur
+dossiers temporaires. La recette Raspberry Pi avec connexions SSH et gel réel
+des comptes reste à réaliser sur une machine dédiée. Le chantier complet des
+21 ordres n'est pas prêt pour fusion ; aucune fusion vers `v2.0` n'est effectuée.
 
 ## Journal historique de préparation (non applicable comme bilan courant)
 
