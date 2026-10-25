@@ -159,5 +159,27 @@ class PipelineOrdresTest(unittest.TestCase):
                 ordres_pipeline.points_duel_officiels({"chemin": "/factice"})
 
 
+    def test_qg_donneur_duel_utilise_ses_pc_pas_ceux_du_combattant(self):
+        cat = {
+            10: dict(jeton="2-1", categorie="duel", disponible=True, contre=False),
+            11: dict(jeton="2-2", categorie="duel", disponible=True, contre=False),
+        }
+        def donneur(nom, jeton):
+            return {"general": {"nom": nom,
+                "ordres": [{"identifiant": jeton}],
+                "caracteristiques": {"nature": "stratege", "evolutions_acquises": []}}}
+        qg = donneur("qg", "2-1")
+        ennemi = donneur("ennemi", "2-2")
+        combattant = {"nom": "combattant_sans_ordre"}
+        def pc(general):
+            return {"qg": 18, "ennemi": 12}[general["nom"]]
+        with patch.object(ordres_pipeline, "points_duel_officiels", side_effect=pc) as lecture:
+            resultat = ordres_pipeline.confronter_duel_officiel(
+                combattant, {"nom": "combattant_ennemi"}, qg, ennemi, cat)
+        self.assertEqual(resultat, {"comparaison": 1, "camp_1": [10], "camp_2": []})
+        self.assertEqual([c.args[0]["nom"] for c in lecture.call_args_list],
+                         ["qg", "ennemi"])
+
+
 if __name__ == "__main__":
     unittest.main()
