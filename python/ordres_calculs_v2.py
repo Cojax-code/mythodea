@@ -40,3 +40,40 @@ def renforts_ralliement(pertes_par_type, types_du_beneficiaire):
             resultat[type_unite] = pertes // 5
     return resultat
 
+
+def facteur_discours_de_la_mort(moral):
+    """Moral * 1,10, cumul multiplicatif possible avec de futurs facteurs.
+
+    Renvoie une Fraction exacte, SANS arrondir ni plafonner ici : le moment
+    de l'arrondi (et l'ordre des plafonds entre bonus) n'a pas été tranché.
+    30 PM -> 33 PM. Le moteur final appliquera les règles d'arrondi communes.
+    """
+    from fractions import Fraction
+    _naturel(moral, "Moral")
+    if moral > 100:
+        raise ValueError("Le moral initial est borné à 100.")
+    return Fraction(moral * 11, 10)
+
+
+def reserve_peut_intercepter(victoire_adverse, unites_reserve, deja_elimine=False):
+    """Condition minimale de Réserve stratégique, pas son effet.
+
+    Interceptions répétées permises : aucun compteur de déclenchements, aucune
+    pénalité de fatigue ajoutée par cet ordre. Il faut une victoire adverse
+    et au moins une unité disponible dans le général de réserve.
+    """
+    if type(victoire_adverse) is not bool or type(deja_elimine) is not bool:
+        raise ValueError("États booléens requis.")
+    _naturel(unites_reserve, "Unités de réserve")
+    return victoire_adverse and unites_reserve > 0 and not deja_elimine
+
+
+def derniere_charge_possible(general_precedent_vaincu, flanc):
+    """L'activation impose la défaite du précédent et un flanc unique G/D.
+
+    Ne réanime aucune unité ; les règles d'éligibilité physique des soldats
+    restent une étape distincte à définir.
+    """
+    if type(general_precedent_vaincu) is not bool or flanc not in ("G", "D"):
+        raise ValueError("Défaite booléenne et flanc G/D requis.")
+    return general_precedent_vaincu
