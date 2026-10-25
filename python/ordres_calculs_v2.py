@@ -1,4 +1,4 @@
-"""Calculs purs pour des ordres V2 dont la formule a été explicitement validée.
+"""Calculs purs des ordres V2 aux formules non ambiguës.
 
 AUCUNE activation en combat : ni décision de cible, ni aléatoire, ni mutation
 d'effectifs, ni modification de l'état officiel des généraux.
@@ -40,15 +40,3 @@ def renforts_ralliement(pertes_par_type, types_du_beneficiaire):
             resultat[type_unite] = pertes // 5
     return resultat
 
-
-def malus_cruelle(nombre_unites_cruelles):
-    """Nombre de points de moral retirés avant le duel (1 par unité cruelle)."""
-    return _naturel(nombre_unites_cruelles, "Unités cruelles")
-
-
-def bonus_discours_mort(moral):
-    """Ajoute dix points de moral, sans dépasser le plafond officiel de 100."""
-    _naturel(moral, "Moral")
-    if moral > 100:
-        raise ValueError("Le moral initial ne peut pas dépasser 100.")
-    return min(100, moral + 10)
