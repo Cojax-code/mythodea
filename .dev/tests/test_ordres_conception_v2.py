@@ -26,9 +26,11 @@ class OrdresConceptionTest(unittest.TestCase):
     def test_pas_d_activation_indirecte(self):
         noms_actifs = {fiche["nom"] for fiche in catalogues.ORDRES.values()
                       if fiche["disponible"]}
-        self.assertFalse(noms_actifs.intersection(ordres_conception.ORDRES_EN_CONCEPTION))
+        # Activation explicite du lot testé ; le registre ne confère aucun droit.
+        self.assertEqual(noms_actifs.intersection(ordres_conception.ORDRES_EN_CONCEPTION),
+                         {'herisson', 'discours_de_la_mort', 'orc_un_jour_orc_toujour', 'rafale', 'cruelle'})
         self.assertEqual({ordre["jeton"] for ordre in catalogues.ORDRES.values()
-                          if ordre["disponible"]}, {"1-2"})
+                          if ordre["disponible"]}, {"1-2", "3-2", "3-3", "2-3", "3-4", "2-4"})
 
     def test_registre_immuable(self):
         with self.assertRaises(TypeError):

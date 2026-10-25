@@ -160,7 +160,8 @@ class NiveauxHomeForge(unittest.TestCase):
         fiche = self.fiche(general)
         self.assertEqual((fiche['niveau'], fiche['progression_combat'], fiche['progression_formation']), (2, 0, 0))
         self.assertEqual(fiche['progressions_validees']['formation:1:j1:general1']['recompense'], 202)
-        self.assertIn(fiche['progressions_validees']['combat:survie:1:village']['recompense'], (201, 1002, 105, 110))
+        self.assertIn(fiche['progressions_validees']['combat:survie:1:village']['recompense'],
+                      (201, 1002, 1006, 1007, 1008, 1009, 1010, 105, 110))
         self.formation.resoudre_tour(self.profil, 1)
         self.progression.valider_evenement(general, 'combat', 'survie:1:village')
         self.assertEqual(self.fiche(general), fiche)
@@ -176,8 +177,8 @@ class NiveauxHomeForge(unittest.TestCase):
                 self.progression.valider_evenement(general, 'combat', evenement)
             fiche = self.fiche(general)
             recompense = fiche['progressions_validees']['combat:b']['recompense']
-            self.assertIn(recompense, (201, 1002, 105, 110) if numero == 1 else
-                          (202, 104, 105, 106, 107, 108, 109))
+            self.assertIn(recompense, (201, 1002, 1006, 1007, 1008, 1009, 1010, 105, 110) if numero == 1 else
+                          (202, 104, 105, 106, 107, 108, 109, 1006, 1007, 1008, 1009, 1010))
             self.assertEqual((fiche['nature'], fiche['trait_inne']), (nature, trait))
 
     def test_home_ancien_nouvelles_unites_toutes_activites_gratuites(self):

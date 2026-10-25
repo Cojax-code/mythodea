@@ -12,11 +12,15 @@ def definition(type_unite):
     return catalogues.UNITES[catalogues.UNITE_PAR_NOM[type_unite]]
 
 
-def etiquette(type_unite, nom):
+def etiquette(type_unite, nom, general=None):
+    if nom == 'orc' and type_unite == 'sauvageon' and general is not None:
+        import ordres_pipeline
+        if ordres_pipeline.effet(general, 'orc_un_jour_orc_toujour'):
+            return True
     return nom in definition(type_unite)['etiquettes'] if type_unite != 'vide' else False
 
 
-def avantage(attaquant, defenseur):
+def avantage(attaquant, defenseur, general_attaquant=None, general_defenseur=None):
     """Une force et la faiblesse correspondante désignent un seul avantage.
 
     Le moteur historique applique le multiplicateur à la valeur effective,
@@ -26,10 +30,13 @@ def avantage(attaquant, defenseur):
         return 1
     a, d = definition(attaquant), definition(defenseur)
     valeur = a.get('multiplicateur', 2) if defenseur in a['forces'] else 1
+    if (attaquant == 'orc_chaman' and defenseur == 'sauvageon'
+            and etiquette(defenseur, 'orc', general_defenseur)):
+        valeur = max(valeur, 3)
     faiblesses = d['faiblesses']
     faible = (attaquant in faiblesses or 'tout' in faiblesses or
               ('distance' in faiblesses and etiquette(attaquant, 'distance')) or
-              ('non_orc' in faiblesses and not etiquette(attaquant, 'orc')))
+              ('non_orc' in faiblesses and not etiquette(attaquant, 'orc', general_attaquant)))
     return max(valeur, 2 if faible else 1)
 
 
@@ -39,10 +46,10 @@ def occupation(composition):
                for bloc in composition.values() for type_unite, nombre in bloc.items())
 
 
-def caracteristiques_armee(fiche, composition):
+def caracteristiques_armee(fiche, composition, general=None):
     """Bonus dérivés, jamais ajoutés à la progression persistante du général."""
     resultat = dict(fiche)
-    orcs = sum(n for bloc in composition.values() for t, n in bloc.items() if etiquette(t, 'orc'))
+    orcs = sum(n for bloc in composition.values() for t, n in bloc.items() if etiquette(t, 'orc', general))
     chevaliers = sum(bloc.get('chevalier_clinquant', 0) for bloc in composition.values())
     # Les Orcs modifient uniquement le moral, jamais les points de commandement.
     # Sans Orc, aucun malus ; avec 1..9 Orcs, malus de (10 - orcs).
@@ -355,10 +362,10 @@ def apres_confrontation(general_1, general_2, bloc_1, bloc_2, infos_1, infos_2, 
         contexte['propagation'] = True
 
 
-def moral_bloc(fiche, composition, bloc):
+def moral_bloc(fiche, composition, bloc, general=None):
     """Conserve les fractions jusqu'au calcul collectif des sauvetages."""
     from fractions import Fraction
-    valeur = caracteristiques_armee(fiche, composition)['moral']
+    valeur = caracteristiques_armee(fiche, composition, general)['moral']
     if any(etiquette(t, 'cruelle') for t in composition.get(bloc, {})):
         chamans = sum(effectifs.get('orc_chaman', 0) for b, effectifs in composition.items() if b != bloc)
         valeur = min(100, Fraction(valeur * (100 + 2 * chamans), 100))

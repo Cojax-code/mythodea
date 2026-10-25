@@ -73,6 +73,8 @@ def _ordres_eligibles(identifiants, nature, categorie, catalogue, acquis):
         if categorie == 'globale' and nature == 'instinctif_hybride' and identifiant not in acquis:
             continue
         ordre = catalogue.get(identifiant)
+        if ordre and ordre.get('acquisition_requise') and identifiant not in acquis:
+            continue
         if ordre and ordre['disponible'] and ordre['categorie'] == categorie:
             resultat.append(identifiant)
     return resultat
@@ -135,6 +137,10 @@ def confronter_donneurs(ordres_1, nature_1, acquis_1,
     catalogue = catalogues.ORDRES if catalogue is None else catalogue
     candidats_1 = _ordres_eligibles(ordres_1, nature_1, categorie, catalogue, acquis_1)
     candidats_2 = _ordres_eligibles(ordres_2, nature_2, categorie, catalogue, acquis_2)
+    # Un groupe illégal ne doit pas annuler les ordres du camp adverse.
+    def compatibles(candidats):
+        return candidats if len({catalogue[i]['contre'] for i in candidats}) <= 1 else []
+    candidats_1, candidats_2 = compatibles(candidats_1), compatibles(candidats_2)
     return (
         ordres_applicables(candidats_1, nature_1, categorie, comparaison,
                           catalogue, acquis_1, candidats_2),

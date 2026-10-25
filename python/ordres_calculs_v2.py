@@ -1,8 +1,8 @@
 """Calculs purs des ordres V2 aux formules non ambiguës.
 
-AUCUNE activation en combat : ni décision de cible, ni aléatoire, ni mutation
+Ces fonctions ne sélectionnent ni donneur ni cible : ni aléatoire, ni mutation
 d'effectifs, ni modification de l'état officiel des généraux.
-Seul un futur module d'effets peut appeler ces fonctions après validation de
+Le pipeline appelle les calculs intégrés après validation de
 toutes les préconditions (ordre acquis, donneur, phase, camp, conflit).
 """
 
@@ -44,15 +44,19 @@ def renforts_ralliement(pertes_par_type, types_du_beneficiaire):
 def facteur_discours_de_la_mort(moral):
     """Moral * 1,10, cumul multiplicatif possible avec de futurs facteurs.
 
-    Renvoie une Fraction exacte, SANS arrondir ni plafonner ici : le moment
-    de l'arrondi (et l'ordre des plafonds entre bonus) n'a pas été tranché.
-    30 PM -> 33 PM. Le moteur final appliquera les règles d'arrondi communes.
+    Renvoie une Fraction exacte, SANS arrondir ni plafonner ici. Le pipeline
+    conserve les fractions jusqu'au calcul collectif des sauvetages du moteur.
     """
     from fractions import Fraction
-    _naturel(moral, "Moral")
-    if moral > 100:
-        raise ValueError("Le moral initial est borné à 100.")
-    return Fraction(moral * 11, 10)
+    if (type(moral) is not int and not isinstance(moral, Fraction)) or not 0 <= moral <= 100:
+        raise ValueError("Le moral initial est un entier ou une fraction entre 0 et 100.")
+    return moral * Fraction(11, 10)
+
+
+def facteur_cruelle(nombre_unites_cruelles):
+    """Réduction multiplicative exacte ; le plafond commun relève du moteur."""
+    from fractions import Fraction
+    return Fraction(100 - _naturel(nombre_unites_cruelles, 'Unités cruelles'), 100)
 
 
 def reserve_peut_intercepter(victoire_adverse, unites_reserve, deja_elimine=False):

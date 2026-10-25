@@ -1690,9 +1690,15 @@ sans plafond supplémentaire. Les résultats individuels restent privés.
 
 Les profils, soldats et séjours suivent le protocole commun des générations ;
 le document partagé est régénéré depuis l'état officiel après publication.
-Les fonctions de commandement et de QG sont communes, mais leur raccordement
-aux effets des ordres attend les règles de matérialisation et de priorité encore
+Les fonctions de commandement et de QG sont communes, mais le raccordement
+des ordres globaux attend les règles de déclaration et de priorité encore
 ouvertes. Les bots conservent leur résolution tactique classique.
+
+Les ordres personnels Hérisson, Discours de la mort, Orc_un_jour_orc_toujour,
+Rafale et Cruelle utilisent le moteur commun et ses apprentissages privés.
+Les tirs de Rafale précèdent le Bouclier vivant, avec moral et immunité lourde
+conservés. Les rapports suivent la préparation privée puis la publication et
+la diffusion en consultation décrites dans `MYTHODEA_SPEC.md`.
 
 
 ## Unités zombies — Bouclier vivant et progression (décision du 20 octobre 2026)

@@ -633,6 +633,7 @@ def ecrire_detail_manoeuvre(territoire, resultat_engagement, detail):
 
 
 def ecrire_detail_engagement(territoire, etiquette, resultat):
+    import catalogues
     joueurs = (resultat["joueur_1"], resultat["joueur_2"])
     nom_1 = resultat.get("affichage_1", resultat["general_1"])
     nom_2 = resultat.get("affichage_2", resultat["general_2"])
@@ -644,7 +645,17 @@ def ecrire_detail_engagement(territoire, etiquette, resultat):
     )
 
     ecrire_rapport_territoire(territoire, "")
+    for decision in resultat.get('ordres_v2', ()):
+        noms = ', '.join(catalogues.ORDRES[i]['nom'] for i in decision['retenus'])
+        ecrire_rapport_territoire(territoire,
+            f"Ordres {decision['categorie']} — {decision['joueur']} {decision['general']} : "
+            + (noms if noms else 'aucun ordre retenu'))
+        ecrire_rapport_long(f"Confrontation V2 : {decision}")
     ecrire_rapport_territoire(territoire, "CHOC INITIAL")
+    for rafale in resultat.get('rafales', ()):
+        ecrire_rapport_territoire(territoire,
+            f"Rafale — {rafale['joueur']} {rafale['general']} : "
+            f"{rafale['tirs']} tirs, {rafale['touches']} cibles, {rafale['pertes']} pertes après moral.")
     ecrire_rapport_territoire(territoire, "")
 
     if resultat["chocs"]:

@@ -88,6 +88,16 @@ ORDRES = {
                disponible=False, contre=False, progression=False),
     1005: dict(jeton='3-1', nom='fuir_avant_la_mort', categorie='individuelle',
                disponible=False, contre=False, progression=False),
+    1006: dict(jeton='3-2', nom='herisson', categorie='individuelle',
+               disponible=True, contre=False, progression=True, acquisition_requise=True),
+    1007: dict(jeton='3-3', nom='discours_de_la_mort', categorie='individuelle',
+               disponible=True, contre=False, progression=True, acquisition_requise=True),
+    1008: dict(jeton='2-3', nom='orc_un_jour_orc_toujour', categorie='duel',
+               disponible=True, contre=False, progression=True, acquisition_requise=True),
+    1009: dict(jeton='3-4', nom='rafale', categorie='individuelle',
+               disponible=True, contre=False, progression=True, acquisition_requise=True),
+    1010: dict(jeton='2-4', nom='cruelle', categorie='duel',
+               disponible=True, contre=False, progression=True, acquisition_requise=True),
 }
 
 # 101..199 : apprentissages d'unités ; 201..299 : catégories de caractéristiques.

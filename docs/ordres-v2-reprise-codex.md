@@ -1,5 +1,86 @@
 # Reprise du chantier des ordres V2 — état réel
 
+## Reprise exécutée sous Linux — état courant du 25 octobre 2026
+
+Cette section prévaut sur le journal historique ci-dessous.
+
+- Branche unique : `feat/ordres-v2`. Base vérifiée : `0ad6ec6`.
+- Ancien audit clôturé dans `AUDIT_V2_STABILISATION.md` : 584 tests avant
+  modifications, aucun échec, un test root ignoré puis validé parmi les 4 tests
+  Linux isolés. Soit 587 tests distincts réussis avant nouveaux effets.
+- Lot en cours : Hérisson (`1006`, `3-2`), Discours de la mort (`1007`, `3-3`),
+  Orc_un_jour_orc_toujour (`1008`, `2-3`), Rafale (`1009`, `3-4`),
+  Cruelle (`1010`, `2-4`).
+  Les effets sont raccordés aux duels réels, avec apprentissages privés,
+  confrontation par catégorie, cumul personnel et contexte temporaire.
+- Les 70 tests ciblés des ordres passent (27,750 s), ainsi que 63 tests de
+  progression, niveaux et défis (22,089 s). Deux parties complètes supplémentaires
+  utilisent les nouveaux ordres avec reprise entre tours. Derniers ajouts :
+  facteurs fractionnaires mutualisés et Cruelle en duel réel. La suite complète
+  finale est en cours.
+  Ne pas déclarer ce lot stable sur la seule base de ce résultat intermédiaire.
+- Correction du comparateur : un groupe mixte ordre/contre-ordre invalide est
+  retiré AVANT comparaison, afin de ne pas neutraliser les ordres adverses.
+- Rafale peut éliminer un général avant le choc : terminaison précoce explicite,
+  participation des soldats enregistrée avant les tirs.
+- La première intégration complète révélait deux défauts : sélection de plusieurs
+  ordres à configurer dans la progression, et rupture des arguments positionnels
+  de `combat_bloc`. La règle uniforme a été confirmée par le propriétaire et
+  intégrée ; les nouveaux paramètres de généraux sont nommés pour conserver
+  l'interface historique des blocs. Trace : `.dev/ordres-v2-intermediaire.txt`.
+- Les nouvelles récompenses sont accessibles par les voies d'apprentissage
+  existantes. Une mémoire en attente ou une fiche publique falsifiée n'autorise
+  pas l'exécution. Aucun droit nouveau aux anciens généraux sans profil privé.
+- Dernier commit intégralement vérifié : `e99918a` (clôture audit, moteur `0ad6ec6`) ; prochain jalon après suite
+  complète, compilation et revue du diff. Aucun merge ni push effectué.
+
+### Décisions confirmées pendant la reprise
+
+- Le QG peut occuper n'importe quel bloc existant choisi par le joueur. Sa
+  procédure de déclaration manque encore : aucune commande ni fichier de
+  déclaration n'est inventé. Les ordres globaux et la transmission QG restent
+  non opérationnels, malgré les calculs et comparateurs testés.
+- Rafale précède la priorité de protection du Bouclier vivant. Moral et blessures
+  habituels s'appliquent ; les unités lourdement blindées sont immunisées.
+  Le Bouclier conserve ensuite ses autres capacités. Les tirs utilisent le
+  bloc Arrière de type `archer`, les victimes distinctes sont tirées parmi les
+  unités éligibles, y compris les soutiens et le Bouclier (aucune autre immunité).
+- Cruelle : réduction multiplicative exacte confirmée, 50 PM et 10 unités cruelles
+  donnent 45 PM. Le nombre d'unités est relevé avant les pertes du duel. Le facteur
+  se combine à Discours avant le bornage commun des ordres, sans arrondi ajouté.
+- Progression : tirage uniforme confirmé parmi les ordres éligibles, avec le
+  générateur injectable de progression. Tests d'accès à chaque candidat et de
+  reproductibilité à graine identique. Les poids de catégories restent inchangés.
+
+### Travail restant et limites d'intégration
+
+| Ordres encore désactivés | Décision ou raccordement manquant |
+| --- | --- |
+| Charge suicidaire | Devenir des troupes encore vivantes quand leur général est tué par l'effet, y compris décès simultanés |
+| Choca_fuite | Placement au village (plein, village d'origine), accès du bot et articulation avec la file de retraite ; pas de règle de placement inventée |
+| Gros_poisson | Paramètres, transfert temporaire et répartition des pertes/restitution des UUID |
+| Retrait_tactique | Origine/identité et état des 50 % récupérés, interaction avec les placements globaux |
+| Spora-adicte | Déclaration du QG, ciblage Zombie par position et syntaxe |
+| Propagafion, Confinement | Déclaration du QG puis raccordement aux capacités ; calculs purs déjà testés |
+| Pour_l'honneur | Déclaration du QG, exceptions au non-cumul et interaction avec les autres modifications du choc |
+| Ralliement | Déclaration du QG ; provenance, blessures et restitution des renforts |
+| Étincellant, On_melange, QG_nommade | Déclaration du QG, puis intégration des priorités au parcours territorial |
+| Chat-man | Départage des cibles efficaces et interactions de priorité avec Bouclier/initiative |
+| Muraille humaine | Répartition des pertes, état du bloc Avant du général vaincu ; exclusion de manœuvre ≠ mort |
+| Réserve stratégique | Déclaration du QG, réserves des deux camps, échec d'interception et priorité de QG_nommade ; répétition autorisée sans nouvelle fatigue |
+| Dernière charge | Syntaxe G/D et statut physique des soldats relevés ; défaite préalable obligatoire |
+
+La sauvegarde des soldats et l'arrêt en récupération après interruption sont
+ceux du moteur commun. Aucun rejeu automatique d'une génération partiellement
+calculée. Le registre `ordres_conception.py` reste documentaire et immuable ;
+seul le catalogue explicite active les effets testés. Le comportement de `1-2`
+est conservé et comparé avec/sans pipeline dans une bataille territoriale.
+
+Prochaine étape : terminer la validation complète, enregistrer le résultat et
+commiter le lot ; poursuivre seulement les ordres dont les décisions sont closes.
+
+## Journal historique de préparation (non applicable comme bilan courant)
+
 ## Source et branche unique
 
 - **Travailler exclusivement sur `feat/ordres-v2`.**

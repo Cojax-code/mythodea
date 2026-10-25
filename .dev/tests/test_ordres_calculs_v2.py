@@ -8,6 +8,18 @@ import ordres_calculs_v2 as calculs
 
 
 class TestOrdresCalculsV2(unittest.TestCase):
+    def test_facteurs_moraux_exacts_et_entrees_invalides(self):
+        from fractions import Fraction
+        self.assertEqual(50 * calculs.facteur_cruelle(10), 45)
+        self.assertEqual(31 * calculs.facteur_cruelle(10), Fraction(279, 10))
+        self.assertEqual(calculs.facteur_discours_de_la_mort(Fraction(4692, 100)),
+                         Fraction(12903, 250))
+        for valeur in (True, -1, 2.5, '10'):
+            with self.assertRaises(ValueError):
+                calculs.facteur_cruelle(valeur)
+            with self.assertRaises(ValueError):
+                calculs.facteur_discours_de_la_mort(valeur)
+
     def test_charge_suicidaire_pertes_du_seul_duel(self):
         for pertes, attendu in ((0, 0), (3, 0), (4, 1),
                                 (7, 1), (8, 2), (20, 5)):

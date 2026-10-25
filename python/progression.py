@@ -104,7 +104,7 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
     """Un appel administratif/moteur = un niveau, sans condition implicite.
 
     Le choix entre plusieurs évolutions d'une catégorie reste injecté : aucun
-    poids interne au futur catalogue d'unités ou d'ordres n'est encore défini.
+    poids particulier n'est appliqué dans une catégorie d'unités ou d'ordres.
     Retourne une copie ; le demandeur persiste le résultat après validation.
     """
     aleatoire = random if aleatoire is None else aleatoire
@@ -131,7 +131,7 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
                 identifiant = choisir_evolution(tuple(candidats), aleatoire)
                 if identifiant not in candidats:
                     raise ValueError('Évolution sélectionnée hors catalogue éligible.')
-            elif categorie == 'unite':
+            elif categorie in ('unite', 'ordre'):
                 identifiant = candidats[aleatoire.randint(0, len(candidats) - 1)]
             else:
                 raise ValueError('Règle de choix dans la catégorie à configurer.')

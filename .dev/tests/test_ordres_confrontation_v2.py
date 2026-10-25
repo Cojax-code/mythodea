@@ -45,6 +45,11 @@ class TestConfrontationOrdres(unittest.TestCase):
     def test_pas_de_cumul_mixte_un_meme_general(self):
         self.assertEqual(self.confrontation([1, 3], [], -1), ([], []))
 
+    def test_groupe_mixte_invalide_ne_bloque_pas_l_adversaire(self):
+        for points in (-1, 0, 1):
+            self.assertEqual(self.confrontation([1, 3], [2], points), ([], [2]))
+            self.assertEqual(self.confrontation([4], [1, 3], points), ([4], []))
+
     def test_comparaison_seule_ne_signifie_pas_absence_adversaire(self):
         self.assertEqual(commandement.ordres_applicables(
             [3], 'stratege', 'duel', comparaison=1, catalogue=CAT), [])

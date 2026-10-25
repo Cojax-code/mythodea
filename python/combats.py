@@ -28,8 +28,21 @@ def camps_du_combat(configuration):
 
 
 def combat_entre_generaux(general_1, general_2):
-    with unites.duel(general_1, general_2):
+    if (general_1['joueur'] == general_2['joueur'] or
+            general_1.get('camp', general_1['joueur']) == general_2.get('camp', general_2['joueur'])):
+        raise ValueError("Un duel doit opposer deux généraux de camps différents.")
+    with ordres_pipeline.duel(general_1, general_2) as decisions, unites.duel(general_1, general_2):
+        for general in (general_1, general_2):
+            if general['chemin'].is_dir():
+                soldats.participer(general)
+        initiales = [generaux.total_general_depuis_chemin(g['chemin']) for g in (general_1, general_2)]
+        rafales = ordres_pipeline.rafales(general_1, general_2, random, supprimer_unites)
         resultat = _combat_entre_generaux(general_1, general_2)
+        if rafales:
+            resultat['initial_1'], resultat['initial_2'] = initiales
+            resultat['rafales'] = rafales
+    if decisions:
+        resultat['ordres_v2'] = decisions
     for numero, general in enumerate((general_1, general_2), 1):
         generaux.supprimer_general_si_vide(general)
         resultat[f'final_{numero}'] = generaux.total_general_depuis_chemin(general['chemin'])
@@ -50,14 +63,20 @@ def _combat_entre_generaux(general_1, general_2):
     if camp_1 == camp_2 or joueur_1 == joueur_2:
         raise ValueError("Un duel doit opposer deux généraux de camps différents.")
 
-    soldats.participer(general_1)
-    soldats.participer(general_2)
-
     chemin_1 = general_1["chemin"]
     chemin_2 = general_2["chemin"]
 
     initial_1 = generaux.total_general_depuis_chemin(chemin_1)
     initial_2 = generaux.total_general_depuis_chemin(chemin_2)
+
+    # Rafale peut avoir éliminé un camp avant tout choc ou priorité de bouclier.
+    if not chemin_1.is_dir() or not chemin_2.is_dir():
+        return dict(joueur_1=joueur_1, joueur_2=joueur_2, camp_1=camp_1, camp_2=camp_2,
+                    general_1=general_1['nom'], general_2=general_2['nom'],
+                    affichage_1=rapports.nom_affichage_general(general_1),
+                    affichage_2=rapports.nom_affichage_general(general_2),
+                    initial_1=initial_1, initial_2=initial_2, final_1=initial_1, final_2=initial_2,
+                    chocs=[], manoeuvres=[])
 
     rapports.afficher_et_ecrire(
         f"\nEngagement : "
@@ -171,7 +190,9 @@ def _combat_entre_generaux(general_1, general_2):
             cible = choisir_cible(
                 armee,
                 joueur_attaquant,
-                infos_attaquant["type"]
+                infos_attaquant["type"],
+                general_1 if joueur_attaquant == joueur_1 else general_2,
+                general_2 if joueur_attaquant == joueur_1 else general_1,
             )
 
             if cible is None:
@@ -385,14 +406,6 @@ def resoudre_affrontement_actif(
             territory, configuration
         )
     )
-
-    # Point de raccordement des ordres V2 : capture des intentions par
-    # général, sans exécuter les effets encore en conception. Le comportement
-    # historique de l'ordre 1-2 reste volontairement inchangé.
-    intentions_v2 = ordres_pipeline.ordres_par_donneur(generaux_depart)
-    # La sélection/confrontation ne sera branchée ici que lorsque les
-    # donneurs, cibles et effets auront été validés et testés.
-    del intentions_v2
 
     ordre_frontal_camp_1 = (
         generaux.joueur_possede_ordre_armee(
@@ -685,8 +698,15 @@ def cible_facile(type_unite):
     return None
 
 
-def multiplicateur(type_attaquant, type_defenseur):
-    return unites.avantage(type_attaquant, type_defenseur)
+def multiplicateur(type_attaquant, type_defenseur, general_attaquant=None, general_defenseur=None):
+    valeur = unites.avantage(type_attaquant, type_defenseur, general_attaquant, general_defenseur)
+    if (type_attaquant == 'piquier' and unites.etiquette(type_defenseur, 'cavalerie')
+            and ordres_pipeline.effet(general_attaquant, 'herisson')):
+        valeur = max(valeur, 3)
+    if (type_defenseur == 'piquier' and unites.etiquette(type_attaquant, 'distance')
+            and ordres_pipeline.effet(general_defenseur, 'herisson')):
+        valeur = max(valeur, 3)
+    return valeur
 
 
 def valeur_base_bloc(infos, bloc=None):
@@ -708,6 +728,9 @@ def combat_bloc(
     fatigue_2=False,
     bloc_1=None,
     bloc_2=None,
+    *,
+    general_1=None,
+    general_2=None,
 ):
     # Calcule le résultat d'un combat entre deux blocs.
     #
@@ -735,12 +758,12 @@ def combat_bloc(
 
     valeur_1 = valeur_base_bloc(infos_1, bloc_1) * multiplicateur(
         type_1,
-        type_2
+        type_2, general_1, general_2
     )
 
     valeur_2 = valeur_base_bloc(infos_2, bloc_2) * multiplicateur(
         type_2,
-        type_1
+        type_1, general_2, general_1
     )
 
     # ------------------------------------------
@@ -782,13 +805,15 @@ def combat_bloc(
     return survivants_1, survivants_2
 
 
-def trouver_cible_facile(armee, joueur_attaquant, type_attaquant):
+def trouver_cible_facile(armee, joueur_attaquant, type_attaquant,
+                         general_attaquant=None, general_defenseur=None):
     joueur_ennemi = adversaire_du_duel(armee, joueur_attaquant)
 
     for bloc in config.ordre_blocs:
         infos_ennemi = armee[joueur_ennemi][bloc]
 
-        if multiplicateur(type_attaquant, infos_ennemi['type']) > 1 and infos_ennemi["nombre"] > 0:
+        if multiplicateur(type_attaquant, infos_ennemi['type'], general_attaquant,
+                          general_defenseur) > 1 and infos_ennemi["nombre"] > 0:
             return bloc
 
     return None
@@ -817,7 +842,8 @@ def supprimer_unites(infos, survivants, general=None):
             caracteristiques['moral'] = 0
         composition = generaux.lire_composition_general(general['chemin'])
         bloc = infos['unites'][0].parent.name if infos['unites'] else None
-        moral = unites.moral_bloc(caracteristiques, composition, bloc)
+        moral = unites.moral_bloc(caracteristiques, composition, bloc, general)
+        moral = ordres_pipeline.moral(general, moral)
     return soldats.pertes(infos, survivants, moral, random)
 
 
@@ -869,6 +895,7 @@ def confrontation_directe(
         fatigue_1,
         fatigue_2,
         bloc, bloc,
+        general_1=general_1, general_2=general_2,
     )
     soldats.affrontement(general_1, general_2)
 
@@ -1042,6 +1069,7 @@ def attaque_ciblee(
         fatigue_attaquant,
         fatigue_defenseur,
         bloc_attaquant, bloc_cible,
+        general_1=general_attaquant, general_2=general_defenseur,
     )
     if initial_attaquant > 0 and initial_defenseur > 0:
         soldats.affrontement(general_attaquant, general_defenseur)
@@ -1106,10 +1134,12 @@ def choisir_flanc_attaquant(armee, joueur):
     return random.choice(["droite", "gauche"])
 
 
-def choisir_cible(armee, joueur_attaquant, type_attaquant):
+def choisir_cible(armee, joueur_attaquant, type_attaquant,
+                  general_attaquant=None, general_defenseur=None):
     joueur_ennemi = adversaire_du_duel(armee, joueur_attaquant)
 
-    cible = trouver_cible_facile(armee, joueur_attaquant, type_attaquant)
+    cible = trouver_cible_facile(armee, joueur_attaquant, type_attaquant,
+                                general_attaquant, general_defenseur)
 
     if cible is None:
         cible = trouver_cible_faible(armee, joueur_ennemi)

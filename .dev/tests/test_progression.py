@@ -12,6 +12,24 @@ import progression
 
 
 class Progression(unittest.TestCase):
+    def test_tirage_uniforme_ordres_et_seed_reproductible(self):
+        import random
+        catalogue = {i: dict(categorie='ordre', disponible=True, natures=None)
+                     for i in (1006, 1007, 1008, 1009, 1010)}
+        fiche = self.fiche('instinctif')
+        fiche['evolutions_acquises'] = [1006]
+        for index, attendu in enumerate((1007, 1008, 1009, 1010)):
+            rng = Mock()
+            rng.randint.side_effect = [1, index]
+            _, obtenu = progression.monter_niveau(fiche, rng, catalogue)
+            self.assertEqual(obtenu, attendu)
+            self.assertEqual(rng.randint.call_args_list[-1].args, (0, 3))
+        def tirages():
+            rng = random.Random(317)
+            return [progression.monter_niveau(fiche, rng, catalogue)[1] for _ in range(30)]
+        self.assertEqual(tirages(), tirages())
+        self.assertEqual(set(tirages()), {1007, 1008, 1009, 1010})
+
     def fiche(self, nature='stratege', trait='charismatique', **autres):
         return dict(niveau=0, nature=nature, trait_inne=trait, points_commandement=15,
                     moral=0, evolutions_acquises=[], evolution_apprise=None, **autres)
@@ -22,7 +40,8 @@ class Progression(unittest.TestCase):
         self.assertEqual([catalogues.UNITES[i]['recette'] for i in (1, 2, 3)],
                          [('arc',), ('pique',), ('cheval',)])
         self.assertIsNone(catalogues.UNITES[4]['fabrication'])
-        self.assertEqual(len(catalogues.ORDRES), 5)
+        self.assertEqual({i: catalogues.ORDRES[i]['jeton'] for i in range(1001, 1006)},
+                         {1001: '1-1', 1002: '1-2', 1003: '2-1', 1004: '2-2', 1005: '3-1'})
         self.assertEqual(catalogues.EVOLUTIONS[201]['categorie'], 'commandement')
 
     def test_nature_et_traits_aux_frontieres_exactes(self):

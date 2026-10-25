@@ -93,6 +93,9 @@ Responsabilités :
 | `catalogues.py` | identifiants permanents, types d'unités, recettes, ordres et évolutions |
 | `progression.py` | caractéristiques officielles, tirages pondérés et montée de niveau configurable |
 | `commandement.py` | calculs entiers, sélection des QG et donneurs d'ordres, sans effets tactiques supplémentaires |
+| `ordres_pipeline.py` | intentions authentifiées, confrontation et effets temporaires des ordres intégrés dans les duels |
+| `ordres_calculs_v2.py` | formules pures des ordres ; un calcul seul ne rend pas un effet disponible |
+| `ordres_conception.py` | registre documentaire immuable, sans droit d'apprentissage ou d'exécution |
 | `soldats.py` | identité individuelle, blessures, sauvetages et batailles survécues |
 | `formation.py` | formation en réserve, hôpital, École et Forge, séjours, mémoires et transformations |
 | `cycle_linux.py` | gel Linux, capture privée, publication de générations et permissions des phases Survie |
@@ -1323,6 +1326,25 @@ ni les combats, ni le contrôle final, ni le passage au tour suivant.
 
 ### État persistant et reprise du cycle Survie
 
+Les rapports sont préparés dans `generation/rapports/`, privé root, avec le
+flux chronologique `evenements.jsonl`. Ils ne remplacent les rapports publics
+qu'à la publication sous gel. `rapport_long.txt` reste privé root `600` ; les
+rapports territoriaux et le journal sont lisibles par le groupe allié en `640`.
+
+Le journal `/game/rapport/suivi_combats.log` conserve son inode pour `tail -f`.
+Le plan privé `.systeme/diffusion_rapports.json` contient la génération, l'heure
+de début, l'intervalle, la position initiale, le device/inode du journal et les
+événements. Il est durable avant le premier append. Pendant CONSULTATION, le
+minuteur publie les octets manquants ; le préfixe exact permet de reprendre une
+écriture interrompue, même au milieu d'un caractère UTF-8. Une divergence exige
+une récupération et n'est jamais effacée automatiquement. La republication
+d'une génération ne redémarre pas sa diffusion.
+
+`delai_evenements_combats_secondes` est optionnel (1 seconde par défaut, zéro
+pour les tests) ; il est réduit si nécessaire pour finir pendant la consultation.
+La défaite termine immédiatement la diffusion. Aucun délai ne ralentit le calcul
+privé et les intentions/PC détaillés ne sont pas inclus dans le flux public.
+
 `etat.charger_cycle_survie()` et `etat.sauvegarder_cycle_survie()` utilisent
 `/game/.systeme/cycle_survie.json`. Ce fichier privé appartient à `root:root`
 en `600`. L'écriture passe par `cycle_survie.tmp`, également privé, puis remplace
@@ -1554,9 +1576,9 @@ jetons historiques `1-1`, `1-2`, `2-1`, `2-2`, `3-1` ; `ordre.txt` garde son for
 Les catégories préparées sont globale (armée), duel (formation) et individuelle
 (intrinsèque). La technologie de Forge 104 est disponible comme évolution d'unité
 pour l'orientation instinctive ; elle autorise une transformation, sans créer de
-soldats. Les unités ordinaires gardent leurs accès existants. Les autres déblocages
-d'unités et d'ordres restent réservés, sauf l'attaque frontale existante 1002,
-également disponible comme évolution d'ordre. Aucun nouvel effet de combat n'est ajouté.
+soldats. Les unités ordinaires gardent leurs accès existants. Les apprentissages
+d'unités disponibles sont définis dans le catalogue ; l'attaque frontale 1002 et
+les ordres personnels intégrés ci-dessous disposent d'IDs d'apprentissage propres.
 
 ### Caractéristiques et niveaux des généraux
 
@@ -1590,12 +1612,15 @@ possédée par le joueur ne change pas les caractéristiques officielles.
 
 Les récompenses indisponibles, incompatibles ou entièrement acquises sont exclues.
 Les poids restants sont redistribués proportionnellement par un tirage entier.
-Avec le catalogue actuel, un stratège reçoit du commandement ou l'ordre 1002
-encore non acquis ; un instinctif peut
-recevoir du moral jusqu'au plafond ou la technologie 104 encore non acquise.
+Un stratège peut recevoir du commandement, un instinctif du moral jusqu'au
+plafond ; les unités et ordres doivent être disponibles, compatibles avec sa
+nature et encore non acquis.
 Si aucun choix n'est possible, la montée
-n'accorde pas de récompense. Plusieurs évolutions dans une catégorie
-nécessitent une règle de choix fournie par l'appelant.
+n'accorde pas de récompense. Dans les catégories unités et ordres, le choix
+par défaut est uniforme parmi les IDs éligibles, avec le générateur aléatoire
+de progression injecté (donc reproductible avec une graine). Les poids des
+catégories, les restrictions de nature et la priorité d'une mémoire restent
+inchangés. Un choix explicite fourni par l'appelant doit rester éligible.
 
 Un stratège commence avec 11 à 20 points. Une récompense au niveau `n` utilise
 `tranche = 10 * (n // 5 + 1)` puis ajoute `tranche + randint(1, tranche)`.
@@ -1646,7 +1671,7 @@ de leur première validation, sans reconstituer d'expérience antérieure.
 Un ancien général sans profil officiel reste inchangé, avec un moral effectif
 nul ; sa montée de niveau exige une migration explicitement définie.
 
-### Commandement et QG : calculs prêts, raccordement tactique réservé
+### Commandement, ordres personnels et QG
 
 Le commandement effectif vaut `points // max(1, nombre_types_generiques_distincts)`.
 Le global utilise le calcul entier exact
@@ -1660,11 +1685,18 @@ commandement pertinent, calcul fourni par le pilote. Une égalité au sommet ne
 sélectionne personne. Le QG n'ajoute aucune troupe. Si son bloc devient vide,
 il reste désactivé pour cette bataille sans relève automatique.
 
-Les fonctions prévoient les ordres globaux du QG actif stratège ; les ordres de
-duel personnels puis ceux du QG à défaut ; les ordres individuels personnels sans
-comparaison normale. Un contre-ordre reste dans sa catégorie et n'est sélectionné
-qu'en situation de comparaison perdue. Aucun effet de contre-ordre n'est inventé.
-Une égalité concurrente n'identifie aucun gagnant ni perdant.
+Les ordres sont confrontés par catégorie, entre deux donneurs distincts. Deux
+ordres normaux opposés sont départagés par leurs PC ; une égalité annule les
+deux groupes. Un ordre et un contre-ordre peuvent fonctionner ensemble, même
+si le contre-ordre a moins de PC. Sans ordre adverse dans cette catégorie,
+l'ordre ou contre-ordre reste applicable. Un même donneur peut cumuler des
+ordres compatibles, jamais un ordre normal avec un contre-ordre. Un groupe
+mixte interdit est écarté avant de comparer l'adversaire.
+
+Les ordres personnels intégrés utilisent les PC effectifs de leur donneur.
+La transmission d'un ordre de duel par le QG utilisera les PC effectifs du
+général QG, distincts de la formule globale d'armée. Les ordres personnels de
+duel priment sur le QG ; les listes de généraux différents ne sont pas agrégées.
 
 Le stratège hybride garde l'accès natif aux trois catégories. L'instinctif hybride
 ne peut utiliser un ordre global que si son ID figure parmi ses évolutions
@@ -1672,10 +1704,55 @@ effectivement acquises ; une mémoire encore en attente ne suffit pas. La formul
 globale continue de distinguer les orientations principales ; les points du QG,
 y compris instinctif hybride, sont comptés intégralement.
 
-Ces fonctions testées ne remplacent pas la résolution historique de `1-2`.
-La matérialisation des QG, le commandement pertinent selon leur contexte, les
-effets concurrents à égalité et la transition des ordres historiques doivent
-être définis avant ce raccordement.
+Ces règles ne remplacent pas la résolution historique de `1-2`, conservée tant
+que sa migration n'est pas validée. Le joueur choisit librement le bloc existant
+portant son QG. La procédure de déclaration manque encore : les globaux et la
+transmission QG restent désactivés. Une fiche publique ne peut installer un QG.
+
+#### Ordres personnels exécutables
+
+| ID d'apprentissage | Jeton `ordre.txt` | Ordre | Catégorie |
+| --- | --- | --- | --- |
+| 1006 | `3-2` | Hérisson | individuelle |
+| 1007 | `3-3` | Discours de la mort | individuelle |
+| 1008 | `2-3` | Orc_un_jour_orc_toujour | duel |
+| 1009 | `3-4` | Rafale | individuelle |
+| 1010 | `2-4` | Cruelle | duel |
+
+Ces IDs s'ajoutent aux cinq historiques, sans les renuméroter. Ils sont
+apprenables par les voies communes. Chaque ordre doit figurer dans les
+évolutions personnellement acquises du général, dans `progression.json` privé.
+Une mémoire en attente, le savoir d'un autre général et `fiche.txt` ne donnent
+aucun droit. Les généraux zombies ne donnent pas ces ordres. Ces cinq jetons
+sont sans paramètre : une troisième valeur est refusée pour leur exécution.
+
+Les décisions sont arrêtées avant les effets du duel. Elles ne modifient ni
+les caractéristiques persistantes, ni le type, l'UUID ou la recette des soldats.
+Le contexte est libéré même après exception. Les effets retenus apparaissent
+dans le rapport territorial ; les PC et intentions détaillées restent root.
+
+- Hérisson porte à ×3 l'avantage des piquiers contre la cavalerie et leur
+  faiblesse face à la distance, au choc comme en manœuvre.
+- Discours multiplie le moral courant par `11/10`, après les bonus d'unités
+  existants, sous le plafond commun de 100. Les fractions restent exactes
+  jusqu'au plancher collectif des sauvetages, sans arrondi intermédiaire ajouté.
+- Cruelle multiplie le moral adverse par `(100 - nombre_unites_cruelles) / 100`.
+  Le nombre est celui de l'armée du donneur au début du duel ; les pertes
+  ultérieures ne réécrivent pas ce facteur. Discours et Cruelle se composent
+  exactement avant le bornage commun `0..100` des ordres, sans arrondi ajouté.
+- Orc_un_jour_orc_toujour donne l'étiquette Orc aux Sauvageons pendant ce duel.
+  Leur type reste Sauvageon. Le décompte racial de moral et les interactions
+  avec les Chamans tiennent compte de cette étiquette temporaire.
+- Rafale utilise `archers du bloc Arrière // 4` tirs avant le choc, y compris
+  avant la priorité du Bouclier vivant. Les victimes distinctes sont choisies
+  aléatoirement parmi les unités éligibles ; l'étiquette `lourde` immunise la
+  cavalerie lourde. Aucune immunité supplémentaire n'est ajoutée. Le sauvetage
+  habituel par le moral s'applique collectivement aux victimes de chaque bloc.
+  Les plans des deux camps précèdent les pertes. La participation à la bataille
+  est enregistrée avant les tirs, même si ceux-ci éliminent le camp adverse.
+
+Les autres ordres du registre de conception restent désactivés. Leur formule
+isolée, lorsqu'elle existe, n'est pas une preuve de fonctionnement en partie.
 
 ### Blessures et batailles complètes
 

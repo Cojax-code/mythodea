@@ -1,7 +1,9 @@
 # Préparation des ordres V2 — conception, pas activation
 
 Base de travail : branche `feat/ordres-v2`, issue de `v2.0` après le commit d'audit `eb5c302`.
-Les effets des 21 ordres restent **désactivés** tant qu'ils ne sont pas intégrés et testés.
+Un ordre reste **désactivé** tant qu'il n'est pas intégré et testé. Le bilan actuel
+des activations est dans `ordres-v2-reprise-codex.md` ; le présent document conserve
+les décisions de conception, y compris celles des effets encore réservés.
 La vérification finale (suite Linux complète, WSL/Raspberry Pi) est confiée à Codex.
 
 ## Règles transversales validées
@@ -30,8 +32,8 @@ La vérification finale (suite Linux complète, WSL/Raspberry Pi) est confiée �
 | Confinement | Globale | Oui | Neutralise totalement Spore, y compris le bonus Spora-adicte. |
 | Pour_l'honneur | Globale | Non | Défenseur OFF/DEF : annule les faiblesses des unités au choc initial ; incompatible avec les autres ordres sauf exception explicite. |
 | Ralliement | Globale | Non | Renforts temporaires du QG défenseur : 20 % (arrondi inférieur), par type présent chez le bénéficiaire, des pertes du général allié vaincu. Les piquiers d'un allié ne bénéficient pas à un général sans piquiers. |
-| Rafale | Individuelle | Non | Avant le choc initial : ⌊nombre d'archers / 4⌋ tentatives de pertes directes ; tirage aléatoire des unités, sans effet sur cible lourdement blindée ; exige un bloc Arrière d'archers. |
-| Cruelle | Duel | Non | Juste avant le combat du général : -1 % de moral adverse par unité cruelle de son armée. |
+| Rafale | Individuelle | Non | Avant le choc initial et la priorité du Bouclier : ⌊archers Arrière / 4⌋ tirs ; cibles aléatoires, armure lourde immunisée, sauvetage habituel par le moral. |
+| Cruelle | Duel | Non | Juste avant le combat : moral adverse × (100 − unités cruelles de l'armée du donneur) / 100, sans arrondi intermédiaire. |
 | Orc_un_jour_orc_toujour | Duel | Non | Donne temporairement l'étiquette Orc aux Sauvageons. |
 | Étincellant | Globale | Non | Les Chevaliers clinquants attaquent en premier en manœuvre, sans double attaque durant le même tour. |
 | On_melange | Globale | Non | Inverse la séquence des positions des généraux (4, 3, 2, 1). |
@@ -49,7 +51,9 @@ Reste à trancher la signification exacte de « perdu » (morts, fuite ou autre 
 ### Réserve stratégique — Globale, ordre normal
 
 Le QG désigne un général de réserve. Celui-ci vient combattre chaque général adverse qui vient de remporter un combat, donc déjà éprouvé, puis se retire pour que les prochains généraux frais poursuivent le déroulement normal. S'il n'a pas été engagé autrement, il combat normalement lorsqu'arrive sa position finale.
-À préciser : s'il reste opérationnel après une interception, peut-il enchaîner sans limite, comment sont gérées ses pertes et la fatigue, et quelle priorité face à QG_nommade.
+Il peut intercepter de nouveau tant qu'il lui reste des unités, sans pénalité
+de fatigue supplémentaire propre à l'ordre. Restent à préciser la coexistence
+de réserves adverses, l'échec d'une interception et la priorité face à QG_nommade.
 
 ### Dernière charge — Duel, contre-ordre
 
@@ -60,7 +64,7 @@ Un seul flanc doit être désigné : `G` ou `D`. Format de jeton exact à fixer 
 ## Questions et garde-fous avant codage des effets
 
 1. **Ne pas interpréter** « perdu » de Muraille humaine comme mort définitive sans validation.
-2. Définir les cas limites de Réserve stratégique (répétition, fatigue, positions et QG).
+2. Définir les cas limites de Réserve stratégique (réserves des deux camps, échec d'interception, positions et QG).
 3. Déterminer les priorités exactes entre plusieurs ordres de modification du déroulement et leurs incompatibilités.
 4. Gros_poisson : conserver l'identité, le propriétaire, les blessures, l'expérience et la restitution ; clarifier ses 3e et 4e paramètres.
 5. Ralliement : vérifier la provenance/identité des renforts, notamment lorsqu'ils sont issus de pertes, et leur restitution éventuelle.
@@ -69,6 +73,20 @@ Un seul flanc doit être désigné : `G` ou `D`. Format de jeton exact à fixer 
 8. Mettre le site, le Bestiaire et le simulateur à niveau **après** stabilisation des règles exécutables.
 
 Cette note est une photographie des décisions prises et des questions ouvertes ; elle ne modifie aucune règle active du moteur.
+
+## Contrats validés pendant l'intégration
+
+- QG : libre choix d'un bloc existant du général par le joueur. Sélection,
+  commandement et absence de remplacement après destruction restent inchangés.
+  Procédure de déclaration encore manquante ; aucune commande inventée.
+- Rafale : tirs juste avant le choc initial, `archers_arriere // 4`, cibles
+  aléatoires éligibles, immunité des unités lourdement blindées. Le moral
+  habituel protège les victimes. Rafale ignore la priorité de protection du
+  Bouclier vivant, sans désactiver les autres règles défensives.
+- Cruelle : réduction multiplicative exacte, `PM * (100 - nombre_cruelles) / 100`.
+  Exemple confirmé : 50 PM et 10 unités cruelles donnent 45 PM, pas 40.
+- Progression : tirage uniforme parmi les ordres éligibles lorsque la catégorie
+  ordre est choisie. Pas de pondération interne ; générateur injectable avec seed.
 
 ## Clarifications ultérieures validées
 
