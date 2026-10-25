@@ -69,3 +69,8 @@ Un seul flanc doit être désigné : `G` ou `D`. Format de jeton exact à fixer 
 8. Mettre le site, le Bestiaire et le simulateur à niveau **après** stabilisation des règles exécutables.
 
 Cette note est une photographie des décisions prises et des questions ouvertes ; elle ne modifie aucune règle active du moteur.
+
+## Clarifications ultérieures validées
+
+- **Muraille humaine :** les unités de blocs d'autres généraux engagées temporairement dans la formation collective **retournent à leur général d'origine** après l'intervention. Les pertes éventuelles ne sont pas annulées. Cela ne résout pas à lui seul l'état exact des unités du général vaincu ni la répartition des pertes collectives : ne pas les inventer.
+- **Dernière charge :** déclenchement interdit si le général précédent **n'a pas perdu** son duel. La défaite de ce général est une condition nécessaire, pas seulement une condition de disponibilité du flanc. La règle de retour des unités de Muraille humaine ne s'applique pas automatiquement à Dernière charge.
