@@ -35,5 +35,27 @@ class TestOrdresCalculsV2(unittest.TestCase):
                     calculs.renforts_ralliement({"archer": valeur}, {"archer"})
 
 
+    def test_discours_mort_pourcentage_de_la_valeur_actuelle(self):
+        from fractions import Fraction
+        self.assertEqual(calculs.facteur_discours_de_la_mort(30), 33)
+        self.assertEqual(calculs.facteur_discours_de_la_mort(31), Fraction(341, 10))
+        self.assertEqual(calculs.facteur_discours_de_la_mort(0), 0)
+        # Ne jamais choisir arbitrairement l'arrondi à ce stade.
+        self.assertEqual(calculs.facteur_discours_de_la_mort(99), Fraction(1089, 10))
+
+    def test_reserve_interceptions_repetables(self):
+        for _ in range(3):
+            self.assertTrue(calculs.reserve_peut_intercepter(True, 5))
+        self.assertFalse(calculs.reserve_peut_intercepter(False, 5))
+        self.assertFalse(calculs.reserve_peut_intercepter(True, 0))
+        self.assertFalse(calculs.reserve_peut_intercepter(True, 5, deja_elimine=True))
+
+    def test_derniere_charge_defaite_obligatoire(self):
+        self.assertFalse(calculs.derniere_charge_possible(False, "G"))
+        self.assertTrue(calculs.derniere_charge_possible(True, "D"))
+        with self.assertRaises(ValueError):
+            calculs.derniere_charge_possible(True, "GD")
+
+
 if __name__ == "__main__":
     unittest.main()
