@@ -67,3 +67,11 @@ Statut : modifications GitHub enregistrées, **tests non exécutés dans WSL par
 ### Point d'attention sur le sens de « aucun ordre adverse »
 
 Deux ordres ne se neutralisent qu'à l'intérieur d'une **même confrontation et catégorie**. Si le camp adverse n'a aucun ordre dans cette confrontation, les règles validées autorisent le contre-ordre (et aucun affrontement de PC entre deux ordres normaux n'a lieu). Ne pas comparer un ordre global à un ordre de duel pour l'annuler.
+
+## Troisième étape : donneurs liés aux données officielles
+
+- `python/ordres_pipeline.py:donneurs_officiels` récupère pour chaque donneur ses caractéristiques de `progression.caracteristiques_general` (stockage privé), et non la fiche visible du joueur. Un donneur sans fiche privée est refusé.
+- Les donneurs restent distingués par camp, position et général ; l'objet initial n'est pas modifié.
+- Tests ajoutés dans `.dev/tests/test_ordres_pipeline_v2.py` : source privée authentique, refus en cas de progression manquante.
+- **Toujours aucune activation d'ordre nouveau**, ni appel à `confronter_intentions` depuis `combats.py`. Pour la suite, sélectionner le QG officiellement et déterminer le calcul de PC pertinent à chaque confrontation ; ne pas inférer les donneurs depuis leur seule présence dans `ordre.txt`.
+- **Exécution des tests restant à faire par Codex** ; ces commits ont été effectués uniquement via GitHub.
