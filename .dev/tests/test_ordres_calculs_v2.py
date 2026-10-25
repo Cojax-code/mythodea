@@ -57,5 +57,21 @@ class TestOrdresCalculsV2(unittest.TestCase):
             calculs.derniere_charge_possible(True, "GD")
 
 
+    def test_rafale_tentatives_par_quatre_archers(self):
+        for archers, tirs in ((0, 0), (3, 0), (4, 1), (7, 1),
+                             (8, 2), (20, 5)):
+            self.assertEqual(calculs.tentatives_rafale(archers), tirs)
+
+    def test_confinement_neutralise_spore_et_son_bonus(self):
+        self.assertEqual(calculs.conversions_spore(1), 1)
+        self.assertEqual(calculs.conversions_spore(1, True), 2)
+        self.assertEqual(calculs.conversions_spore(1, True, True), 0)
+        self.assertEqual(calculs.conversions_spore(1, False, True), 0)
+
+    def test_propagation_bonus_deux(self):
+        self.assertEqual(calculs.conversions_propagation(4), 4)
+        self.assertEqual(calculs.conversions_propagation(4, True), 6)
+
+
 if __name__ == "__main__":
     unittest.main()
