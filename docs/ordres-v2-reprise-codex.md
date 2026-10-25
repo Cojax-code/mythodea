@@ -101,3 +101,31 @@ Deux ordres ne se neutralisent qu'à l'intérieur d'une **même confrontation et
 - **Ne pas déduire** les effets « +10 % de moral » et « -1 % par unité cruelle » en points de moral bruts sans confirmer s'il s'agit de points de pourcentage ou d'un facteur multiplicatif. Aucun code de ces bonus n'a été conservé.
 - Pour Ralliement, la provenance des pertes, les éventuelles identités, les blessures et le devenir des renforts doivent encore être spécifiés avant toute manipulation des soldats.
 - Les commits sont exclusivement sur `feat/ordres-v2`; aucun effet supplémentaire n'est activé.
+
+## Sixième étape : calculs préparatoires supplémentaires (non actifs)
+
+Commits supplémentaires sur **la même branche** :
+- `220f1c8`, `370de94` : moral `Discours de la mort` = `moral * 11/10`, rendu en Fraction exacte pour ne pas inventer d'arrondi ; préconditions de Réserve stratégique réutilisables sans compteur ni pénalité de fatigue spécifique ; défaite préalable obligatoire de Dernière charge avec un flanc G/D.
+- `eadfc97`, `0004ef6` : Rafale = `archers arrière // 4` tentatives (pas de dégâts immédiats), Spore +1 si Spora-adicte et **0 sous Confinement**, Propagation +2 si Propagafion.
+- `7323ac2` : documentation des décisions utilisateur exactes sur le moral multiplicatif et les interceptions répétées.
+
+Toutes ces fonctions sont dans `python/ordres_calculs_v2.py` et leurs tests dans `.dev/tests/test_ordres_calculs_v2.py`. **Aucune n'est appelée par le combat réel**. Les calculs ne sont pas une simulation de combat, ne modifient pas les unités et ne valident pas les cibles.
+
+### Points à confirmer avant d'activer les effets
+
+1. **Moral fractionnaire** : arrondi/plafond et séquence de cumul entre plusieurs multiplicateurs, au moment de la résolution (seule la multiplication +10 % est validée).
+2. **Réserve stratégique** : ordre précis des interceptions lorsque les deux camps possèdent une réserve, conditions de fin de tour et sortie du duel si la réserve échoue ; aucune règle de fatigue supplémentaire ne doit être inventée.
+3. **Muraille humaine** : disparition des blocs Avant **de la manœuvre** ne signifie pas par défaut élimination définitive des soldats ; les unités prêtées retournent à leur propriétaire.
+4. **Gros_poisson et Ralliement** : identité des soldats, transferts, provenance et restitution exacts.
+5. **Ciblage QG / G-D** : format final des jetons, validation du destinataire, compatibilité avec le parseur qui accepte encore seulement deux ou trois segments numériques.
+6. **Ordres globaux et historiques** : la confrontation QG n'est pas encore raccordée à `1-2`; changer ses conditions peut modifier toutes les batailles et exige un test de non-régression comparatif.
+
+### Reprise et exécution des nouveaux tests
+
+Sur une copie de développement de la branche `feat/ordres-v2`, exécuter en environnement Python compatible les tests de :
+- `.dev/tests/test_ordres_conception_v2.py`
+- `.dev/tests/test_ordres_pipeline_v2.py`
+- `.dev/tests/test_ordres_calculs_v2.py`
+- `.dev/tests/test_ordres_confrontation_v2.py`
+
+Puis lancer la suite complète et les scénarios Linux, inspecter l'impact du raccordement sur `1-2`, et vérifier la compilation avant tout merge. **Cette session n'a pas exécuté ces tests sur WSL ou Raspberry Pi.**
