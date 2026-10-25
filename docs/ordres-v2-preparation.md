@@ -82,3 +82,9 @@ Cette note est une photographie des décisions prises et des questions ouvertes 
 - Les unités des blocs Avant engagés dans le choc initial « disparaissent » pour la suite de cet affrontement : **elles n'interviennent plus en manœuvre**, même si elles ont gagné le choc initial. Ne pas inventer une participation ultérieure dans ce duel.
 - La disparition du combat n'est pas automatiquement une mort permanente ou une destruction des fichiers des soldats : cette conséquence n'a pas encore été explicitement fixée.
 - La répartition exacte des pertes dans la ligne collective et le traitement des unités qui reviennent à leur général restent à tester/définir sans hypothèse implicite.
+
+## Décisions additionnelles validées (25 octobre 2026)
+
+- **Discours de la mort** : bonus de **10 % du moral actuel**, **multiplicatif** et cumulable avec les autres bonus futurs. Ex. 30 PM devient 33 PM ; ce n'est **pas** +10 points de moral. Aucun arrondi intermédiaire ne doit être inventé (31 PM devient provisoirement 34,1 avant règle générale d'arrondi).
+- **Réserve stratégique** : le général désigné peut réintervenir **autant de fois que nécessaire**, tant qu'il dispose encore d'unités. Son intervention vise à finir le général adverse qui vient de gagner contre son vis-à-vis ; il se retire ensuite pour laisser les deux généraux suivants se confronter normalement. Ne **pas** imposer une nouvelle règle de fatigue à cet ordre : le joueur ne l'a pas demandée. Les effets de fatigue déjà inhérents au combat, s'ils sont applicables, restent du ressort des règles générales et ne doivent pas être supposés nouveaux.
+- **Dernière charge** : il est obligatoire que le général allié précédent ait perdu ; sinon pas de déclenchement. Une seule option de flanc, G ou D.
