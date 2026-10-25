@@ -214,6 +214,10 @@ def propager(general, bloc, pertes_adverses, survivants, evenement, duel):
             raise RuntimeError('Propagation interrompue : récupération administrative requise, sans rejeu.')
         return 0
     nombre = (pertes_adverses + 1) // 2
+    import ordres_pipeline
+    import ordres_calculs_v2
+    nombre = ordres_calculs_v2.conversions_propagation(
+        nombre, ordres_pipeline.effet(general, 'propagafion'))
     identifiants = [uuid.uuid4().hex for _ in range(nombre)]
     contexte_bataille = soldats._bataille.get()
     territoire = contexte_bataille[0] if contexte_bataille else None

@@ -1690,15 +1690,33 @@ sans plafond supplémentaire. Les résultats individuels restent privés.
 
 Les profils, soldats et séjours suivent le protocole commun des générations ;
 le document partagé est régénéré depuis l'état officiel après publication.
-Les fonctions de commandement et de QG sont communes, mais le raccordement
-des ordres globaux attend les règles de déclaration et de priorité encore
-ouvertes. Les bots conservent leur résolution tactique classique.
+La déclaration commune `qg.txt` est lue au début de la bataille territoriale.
+Un seul QG valide par camp est accepté, y compris porté par un Instinctif ;
+plusieurs déclarations alliées (j1 et/ou j2) les annulent toutes. La sélection
+reste figée pendant la cascade, sans remplacement après destruction.
+Le QG transmet les ordres de duel en l'absence d'ordre personnel, avec ses propres
+PC, ainsi que les globaux intégrés Propagafion, Confinement et Étincellant.
+Les transmissions sont figées au début de chaque duel et restent valables
+jusqu'à sa fin, même après destruction du QG. Aucun nouveau duel n'en bénéficie
+ensuite, même si le bloc est repeuplé. Apprentissage et restrictions de nature
+du donneur restent obligatoires ; l'Instinctif pur ne donne pas de global.
+Les bots conservent leur résolution tactique classique.
 
 Les ordres personnels Hérisson, Discours de la mort, Orc_un_jour_orc_toujour,
 Rafale et Cruelle utilisent le moteur commun et ses apprentissages privés.
 Les tirs de Rafale précèdent le Bouclier vivant, avec moral et immunité lourde
 conservés. Les rapports suivent la préparation privée puis la publication et
 la diffusion en consultation décrites dans `MYTHODEA_SPEC.md`.
+
+Choca_fuite (`2-5`, ID 1011 acquis) réserve la retraite du général survivant
+immédiatement après le choc initial, avec les mêmes destinations, places et
+pénalités que la retraite de surnombre. Le général est aussitôt exclu des
+affrontements suivants ; le déplacement est publié avec les autres retraites.
+Au village, aucune retraite automatique n'existe : la demande est signalée
+comme impossible et le combat continue. Le refus s'applique aussi à une arrivée
+avec bot actif ou sans place autorisée. Les UUID, blessures, expérience,
+fatigue et règles de régénération existantes sont conservés. Aucun nouvel ordre
+spécial n'est donné aux bots.
 
 
 ## Unités zombies — Bouclier vivant et progression (décision du 20 octobre 2026)

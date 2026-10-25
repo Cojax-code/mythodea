@@ -30,20 +30,21 @@ def global_armee(generaux, qg):
     return (2 * points_qg + points_autres) // (2 * max(1, autres))
 
 
-def selectionner_qg(candidats, points):
-    """Aucun départage implicite. Le calcul pertinent est fourni par l'appelant."""
-    eligibles = [g for g in candidats if g['nature'] in ('stratege', 'stratege_hybride', 'instinctif_hybride')
-                 and g.get('qg') and g.get('effectif_bloc_qg', 0) > 0]
-    if not eligibles:
-        return None
-    meilleur = max(points(g) for g in eligibles)
-    premiers = [g for g in eligibles if points(g) == meilleur]
-    return premiers[0] if len(premiers) == 1 else None
+def selectionner_qg(candidats, points=None):
+    """Une seule déclaration valide, quelle que soit la nature du général.
+
+    ``points`` reste accepté pour les anciens appelants, mais n'est jamais
+    consulté : plusieurs déclarations annulent tous les QG de ce camp.
+    """
+    eligibles = [g for g in candidats if g.get('qg') in
+                 ('avant', 'droite', 'gauche', 'arriere')
+                 and g.get('effectif_bloc_qg', 0) > 0]
+    return eligibles[0] if len(eligibles) == 1 else None
 
 
 class QuartierGeneral:
     """Sélection unique pour une bataille ; aucune relève après destruction."""
-    def __init__(self, candidats, points):
+    def __init__(self, candidats, points=None):
         self.general = selectionner_qg(candidats, points)
         self.detruit = False
 

@@ -1680,10 +1680,21 @@ Les fonctions reçoivent les caractéristiques officielles. Le QG fourni au calc
 est l'objet général sélectionné dans la liste de l'armée. Les points ne limitent
 pas le nombre d'ordres ; aucun bonus de messager n'est défini.
 
-`QuartierGeneral` sélectionne une seule fois le stratège ou hybride éligible ayant le meilleur
-commandement pertinent, calcul fourni par le pilote. Une égalité au sommet ne
-sélectionne personne. Le QG n'ajoute aucune troupe. Si son bloc devient vide,
-il reste désactivé pour cette bataille sans relève automatique.
+Le joueur déclare un QG en créant `qg.txt` dans son général, contenant uniquement
+`avant`, `droite`, `gauche` ou `arriere` (espaces périphériques et fin de ligne
+tolérés). Ce bloc doit exister et contenir au moins une unité. Sans fichier,
+aucun QG n'est déclaré. Tous les généraux, y compris les Instinctifs, peuvent
+porter un QG ; cela ne leur accorde aucun ordre ni droit lié à une autre nature.
+Les ordres restent dans `ordre.txt`, indépendamment du bloc désigné.
+
+`QuartierGeneral` sélectionne une seule fois parmi les déclarations valides des
+forces engagées : exactement une déclaration par camp donne le QG officiel ;
+plusieurs déclarations annulent tous les QG de ce camp, quels que soient leurs PC.
+La sélection est conservée pendant toute la cascade territoriale. Le QG n'ajoute
+aucune troupe. Si son bloc devient vide, sa destruction est mémorisée avant une
+éventuelle conversion ou propagation : aucune relève dans cette bataille,
+même si ce bloc reçoit ensuite des unités. La déclaration suit le général
+dans les sauvegardes et les déplacements, sans nouvelle donnée privée persistante.
 
 Les ordres sont confrontés par catégorie, entre deux donneurs distincts. Deux
 ordres normaux opposés sont départagés par leurs PC ; une égalité annule les
@@ -1694,7 +1705,7 @@ ordres compatibles, jamais un ordre normal avec un contre-ordre. Un groupe
 mixte interdit est écarté avant de comparer l'adversaire.
 
 Les ordres personnels intégrés utilisent les PC effectifs de leur donneur.
-La transmission d'un ordre de duel par le QG utilisera les PC effectifs du
+La transmission d'un ordre de duel par le QG utilise les PC effectifs du
 général QG, distincts de la formule globale d'armée. Les ordres personnels de
 duel priment sur le QG ; les listes de généraux différents ne sont pas agrégées.
 
@@ -1705,11 +1716,15 @@ globale continue de distinguer les orientations principales ; les points du QG,
 y compris instinctif hybride, sont comptés intégralement.
 
 Ces règles ne remplacent pas la résolution historique de `1-2`, conservée tant
-que sa migration n'est pas validée. Le joueur choisit librement le bloc existant
-portant son QG. La procédure de déclaration manque encore : les globaux et la
-transmission QG restent désactivés. Une fiche publique ne peut installer un QG.
+que sa migration n'est pas validée. La déclaration, la sélection du QG et ses
+transmissions sont exécutées et rapportées. Les décisions globales et de duel
+sont prises avant les effets de chaque duel. Les ordres transmis restent valables
+jusqu'à sa fin, même si le QG est détruit entre-temps ; aucune transmission n'est
+possible aux duels suivants. Un QG ayant réservé sa retraite ne transmet plus
+aux combats suivants. Une fiche publique ne remplace pas `qg.txt` et ne donne
+aucune connaissance d'ordre. Les ordres individuels ne sont jamais transmis.
 
-#### Ordres personnels exécutables
+#### Ordres V2 exécutables
 
 | ID d'apprentissage | Jeton `ordre.txt` | Ordre | Catégorie |
 | --- | --- | --- | --- |
@@ -1718,12 +1733,17 @@ transmission QG restent désactivés. Une fiche publique ne peut installer un QG
 | 1008 | `2-3` | Orc_un_jour_orc_toujour | duel |
 | 1009 | `3-4` | Rafale | individuelle |
 | 1010 | `2-4` | Cruelle | duel |
+| 1011 | `2-5` | Choca_fuite (Survie) | duel |
+| 1012 | `1-3` | Propagafion | globale |
+| 1013 | `1-4` | Confinement | globale, contre-ordre |
+| 1014 | `1-5` | Étincellant | globale |
 
 Ces IDs s'ajoutent aux cinq historiques, sans les renuméroter. Ils sont
 apprenables par les voies communes. Chaque ordre doit figurer dans les
 évolutions personnellement acquises du général, dans `progression.json` privé.
 Une mémoire en attente, le savoir d'un autre général et `fiche.txt` ne donnent
-aucun droit. Les généraux zombies ne donnent pas ces ordres. Ces cinq jetons
+aucun droit. Les généraux zombies ne donnent pas ces ordres, mais peuvent
+bénéficier des transmissions d'un QG extérieur. Ces neuf jetons
 sont sans paramètre : une troisième valeur est refusée pour leur exécution.
 
 Les décisions sont arrêtées avant les effets du duel. Elles ne modifient ni
@@ -1733,6 +1753,23 @@ dans le rapport territorial ; les PC et intentions détaillées restent root.
 
 - Hérisson porte à ×3 l'avantage des piquiers contre la cavalerie et leur
   faiblesse face à la distance, au choc comme en manœuvre.
+- Choca_fuite utilise exclusivement la retraite Survie existante, immédiatement
+  après le choc initial si le général survit. Une réservation acceptée l'exclut
+  des combats restants ; ses soldats ne participent pas à la manœuvre de ce duel.
+  Les déplacements physiques sont appliqués avec les autres retraites du tour.
+  Destination, places, réserve du village, fatigue et régénération des Sauvageons
+  suivent les règles de retraite communes. Au village, avec un bot actif sur
+  l'arrivée ou sans place autorisée, la retraite est refusée et le combat continue.
+  Aucun bot ne reçoit cet ordre ; hors du pilote Survie, il n'est pas exécuté.
+- Propagafion ajoute deux conversions à chaque Propagation normalement
+  déclenchée chez un bénéficiaire allié. Les préconditions restent identiques :
+  pertes adverses réelles, bloc propagateur survivant, adversaire non mort-vivant.
+  La régulation des effectifs reste à la fin de la bataille territoriale.
+- Confinement neutralise la conversion par Spore contre les bénéficiaires du
+  camp, sans supprimer la résistance ni la priorité du Bouclier vivant.
+- Étincellant place les actions des Chevaliers clinquants avant les autres
+  actions de manœuvre. L'ordre relatif existant est conservé au sein des deux
+  groupes ; chaque bloc garde son unique action prévue pour ce tour.
 - Discours multiplie le moral courant par `11/10`, après les bonus d'unités
   existants, sous le plafond commun de 100. Les fractions restent exactes
   jusqu'au plancher collectif des sauvetages, sans arrondi intermédiaire ajouté.

@@ -1,6 +1,6 @@
 """Calculs purs des ordres V2 aux formules non ambiguës.
 
-Ces fonctions ne sélectionnent ni donneur ni cible : ni aléatoire, ni mutation
+Ces fonctions ne sélectionnent ni donneur ni cible : aucun accès disque ni mutation
 d'effectifs, ni modification de l'état officiel des généraux.
 Le pipeline appelle les calculs intégrés après validation de
 toutes les préconditions (ordre acquis, donneur, phase, camp, conflit).
@@ -21,6 +21,20 @@ def probabilite_charge_suicidaire(pertes_du_duel):
     n'a été validée dans la spécification.
     """
     return _naturel(pertes_du_duel, "Pertes du duel") // 4
+
+
+def tirages_charges_suicidaires(pertes_1, pertes_2, active_1, active_2, aleatoire):
+    """Deux tirages indépendants, sans tuer ni déplacer un seul soldat.
+
+    Retourne (attaque_1_reussie, attaque_2_reussie). Les pertes doivent être
+    celles du duel qui vient de finir ; aucun cumul ni état persistant ici.
+    """
+    chances = (probabilite_charge_suicidaire(pertes_1),
+               probabilite_charge_suicidaire(pertes_2))
+    if type(active_1) is not bool or type(active_2) is not bool:
+        raise ValueError('Activations booléennes requises.')
+    return tuple(active and aleatoire.randrange(100) < chance
+                 for active, chance in zip((active_1, active_2), chances))
 
 
 def renforts_ralliement(pertes_par_type, types_du_beneficiaire):

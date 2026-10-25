@@ -13,6 +13,8 @@ from contextvars import ContextVar
 from fractions import Fraction
 
 _duel = ContextVar('ordres_duel', default=None)
+_bataille = ContextVar('ordres_bataille', default=None)
+_retraite = ContextVar('retraite_apres_choc', default=None)
 
 _CATEGORIES = {"globale", "duel", "individuelle"}
 
@@ -197,6 +199,127 @@ def identite(general):
     return general['joueur'], general['nom']
 
 
+@contextmanager
+def bataille(territoire, configuration):
+    """Fige les déclarations pour toute la bataille, y compris ses renforts."""
+    courant = _bataille.get()
+    if courant is not None:
+        if courant['territoire'] != territoire:
+            raise ValueError('Deux territoires ne partagent pas une sélection de QG.')
+        yield courant
+        return
+    import generaux
+    import rapports
+    forces = generaux.lire_forces_territoire(territoire, configuration)
+    quartiers = {}
+    for camp, positions in forces.items():
+        candidats = []
+        for general in positions.values():
+            if not general:
+                continue
+            bloc = generaux.lire_declaration_qg(general['chemin'])
+            if bloc:
+                candidats.append(dict(general, qg=bloc, effectif_bloc_qg=1))
+        quartiers[camp] = commandement.QuartierGeneral(candidats)
+        if len(candidats) > 1:
+            rapports.ecrire_rapport_territoire(territoire,
+                f'QG {camp} : déclarations multiples, tous annulés.')
+        elif candidats:
+            qg = candidats[0]
+            rapports.ecrire_rapport_territoire(territoire,
+                f"QG {camp} : {qg['joueur']} {qg['nom']}, bloc {qg['qg']}.")
+    courant = dict(territoire=territoire, configuration=configuration, quartiers=quartiers)
+    jeton = _bataille.set(courant)
+    try:
+        yield courant
+    finally:
+        _bataille.reset(jeton)
+
+
+def verifier_qg():
+    """Mémorise la destruction avant qu'une capacité ne repeuple un bloc."""
+    courant = _bataille.get()
+    if courant is None:
+        return
+    import generaux
+    import rapports
+    def effectif(general):
+        return sum(generaux.lire_composition_general(general['chemin'])[general['qg']].values())
+    for camp, quartier in courant['quartiers'].items():
+        detruit = quartier.detruit
+        quartier.actif(effectif)
+        if quartier.detruit and not detruit:
+            rapports.ecrire_rapport_territoire(courant['territoire'],
+                f'QG {camp} détruit : aucun remplacement pendant cette bataille.')
+
+
+def qg_du_general(general):
+    courant = _bataille.get()
+    if courant is None:
+        return None
+    verifier_qg()
+    configuration = courant['configuration']
+    camp = configuration['acteurs'][general['joueur']]['camp']
+    quartier = courant['quartiers'].get(camp)
+    if quartier is None or quartier.detruit or quartier.general is None:
+        return None
+    qg = quartier.general
+    if ':'.join(identite(qg)) in configuration.get('generaux_hors_combat', ()):
+        return None
+    return qg
+
+
+def intention(general, categorie):
+    if categorie != 'globale':
+        personnelle = intention_personnelle(general, categorie)
+        if personnelle or categorie == 'individuelle':
+            return personnelle
+    qg = qg_du_general(general)
+    return intention_personnelle(qg, categorie) if qg is not None else None
+
+
+def points_globaux_officiels(donneur):
+    """Garde le même objet fiche pour le QG et l'armée, sans double comptage."""
+    import generaux
+    courant = _bataille.get()
+    configuration = courant['configuration']
+    qg = donneur['general']
+    camp = configuration['acteurs'][qg['joueur']]['camp']
+    forces = generaux.lire_forces_territoire(courant['territoire'], configuration)
+    armee = []
+    fiche_qg = None
+    for general in forces[camp].values():
+        if not general:
+            continue
+        fiche = progression.caracteristiques_general(general)
+        if fiche is None:
+            continue
+        armee.append(fiche)
+        if identite(general) == identite(qg):
+            fiche_qg = fiche
+    if fiche_qg is None:
+        raise ValueError('Le QG donneur ne fait plus partie des forces actives.')
+    return commandement.global_armee(armee, fiche_qg)
+
+
+@contextmanager
+def retraites_apres_choc(callback):
+    jeton = _retraite.set(callback)
+    try:
+        yield
+    finally:
+        _retraite.reset(jeton)
+
+
+def fuir_apres_choc(generaux):
+    """La Survie fournit sa procédure existante ; aucun placement ici."""
+    callback = _retraite.get()
+    if callback is None:
+        return []
+    candidats = [g for g in generaux if effet(g, 'choca_fuite') and g['chemin'].is_dir()]
+    return callback(candidats) if candidats else []
+
+
 def intention_personnelle(general, categorie):
     """Relit les demandes et l'autorité privée au début du véritable duel.
 
@@ -211,6 +334,8 @@ def intention_personnelle(general, categorie):
                 'ordres': generaux.lire_ordres_general(general['chemin'])}
     demandes = ordres_du_general(officiel, categorie)
     demandes = [i for i in demandes if i != 1002 and i in fiche['evolutions_acquises']]
+    if _retraite.get() is None:
+        demandes = [i for i in demandes if catalogues.ORDRES[i]['nom'] != 'choca_fuite']
     if not demandes:
         return None
     jetons = {catalogues.ORDRES[i]['jeton'] for i in demandes}
@@ -223,24 +348,30 @@ def duel(general_1, general_2):
     """Décisions temporaires, réinitialisées même si le calcul est interrompu.
 
     Aucun droit ni bonus n'est écrit dans les fiches des soldats ou généraux.
-    Les ordres globaux attendent la matérialisation officielle du QG.
+    Les ordres déjà transmis persistent jusqu'à la fin du duel, même si le
+    QG disparaît. Le duel suivant ne reçoit plus aucune transmission de lui.
     """
     generaux = (general_1, general_2)
     contexte = {identite(g): dict(effets=set(), facteur_cruelle=Fraction(1)) for g in generaux}
     decisions = []
-    for categorie in ('duel', 'individuelle'):
-        donneurs = [intention_personnelle(g, categorie) for g in generaux]
+    sources_cruelles = {}
+    for categorie in ('globale', 'duel', 'individuelle'):
+        donneurs = [intention(g, categorie) for g in generaux]
         if not any(donneurs):
             continue
-        points = [points_duel_officiels(d['general']) if d else 0 for d in donneurs]
+        points = [(points_globaux_officiels(d) if categorie == 'globale'
+                   else points_duel_officiels(d['general'])) if d else 0 for d in donneurs]
         resultat = confronter_intentions(*donneurs, categorie, *points)
         for numero, (general, donneur) in enumerate(zip(generaux, donneurs), 1):
             if not donneur:
                 continue
             retenus = resultat[f'camp_{numero}']
             contexte[identite(general)]['effets'].update(catalogues.ORDRES[i]['nom'] for i in retenus)
+            if any(catalogues.ORDRES[i]['nom'] == 'cruelle' for i in retenus):
+                sources_cruelles[identite(general)] = donneur['general']
             decisions.append(dict(joueur=general['joueur'], general=general['nom'],
                 categorie=categorie, pc=points[numero - 1], demandes=donneur['identifiants'],
+                donneur_joueur=donneur['general']['joueur'], donneur_general=donneur['general']['nom'],
                 retenus=retenus))
     # Cruelle dépend de l'armée du donneur au début du duel, pas de ses pertes
     # futures. Les deux malus sont préparés avant toute mutation de soldats.
@@ -248,7 +379,8 @@ def duel(general_1, general_2):
     import unites
     for donneur, cible in ((general_1, general_2), (general_2, general_1)):
         if 'cruelle' in contexte[identite(donneur)]['effets']:
-            composition = moteur_generaux.lire_composition_general(donneur['chemin'])
+            source = sources_cruelles[identite(donneur)]
+            composition = moteur_generaux.lire_composition_general(source['chemin'])
             nombre = sum(n for bloc in composition.values() for t, n in bloc.items()
                          if unites.etiquette(t, 'cruelle'))
             contexte[identite(cible)]['facteur_cruelle'] = ordres_calculs_v2.facteur_cruelle(nombre)

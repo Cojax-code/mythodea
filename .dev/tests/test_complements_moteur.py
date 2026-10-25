@@ -62,7 +62,9 @@ class ComplementsMoteur(unittest.TestCase):
         self.assertEqual(commandement.ordres_applicables([1002], qg['nature'], 'globale', 1), [])
         self.assertEqual(commandement.ordres_applicables([1002], qg['nature'], 'globale', 1, acquis=[1002]), [1002])
         qg['nature'] = 'instinctif'
-        self.assertIsNone(commandement.selectionner_qg([qg], lambda g: 20))
+        self.assertIs(commandement.selectionner_qg([qg], lambda g: 20), qg)
+        self.assertEqual(commandement.ordres_applicables(
+            [1002], qg['nature'], 'globale', 1, acquis=[1002]), [])
 
     def test_moral_stratege_hybride_reel(self):
         general = self.creer(nature='stratege_hybride')

@@ -247,6 +247,33 @@ def scanner_ordres_surnombre(configuration):
             assurer_ordre_surnombre(chemin, joueur, position, configuration)
 
 
+def lire_declaration_qg(chemin_general):
+    """Lit le choix du joueur sans créer de fichier ni réparer de bloc.
+
+    Même frontière de sécurité que ordre.txt : fichier ordinaire, borné,
+    sans lien, dans le général capturé par le moteur.
+    """
+    import stat
+    from cycle_linux import sans_liens
+    chemin = chemin_general / 'qg.txt'
+    try:
+        sans_liens(chemin)
+        infos = chemin.lstat()
+        if not stat.S_ISREG(infos.st_mode) or infos.st_nlink != 1:
+            return None
+        with chemin.open('rb') as fichier:
+            contenu = fichier.read(65)
+        if len(contenu) > 64:
+            return None
+        bloc = contenu.decode('utf-8').strip()
+        if bloc not in config.ordre_blocs:
+            return None
+        composition = lire_composition_general(chemin_general)
+        return bloc if sum(composition[bloc].values()) > 0 else None
+    except (OSError, ValueError, RuntimeError):
+        return None
+
+
 def lire_ordres_general(chemin_general):
     # Lit et valide les ordres présents dans ordre.txt.
     #

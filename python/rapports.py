@@ -652,6 +652,10 @@ def ecrire_detail_engagement(territoire, etiquette, resultat):
             + (noms if noms else 'aucun ordre retenu'))
         ecrire_rapport_long(f"Confrontation V2 : {decision}")
     ecrire_rapport_territoire(territoire, "CHOC INITIAL")
+    for fuite in resultat.get('fuites', ()):
+        ecrire_rapport_territoire(territoire,
+            f"Choca_fuite : {fuite['joueur']} {fuite['general']} se retire vers "
+            f"{fuite['destination']}, position {fuite['position']}, après le choc initial.")
     for rafale in resultat.get('rafales', ()):
         ecrire_rapport_territoire(territoire,
             f"Rafale — {rafale['joueur']} {rafale['general']} : "

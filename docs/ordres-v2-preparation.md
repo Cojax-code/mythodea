@@ -76,9 +76,16 @@ Cette note est une photographie des décisions prises et des questions ouvertes 
 
 ## Contrats validés pendant l'intégration
 
-- QG : libre choix d'un bloc existant du général par le joueur. Sélection,
-  commandement et absence de remplacement après destruction restent inchangés.
-  Procédure de déclaration encore manquante ; aucune commande inventée.
+- QG : `qg.txt` créé par le joueur dans son général, contenant un nom de bloc
+  existant et non vide (`avant`, `droite`, `gauche`, `arriere`). Tous les généraux
+  peuvent en porter, y compris les Instinctifs. Une seule déclaration valide par
+  camp devient officielle ; plusieurs déclarations annulent tous les QG du camp.
+  Aucun départage par PC : cette décision remplace l'ancienne sélection du plus
+  puissant. Aucun remplacement du QG détruit pendant la bataille. Les ordres
+  restent dans `ordre.txt`, soumis à leur apprentissage et à la nature du donneur.
+  Le duel utilise les PC du donneur QG ; le global conserve `global_armee`.
+  Après destruction du QG pendant un duel, les ordres déjà transmis restent
+  actifs jusqu'à la fin de ce duel ; aucun nouvel ordre n'est ensuite transmis.
 - Rafale : tirs juste avant le choc initial, `archers_arriere // 4`, cibles
   aléatoires éligibles, immunité des unités lourdement blindées. Le moral
   habituel protège les victimes. Rafale ignore la priorité de protection du
@@ -87,6 +94,18 @@ Cette note est une photographie des décisions prises et des questions ouvertes 
   Exemple confirmé : 50 PM et 10 unités cruelles donnent 45 PM, pas 40.
 - Progression : tirage uniforme parmi les ordres éligibles lorsque la catégorie
   ordre est choisie. Pas de pondération interne ; générateur injectable avec seed.
+- Charge suicidaire : deux tirages indépendants si les deux généraux possèdent
+  l'ordre, décès simultanés possibles. Les soldats survivants ne sont pas tués.
+  Leur repli `unites_sans_general` doit conserver toutes leurs données dans un
+  groupe distinct par événement, vers la réserve de leur village d'origine,
+  avec le délai de distance existant et un compteur indépendant par groupe.
+  Au compteur nul, la réaffectation est manuelle, sans nouvelle commande ni
+  affectation automatique. Le bot Survie n'a pas de base définie et les règles
+  ordinaires n'inventorient pas de soldats hors général : ces deux points
+  bloquent encore l'activation et ont été soumis au propriétaire.
+- Choca_fuite : utiliser la retraite Survie existante immédiatement après le
+  choc initial. Les règles existantes excluent la retraite automatique au village.
+  Ne pas donner de nouveaux ordres spéciaux aux bots.
 
 ## Clarifications ultérieures validées
 

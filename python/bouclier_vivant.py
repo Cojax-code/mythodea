@@ -122,6 +122,8 @@ def retirer_bouclier(general):
             shutil.rmtree(unite)
             nombre += 1
     soldats.sauvegarder(registre)
+    import ordres_pipeline
+    ordres_pipeline.verifier_qg()
     return nombre
 
 
@@ -138,6 +140,9 @@ def convertir_spore(general_zombie, adversaire, bloc_adverse, evenement, rng=Non
     import unites
     if bloc_adverse not in config.ordre_blocs:
         raise ValueError("Bloc adverse inconnu.")
+    import ordres_pipeline
+    if ordres_pipeline.effet(adversaire, 'confinement'):
+        return None
     donnees = unites.charger_capacites()
     preuves = donnees.setdefault('spores', {})
     if evenement in preuves:
@@ -188,6 +193,8 @@ def convertir_spore(general_zombie, adversaire, bloc_adverse, evenement, rng=Non
     unites.sauver_capacites(donnees)
     # Nouveau dossier sans ancien équipement ; identité historique conservée.
     shutil.rmtree(victime['chemin'])
+    import ordres_pipeline
+    ordres_pipeline.verifier_qg()
     soldats.creer_dossier_unite(destination)
     infos = destination.stat()
     valeur = registre[identifiant]

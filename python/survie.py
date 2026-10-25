@@ -266,16 +266,62 @@ def preparer_phase_ennemie(numero_vague, configuration=None, aleatoire=None):
 
 
 def resoudre_cascade(territoire, configuration=None, mode_combat="OFF/OFF", en_cours_de_fuite=None):
+    import ordres_pipeline
+    configuration = profil_survie(configuration)
+    configuration = dict(configuration)
+    reservations = [] if en_cours_de_fuite is None else en_cours_de_fuite
+    configuration['generaux_hors_combat'] = {
+        f"{g['joueur']}:{g['nom']}" for g, _ in reservations}
+    retraites = []
+
+    def replier(fuyards):
+        fuyards = [g for g in fuyards if g['joueur'] in configuration['joueurs']]
+        if not fuyards:
+            return []
+        arrivee = mouvements.destination_retraite_surnombre(territoire.name, configuration)
+        if arrivee is None:
+            rapports.ecrire_rapport_territoire(territoire,
+                'Retraite impossible au village : aucune retraite automatique.')
+            return []
+        camp_bot = configuration['acteurs']['bot']['camp']
+        forces_arrivee = generaux.lire_forces_territoire(configuration['game_path'] / arrivee, configuration)
+        if generaux.generaux_actifs_joueur(forces_arrivee, camp_bot):
+            rapports.ecrire_rapport_territoire(territoire,
+                f'Retraite impossible depuis {territoire.name} : bot actif sur {arrivee}.')
+            return []
+        destinations = mouvements.preparer_retraites_surnombre(
+            fuyards, territoire, configuration, reservations)
+        reservations.extend(destinations)
+        configuration['generaux_hors_combat'].update(
+            f"{g['joueur']}:{g['nom']}" for g, _ in destinations)
+        details = []
+        for general, destination in destinations:
+            retraites.append(dict(joueur=general['joueur'], nom=general['nom'],
+                                  origine=territoire.name, chemin=destination))
+            details.append(dict(joueur=general['joueur'], general=general['nom'],
+                                destination=arrivee, position=destination.parent.name))
+            rapports.ecrire_rapport_territoire(territoire,
+                f"Retraite réservée : {general['joueur']} {general['nom']} : "
+                f"{territoire.name} -> {arrivee}, position {destination.parent.name}.")
+        return details
+
+    # La tête bot est préparée avant de figer les déclarations de la bataille.
+    generaux.remonter_renforts_bot(territoire, configuration)
+    with ordres_pipeline.bataille(territoire, configuration), ordres_pipeline.retraites_apres_choc(replier):
+        resultat = _resoudre_cascade(territoire, configuration, mode_combat, replier)
+    if en_cours_de_fuite is None:
+        mouvements.appliquer_retraites_surnombre(reservations, configuration)
+    resultat['retraites'] = retraites
+    return resultat
+
+
+def _resoudre_cascade(territoire, configuration, mode_combat, replier):
     """Enchaîne les affrontements communs, avec décisions entre deux seulement.
 
     L'appel ne déplace pas le bot, ne crée aucune vague et ne lance aucun tour.
     Chaque affrontement conserve les pertes sur disque et remonte la colonne.
     """
     configuration = profil_survie(configuration)
-    if en_cours_de_fuite is not None:
-        configuration = dict(configuration)
-        configuration["generaux_hors_combat"] = {
-            f"{g['joueur']}:{g['nom']}" for g, _ in en_cours_de_fuite}
     if mode_combat not in ("OFF/OFF", "OFF/DEF"):
         raise ValueError("Mode d'affrontement inconnu.")
     camp_bot = configuration["acteurs"]["bot"]["camp"]
@@ -304,31 +350,7 @@ def resoudre_cascade(territoire, configuration=None, mode_combat="OFF/OFF", en_c
         fuyards = [general for general in allies
                    if generaux.lire_ordre_surnombre(general, territoire.name, configuration) == 1
                    and territoire.name not in configuration["villages"]]
-        if en_cours_de_fuite is None:
-            destinations = mouvements.retraites_surnombre(fuyards, territoire, configuration)
-        else:
-            destinations = []
-            if fuyards:
-                arrivee = mouvements.destination_retraite_surnombre(territoire.name, configuration)
-                forces_arrivee = generaux.lire_forces_territoire(configuration["game_path"] / arrivee, configuration)
-                if generaux.generaux_actifs_joueur(forces_arrivee, camp_bot):
-                    rapports.afficher_et_ecrire(
-                        f"Retraite impossible depuis {territoire.name} : bot actif sur {arrivee}.")
-                else:
-                    destinations = mouvements.preparer_retraites_surnombre(
-                        fuyards, territoire, configuration, en_cours_de_fuite)
-                    en_cours_de_fuite.extend(destinations)
-                    configuration["generaux_hors_combat"].update(
-                        f"{g['joueur']}:{g['nom']}" for g, _ in destinations)
-        for general, destination in destinations:
-            retraites.append({"joueur": general["joueur"], "nom": general["nom"],
-                              "origine": territoire.name, "chemin": destination})
-            arrivee = mouvements.destination_retraite_surnombre(territoire.name, configuration)
-            rapports.ecrire_rapport_territoire(
-                territoire, f"Retraite {'réservée' if en_cours_de_fuite is not None else 'effectuée'} : "
-                f"{general['joueur']} {general['nom']} : "
-                f"{territoire.name} -> {arrivee}, position {destination.parent.name}."
-            )
+        replier(fuyards)
         # Relire après les départs : seuls les alliés encore présents combattront.
         forces = generaux.lire_forces_territoire(territoire, configuration)
 

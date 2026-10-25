@@ -1,0 +1,90 @@
+test_qg_retraites_v2 (unittest.loader._FailedTest.test_qg_retraites_v2) ... ERROR
+test_confrontation_globale (test_progression.Commandement.test_confrontation_globale) ... ok
+test_contre_ordres_uniquement_perdant_et_individuel_sans_priorite (test_progression.Commandement.test_contre_ordres_uniquement_perdant_et_individuel_sans_priorite) ... ok
+test_duel_personnel_puis_qg (test_progression.Commandement.test_duel_personnel_puis_qg) ... ok
+test_effectif_types_generiques_et_diviseur_minimum (test_progression.Commandement.test_effectif_types_generiques_et_diviseur_minimum) ... ok
+test_global_entier_sans_arrondi_flottant (test_progression.Commandement.test_global_entier_sans_arrondi_flottant) ... ok
+test_qg_egalite_destruction_sans_releve (test_progression.Commandement.test_qg_egalite_destruction_sans_releve) ... ok
+test_aucun_bareme_automatique (test_progression.Progression.test_aucun_bareme_automatique) ... ok
+test_commandement_par_tranches (test_progression.Progression.test_commandement_par_tranches) ... ok
+test_distribution_ponderee_exacte (test_progression.Progression.test_distribution_ponderee_exacte) ... ok
+test_ids_uniques_et_recettes_inchangees (test_progression.Progression.test_ids_uniques_et_recettes_inchangees) ... ok
+test_memoire_incompatible_ne_perd_aucun_etat (test_progression.Progression.test_memoire_incompatible_ne_perd_aucun_etat) ... ok
+test_memoire_prime_sur_le_tirage_et_est_consommee (test_progression.Progression.test_memoire_prime_sur_le_tirage_et_est_consommee) ... ok
+test_moral_entier_plafond_et_pas_de_gain_commandement (test_progression.Progression.test_moral_entier_plafond_et_pas_de_gain_commandement) ... ok
+test_nature_et_traits_aux_frontieres_exactes (test_progression.Progression.test_nature_et_traits_aux_frontieres_exactes) ... ok
+test_recompense_unite_najoute_pas_commandement (test_progression.Progression.test_recompense_unite_najoute_pas_commandement) ... ok
+test_recompenses_impossibles_exclues_et_redistribution (test_progression.Progression.test_recompenses_impossibles_exclues_et_redistribution) ... ok
+test_tirage_uniforme_ordres_et_seed_reproductible (test_progression.Progression.test_tirage_uniforme_ordres_et_seed_reproductible) ... ok
+test_apprentissages_croises_et_gains_sans_changement_nature_trait (test_complements_moteur.ComplementsMoteur.test_apprentissages_croises_et_gains_sans_changement_nature_trait) ... ok
+test_effacer_fichier_blessures_ne_guerit_pas (test_complements_moteur.ComplementsMoteur.test_effacer_fichier_blessures_ne_guerit_pas) ... ok
+test_forge_collision_noms_et_pas_de_transformation_repetee (test_complements_moteur.ComplementsMoteur.test_forge_collision_noms_et_pas_de_transformation_repetee) ... ok
+test_forge_cycle_publication_et_scan_suivant_conservent_soldat (test_complements_moteur.ComplementsMoteur.test_forge_cycle_publication_et_scan_suivant_conservent_soldat) ... ok
+test_forge_partielle_ne_supprime_aucun_cavalier_et_copie_non_autorisee (test_complements_moteur.ComplementsMoteur.test_forge_partielle_ne_supprime_aucun_cavalier_et_copie_non_autorisee) ... ok
+test_forge_recette_incomplete_preserve_unite (test_complements_moteur.ComplementsMoteur.test_forge_recette_incomplete_preserve_unite) ... ok
+test_forge_sans_technologie_et_strateges_refuses (test_complements_moteur.ComplementsMoteur.test_forge_sans_technologie_et_strateges_refuses) ... ok
+test_forge_sejour_incomplet_et_recette_tardive_refuses (test_complements_moteur.ComplementsMoteur.test_forge_sejour_incomplet_et_recette_tardive_refuses) ... ok
+test_fuite_reserve_conserve_soldat_blesse_heroique_et_profil (test_complements_moteur.ComplementsMoteur.test_fuite_reserve_conserve_soldat_blesse_heroique_et_profil) ... ok
+test_home_passage_village_obligatoire_et_aucune_marche_forcee (test_complements_moteur.ComplementsMoteur.test_home_passage_village_obligatoire_et_aucune_marche_forcee) ... ok
+test_lectures_croisees_simultanees_avant_remplacement (test_complements_moteur.ComplementsMoteur.test_lectures_croisees_simultanees_avant_remplacement) ... ok
+test_migration_documents_restants_ne_reinitialisent_pas_sejour (test_complements_moteur.ComplementsMoteur.test_migration_documents_restants_ne_reinitialisent_pas_sejour) ... ok
+test_migration_ecole_ancienne_preserve_identite_et_fichiers (test_complements_moteur.ComplementsMoteur.test_migration_ecole_ancienne_preserve_identite_et_fichiers) ... ok
+test_moral_stratege_hybride_reel (test_complements_moteur.ComplementsMoteur.test_moral_stratege_hybride_reel) ... ok
+test_nouveaux_generaux_acces_village_et_batiments_apres_creation_unites (test_complements_moteur.ComplementsMoteur.test_nouveaux_generaux_acces_village_et_batiments_apres_creation_unites) ... ok
+test_nouvelle_creation_ne_contourne_pas_home (test_complements_moteur.ComplementsMoteur.test_nouvelle_creation_ne_contourne_pas_home) ... ok
+test_probabilites_exactes_quatre_natures_et_traits (test_complements_moteur.ComplementsMoteur.test_probabilites_exactes_quatre_natures_et_traits) ... ok
+test_qg_hybride_et_ordres_seulement_si_acquis (test_complements_moteur.ComplementsMoteur.test_qg_hybride_et_ordres_seulement_si_acquis) ... ok
+test_recompense_deplacement_immediat_et_pas_de_droit_persistant (test_complements_moteur.ComplementsMoteur.test_recompense_deplacement_immediat_et_pas_de_droit_persistant) ... ok
+test_recompense_immediate_ne_saute_pas_distance_autorisee (test_complements_moteur.ComplementsMoteur.test_recompense_immediate_ne_saute_pas_distance_autorisee) ... ok
+test_six_places_physiques_ecole_et_forge_unique (test_complements_moteur.ComplementsMoteur.test_six_places_physiques_ecole_et_forge_unique) ... ok
+test_arrivee_occupee_reorganise_sans_repli_ni_pertes (test_surnombre.Surnombre.test_arrivee_occupee_reorganise_sans_repli_ni_pertes) ... ok
+test_audit_declenche_creation_et_recreation_au_lieu_actuel (test_surnombre.Surnombre.test_audit_declenche_creation_et_recreation_au_lieu_actuel) ... ok
+test_cascade_off_def_reutilise_meme_moteur (test_surnombre.Surnombre.test_cascade_off_def_reutilise_meme_moteur) ... ok
+test_cascade_place_les_fuyards_ensemble_selon_preferences (test_surnombre.Surnombre.test_cascade_place_les_fuyards_ensemble_selon_preferences) ... ok
+test_choix_suit_general_et_scan_ne_le_remplace_pas (test_surnombre.Surnombre.test_choix_suit_general_et_scan_ne_le_remplace_pas) ... ok
+test_classique_sans_nouveau_fichier (test_surnombre.Surnombre.test_classique_sans_nouveau_fichier) ... ok
+test_file_pleine_sans_preference_reste_sans_repli (test_surnombre.Surnombre.test_file_pleine_sans_preference_reste_sans_repli) ... ok
+test_fin_cascade_allie_detruit_pendant_deuxieme_affrontement (test_surnombre.Surnombre.test_fin_cascade_allie_detruit_pendant_deuxieme_affrontement) ... ok
+test_fin_cascade_allie_detruit_renforts_intacts (test_surnombre.Surnombre.test_fin_cascade_allie_detruit_renforts_intacts) ... ok
+test_ordre_invalide_defaut_signale_sans_reecriture (test_surnombre.Surnombre.test_ordre_invalide_defaut_signale_sans_reecriture) ... ok
+test_ordre_ne_coupe_pas_initial_et_non_consulte_sans_renforts (test_surnombre.Surnombre.test_ordre_ne_coupe_pas_initial_et_non_consulte_sans_renforts) ... ok
+test_ordre_reconsulte_avant_chaque_nouvel_affrontement (test_surnombre.Surnombre.test_ordre_reconsulte_avant_chaque_nouvel_affrontement) ... ok
+test_ordre_supprime_entre_affrontements_recree_au_lieu_actuel (test_surnombre.Surnombre.test_ordre_supprime_entre_affrontements_recree_au_lieu_actuel) ... ok
+test_pas_de_renforts_promus_pas_de_relance_apres_limite (test_surnombre.Surnombre.test_pas_de_renforts_promus_pas_de_relance_apres_limite) ... ok
+test_preference_20_acceptee_et_scan_renforts_hors_village (test_surnombre.Surnombre.test_preference_20_acceptee_et_scan_renforts_hors_village) ... ok
+test_preference_non_consultee_sans_retraite (test_surnombre.Surnombre.test_preference_non_consultee_sans_retraite) ... ok
+test_preferences_croissantes_et_chevauchement_vers_haut (test_surnombre.Surnombre.test_preferences_croissantes_et_chevauchement_vers_haut) ... ok
+test_preferences_egales_departage_origines_independant_des_joueurs (test_surnombre.Surnombre.test_preferences_egales_departage_origines_independant_des_joueurs) ... ok
+test_preferences_invalides_sans_preference_avertissement_fiche_intacte (test_surnombre.Surnombre.test_preferences_invalides_sans_preference_avertissement_fiche_intacte) ... ok
+test_preferences_prioritaires_puis_origines_numeriques (test_surnombre.Surnombre.test_preferences_prioritaires_puis_origines_numeriques) ... ok
+test_reserve_alliee_exclue_de_la_cascade (test_surnombre.Surnombre.test_reserve_alliee_exclue_de_la_cascade) ... ok
+test_retraites_trois_territoires_avec_choix_et_pertes_conserves (test_surnombre.Surnombre.test_retraites_trois_territoires_avec_choix_et_pertes_conserves) ... ok
+test_route_ambigue_refusee_sans_inventer_un_departage (test_surnombre.Surnombre.test_route_ambigue_refusee_sans_inventer_un_departage) ... ok
+test_routes_est_et_village_sans_route_automatique (test_surnombre.Surnombre.test_routes_est_et_village_sans_route_automatique) ... ok
+test_sans_place_reste_mais_les_autres_partent (test_surnombre.Surnombre.test_sans_place_reste_mais_les_autres_partent) ... ok
+test_scan_cree_defauts_droits_et_preserve_ordre_classique (test_surnombre.Surnombre.test_scan_cree_defauts_droits_et_preserve_ordre_classique) ... ok
+test_scan_home_repli_reserve_et_garnison (test_surnombre.Surnombre.test_scan_home_repli_reserve_et_garnison) ... ok
+test_tous_allies_fuient_colonne_remontee_reste (test_surnombre.Surnombre.test_tous_allies_fuient_colonne_remontee_reste) ... ok
+test_trois_affrontements_pertes_conservees_et_ordre_arrivee (test_surnombre.Surnombre.test_trois_affrontements_pertes_conservees_et_ordre_arrivee) ... ok
+test_un_allie_fuit_autre_continue_decisions_individuelles (test_surnombre.Surnombre.test_un_allie_fuit_autre_continue_decisions_individuelles) ... ok
+test_village_interdit_retraite_meme_ordre_un (test_surnombre.Surnombre.test_village_interdit_retraite_meme_ordre_un) ... ok
+test_village_plein_retraite_en_reserve_fatigue_et_fichiers_intacts (test_surnombre.Surnombre.test_village_plein_retraite_en_reserve_fatigue_et_fichiers_intacts) ... ok
+
+======================================================================
+ERROR: test_qg_retraites_v2 (unittest.loader._FailedTest.test_qg_retraites_v2)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_qg_retraites_v2
+Traceback (most recent call last):
+  File "/usr/lib/python3.14/unittest/loader.py", line 137, in loadTestsFromName
+    module = __import__(module_name)
+  File "/mnt/c/Users/marti/1.cree_manuel/perso/OTW/linux/Mythodea/Mythodea_code/.dev/tests/test_qg_retraites_v2.py", line 8, in <module>
+    import test_ordres_effets_v2 as aides
+  File "/mnt/c/Users/marti/1.cree_manuel/perso/OTW/linux/Mythodea/Mythodea_code/.dev/tests/test_ordres_effets_v2.py", line 9, in <module>
+    import ordres_pipeline
+ModuleNotFoundError: No module named 'ordres_pipeline'
+
+
+----------------------------------------------------------------------
+Ran 71 tests in 21.593s
+
+FAILED (errors=1)

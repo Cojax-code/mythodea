@@ -1,8 +1,85 @@
 # Reprise du chantier des ordres V2 — état réel
 
-## Reprise exécutée sous Linux — état courant du 25 octobre 2026
+## Décisions QG et Choca_fuite intégrées — 25 octobre 2026
 
-Cette section prévaut sur le journal historique ci-dessous.
+Cette section remplace les états antérieurs ci-dessous. Travail exclusivement
+sur `feat/ordres-v2`, depuis `82ba5ca` (qui avait revalidé `a67057d`).
+Pas de fusion, pas de modification de `Mythodea-web`.
+
+### Ce qui fonctionne
+
+- **Six ordres exécutables** : Hérisson, Discours de la mort,
+  Orc_un_jour_orc_toujour, Rafale, Cruelle, et désormais **Choca_fuite en Survie**
+  (ID 1011, jeton `2-5`, apprentissage privé obligatoire). Le `1-2` historique
+  reste exécuté par son circuit existant.
+- Choca_fuite réserve la retraite immédiatement après le choc initial et
+  exclut le survivant des manœuvres et des duels suivants. Les fonctions de
+  retraite existantes fixent la destination voisine, les places, la réserve
+  du village et la fatigue. Aucun placement ni calcul de pénalité nouveau.
+  Au village, la règle existante interdit la retraite automatique : refus
+  rapporté, puis poursuite du combat. Même refus si le bot bloque l'arrivée
+  ou si aucune place autorisée n'est disponible. Les bots ne reçoivent pas
+  d'ordre spécial. Hors Survie, ce jeton n'est pas exécuté.
+- **Déclaration et sélection QG opérationnelles**, sans prétendre activer ses
+  ordres : lecture sécurisée de `qg.txt`, bloc existant non vide, toutes natures
+  admises. Plusieurs déclarations valides dans un camp les annulent toutes,
+  même avec des PC différents. La sélection des forces engagées reste figée
+  pendant la cascade. Destruction mémorisée dès la perte de la dernière unité
+  du bloc, y compris via Spore ou perte du Bouclier ; aucun remplacement ni
+  réactivation par repeuplement. Déclaration et destruction figurent aux rapports.
+- Sauvegardes et identités conservées : `qg.txt` suit les copies et déplacements
+  existants ; aucun nouveau format de registre privé. Les retraites sont
+  réservées dans la génération privée puis publiées par le protocole commun.
+- **Charge suicidaire reste désactivée**. Seuls ses calculs indépendants sont
+  préparés : pertes du seul duel `// 4`, deux tirages indépendants avec RNG
+  injectable, réussites simultanées possibles. Aucun général ni soldat n'est
+  supprimé par ces fonctions. Aucun dossier de repli arbitraire n'est créé.
+
+### Validation de cette étape
+
+- Compilation Linux des neuf modules Python et quatre fichiers de tests modifiés : OK.
+- Nouveaux tests ciblés : **13 tests, 6,234 s, OK**, trace
+  `.dev/qg-retraites-nouveaux.txt`. Ils couvrent les deux joueurs, le village,
+  l'arrivée bloquée, le frontal suivi du rangé, les UUID/blessures/XP, les rapports
+  privés jusqu'à publication, l'interruption après réservation et le refus de
+  rejeu d'une génération interrompue.
+- Suite complète et contrôles root : résultats à inscrire après leur exécution.
+- Premières exécutions ciblées : un import isolé manquait dans le chemin Python,
+  puis des fixtures plaçaient un général hors garnison et supposaient sa survie
+  après un refus de retraite. Les fixtures ont été corrigées selon les règles
+  existantes ; aucun résultat moteur n'a été ajusté pour satisfaire ces tests.
+  `.dev/qg-retraites-cibles.txt` conserve le premier échec d'import et les
+  70 régressions alors réussies.
+
+### Décisions encore indispensables et effets désactivés
+
+| Ordres désactivés | Point restant |
+| --- | --- |
+| Charge suicidaire | Destination exacte de `unites_sans_general`, structure des groupes, procédure de réaffectation. Compteurs et distance réutiliseront les règles existantes après définition de la destination. |
+| Propagafion, Confinement, Étincellant, On_melange, QG_nommade | Durée des ordres déjà transmis lorsque le QG est détruit : fin du duel ou arrêt immédiat ? Puis raccordement et tests des effets/priorités. |
+| Spora-adicte | Même durée QG ; syntaxe du ciblage Zombie par position. |
+| Pour_l'honneur | Durée QG, exceptions au non-cumul, interactions des modifications du choc. |
+| Ralliement | Durée QG ; provenance, blessures et restitution des renforts. |
+| Gros_poisson | Paramètres, transfert temporaire et répartition des pertes/restitution des UUID. |
+| Retrait_tactique | Origine et état des 50 % récupérés, interaction avec les placements. |
+| Chat-man | Départage des cibles efficaces et priorités face au Bouclier/initiative. |
+| Muraille humaine | Répartition des pertes, état du bloc Avant du vaincu ; exclusion de manœuvre ≠ mort. |
+| Réserve stratégique | Réserves des deux camps, échec d'interception et priorité de QG_nommade. |
+| Dernière charge | Syntaxe G/D et statut physique des soldats relevés ; défaite préalable obligatoire. |
+
+La **transmission de duel par le QG reste désactivée** jusqu'à la réponse sur
+la durée d'effet après destruction. Les PC du donneur et la formule globale
+existante restent inchangés ; posséder un QG n'accorde aucun ordre non appris.
+Les deux questions ont été posées pendant le travail. Aucune réponse implicite
+n'est déduite de l'écoulement du temps.
+
+Les contrôles Linux utilisent WSL Ubuntu et des plateaux temporaires ; ils ne
+remplacent pas une session SSH réelle avec gel cgroup sur Raspberry Pi.
+
+## État antérieur — reprise de a67057d
+
+Historique antérieur aux décisions QG et Choca_fuite : les règles et résultats
+de la section précédente font foi pour la livraison actuelle.
 
 - Branche unique : `feat/ordres-v2`. Reprise du WIP poussé `a67057d`, sans
   modification du moteur depuis cette sauvegarde. La suite d'effets et ses

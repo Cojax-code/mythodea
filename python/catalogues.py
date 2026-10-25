@@ -98,6 +98,14 @@ ORDRES = {
                disponible=True, contre=False, progression=True, acquisition_requise=True),
     1010: dict(jeton='2-4', nom='cruelle', categorie='duel',
                disponible=True, contre=False, progression=True, acquisition_requise=True),
+    1011: dict(jeton='2-5', nom='choca_fuite', categorie='duel',
+               disponible=True, contre=False, progression=True, acquisition_requise=True),
+    1012: dict(jeton='1-3', nom='propagafion', categorie='globale',
+               disponible=True, contre=False, progression=True, acquisition_requise=True),
+    1013: dict(jeton='1-4', nom='confinement', categorie='globale',
+               disponible=True, contre=True, progression=True, acquisition_requise=True),
+    1014: dict(jeton='1-5', nom='etincellant', categorie='globale',
+               disponible=True, contre=False, progression=True, acquisition_requise=True),
 }
 
 # 101..199 : apprentissages d'unités ; 201..299 : catégories de caractéristiques.

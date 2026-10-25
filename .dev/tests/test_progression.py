@@ -147,6 +147,8 @@ class Commandement(unittest.TestCase):
         points = lambda g: g['points_commandement']
         self.assertIsNone(commandement.selectionner_qg([a, b], points))
         b['points_commandement'] = 15
+        self.assertIsNone(commandement.selectionner_qg([a, b], points))
+        b['qg'] = None
         qg = commandement.QuartierGeneral([a, b], points)
         self.assertIs(qg.actif(lambda g: g['effectif_bloc_qg']), a)
         a['effectif_bloc_qg'] = 0

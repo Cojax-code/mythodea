@@ -28,9 +28,11 @@ class OrdresConceptionTest(unittest.TestCase):
                       if fiche["disponible"]}
         # Activation explicite du lot testé ; le registre ne confère aucun droit.
         self.assertEqual(noms_actifs.intersection(ordres_conception.ORDRES_EN_CONCEPTION),
-                         {'herisson', 'discours_de_la_mort', 'orc_un_jour_orc_toujour', 'rafale', 'cruelle'})
+                         {'herisson', 'discours_de_la_mort', 'orc_un_jour_orc_toujour', 'rafale', 'cruelle',
+                          'choca_fuite', 'propagafion', 'confinement', 'etincellant'})
         self.assertEqual({ordre["jeton"] for ordre in catalogues.ORDRES.values()
-                          if ordre["disponible"]}, {"1-2", "3-2", "3-3", "2-3", "3-4", "2-4"})
+                          if ordre["disponible"]}, {"1-2", "3-2", "3-3", "2-3", "3-4", "2-4",
+                                                   "2-5", "1-3", "1-4", "1-5"})
 
     def test_registre_immuable(self):
         with self.assertRaises(TypeError):

@@ -1,0 +1,18 @@
+test_bataille_cooperative_qg_annules_sans_reselection (test_qg_retraites_v2.QgRetraites.test_bataille_cooperative_qg_annules_sans_reselection) ... ok
+test_charge_deux_tirages_independants_et_graine (test_qg_retraites_v2.QgRetraites.test_charge_deux_tirages_independants_et_graine) ... ok
+test_choca_fuite_bot_sur_destination_refuse_retraite (test_qg_retraites_v2.QgRetraites.test_choca_fuite_bot_sur_destination_refuse_retraite) ... ok
+test_choca_fuite_deux_joueurs_sans_manoeuvre_ni_perte_identites (test_qg_retraites_v2.QgRetraites.test_choca_fuite_deux_joueurs_sans_manoeuvre_ni_perte_identites) ... ok
+test_choca_fuite_non_appris_ou_hors_survie_ignore (test_qg_retraites_v2.QgRetraites.test_choca_fuite_non_appris_ou_hors_survie_ignore) ... ok
+test_choca_fuite_village_ne_teleporte_pas (test_qg_retraites_v2.QgRetraites.test_choca_fuite_village_ne_teleporte_pas) ... ok
+test_declaration_libre_sans_creation_ni_reparation (test_qg_retraites_v2.QgRetraites.test_declaration_libre_sans_creation_ni_reparation) ... ok
+test_declaration_refuse_liens_et_fichiers_non_ordinaires (test_qg_retraites_v2.QgRetraites.test_declaration_refuse_liens_et_fichiers_non_ordinaires) ... ok
+test_destruction_qg_memorisee_avant_repeuplement_et_exception (test_qg_retraites_v2.QgRetraites.test_destruction_qg_memorisee_avant_repeuplement_et_exception) ... ok
+test_fuite_acceptee_ne_combat_pas_de_nouveau_apres_frontal (test_qg_retraites_v2.QgRetraites.test_fuite_acceptee_ne_combat_pas_de_nouveau_apres_frontal) ... ok
+test_interruption_reservation_ne_transfere_pas_et_reprise_sans_rejeu (test_qg_retraites_v2.QgRetraites.test_interruption_reservation_ne_transfere_pas_et_reprise_sans_rejeu) ... ok
+test_selection_multiple_annule_meme_pc_inegaux_et_instinctif_admis (test_qg_retraites_v2.QgRetraites.test_selection_multiple_annule_meme_pc_inegaux_et_instinctif_admis) ... ok
+test_tour_fuite_qg_publication_identites_blessures_xp (test_qg_retraites_v2.QgRetraites.test_tour_fuite_qg_publication_identites_blessures_xp) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 6.234s
+
+OK

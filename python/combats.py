@@ -118,8 +118,9 @@ def _combat_entre_generaux(general_1, general_2):
 
     details_manoeuvre = []
 
-    # Le choc initial peut avoir détruit un général.
-    if not chemin_1.exists() or not chemin_2.exists():
+    fuites = ordres_pipeline.fuir_apres_choc((general_1, general_2))
+    # Le choc peut avoir détruit un général ou déclenché une retraite acceptée.
+    if fuites or not chemin_1.exists() or not chemin_2.exists():
         return {
             "joueur_1": joueur_1,
             "camp_1": camp_1,
@@ -135,6 +136,7 @@ def _combat_entre_generaux(general_1, general_2):
             "final_2": generaux.total_general_depuis_chemin(chemin_2),
             "chocs": details_choc,
             "manoeuvres": details_manoeuvre,
+            "fuites": fuites,
         }
 
     rapports.afficher_et_ecrire("\n=== MANŒUVRE ===")
@@ -163,6 +165,12 @@ def _combat_entre_generaux(general_1, general_2):
         attaque_effectuee = False
 
         actions = ordre_actions_manoeuvre(armee, initiative_avant)
+        # Tri stable : l'ordre existant départage les autres actions. Chaque
+        # bloc conserve son unique action du tour, sans attaque supplémentaire.
+        generaux_du_duel = {g['joueur']: g for g in (general_1, general_2)}
+        actions.sort(key=lambda action: not (
+            armee[action[0]][action[1]]['type'] == 'chevalier_clinquant'
+            and ordres_pipeline.effet(generaux_du_duel[action[0]], 'etincellant')))
         rapports.afficher_et_ecrire(
             "\nOrdre global de manœuvre : "
             + ", ".join(f"{joueur} {bloc}" for joueur, bloc in actions)
@@ -388,6 +396,11 @@ def resoudre_affrontement_actif(
 ):
     if configuration is None:
         configuration = config.configuration_mode("classique")
+    with ordres_pipeline.bataille(territory, configuration):
+        return _resoudre_affrontement_actif(territory, mode_combat, configuration)
+
+
+def _resoudre_affrontement_actif(territory, mode_combat, configuration):
     camp_1, camp_2 = camps_du_combat(configuration)
 
     # Moteur commun de résolution.
@@ -844,7 +857,9 @@ def supprimer_unites(infos, survivants, general=None):
         bloc = infos['unites'][0].parent.name if infos['unites'] else None
         moral = unites.moral_bloc(caracteristiques, composition, bloc, general)
         moral = ordres_pipeline.moral(general, moral)
-    return soldats.pertes(infos, survivants, moral, random)
+    pertes = soldats.pertes(infos, survivants, moral, random)
+    ordres_pipeline.verifier_qg()
+    return pertes
 
 
 def confrontation_directe(
