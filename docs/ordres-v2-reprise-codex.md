@@ -75,3 +75,11 @@ Deux ordres ne se neutralisent qu'à l'intérieur d'une **même confrontation et
 - Tests ajoutés dans `.dev/tests/test_ordres_pipeline_v2.py` : source privée authentique, refus en cas de progression manquante.
 - **Toujours aucune activation d'ordre nouveau**, ni appel à `confronter_intentions` depuis `combats.py`. Pour la suite, sélectionner le QG officiellement et déterminer le calcul de PC pertinent à chaque confrontation ; ne pas inférer les donneurs depuis leur seule présence dans `ordre.txt`.
 - **Exécution des tests restant à faire par Codex** ; ces commits ont été effectués uniquement via GitHub.
+
+## Quatrième étape : calcul PC des duels, sans déclenchement d'effets
+
+- `ordres_pipeline.points_duel_officiels(general)` relit la fiche moteur privée et la composition physique du général puis délègue au calcul existant `commandement.effectif_general` ; la valeur de `fiche.txt` n'entre pas dans le calcul.
+- `ordres_pipeline.confronter_duel_officiel(general_1, general_2, donneur_1, donneur_2)` confronte explicitement les ordres de deux donneurs avec les PC des **généraux engagés**. N'applique pas leurs effets et ne choisit pas de donneurs. Ne pas supposer qu'un QG donneur doit utiliser ses propres PC plutôt que ceux de l'engagé sans décision.
+- Tests ajoutés : composition officielle, ignorance de la fiche publique, égalité des PC, refus de progression privée absente.
+- **Limite impérative :** pas encore de connexion de cette API à `combat_entre_generaux`. Les autres catégories (globale/individuelle), l'autorisation de QG, les cibles de duel et l'exécution des effets ne sont pas réglées.
+- Ne pas fusionner le chantier tant que Codex n'a pas validé les tests et le raccordement en Linux.
