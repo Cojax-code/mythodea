@@ -77,3 +77,33 @@ def derniere_charge_possible(general_precedent_vaincu, flanc):
     if type(general_precedent_vaincu) is not bool or flanc not in ("G", "D"):
         raise ValueError("Défaite booléenne et flanc G/D requis.")
     return general_precedent_vaincu
+
+def tentatives_rafale(nombre_archers_arriere):
+    """Une tentative de perte directe pour quatre archers à l'Arrière.
+
+    Le tirage des cibles, la protection des unités lourdement blindées et
+    la résolution des pertes sont laissés au moteur lors du choc initial.
+    """
+    return _naturel(nombre_archers_arriere, "Archers à l'arrière") // 4
+
+
+def conversions_spore(base, bonus_spora_adicte=False, confinement=False):
+    """Confinement neutralise Spore, même si Spora-adicte l'améliore."""
+    _naturel(base, "Conversions de Spore")
+    if type(bonus_spora_adicte) is not bool or type(confinement) is not bool:
+        raise ValueError("États Spore booléens requis.")
+    if confinement:
+        return 0
+    return base + int(bonus_spora_adicte)
+
+
+def conversions_propagation(base, propagafion=False):
+    """Propagafion ajoute deux transformations au calcul normal.
+
+    Ne détermine pas les cibles ni la faisabilité des transformations :
+    les interdictions Zombie contre Zombie restent au niveau moteur.
+    """
+    _naturel(base, "Conversions de propagation")
+    if type(propagafion) is not bool:
+        raise ValueError("État Propagafion booléen requis.")
+    return base + (2 if propagafion else 0)
