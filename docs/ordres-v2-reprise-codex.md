@@ -55,3 +55,15 @@ Statut : modifications GitHub enregistrées, **tests non exécutés dans WSL par
 3. Tester les conditions d'opposition et d'absence d'ordre, y compris les catégories individuelles sans adversaire explicite.
 4. Unifier uniquement ensuite le chemin historique `1-2` avec la sélection nouvelle, en comparant les résultats d'une même bataille avant/après.
 5. Ajouter les effets dont les règles sont closes, un par un. Laisser les autres inactifs, sans hypothèse implicite.
+
+## Seconde étape : API de confrontation pure (non exécutée par le combat)
+
+- `python/ordres_pipeline.py:confronter_intentions` reçoit deux donneurs **explicitement choisis**, une catégorie et les PC **calculés ailleurs**. Elle sélectionne les ordres via `commandement.confronter_donneurs`. Elle n'applique aucun effet et ne choisit pas de QG ou d'adversaire.
+- La fonction attend dans chaque donneur `{"general": {..., "caracteristiques": fiche_officielle}}`. **Le moteur territorial ne renseigne pas directement cette clé** : il faudra la construire à partir de `progression.caracteristiques_general` au moment du raccordement, sans accepter une fiche falsifiable du joueur.
+- Tests nouveaux : égalité de deux ordres normaux, ordre face à contre-ordre, contre-ordre sans ordre adverse, absence des caractéristiques officielles.
+- **Aucun appel de confrontation n'a été ajouté au combat réel.** Celui-ci collecte seulement les intentions. Le raccordement du commandement/QG reste une tâche distincte.
+- Commits de cette étape : `b819cf0`, `2f45028`, `ce445a7`. Tests non exécutés dans cet environnement.
+
+### Point d'attention sur le sens de « aucun ordre adverse »
+
+Deux ordres ne se neutralisent qu'à l'intérieur d'une **même confrontation et catégorie**. Si le camp adverse n'a aucun ordre dans cette confrontation, les règles validées autorisent le contre-ordre (et aucun affrontement de PC entre deux ordres normaux n'a lieu). Ne pas comparer un ordre global à un ordre de duel pour l'annuler.
