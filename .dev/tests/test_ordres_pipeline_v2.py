@@ -1,6 +1,7 @@
 """Contrats du raccordement non destructif des ordres V2."""
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "python"))
 import ordres_pipeline
@@ -93,6 +94,33 @@ class PipelineOrdresTest(unittest.TestCase):
             ordres_pipeline.confronter_intentions(
                 {"general": {"ordres": [{"identifiant": "2-2"}]}},
                 None, "duel", 9, 10, cat)
+
+
+    def test_donneurs_officiels_provient_du_stockage_prive(self):
+        general = self.general("1-2")
+        general.update({"joueur": "j1", "nom": "officier",
+                        "fiche": {"nature": "instinctif"}})
+        forces = {"camp1": {"1": general}}
+        officiel = {"nature": "stratege", "evolutions_acquises": [],
+                    "points_commandement": 12}
+        with patch.object(ordres_pipeline.progression, "caracteristiques_general",
+                          return_value=officiel) as lecture:
+            groupes = ordres_pipeline.donneurs_officiels(
+                forces, categorie="globale", catalogue=self.cat)
+        self.assertEqual(len(groupes), 1)
+        self.assertEqual(groupes[0]["general"]["caracteristiques"]["nature"], "stratege")
+        self.assertEqual(groupes[0]["general"]["fiche"]["nature"], "instinctif")
+        self.assertEqual(groupes[0]["identifiants"], [1002])
+        lecture.assert_called_once_with(general)
+        self.assertNotIn("caracteristiques", general)
+
+    def test_donneur_sans_progression_officielle_est_refuse(self):
+        general = self.general("1-2")
+        forces = {"camp1": {"1": general}}
+        with patch.object(ordres_pipeline.progression, "caracteristiques_general",
+                          return_value=None):
+            with self.assertRaises(ValueError):
+                ordres_pipeline.donneurs_officiels(forces, catalogue=self.cat)
 
 
 if __name__ == "__main__":
