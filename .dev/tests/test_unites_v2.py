@@ -397,6 +397,23 @@ class UnitesV2(unittest.TestCase):
             self.assertEqual(apres['evolutions_acquises'], [attendu])
             self.assertEqual(rng.randint.call_args.args, (0, 1))
 
+    def test_capacite_zombie_compteur_explicitement_separe_et_anciens_bonus(self):
+        from copy import deepcopy
+        g = self.creer(nombre=0)
+        fiche = self.progression.caracteristiques_general(g)
+        fiche.update(etat_zombie=True, niveaux_zombie=6)
+        avant = deepcopy(fiche)
+        self.assertEqual(self.progression.capacite_maximale(fiche), 32)
+        self.assertEqual(fiche, avant)
+        fiche['gains_capacite_zombie'] = 4
+        self.assertEqual(self.progression.capacite_maximale(fiche), 28)
+        fiche['gains_capacite_zombie'] = 0
+        self.assertEqual(self.progression.capacite_maximale(fiche), 20)
+        for valeur in (-1, True, '4', 1.5):
+            fiche['gains_capacite_zombie'] = valeur
+            with self.assertRaises(ValueError):
+                self.progression.capacite_maximale(fiche)
+
 
     def test_spore_transforme_le_moins_experimente_et_garde_identite(self):
         bouclier = importlib.import_module('bouclier_vivant')

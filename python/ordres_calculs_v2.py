@@ -68,6 +68,33 @@ def participants_muraille(identites, qg_nommade=None, reserve_strategique=None):
     return tuple(i for i in identites if i not in (qg_nommade, reserve_strategique))
 
 
+def choisir_avant_muraille(bilans, positions_origine, aleatoire):
+    """Meilleur bilan fourni, puis position numérique, puis hasard reproductible.
+
+    Les bilans viennent des simulations : ce sélecteur ne décide ni ce qu'est
+    un dégât, ni les pertes, ni l'admissibilité des blocs. La position d'origine
+    suit l'ordre numérique croissant commun, pas la séquence On_melange.
+    Un tirage intervient seulement pour départager les derniers ex aequo.
+    """
+    from fractions import Fraction
+    if any(type(b) is not int and not isinstance(b, Fraction) for b in bilans.values()):
+        raise ValueError('Bilans numériques exacts requis.')
+    positions = {}
+    for identite in bilans:
+        position = positions_origine.get(identite)
+        if (not isinstance(position, str) or not position.isascii()
+                or not position.isdecimal() or int(position) <= 0):
+            raise ValueError('Position d’origine numérique positive requise.')
+        positions[identite] = int(position)
+    if not bilans:
+        return None
+    meilleur = max(bilans.values())
+    candidats = [i for i in bilans if bilans[i] == meilleur]
+    premiere = min(positions[i] for i in candidats)
+    candidats = sorted(i for i in candidats if positions[i] == premiere)
+    return candidats[0] if len(candidats) == 1 else aleatoire.choice(candidats)
+
+
 def facteur_discours_de_la_mort(moral):
     """Moral * 1,10, cumul multiplicatif possible avec de futurs facteurs.
 

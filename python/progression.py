@@ -26,6 +26,7 @@ RECOMPENSES = {
 NATURES = {'stratege': 45, 'instinctif': 45,
            'stratege_hybride': 5, 'instinctif_hybride': 5}
 SEUILS = {'combat': 2, 'formation': 3}
+ORDRES_ZOMBIES = ('spora_adicte', 'propagafion')
 # Les récompenses ne modifient pas la suite des tirages des combats.
 aleatoire_progression = random.Random()
 
@@ -72,15 +73,27 @@ def nouvelles_caracteristiques(aleatoire=None):
 
 
 def capacite_maximale(fiche):
-    """Capacité propre au général : +2 par niveau gagné après zombification."""
+    """Capacité Zombie : +2 par récompense, avec lecture des anciens niveaux.
+
+    L'absence du compteur explicite conserve tous les bonus historiques sans
+    réécrire une sauvegarde pendant sa lecture.
+    """
     import config
-    if fiche and fiche.get('etat_zombie'):
-        return config.max_unites_par_general + 2 * fiche.get('niveaux_zombie', 0)
+    if est_zombie(fiche):
+        gains = fiche.get('gains_capacite_zombie', fiche.get('niveaux_zombie', 0))
+        if type(gains) is not int or gains < 0:
+            raise ValueError('Compteur de récompenses de capacité Zombie invalide.')
+        return config.max_unites_par_general + 2 * gains
     return config.max_unites_par_general
 
 
 def capacite_maximale_general(general):
     return capacite_maximale(caracteristiques_general(general))
+
+
+def est_zombie(fiche):
+    """Profil spécial dérivé du seul état existant, sans remplacer la nature."""
+    return bool(fiche and fiche.get('etat_zombie'))
 
 
 def ordre_autorise(fiche, nom):
@@ -89,7 +102,39 @@ def ordre_autorise(fiche, nom):
     Le moteur doit fournir le profil privé. Cette condition ne remplace ni
     l'apprentissage, ni la nature, ni la disponibilité dans le catalogue.
     """
-    return not fiche.get('etat_zombie') or nom in ('spora_adicte', 'propagafion')
+    return est_zombie(fiche) == (nom in ORDRES_ZOMBIES)
+
+
+def nature_autorise_ordre(fiche, ordre):
+    """Politique commune de race et de nature, hors acquisition/disponibilité."""
+    if not ordre_autorise(fiche, ordre.get('nom')):
+        return False
+    if est_zombie(fiche):
+        return True
+    return ordre['categorie'] != 'globale' or fiche['nature'] in (
+        'stratege', 'stratege_hybride', 'instinctif_hybride')
+
+
+def tirer_recompense_zombie(fiche, aleatoire=None):
+    """None = +2 places ; sinon ID appris. Aucun tirage ne peut boucler.
+
+    Sans doublon, deux tirages distincts : 85/15 puis 50/50. Avec un ordre
+    connu, le rejet du tirage COMPLET équivaut aux poids 170:15 entre capacité
+    et ordre inconnu (85 % contre 7,5 % avant conditionnement).
+    """
+    aleatoire = random if aleatoire is None else aleatoire
+    if not est_zombie(fiche):
+        raise ValueError('Récompense réservée au profil Zombie.')
+    par_nom = {o['nom']: i for i, o in catalogues.ORDRES.items()}
+    ids = [par_nom[nom] for nom in ORDRES_ZOMBIES]
+    disponibles = [i for i in ids if i not in fiche['evolutions_acquises']]
+    if not disponibles:
+        return None
+    if len(disponibles) == 1:
+        return tirer_pondere({None: 170, disponibles[0]: 15}, aleatoire)
+    if tirer_pondere({'capacite': 85, 'ordre': 15}, aleatoire) == 'capacite':
+        return None
+    return tirer_pondere(dict.fromkeys(ids, 50), aleatoire)
 
 
 def evolutions_eligibles(fiche, catalogue=None, apprentissage=True):
@@ -98,11 +143,13 @@ def evolutions_eligibles(fiche, catalogue=None, apprentissage=True):
     for identifiant, evolution in catalogue.items():
         if not evolution['disponible']:
             continue
-        if not compatible(fiche, evolution['natures'], apprentissage):
-            continue
         categorie = evolution['categorie']
-        if categorie == 'ordre' and not ordre_autorise(
-                fiche, catalogues.ORDRES.get(evolution.get('cible', identifiant), {}).get('nom')):
+        if categorie == 'ordre':
+            ordre = catalogues.ORDRES.get(evolution.get('cible', identifiant), {})
+            if not ordre_autorise(fiche, ordre.get('nom')):
+                continue
+        if not (categorie == 'ordre' and est_zombie(fiche)) and not compatible(
+                fiche, evolution['natures'], apprentissage):
             continue
         if categorie == 'moral' and fiche['moral'] >= 100:
             continue
@@ -121,10 +168,17 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
     """
     aleatoire = random if aleatoire is None else aleatoire
     resultat = deepcopy(fiche)
-    if resultat.get('etat_zombie'):
+    if est_zombie(resultat):
+        gains = resultat.get('gains_capacite_zombie', resultat.get('niveaux_zombie', 0))
+        if type(gains) is not int or gains < 0:
+            raise ValueError('Compteur de récompenses de capacité Zombie invalide.')
+        recompense = tirer_recompense_zombie(resultat, aleatoire)
         resultat['niveau'] += 1
         resultat['niveaux_zombie'] = resultat.get('niveaux_zombie', 0) + 1
-        return resultat, None
+        resultat['gains_capacite_zombie'] = gains + int(recompense is None)
+        if recompense is not None:
+            resultat['evolutions_acquises'].append(recompense)
+        return resultat, recompense
     eligibles = evolutions_eligibles(resultat, catalogue)
     identifiant = resultat.get('evolution_apprise')
     if identifiant is not None and identifiant not in eligibles:

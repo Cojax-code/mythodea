@@ -1,6 +1,8 @@
 """Formules V2 confirmées, sans exécution d'effets en partie."""
 import sys
 import unittest
+import random
+from unittest.mock import Mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "python"))
@@ -8,6 +10,39 @@ import ordres_calculs_v2 as calculs
 
 
 class TestOrdresCalculsV2(unittest.TestCase):
+    def test_muraille_meilleur_bilan_puis_position_numerique_origine(self):
+        a, b = ('j1', 'general1'), ('j1', 'general2')
+        positions = {a: '10', b: '2'}
+        hasard = Mock()
+        self.assertEqual(calculs.choisir_avant_muraille({a: 4, b: 3}, positions, hasard), a)
+        self.assertEqual(calculs.choisir_avant_muraille({a: 4, b: 4}, positions, hasard), b)
+        # Le nouvel engagement doit utiliser les bilans recalculés fournis.
+        self.assertEqual(calculs.choisir_avant_muraille({a: -2, b: -1}, positions, hasard), b)
+        self.assertIsNone(calculs.choisir_avant_muraille({}, {}, hasard))
+        hasard.choice.assert_not_called()
+
+    def test_muraille_egalite_hasard_reproductible_independant_du_parcours(self):
+        a, b = ('j1', 'general1'), ('j2', 'general1')
+        positions = {a: '2', b: '2'}
+        choix = set()
+        for graine in range(20):
+            x = calculs.choisir_avant_muraille({a: 5, b: 5}, positions, random.Random(graine))
+            y = calculs.choisir_avant_muraille({b: 5, a: 5}, positions, random.Random(graine))
+            self.assertEqual(x, y)
+            choix.add(x)
+        self.assertEqual(choix, {a, b})
+
+    def test_muraille_refuse_positions_et_bilans_invalides(self):
+        identite = ('j1', 'general1')
+        hasard = Mock()
+        for position in (None, 'village', '0', '-1', '１'):
+            with self.assertRaises(ValueError):
+                calculs.choisir_avant_muraille({identite: 1}, {identite: position}, hasard)
+        for bilan in (True, 1.5, '4'):
+            with self.assertRaises(ValueError):
+                calculs.choisir_avant_muraille({identite: bilan}, {identite: '1'}, hasard)
+        hasard.choice.assert_not_called()
+
     def test_facteurs_moraux_exacts_et_entrees_invalides(self):
         from fractions import Fraction
         self.assertEqual(50 * calculs.facteur_cruelle(10), 45)

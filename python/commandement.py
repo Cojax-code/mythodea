@@ -124,18 +124,19 @@ def comparer(points_1, points_2):
     return (points_1 > points_2) - (points_1 < points_2)
 
 
-def _ordres_eligibles(identifiants, nature, categorie, catalogue, acquis):
+def _ordres_eligibles(identifiants, nature, categorie, catalogue, acquis, profil=None):
     """Préserve l'ordre d'un seul donneur : ne fusionne jamais deux généraux."""
     if categorie not in ('globale', 'duel', 'individuelle'):
         raise ValueError('Catégorie inconnue.')
-    if categorie == 'globale' and nature not in (
-            'stratege', 'stratege_hybride', 'instinctif_hybride'):
-        return []
+    profil = dict(nature=nature) if profil is None else profil
     resultat = []
     for identifiant in dict.fromkeys(identifiants):
-        if categorie == 'globale' and nature == 'instinctif_hybride' and identifiant not in acquis:
+        if (categorie == 'globale' and nature == 'instinctif_hybride'
+                and not progression.est_zombie(profil) and identifiant not in acquis):
             continue
         ordre = catalogue.get(identifiant)
+        if ordre and not progression.nature_autorise_ordre(profil, ordre):
+            continue
         if ordre and ordre.get('acquisition_requise') and identifiant not in acquis:
             continue
         if ordre and ordre['disponible'] and ordre['categorie'] == categorie:
@@ -144,7 +145,7 @@ def _ordres_eligibles(identifiants, nature, categorie, catalogue, acquis):
 
 
 def ordres_applicables(identifiants, nature, categorie, comparaison=None,
-                       catalogue=None, acquis=(), ordres_adverses=None):
+                       catalogue=None, acquis=(), ordres_adverses=None, *, profil=None):
     """Sélection des ordres d'UN général, sans exécuter leurs effets.
 
     ordres_adverses doit être la liste éligible du donneur adverse de la même
@@ -155,7 +156,7 @@ def ordres_applicables(identifiants, nature, categorie, comparaison=None,
     le groupe incompatible est écarté, sans priorité arbitraire.
     """
     catalogue = catalogues.ORDRES if catalogue is None else catalogue
-    propres = _ordres_eligibles(identifiants, nature, categorie, catalogue, acquis)
+    propres = _ordres_eligibles(identifiants, nature, categorie, catalogue, acquis, profil)
     if not propres:
         return []
     if ordres_adverses is None:
@@ -190,7 +191,7 @@ def ordres_applicables(identifiants, nature, categorie, comparaison=None,
 
 def confronter_donneurs(ordres_1, nature_1, acquis_1,
                         ordres_2, nature_2, acquis_2, categorie,
-                        comparaison, catalogue=None):
+                        comparaison, catalogue=None, *, profil_1=None, profil_2=None):
     """Confronte deux donneurs sans agréger d'ordres entre généraux.
 
     Ordre contre ordre à PC égaux : annulation. Ordre contre contre-ordre :
@@ -198,17 +199,17 @@ def confronter_donneurs(ordres_1, nature_1, acquis_1,
     annulés par les incompatibilités de formation du camp.
     """
     catalogue = catalogues.ORDRES if catalogue is None else catalogue
-    candidats_1 = _ordres_eligibles(ordres_1, nature_1, categorie, catalogue, acquis_1)
-    candidats_2 = _ordres_eligibles(ordres_2, nature_2, categorie, catalogue, acquis_2)
+    candidats_1 = _ordres_eligibles(ordres_1, nature_1, categorie, catalogue, acquis_1, profil_1)
+    candidats_2 = _ordres_eligibles(ordres_2, nature_2, categorie, catalogue, acquis_2, profil_2)
     # Un groupe illégal ne doit pas annuler les ordres du camp adverse.
     def compatibles(candidats):
         return candidats if len({catalogue[i]['contre'] for i in candidats}) <= 1 else []
     candidats_1, candidats_2 = compatibles(candidats_1), compatibles(candidats_2)
     return (
         ordres_applicables(candidats_1, nature_1, categorie, comparaison,
-                          catalogue, acquis_1, candidats_2),
+                          catalogue, acquis_1, candidats_2, profil=profil_1),
         ordres_applicables(candidats_2, nature_2, categorie, -comparaison,
-                          catalogue, acquis_2, candidats_1),
+                          catalogue, acquis_2, candidats_1, profil=profil_2),
     )
 
 
@@ -225,4 +226,4 @@ def confronter_globaux(armee_1, qg_1, ordres_1, armee_2, qg_2, ordres_2, catalog
         qg_1.get('evolutions_acquises', ()) if qg_1 else (),
         ordres_2 if qg_2 else (), qg_2['nature'] if qg_2 else '',
         qg_2.get('evolutions_acquises', ()) if qg_2 else (),
-        'globale', comparaison, catalogue)
+        'globale', comparaison, catalogue, profil_1=qg_1, profil_2=qg_2)

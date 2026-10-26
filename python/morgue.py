@@ -35,7 +35,7 @@ def zone(c, joueur):
 
 
 def est_zombie(general):
-    return bool((progression.caracteristiques_general(general) or {}).get('etat_zombie'))
+    return progression.est_zombie(progression.caracteristiques_general(general))
 
 
 def enregistrer_mort(c, general, bataille, aleatoire=None):
@@ -116,7 +116,8 @@ def materialiser(c):
         fiches = progression.charger()
         fiches[cle]['mort'] = True
         historique = deepcopy(mort['historique'])
-        historique.update(etat_zombie=True, niveaux_zombie=0, origine_zombie=cle, mort=False)
+        historique.update(etat_zombie=True, niveaux_zombie=0, gains_capacite_zombie=0,
+                          origine_zombie=cle, mort=False)
         fiches[f'{joueur}:{nom}'] = historique
         progression.sauvegarder(fiches)
         progression.publier_fiche(chemin, historique)

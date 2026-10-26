@@ -116,7 +116,9 @@ def confronter_intentions(donneur_1, donneur_2, categorie, points_1, points_2,
     comparaison = commandement.comparer(points_1, points_2)
     retenus_1, retenus_2 = commandement.confronter_donneurs(
         ids_1, nature_1, acquis_1, ids_2, nature_2, acquis_2,
-        categorie, comparaison, catalogue)
+        categorie, comparaison, catalogue,
+        profil_1=donneur_1['general']['caracteristiques'] if donneur_1 else None,
+        profil_2=donneur_2['general']['caracteristiques'] if donneur_2 else None)
     return {"comparaison": comparaison, "camp_1": retenus_1, "camp_2": retenus_2}
 
 
@@ -320,7 +322,7 @@ def preparer_compatibilites(forces, contexte):
                 fiche = donneur['general']['caracteristiques']
                 ids = commandement.ordres_applicables(donneur['identifiants'],
                     fiche['nature'], 'globale', acquis=fiche['evolutions_acquises'],
-                    ordres_adverses=[])
+                    ordres_adverses=[], profil=fiche)
                 noms.update(catalogues.ORDRES[i]['nom'] for i in ids)
         diagnostic = commandement.compatibilite_formations(noms)
         # Aucun effet de paire non définie ne peut être activé silencieusement.
@@ -353,7 +355,7 @@ def confronter_frontal_melange(forces, contexte):
         fiche = donneur['general']['caracteristiques'] if donneur else {}
         ids = commandement.ordres_applicables(donneur['identifiants'],
             fiche['nature'], 'globale', acquis=fiche['evolutions_acquises'],
-            ordres_adverses=[]) if donneur else []
+            ordres_adverses=[], profil=fiche) if donneur else []
         noms = {catalogues.ORDRES[i]['nom'] for i in ids}
         # Le déclencheur historique ne peut contourner l'autorité QG/PC
         # dans le cas désormais migré ; le comparateur recevra le vrai donneur.

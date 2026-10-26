@@ -41,6 +41,13 @@ class OrdresConceptionTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             ordres_conception.ORDRES_EN_CONCEPTION["derniere_charge"]["disponible"] = True
 
+    def test_gros_poisson_jeton_duel_reserve_sans_activation(self):
+        ordre = catalogues.ORDRES[1017]
+        self.assertEqual((ordre['nom'], ordre['categorie'], ordre['jeton']),
+                         ('gros_poisson', 'duel', '2-6'))
+        self.assertFalse(ordre['disponible'])
+        self.assertFalse(catalogues.EVOLUTIONS[1017]['disponible'])
+
 
 if __name__ == "__main__":
     unittest.main()
