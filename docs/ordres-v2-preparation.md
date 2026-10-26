@@ -17,6 +17,46 @@ La vérification finale (suite Linux complète, WSL/Raspberry Pi) est confiée �
 - Les effets réservés/non programmés ne doivent pas être activés par simple ajout au catalogue.
 - Pour les ordres de duel avec ciblage explicite du QG, le chiffre de cible est une **position** de général, pas son identifiant. Les nouveaux formats spéciaux restent à définir exactement.
 
+## Décisions définitives de reprise — 26 octobre 2026
+
+Ces décisions remplacent les anciennes hypothèses contradictoires ci-dessous.
+La matrice complète est dans `MYTHODEA_SPEC.md`, section « Compatibilité des
+formations ». Les six paires interdites s'annulent mutuellement au sein du camp,
+sans PC internes, en conservant les autres ordres valides. Toutes les paires
+conflictuelles sont relevées avant toute annulation ; chaque motif apparaît au
+rapport. Les huit paires compatibles n'autorisent pas les autres par défaut.
+
+Entre camps, `1-2` opposé à On_melange utilise les donneurs QG et la formule
+globale existante : le plus fort impose son schéma, l'égalité annule les deux.
+L'annulation interne précède cette confrontation. La migration du frontal est
+limitée à cette opposition ; aucun départage nouveau n'est étendu aux autres cas.
+
+QG_nommade a la priorité de placement : son général est retiré des autres schémas,
+du frontal, de Muraille humaine (contributions comprises) et de Réserve stratégique
+(interceptions comprises), puis combat en dernier. Les places libres ne sont pas
+réorganisées. Avec Retrait_tactique, le général en retrait vient juste avant lui.
+La réserve stratégique ne contribue pas à Muraille humaine ; elle intercepte
+seulement au combat rangé avant son tour normal, puis combat normalement à ce tour.
+Réserve stratégique et Retrait_tactique conservent chacun leur effet, sans fatigue
+supplémentaire. La compatibilité ne lève pas les restrictions de donneur,
+catégorie, apprentissage et mélange ordre/contre-ordre. Pour_l'honneur reste
+non cumulable avec les autres ordres, sans exception validée.
+
+Charge suicidaire : les survivants humains rejoindront `unites_sans_general`,
+dans un groupe distinct par événement et avec leur propre compteur, à destination
+de la réserve du village d'origine. Délai commun de repli/distance, conservation
+des identités, blessures et expériences. À zéro, réaffectation manuelle des
+dossiers vers les blocs d'un général présent dans sa réserve, sous les restrictions
+ordinaires de capacité, type et permissions. Pour le bot, les survivants quittent
+définitivement la bataille : aucun village ni réserve de bot n'est créé. Le calcul
+reste `pertes_du_duel // 4` %, avec deux tirages indépendants et mort simultanée
+possible. Ces règles sont validées ; leur persistance et leur audit relèvent du lot C,
+pas d'une activation par les seules fonctions de calcul.
+
+La destruction du QG laisse les ordres transmis actifs jusqu'à la fin du duel.
+Aucune transmission ultérieure, aucun remplacement, aucune réactivation si le
+bloc est repeuplé. Le mécanisme existant `qg.txt` est conservé.
+
 ## Catalogue de conception (18 ordres du brouillon JSON)
 
 | Ordre | Catégorie | Contre-ordre | Résumé |
@@ -100,9 +140,9 @@ Cette note est une photographie des décisions prises et des questions ouvertes 
   groupe distinct par événement, vers la réserve de leur village d'origine,
   avec le délai de distance existant et un compteur indépendant par groupe.
   Au compteur nul, la réaffectation est manuelle, sans nouvelle commande ni
-  affectation automatique. Le bot Survie n'a pas de base définie et les règles
-  ordinaires n'inventorient pas de soldats hors général : ces deux points
-  bloquent encore l'activation et ont été soumis au propriétaire.
+  affectation automatique. Les survivants du bot sont retirés définitivement de
+  la bataille, sans base créée. L'inventaire et l'audit des groupes humains hors
+  général restent à implémenter au lot C selon la décision définitive ci-dessus.
 - Choca_fuite : utiliser la retraite Survie existante immédiatement après le
   choc initial. Les règles existantes excluent la retraite automatique au village.
   Ne pas donner de nouveaux ordres spéciaux aux bots.

@@ -1009,6 +1009,14 @@ s'affrontent d'abord :
 
 Les survivants passent ensuite au **COMBAT RANGÉ**.
 
+L'annulation des formations incompatibles d'un même camp est préalable. Si
+`1-2` s'oppose à On_melange dans l'autre camp, les donneurs QG et leurs PC
+globaux départagent ces schémas avant le premier duel : victoire du plus fort,
+annulation des deux à égalité. Dans ce cas, une demande historique sans donneur
+QG autorisé ne peut imposer le frontal. Hors de cette opposition précise,
+le déclenchement historique est conservé. QG_nommade exclut son porteur des
+couples frontaux, sans déplacer son vis-à-vis ni combler l'emplacement vacant.
+
 ### Combat rangé
 
 Sans autre règle d'ordre applicable, les généraux actifs sont pris par ordre
@@ -1715,8 +1723,9 @@ effectivement acquises ; une mémoire encore en attente ne suffit pas. La formul
 globale continue de distinguer les orientations principales ; les points du QG,
 y compris instinctif hybride, sont comptés intégralement.
 
-Ces règles ne remplacent pas la résolution historique de `1-2`, conservée tant
-que sa migration n'est pas validée. La déclaration, la sélection du QG et ses
+La confrontation de `1-2` avec On_melange utilise désormais les donneurs QG et
+les PC globaux. Les autres déclenchements historiques restent conservés.
+La déclaration, la sélection du QG et ses
 transmissions sont exécutées et rapportées. Les décisions globales et de duel
 sont prises avant les effets de chaque duel. Les ordres transmis restent valables
 jusqu'à sa fin, même si le QG est détruit entre-temps ; aucune transmission n'est
@@ -1737,13 +1746,15 @@ aucune connaissance d'ordre. Les ordres individuels ne sont jamais transmis.
 | 1012 | `1-3` | Propagafion | globale |
 | 1013 | `1-4` | Confinement | globale, contre-ordre |
 | 1014 | `1-5` | Étincellant | globale |
+| 1015 | `1-6` | On_melange | globale |
+| 1016 | `1-7` | QG_nommade | globale |
 
 Ces IDs s'ajoutent aux cinq historiques, sans les renuméroter. Ils sont
 apprenables par les voies communes. Chaque ordre doit figurer dans les
 évolutions personnellement acquises du général, dans `progression.json` privé.
 Une mémoire en attente, le savoir d'un autre général et `fiche.txt` ne donnent
 aucun droit. Les généraux zombies ne donnent pas ces ordres, mais peuvent
-bénéficier des transmissions d'un QG extérieur. Ces neuf jetons
+bénéficier des transmissions d'un QG extérieur. Ces onze jetons
 sont sans paramètre : une troisième valeur est refusée pour leur exécution.
 
 Les décisions sont arrêtées avant les effets du duel. Elles ne modifient ni
@@ -1770,6 +1781,11 @@ dans le rapport territorial ; les PC et intentions détaillées restent root.
 - Étincellant place les actions des Chevaliers clinquants avant les autres
   actions de manœuvre. L'ordre relatif existant est conservé au sein des deux
   groupes ; chaque bloc garde son unique action prévue pour ce tour.
+- On_melange inverse la séquence des généraux du camp : `4, 3, 2, 1`.
+  Les positions absentes restent absentes ; aucun dossier n'est déplacé.
+- QG_nommade retire le général QG de la séquence initiale et le place en dernier,
+  après les autres généraux de sa formation. Avec On_melange et un QG en 3,
+  la séquence est `4, 2, 1, 3`. Il est aussi exclu du frontal historique.
 - Discours multiplie le moral courant par `11/10`, après les bonus d'unités
   existants, sous le plafond commun de 100. Les fractions restent exactes
   jusqu'au plancher collectif des sauvetages, sans arrondi intermédiaire ajouté.
@@ -1790,6 +1806,56 @@ dans le rapport territorial ; les PC et intentions détaillées restent root.
 
 Les autres ordres du registre de conception restent désactivés. Leur formule
 isolée, lorsqu'elle existe, n'est pas une preuve de fonctionnement en partie.
+
+#### Compatibilité des formations
+
+Le contrôle est commun aux propriétaires alliés d'un camp, avant les effets et
+la confrontation adverse. Tous les ordres impliqués dans une paire interdite
+s'annulent mutuellement, simultanément, sans départage interne par PC. Les autres
+ordres valides restent candidats selon leurs règles de donneur et de catégorie.
+Le rapport territorial nomme chaque paire annulée et son motif. Les annulations
+restent mémorisées dans le contexte de bataille, cascades comprises ; la disparition
+d'un donneur ne réactive pas un ordre annulé. Aucun nouvel état disque n'est créé.
+
+| Paire | Compatibilité |
+| --- | --- |
+| On_melange + Attaque frontale | Interdite |
+| On_melange + Réserve stratégique | Interdite |
+| On_melange + Retrait_tactique | Interdite |
+| Attaque frontale + Réserve stratégique | Interdite |
+| Attaque frontale + Muraille humaine | Interdite |
+| Muraille humaine + Retrait_tactique | Interdite |
+| Muraille humaine + On_melange | Compatible |
+| Muraille humaine + Réserve stratégique | Compatible |
+| Muraille humaine + QG_nommade | Compatible |
+| Retrait_tactique + Réserve stratégique | Compatible |
+| QG_nommade + Retrait_tactique | Compatible |
+| QG_nommade + Réserve stratégique | Compatible |
+| QG_nommade + On_melange | Compatible |
+| QG_nommade + Attaque frontale | Compatible |
+
+Les paires non définies ne sont pas implicitement autorisées ; Attaque frontale
++ Retrait_tactique reste ouverte. Pour_l'honneur reste non cumulable avec tout
+autre ordre, sans exception actuellement validée. Cette matrice n'active aucun
+ordre réservé et ne lève pas l'interdiction de mêler ordre et contre-ordre chez
+un même donneur.
+
+`commandement.compatibilite_formations()` fournit les annulations et les paires
+non définies. `sequence_formation()` calcule les positions sans mutation.
+`ordres_pipeline` authentifie les donneurs, applique les annulations et confronte
+les PC ; `combats` utilise les séquences retenues. L'opposition spécifique entre
+`1-2` et On_melange est tranchée avant le premier duel : le schéma perdant ne
+revient pas après les pertes. Les autres transmissions restent décidées par duel,
+avec la destruction irréversible du QG déjà décrite.
+
+Pour les effets encore désactivés, les priorités validées sont : QG exclu des
+contributions de Muraille humaine et des interceptions de Réserve stratégique ;
+général en Retrait_tactique juste avant le QG ; général de réserve exclu de
+Muraille humaine, sans contribution de son Avant. La réserve intercepte seulement
+au rangé, avant son tour normal, puis combat normalement à ce tour. Aucun malus
+de fatigue nouveau n'est défini. Les identités, pertes et retours de ces effets
+ne sont pas déduits de la seule compatibilité et restent à intégrer après leurs
+décisions manquantes.
 
 ### Blessures et batailles complètes
 

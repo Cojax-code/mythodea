@@ -312,6 +312,14 @@ def resoudre_attaque_frontale(
             ]
         )
 
+        formations = ordres_pipeline.formations_retenues(generaux_territoire)
+        if (ordres_pipeline.qg_hors_formation(general_camp_1, formations.get(camp_1))
+                or ordres_pipeline.qg_hors_formation(general_camp_2, formations.get(camp_2))):
+            rapports.ecrire_rapport_territoire(territory,
+                f'Emplacement {emplacement} : QG_nommade hors engagement frontal ; '
+                'les emplacements des autres généraux sont conservés.')
+            continue
+
         # Il faut un général actif dans les deux camps
         # au même emplacement.
         if not generaux.general_a_des_unites(
@@ -436,9 +444,11 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
         )
     )
 
-    # Pour cette première version,
-    # un seul des deux camps suffit pour provoquer
-    # l'organisation frontale du combat.
+    ordre_frontal_camp_1 = ordre_frontal_camp_1 and ordres_pipeline.frontal_autorise(camp_1)
+    ordre_frontal_camp_2 = ordre_frontal_camp_2 and ordres_pipeline.frontal_autorise(camp_2)
+
+    # Un frontal restant autorisé suffit à déclencher les couples de positions.
+    # Le pipeline a déjà traité les conflits internes et l'opposition On_melange.
     if ordre_frontal_camp_1 or ordre_frontal_camp_2:
 
         camps = []
@@ -581,8 +591,11 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
 
             return
 
-        general_camp_1 = actifs_camp_1[0]
-        general_camp_2 = actifs_camp_2[0]
+        formations = ordres_pipeline.formations_retenues(generaux_territoire)
+        general_camp_1 = ordres_pipeline.generaux_en_formation(
+            actifs_camp_1, formations.get(camp_1))[0]
+        general_camp_2 = ordres_pipeline.generaux_en_formation(
+            actifs_camp_2, formations.get(camp_2))[0]
 
         rapports.afficher_et_ecrire(
             f"\n--- Combat rangé "

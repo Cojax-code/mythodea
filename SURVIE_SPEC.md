@@ -426,14 +426,12 @@ La V2.0 ne suppose pas que tous les ordres imaginés soient déjà finalisés.
 Les ordres supplémentaires seront introduits progressivement après observation du
 gameplay réel.
 
-Point de design important à résoudre :
-
-- plusieurs ordres alliés et adverses doivent pouvoir coexister lorsqu'ils ne se
-  contredisent pas ;
-- une simple priorité globale fondée sur une statistique ne doit pas être imposée
-  sans validation de gameplay ;
-- les règles de chevauchement, contradiction et résolution devront être définies
-  avant implémentation.
+La matrice et les règles de résolution des formations sont communes, définies
+dans `MYTHODEA_SPEC.md`, section 22. Les ordres incompatibles d'un même camp
+s'annulent mutuellement avant confrontation adverse, avec motif dans le rapport.
+Les autres ordres restent soumis à leurs règles ordinaires. L'opposition entre
+Attaque frontale `1-2` et On_melange est départagée par les PC globaux des QG ;
+l'égalité annule les deux. Les autres interactions ne sont pas autorisées par défaut.
 
 ---
 
@@ -1701,6 +1699,13 @@ jusqu'à sa fin, même après destruction du QG. Aucun nouveau duel n'en bénéf
 ensuite, même si le bloc est repeuplé. Apprentissage et restrictions de nature
 du donneur restent obligatoires ; l'Instinctif pur ne donne pas de global.
 Les bots conservent leur résolution tactique classique.
+
+On_melange (`1-6`, ID 1015) et QG_nommade (`1-7`, ID 1016) utilisent les positions
+logiques du camp allié, indépendamment du propriétaire j1/j2. Le premier inverse
+la séquence, le second retire son QG du frontal et le place en dernier au rangé.
+Le QG prime sur l'inversion ; les places vacantes ne sont pas comblées. Aucun
+déplacement physique, compteur ou permission supplémentaire n'est nécessaire.
+L'apprentissage privé et la nature du donneur restent obligatoires.
 
 Les ordres personnels Hérisson, Discours de la mort, Orc_un_jour_orc_toujour,
 Rafale et Cruelle utilisent le moteur commun et ses apprentissages privés.

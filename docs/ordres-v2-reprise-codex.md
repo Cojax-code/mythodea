@@ -1,8 +1,103 @@
 # Reprise du chantier des ordres V2 — état réel
 
+## Lot A — formations et compatibilités, 26 octobre 2026
+
+**Cette section fait foi ; les sections suivantes sont des archives.**
+
+### Audit et périmètre
+
+- Branche vérifiée : `feat/ordres-v2`, propre avant intervention. Après fetch,
+  HEAD et `origin/feat/ordres-v2` étaient tous deux à `80772a7` (0/0) : aucun pull.
+- Contrairement au précédent bilan, ce commit contenait déjà la transmission
+  QG et Propagafion, Confinement, Étincellant actifs, avec leurs tests. Ils n'ont
+  pas été réimplémentés. La destruction QG jusqu'à fin de duel est conservée.
+- Travail limité au moteur, aux tests et à la documentation de ce dépôt.
+  Aucun merge vers `v2.0`, aucun changement de Mythodea-web.
+
+### Fonctions réellement intégrées
+
+- **On_melange**, ID 1015, jeton `1-6` : séquence du camp `4,3,2,1`.
+- **QG_nommade**, ID 1016, jeton `1-7` : QG exclu des duels frontaux et placé en
+  dernier au rangé, prioritaire sur On_melange. Aucun déplacement de dossiers,
+  aucune recomposition des places vides, aucune perte ou fatigue nouvelle.
+- Les deux ordres passent par le QG officiel, l'apprentissage privé, les
+  restrictions de nature, les PC globaux et la confrontation commune.
+- Matrice des six paires incompatibles et huit compatibles dans
+  `commandement.py`. Annulation simultanée de tous les ordres impliqués dans
+  une paire interdite du camp ; les autres restent candidats. Chaque paire et
+  son motif sont rapportés. Les paires non définies sont distinguées des autorisées.
+- L'annulation est réalisée par camp avant la comparaison adverse, y compris
+  lorsque `1-2` vient d'un autre général allié. Elle reste mémorisée pendant la
+  bataille et ses cascades ; aucun nouveau fichier d'état.
+- Migration ciblée validée pendant cette reprise : `1-2` opposé à On_melange
+  est confronté aux PC globaux des donneurs QG. Le plus fort impose son schéma ;
+  l'égalité annule les deux. Dans ce cas migré, un frontal sans donneur QG
+  autorisé ne contourne pas la confrontation. Les autres déclenchements historiques
+  restent inchangés. Les rapports distinguent opposition adverse et conflit interne.
+- La priorité future Retrait_tactique juste avant le QG est testée comme calcul
+  de séquence uniquement ; elle n'active ni récupération de soldats ni retrait.
+
+**Onze ordres V2 actifs**, plus le frontal historique : Hérisson, Discours de la
+mort, Orc_un_jour_orc_toujour, Rafale, Cruelle, Choca_fuite (Survie), Propagafion,
+Confinement, Étincellant, On_melange et QG_nommade.
+
+### Validation
+
+- Référence intacte `80772a7`, exportée sous `/tmp` : **642 tests en 91,987 s,
+  aucun échec, un ignoré root** (`.dev/ordres-v2-lot-a-reference.txt`). L'ancien
+  échec d'activation Choca_fuite ne se reproduit pas.
+- Compilation des quatre modules Python et trois fichiers de tests modifiés :
+  OK, avec `PYTHONPYCACHEPREFIX` hors dépôt.
+- Première passe ciblée : 44 tests, trois échecs de scénarios où les bots de test
+  recevaient `1-2` par défaut. Leur préparation a été corrigée pour tester le rangé
+  demandé, sans modifier les résultats attendus ni le comportement du bot moteur.
+  Revalidation : **44 tests en 17,507 s, OK**.
+- Après décision de confrontation adverse : **126 tests en 44,470 s, OK**
+  (`.dev/ordres-v2-lot-a-cibles.txt`) ; formations, QG, retraites, comparateurs,
+  frontal classique, deux camps, rapports privés et interruptions.
+- Contrôles Linux avec root et UID temporaires : **4 tests en 10,529 s, OK**
+  (`.dev/ordres-v2-lot-a-permissions.txt`), dont le test ignoré de la suite générale.
+- Suite complète finale : **665 tests en 280,164 s, aucun échec, un ignoré
+  réservé à root**, journal `.dev/ordres-v2-lot-a-complets.txt`. Les quatre
+  contrôles root ci-dessus couvrent aussi ce test : **668 tests distincts réussis**,
+  sans recompter les passes ciblées. Les 23 nouveaux tests sont dans
+  `.dev/tests/test_formations_v2.py`.
+- La première tentative de référence sur le répertoire de travail a croisé
+  des modifications avec des rechargements de modules : 642 tests, 31 erreurs,
+  un ignoré. Son journal `.dev/ordres-v2-lot-a-avant.txt` n'est **pas** une mesure
+  du commit initial. La référence isolée ci-dessus remplace cette tentative.
+
+Les listes explicites d'activations et de récompenses des tests existants ont été
+étendues uniquement aux deux IDs intégrés ; aucune assertion de combat antérieure
+n'a été assouplie. Les validations Linux temporaires ne remplacent pas la recette
+Raspberry Pi avec SSH et gel cgroup réels.
+
+### Dix ordres V2 encore désactivés et suite des lots
+
+| Ordre | Travail ou décision restant |
+| --- | --- |
+| Charge suicidaire | Lot C : groupes de survivants humains, compteurs, sauvegarde, audit et réaffectation manuelle ; retrait définitif des survivants bots. Les règles fournies sont enregistrées, aucun effet persistant encore activé. |
+| Gros_poisson | Lot B : syntaxe des paramètres, répartition des pertes et restitution des soldats identifiés. |
+| Retrait_tactique | Identité, état et sélection des 50 % récupérés ; placement avant QG validé, mais récupération non définie complètement. |
+| Spora-adicte | Syntaxe et validation de la position du Zombie ciblé. La durée QG est résolue. |
+| Pour_l'honneur | Non-cumul sans exception confirmé ; traitement de ce non-cumul hors formations et raccordement des modifications du choc à préciser. |
+| Ralliement | Provenance et état des soldats récupérés, restitution des renforts temporaires. |
+| Chat-man | Départage des cibles efficaces et articulation de l'initiative avec le Bouclier. |
+| Muraille humaine | Répartition des pertes collectives et devenir des Avant du général vaincu. Exclusions du QG et de la réserve confirmées. |
+| Réserve stratégique | Syntaxe de désignation, coexistence de réserves adverses et issue d'une interception échouée. Rangé uniquement, avant son tour normal, sans fatigue nouvelle ; exclusions QG/Muraille confirmées. |
+| Dernière charge | Syntaxe G/D et état physique des soldats relevés après défaite obligatoire du général précédent. |
+
+La paire Attaque frontale + Retrait_tactique reste non définie. La compatibilité
+Réserve stratégique + Retrait_tactique ne supprime pas l'interdiction générale
+d'ordre normal et contre-ordre chez un même donneur. Aucun contournement ajouté.
+
+Les décisions détaillées de Charge suicidaire, dont les survivants bots sans
+village, sont consignées dans `docs/ordres-v2-preparation.md`. Ne pas redemander
+ces décisions déjà validées lors de la reprise du lot C.
+
 ## Décisions QG et Choca_fuite intégrées — 25 octobre 2026
 
-Cette section remplace les états antérieurs ci-dessous. Travail exclusivement
+Archive : cette section remplaçait les états antérieurs ci-dessous. Travail exclusivement
 sur `feat/ordres-v2`, depuis `82ba5ca` (qui avait revalidé `a67057d`).
 Pas de fusion, pas de modification de `Mythodea-web`.
 

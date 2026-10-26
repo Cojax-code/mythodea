@@ -1,6 +1,68 @@
 """Calculs et sélection des donneurs d'ordres, sans inventer leurs effets."""
 import catalogues
 import progression
+from itertools import combinations
+
+
+# La compatibilité des effets ne dispense pas des règles de donneur/catégorie.
+FORMATIONS = frozenset(('on_melange', 'attaque_frontale', 'reserve_strategique',
+                       'retrait_tactique', 'muraille_humaine', 'qg_nommade'))
+FORMATIONS_INCOMPATIBLES = frozenset(frozenset(paire) for paire in (
+    ('on_melange', 'attaque_frontale'),
+    ('on_melange', 'reserve_strategique'),
+    ('on_melange', 'retrait_tactique'),
+    ('attaque_frontale', 'reserve_strategique'),
+    ('attaque_frontale', 'muraille_humaine'),
+    ('muraille_humaine', 'retrait_tactique'),
+))
+FORMATIONS_COMPATIBLES = frozenset(frozenset(paire) for paire in (
+    ('muraille_humaine', 'on_melange'),
+    ('muraille_humaine', 'reserve_strategique'),
+    ('muraille_humaine', 'qg_nommade'),
+    ('retrait_tactique', 'reserve_strategique'),
+    ('qg_nommade', 'retrait_tactique'),
+    ('qg_nommade', 'reserve_strategique'),
+    ('qg_nommade', 'on_melange'),
+    ('qg_nommade', 'attaque_frontale'),
+))
+
+
+def compatibilite_formations(ordres):
+    """Diagnostique toutes les paires avant toute annulation, sans priorité.
+
+    Les paires non définies restent distinctes des paires autorisées ; elles
+    ne doivent pas être activées implicitement par un futur appelant.
+    Pour_l'honneur n'a actuellement aucune exception à son non-cumul.
+    """
+    interdites, ouvertes = [], []
+    for a, b in combinations(sorted(set(ordres)), 2):
+        paire = frozenset((a, b))
+        if 'pour_l_honneur' in paire or paire in FORMATIONS_INCOMPATIBLES:
+            interdites.append((a, b))
+        elif paire <= FORMATIONS and paire not in FORMATIONS_COMPATIBLES:
+            ouvertes.append((a, b))
+    return dict(annules=frozenset(nom for paire in interdites for nom in paire),
+                incompatibles=interdites, non_definies=ouvertes)
+
+
+def sequence_formation(positions, ordres, position_qg=None, position_retrait=None):
+    """Ordre logique seulement : aucun déplacement ou comblement d'une place.
+
+    Les appelants valident les ordres et fournissent les positions officielles.
+    Le retrait déjà décidé vient juste avant le QG ; aucun soin n'est déduit.
+    """
+    diagnostic = compatibilite_formations(ordres)
+    if diagnostic['annules'] or diagnostic['non_definies']:
+        raise ValueError('La formation doit être validée avant son placement.')
+    sequence = sorted(positions, key=int, reverse='on_melange' in ordres)
+    derniers = []
+    if 'retrait_tactique' in ordres and position_retrait in sequence:
+        derniers.append(position_retrait)
+    if 'qg_nommade' in ordres and position_qg in sequence:
+        if position_qg in derniers:
+            derniers.remove(position_qg)
+        derniers.append(position_qg)
+    return [p for p in sequence if p not in derniers] + derniers
 
 
 def effectif(points, types_unites):
@@ -132,8 +194,8 @@ def confronter_donneurs(ordres_1, nature_1, acquis_1,
     """Confronte deux donneurs sans agréger d'ordres entre généraux.
 
     Ordre contre ordre à PC égaux : annulation. Ordre contre contre-ordre :
-    les deux peuvent fonctionner. Les incompatibilités d'effets entre plusieurs
-    ordres normaux restent à contrôler lorsque leurs effets seront définis.
+    les deux peuvent fonctionner. Le pipeline retire préalablement les ordres
+    annulés par les incompatibilités de formation du camp.
     """
     catalogue = catalogues.ORDRES if catalogue is None else catalogue
     candidats_1 = _ordres_eligibles(ordres_1, nature_1, categorie, catalogue, acquis_1)

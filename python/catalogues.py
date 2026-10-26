@@ -106,6 +106,10 @@ ORDRES = {
                disponible=True, contre=True, progression=True, acquisition_requise=True),
     1014: dict(jeton='1-5', nom='etincellant', categorie='globale',
                disponible=True, contre=False, progression=True, acquisition_requise=True),
+    1015: dict(jeton='1-6', nom='on_melange', categorie='globale',
+               disponible=True, contre=False, progression=True, acquisition_requise=True),
+    1016: dict(jeton='1-7', nom='qg_nommade', categorie='globale',
+               disponible=True, contre=False, progression=True, acquisition_requise=True),
 }
 
 # 101..199 : apprentissages d'unités ; 201..299 : catégories de caractéristiques.

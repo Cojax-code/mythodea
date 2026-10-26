@@ -1,8 +1,8 @@
 """Frontière entre ordre.txt (jetons) et le catalogue de commandement V2.
 
 Ne fusionne JAMAIS les ordres de généraux
-différents et ignore les ordres désactivés. Le vieux 1-2 reste exécuté
-par le moteur historique jusqu'à sa migration explicite.
+différents et ignore les ordres désactivés. Le frontal 1-2 garde son parcours
+historique, avec annulations internes et confrontation ciblée face à On_melange.
 """
 import catalogues
 import commandement
@@ -228,9 +228,12 @@ def bataille(territoire, configuration):
             qg = candidats[0]
             rapports.ecrire_rapport_territoire(territoire,
                 f"QG {camp} : {qg['joueur']} {qg['nom']}, bloc {qg['qg']}.")
-    courant = dict(territoire=territoire, configuration=configuration, quartiers=quartiers)
+    courant = dict(territoire=territoire, configuration=configuration, quartiers=quartiers,
+                   annules={})
     jeton = _bataille.set(courant)
     try:
+        preparer_compatibilites(forces, courant)
+        confronter_frontal_melange(forces, courant)
         yield courant
     finally:
         _bataille.reset(jeton)
@@ -275,7 +278,148 @@ def intention(general, categorie):
         if personnelle or categorie == 'individuelle':
             return personnelle
     qg = qg_du_general(general)
-    return intention_personnelle(qg, categorie) if qg is not None else None
+    donneur = intention_personnelle(qg, categorie) if qg is not None else None
+    if donneur and categorie == 'globale':
+        courant = _bataille.get()
+        camp = courant['configuration']['acteurs'][general['joueur']]['camp']
+        annules = courant['annules'].get(camp, ())
+        donneur = retirer_ordres_annules(donneur, annules)
+    return donneur
+
+
+def retirer_ordres_annules(donneur, annules):
+    if donneur is None:
+        return None
+    ids = [i for i in donneur['identifiants'] if catalogues.ORDRES[i]['nom'] not in annules]
+    if not ids:
+        return None
+    jetons = {catalogues.ORDRES[i]['jeton'] for i in ids}
+    return dict(donneur, identifiants=ids, general=dict(donneur['general'],
+        ordres=[o for o in donneur['general']['ordres'] if o['identifiant'] in jetons]))
+
+
+def preparer_compatibilites(forces, contexte):
+    """Annule les paires interdites du camp avant les comparaisons adverses.
+
+    Le frontal conserve sa voie historique, même demandé par un autre allié.
+    Les nouveaux globaux exigent le QG, l'apprentissage et la nature autorisée.
+    Les annulations sont figées pour la bataille, cascades comprises : la mort
+    d'un donneur ne réactive pas un ordre déjà annulé.
+    """
+    import generaux
+    import rapports
+    for camp, quartier in contexte['quartiers'].items():
+        noms = set()
+        if generaux.joueur_possede_ordre_armee(forces, camp, '1-2'):
+            noms.add('attaque_frontale')
+        if quartier.general is not None:
+            donneur = intention_personnelle(quartier.general, 'globale')
+            if donneur:
+                fiche = donneur['general']['caracteristiques']
+                ids = commandement.ordres_applicables(donneur['identifiants'],
+                    fiche['nature'], 'globale', acquis=fiche['evolutions_acquises'],
+                    ordres_adverses=[])
+                noms.update(catalogues.ORDRES[i]['nom'] for i in ids)
+        diagnostic = commandement.compatibilite_formations(noms)
+        # Aucun effet de paire non définie ne peut être activé silencieusement.
+        if diagnostic['non_definies']:
+            raise ValueError('Compatibilité de formations non définie.')
+        contexte['annules'][camp] = diagnostic['annules']
+        for a, b in diagnostic['incompatibles']:
+            rapports.ecrire_rapport_territoire(contexte['territoire'],
+                f'Formations {camp} : {a} et {b} annulés mutuellement '
+                '(combinaison incompatible).')
+
+
+def confronter_frontal_melange(forces, contexte):
+    """Migration ciblée du frontal opposé à On_melange, avant le premier duel.
+
+    Les annulations internes ont déjà été appliquées. Le schéma perdant ne
+    revient pas après les premières pertes ; les transmissions du gagnant
+    restent soumises à la survie du QG. Hors de cette opposition précise,
+    le déclenchement historique du frontal est conservé.
+    """
+    import generaux
+    import rapports
+    camps = list(forces)
+    donneurs, demandes = [], []
+    for camp in camps:
+        qg = contexte['quartiers'][camp].general
+        donneur = intention_personnelle(qg, 'globale', inclure_frontal=True) if qg else None
+        donneur = retirer_ordres_annules(donneur, contexte['annules'][camp])
+        donneurs.append(donneur)
+        fiche = donneur['general']['caracteristiques'] if donneur else {}
+        ids = commandement.ordres_applicables(donneur['identifiants'],
+            fiche['nature'], 'globale', acquis=fiche['evolutions_acquises'],
+            ordres_adverses=[]) if donneur else []
+        noms = {catalogues.ORDRES[i]['nom'] for i in ids}
+        # Le déclencheur historique ne peut contourner l'autorité QG/PC
+        # dans le cas désormais migré ; le comparateur recevra le vrai donneur.
+        if (frontal_autorise(camp)
+                and generaux.joueur_possede_ordre_armee(forces, camp, '1-2')):
+            noms.add('attaque_frontale')
+        demandes.append(noms)
+    opposees = any('attaque_frontale' in demandes[a] and 'on_melange' in demandes[b]
+                   for a, b in ((0, 1), (1, 0)))
+    if not opposees:
+        return
+    points = [points_globaux_officiels(d) if d else 0 for d in donneurs]
+    resultat = confronter_intentions(*donneurs, 'globale', *points)
+    for n, camp in enumerate(camps, 1):
+        demandes_formation = demandes[n - 1] & {'attaque_frontale', 'on_melange'}
+        retenus = {catalogues.ORDRES[i]['nom'] for i in resultat[f'camp_{n}']}
+        annules = demandes_formation - retenus
+        contexte['annules'][camp] |= annules
+        for nom in sorted(demandes_formation):
+            statut = 'retenu' if nom in retenus else 'annulé'
+            rapports.ecrire_rapport_territoire(contexte['territoire'],
+                f'Formation {camp} : {nom} {statut} '
+                '(confrontation globale Attaque frontale / On_melange).')
+    rapports.afficher_et_ecrire(
+        f'Confrontation formations : camps={camps}, PC globaux={points}, résultat={resultat}')
+
+
+def frontal_autorise(camp):
+    contexte = _bataille.get()
+    return contexte is None or 'attaque_frontale' not in contexte['annules'].get(camp, ())
+
+
+def formations_retenues(forces):
+    """Confronte les globaux avec les PC actuels avant de choisir le duel.
+
+    Seuls On_melange et QG_nommade déplacent actuellement la séquence. Les
+    autres globaux participent à la confrontation ordinaire, sans déplacement.
+    """
+    if _bataille.get() is None:
+        return {}
+    camps = list(forces)
+    donneurs = []
+    for camp in camps:
+        general = next((g for g in forces[camp].values()
+                        if g and g.get('total_unites', 0)), None)
+        donneurs.append(intention(general, 'globale') if general else None)
+    if not any(d and {1015, 1016}.intersection(d['identifiants']) for d in donneurs):
+        return {}
+    points = [points_globaux_officiels(d) if d else 0 for d in donneurs]
+    resultat = confronter_intentions(*donneurs, 'globale', *points)
+    return {camp: dict(ordres={catalogues.ORDRES[i]['nom']
+                              for i in resultat[f'camp_{n}']},
+                       qg=identite(d['general']))
+            for n, (camp, d) in enumerate(zip(camps, donneurs), 1) if d}
+
+
+def qg_hors_formation(general, formation):
+    return bool(general and formation and 'qg_nommade' in formation['ordres']
+                and identite(general) == formation['qg'])
+
+
+def generaux_en_formation(actifs, formation):
+    if not formation:
+        return actifs
+    positions = {g['emplacement']: g for g in actifs}
+    qg = next((p for p, g in positions.items() if identite(g) == formation['qg']), None)
+    sequence = commandement.sequence_formation(positions, formation['ordres'], qg)
+    return [positions[p] for p in sequence]
 
 
 def points_globaux_officiels(donneur):
@@ -320,11 +464,12 @@ def fuir_apres_choc(generaux):
     return callback(candidats) if candidats else []
 
 
-def intention_personnelle(general, categorie):
+def intention_personnelle(general, categorie, inclure_frontal=False):
     """Relit les demandes et l'autorité privée au début du véritable duel.
 
     Un ancien général sans profil ne gagne aucun droit nouveau. Les généraux
-    zombies ne peuvent donner les ordres classiques. 1-2 reste hors de ce circuit.
+    zombies ne peuvent donner les ordres classiques. 1-2 entre uniquement
+    dans la confrontation de formations explicitement migrée.
     """
     import generaux
     fiche = progression.caracteristiques_general(general)
@@ -333,7 +478,8 @@ def intention_personnelle(general, categorie):
     officiel = {**general, 'caracteristiques': fiche,
                 'ordres': generaux.lire_ordres_general(general['chemin'])}
     demandes = ordres_du_general(officiel, categorie)
-    demandes = [i for i in demandes if i != 1002 and i in fiche['evolutions_acquises']]
+    demandes = [i for i in demandes if (i != 1002 or inclure_frontal)
+                and i in fiche['evolutions_acquises']]
     if _retraite.get() is None:
         demandes = [i for i in demandes if catalogues.ORDRES[i]['nom'] != 'choca_fuite']
     if not demandes:
