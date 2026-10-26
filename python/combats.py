@@ -8,6 +8,7 @@ import etat
 import generaux
 import rapports
 import progression
+import ordres_calculs_v2
 import ordres_pipeline
 import soldats
 import unites
@@ -829,6 +830,34 @@ def combat_bloc(
     )
 
     return survivants_1, survivants_2
+
+
+def previsions_avant_muraille(contributions, infos_adverses, *, bloc_adverse,
+                             general_adverse, fatigue_adverse=False):
+    """Résultats numériques indépendants des Avant contre UN bloc explicite.
+
+    Chaque contribution est (général d'origine, infos du bloc Avant, fatigue).
+    Réutilise combat_bloc et les bonus du contexte courant, sans pertes réelles,
+    tirages, blessures, XP, rapports ni mutations des entrées. L'ordre de sortie
+    est celui des entrées : ce n'est PAS un classement d'efficacité.
+
+    Préparation seulement : ces effectifs sont AVANT les sauvetages par moral
+    et les capacités résolues hors combat_bloc (Bouclier vivant, Spore, etc.).
+    Ni la cible, ni le score, ni la séquence des engagements ne sont choisis ici.
+    Aucun appel depuis le combat réel tant que le contrat reste incomplet.
+    """
+    contributions = tuple(contributions)
+    ordres_calculs_v2.participants_muraille(
+        ordres_pipeline.identite(general) for general, _, _ in contributions)
+    if type(fatigue_adverse) is not bool or any(
+            type(fatigue) is not bool for _, _, fatigue in contributions):
+        raise ValueError('Les états de fatigue doivent être booléens.')
+    return tuple(dict(
+        origine=ordres_pipeline.identite(general),
+        survivants=combat_bloc(infos, infos_adverses, fatigue, fatigue_adverse,
+                               'avant', bloc_adverse,
+                               general_1=general, general_2=general_adverse),
+    ) for general, infos, fatigue in contributions)
 
 
 def trouver_cible_facile(armee, joueur_attaquant, type_attaquant,

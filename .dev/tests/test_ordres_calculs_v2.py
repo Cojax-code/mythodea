@@ -68,6 +68,18 @@ class TestOrdresCalculsV2(unittest.TestCase):
         with self.assertRaises(ValueError):
             calculs.derniere_charge_possible(True, "GD")
 
+    def test_derniere_charge_casse_et_absence_sans_autre_flanc(self):
+        for flanc in ('G', 'g', 'D', 'd'):
+            self.assertTrue(calculs.derniere_charge_possible(True, flanc, effectif_eligible=1))
+            self.assertFalse(calculs.derniere_charge_possible(False, flanc, effectif_eligible=1))
+            self.assertFalse(calculs.derniere_charge_possible(True, flanc, effectif_eligible=0))
+        for valeur in (-1, True, 1.5, '1'):
+            with self.assertRaises(ValueError):
+                calculs.derniere_charge_possible(True, 'g', effectif_eligible=valeur)
+        for flanc in ('', 'gd', 'gauche', ' G ', None):
+            with self.assertRaises(ValueError):
+                calculs.derniere_charge_possible(True, flanc)
+
 
     def test_rafale_tentatives_par_quatre_archers(self):
         for archers, tirs in ((0, 0), (3, 0), (4, 1), (7, 1),

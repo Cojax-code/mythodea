@@ -59,6 +59,31 @@ class EffetsQG(unittest.TestCase):
         with self.bataille(), ordres_pipeline.duel(a, b):
             self.assertEqual(ordres_pipeline.moral(b, 50), 45)
 
+    def test_zombie_reception_qg_limitee_avant_comparaison_dans_les_deux_camps(self):
+        for joueur, adverse in (('j1', 'j2'), ('j2', 'j1')):
+            a = self.troupe(joueur, 'zombie', 4, numero=3, place='3')
+            b = self.troupe(adverse, 'sauvageon', 4, numero=4, place='4')
+            self.ordres(a, etat_zombie=True)
+            self.ordres(b, [1008], pc=1)
+            qg = self.qg(joueur, [1008, 1012, 1014], pc=40)
+            # La fiche fournie par l'appelant ne remplace jamais le profil privé.
+            a['caracteristiques'] = dict(etat_zombie=False)
+            avant = copy.deepcopy(self.progression.charger())
+            with self.bataille(), ordres_pipeline.duel(a, b) as decisions:
+                self.assertTrue(ordres_pipeline.effet(a, 'propagafion'))
+                self.assertFalse(ordres_pipeline.effet(a, 'etincellant'))
+                self.assertFalse(ordres_pipeline.effet(a, 'orc_un_jour_orc_toujour'))
+                self.assertTrue(ordres_pipeline.effet(b, 'orc_un_jour_orc_toujour'))
+                demandes_a = [i for d in decisions if d['joueur'] == joueur for i in d['demandes']]
+                self.assertEqual(demandes_a, [1012])
+            self.assertEqual(self.progression.charger(), avant)
+            # Les soldats Zombies d'un général ordinaire ne l'interdisent pas.
+            self.ordres(a, etat_zombie=False)
+            with self.bataille(), ordres_pipeline.duel(a, b):
+                self.assertTrue(ordres_pipeline.effet(a, 'etincellant'))
+                self.assertTrue(ordres_pipeline.effet(a, 'orc_un_jour_orc_toujour'))
+            (qg['chemin'] / 'qg.txt').unlink()
+
     def test_destruction_pendant_duel_preserve_transmis_et_interdit_suivant(self):
         a, b = self.troupe('j1', 'piquier'), self.troupe('j2', 'piquier')
         self.ordres(a); self.ordres(b)

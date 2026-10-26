@@ -1859,6 +1859,22 @@ décisions manquantes.
 
 ### Groupes temporaires — infrastructure préparatoire
 
+Contrats validés du lot B, encore non activés : Gros_poisson réunit uniquement
+les mêmes blocs et types, sous le commandement du bénéficiaire désigné par le
+QG ; pertes aléatoires dans la formation engagée, propriétaires et états
+individuels conservés, retour des survivants à leurs origines après le duel.
+Muraille humaine conserve au contraire chaque Avant distinct, avec les bonus
+de son général d'origine, et prévoit des engagements successifs après simulation
+sans mutation. Aucun score de classement ou départage n'est encore fixé.
+Les morts de Ralliement et Dernière charge nécessitent une réanimation explicite
+dont la sélection et l'état physique restent à définir. Les fonctions de groupes
+vivants ci-dessous ne constituent pas une procédure de résurrection.
+
+`combats.previsions_avant_muraille()` prépare seulement des résultats numériques
+indépendants contre un bloc adverse fourni explicitement, via `combat_bloc`.
+Pas de tri, pertes réelles, tirage, blessures, expérience ou rapport. Moral et
+capacités résolues hors de ce calcul restent à intégrer à la simulation complète.
+
 `soldats.participation_temporaire()` reçoit des contributions explicites
 `(général, bloc, chemins des soldats)` déjà authentifiées sous gel ou dans la
 génération privée. Elle ne déplace ni ne copie les dossiers. Chaque référence
@@ -1894,6 +1910,16 @@ charge. Les règles de sélection, phases et effets doivent encore être raccord
 après les décisions de `docs/ordres-v2-preparation.md`. En particulier, une vue
 ne retire pas automatiquement ses soldats des autres lectures de leur général,
 ne ressuscite pas les morts et ne remplace pas un duel complet avec ses capacités.
+
+### Restriction des ordres des généraux Zombies
+
+Les généraux identifiés Zombies dans leur profil privé ne peuvent apprendre,
+donner ou recevoir que Spora-adicte et Propagafion, sous réserve des contrôles
+habituels de disponibilité, de nature et d'acquisition. Les anciens acquis ne
+permettent pas d'exécuter un autre ordre après zombification. Les transmissions
+interdites sont filtrées avant la confrontation des ordres du duel. Cette règle
+ne prive pas les soldats Zombies de leurs capacités raciales ni des effets
+collectifs alliés par défaut. Elle n'ajoute aucune récompense de montée de niveau.
 
 ### Blessures et batailles complètes
 

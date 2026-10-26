@@ -71,16 +71,113 @@ valident pas implicitement une politique de pertes pour un ordre.
 
 | Ordre | Préparation disponible | Décisions encore bloquantes |
 | --- | --- | --- |
-| Gros_poisson | Index des soldats vivants par bloc/type, vue homogène des contributions explicites, pertes et survivants rattachés à chaque propriétaire. | Syntaxe et signification exactes des troisième/quatrième champs ; désignation des participants et du bénéficiaire ; répartition des pertes entre les contributions. La restitution des survivants à leurs origines est déjà confirmée. |
-| Muraille humaine | Filtre `participants_muraille()` par identité `(joueur, generalN)`, exclusions du QG_nommade et de la réserve stratégique ; vue collective explicite et bilan par origine. | Résolution d'une ligne Avant contenant des types différents et répartition des pertes collectives ; état physique exact de l'Avant d'un général vaincu (« perdu »). L'exclusion des Avant des deux camps de la manœuvre et le retour des unités prêtées sont déjà confirmés. |
-| Ralliement | `renforts_ralliement()` : pertes du type `// 5`, seulement pour les types présents chez le bénéficiaire. Le socle sait suivre des renforts identifiés vivants si leur source est fournie. | Source concrète des soldats récupérés parmi les pertes de l'allié vaincu ; identité et état conservés ou rétablis (blessures, expérience) ; destination et devenir des survivants à la fin du renfort, notamment si le général d'origine est vaincu. Le quota n'autorise pas à créer ou ressusciter un soldat. |
-| Dernière charge | `derniere_charge_possible()` : défaite préalable obligatoire et choix unique G/D. Les références préservent les états de soldats existants. | Grammaire exacte du flanc dans `ordre.txt` ; comportement si ce flanc est absent ; état physique des unités « relevées » et leur devenir après leur disparition définitive du combat. Aucun effacement de blessures ni reconstruction de dossiers détruits n'est déduit du texte. |
+| Gros_poisson | Index par même bloc/type, vue homogène, pertes communes et bilan par origine ; test du commandement bénéficiaire. | Catégorie/jeton, blocs non concordants, capacités spéciales et fatigue hétérogène (détails ci-dessous). |
+| Muraille humaine | Filtre des exclusions par identité ; `combats.previsions_avant_muraille()` réutilise le calcul numérique commun, sans mutation ni classement. | Cibles simulées, critère/égalité, recalcul, survivants après défaite territoriale ou fin anticipée de la muraille. |
+| Ralliement | Quantités conservées : `pertes_du_type // 5`, uniquement pour les types du bénéficiaire. | Sélection des morts, état physique de réanimation, blocs d'accueil et survivants sans général d'origine. |
+| Dernière charge | Défaite préalable, G/g ou D/d ; effectif éligible nul => aucun effet. | Sélection des morts et blessures à la relève ; attribution des jetons avant extension du parseur. |
 
-Pour les regroupements de plusieurs généraux, il reste également à préciser
-comment déterminer le moral, la fatigue et les bonus applicables à une force
-collective lorsque les contributeurs diffèrent. Le moteur commun les applique
-à un général et à sa composition ; la vue technique n'en choisit pas un
-implicitement. La fatigue de Dernière charge est déjà imposée par sa règle.
+### Contrats reçus après acaba3e — décisions faisant foi
+
+Ces décisions remplacent les descriptions antérieures contradictoires, notamment
+la fusion des Avant de Muraille et l'ambiguïté sur la provenance des réanimés.
+
+- **Gros_poisson** : le QG désigne deux alliés, bénéficiaire (champ 3) et prêteur
+  (champ 4), par leurs positions. Il peut lui-même occuper un de ces rôles.
+  Forme demandée `1-x-position_beneficiaire-position_preteur`. Seuls même bloc
+  et même type sont regroupés. Statistiques et bonus de commandement du
+  bénéficiaire remplacent ceux du prêteur pendant l'engagement ; blessures,
+  fatigue individuelle, états persistants, UUID, XP et propriétaire restent.
+  Pertes aléatoires parmi les engagés, sans quotas par propriétaire. Après le
+  duel, survivants à leur général et bloc exacts d'origine ; prêteur encore
+  autorisé à combattre à son tour normal. Aucun mort restauré.
+- **Muraille** : succession des blocs Avant originaux, chacun avec son général,
+  ses statistiques et bonus. Aucun mélange des types ni fusion des Avant.
+  Simuler les confrontations sans effet permanent, puis engager les blocs
+  selon leur efficacité jusqu'à victoire ou défaite de tous. La formule
+  d'efficacité et le départage restent ouverts. Seul le bloc actuellement
+  engagé subit les pertes, avec victimes aléatoires en son sein. Le général
+  vaincu ne tue pas ses soldats Avant survivants : ils restent dans la muraille
+  tant qu'elle existe. À la victoire territoriale, ceux sans général suivent
+  le retour `unites_sans_general` déjà défini (infrastructure du lot C à réaliser).
+  À la disparition du QG, les effets s'arrêtent après le duel en cours, sans
+  remplacement. Phases, restitution et exclusions QG_nommade/réserve conservées.
+  Compatible avec On_melange, QG_nommade et Réserve stratégique ; incompatible
+  avec Attaque frontale et Retrait_tactique, avec annulation mutuelle du camp.
+- **Ralliement** : morts réanimés avec leurs UUID, blessures et XP conservés.
+  Bénéficiaire temporaire = général allié suivant. Les survivants retournent
+  au général d'origine s'il existe. Aucune réanimation réelle avant définition
+  de l'état physique, de la sélection et des destinations manquantes.
+- **Dernière charge** : morts du flanc restaurés, fatigués, à la place du flanc
+  correspondant du général suivant au seul choc. Flanc absent/sans éligible :
+  aucun effet, jamais de bascule. G/g et D/d admis, formes personnelle et QG
+  proposées acceptées sous réserve de la grammaire/du jeton final. Tous les
+  survivants de cette charge meurent définitivement après le choc ; aucun ne
+  participe à la manœuvre. Défaite préalable obligatoire conservée.
+- **Généraux Zombies** : seuls Spora-adicte et Propagafion sont recevables ;
+  aucun autre ordre V2 ne peut être appris ou exécuté. Le profil privé fait foi.
+  Cette restriction ne retire ni capacité raciale ni soldat Zombie d'un effet
+  collectif allié par défaut. La progression sans récompense de niveau reste
+  inchangée. L'éventuelle voie d'apprentissage des deux exceptions doit rester
+  distincte de l'autorisation de les recevoir d'un QG extérieur.
+
+### Questionnaire restant — propositions, pas règles acquises
+
+**Gros_poisson**
+
+1. Le catalogue exécutable n'a **aucun jeton attribué** à Gros_poisson. La
+   conception le classe Duel (`2-…`), tandis que la forme demandée commence
+   par `1-…` (Globale). Confirmer la catégorie et le jeton : cela détermine aussi
+   la confrontation des PC. Aucun identifiant n'est inventé dans cette étape.
+2. Bloc absent ou type différent : laisser ce bloc hors du prêt, ou invalider
+   l'ordre entier ? La première proposition permet une fusion partielle ; la
+   seconde refuse toute formation non concordante. Même bénéficiaire/prêteur :
+   confirmer le rejet de cette désignation, sans duplication.
+3. Capacités spéciales : lors d'une conversion Spore, qui récupère le soldat
+   et dans quel bloc ? Comment compter une formation lourde, les bonus liés à
+   la composition et un Bouclier vivant prêté ? Garder les mécanismes communs
+   exige de préciser leur formation de référence, pas de les désactiver.
+4. Le moteur applique actuellement la fatigue par général/bloc. Confirmer la
+   contribution séparée des soldats frais/fatigués dans une même formation
+   prêtée, avec le commandement du bénéficiaire. Ne pas imposer une fatigue
+   commune qui effacerait l'état des prêteurs.
+
+**Muraille humaine**
+
+1. Quelles forces adverses simuler (Avant opposé seulement, ou autres blocs) ?
+   Quel critère exact, puis quel départage ? Propositions : priorité aux pertes
+   infligées, aux survivants conservés, ou ordre explicite du créateur ; aucune
+   formule ni pondération retenue. Préciser si le classement est recalculé
+   après chaque engagement réel ou fixé avant la première confrontation.
+2. En cas de défaite territoriale, où vont les Avant survivants sans général ?
+   Décès, capture ou repli seraient des règles différentes : aucune n'est choisie.
+3. Si le QG disparaît et que la muraille cesse après le duel, quelle destination
+   immédiate pour les survivants dont le général a déjà disparu ? La durée de
+   l'ordre est fixée ; le stockage et la disponibilité de ces soldats restent
+   nécessaires pour éviter disparition ou prolongation implicite de la muraille.
+
+**Ralliement**
+
+1. Quels morts sont éligibles et comment choisir les individus jusqu'au quota
+   de chaque type : tirage, priorité d'XP ou autre critère explicite ?
+2. Quel état physique autorise la réanimation en conservant les blessures,
+   notamment si leur seuil mortel est atteint ? Ne pas guérir implicitement.
+3. Quel bloc d'accueil si plusieurs blocs du bénéficiaire ont le même type ?
+   Préciser la durée du prêt et le moment du retour.
+4. Où vont les survivants si le général d'origine n'existe plus ? Aucun retour
+   vers un dossier disparu ni transfert définitif ne sera déduit du seul quota.
+
+**Dernière charge**
+
+1. Quels morts du flanc sont éligibles et comment les sélectionner ?
+2. Quelles blessures ont-ils à la relève, particulièrement au seuil mortel ?
+   UUID et état ne doivent pas être reconstruits arbitrairement.
+
+Les prévisions numériques préparées ne sont pas encore une simulation complète :
+elles donnent les effectifs avant moral et capacités hors `combat_bloc`, avec
+les bonus présents dans le contexte fourni. Elles ne choisissent pas de cible,
+ne classent pas les blocs, ne tirent pas de victimes et n'émettent aucun rapport.
+Le contexte de chaque commandement d'origine et les capacités doivent encore
+être intégrés après définition du contrat de simulation.
 
 ### Raccordement technique après décisions
 
@@ -106,6 +203,9 @@ règles à demander :
   complets de chacun des quatre ordres devront précéder son activation.
 
 ## Catalogue de conception (18 ordres du brouillon JSON)
+
+Archive de conception : pour les quatre ordres du lot B, les contrats reçus
+après `acaba3e` ci-dessus priment sur les descriptions et questions ci-dessous.
 
 | Ordre | Catégorie | Contre-ordre | Résumé |
 |---|---|---|---|

@@ -48,6 +48,65 @@ class ParticipationsTemporaires(unittest.TestCase):
         self.assertEqual(self.photo(), avant)
         self.assertEqual(self.soldats._prets.get(), set())
 
+    def test_gros_poisson_calcul_homologue_avec_bonus_du_beneficiaire(self):
+        import ordres_pipeline
+        for joueur, adverse in (('j1', 'j2'), ('j2', 'j1')):
+            a = self.troupe(joueur, 'piquier', 6, numero=3, place='3')
+            preteur = self.troupe(joueur, 'piquier', 4, numero=4, place='4')
+            ennemi = self.troupe(adverse, 'cavalier', 8, numero=5, place='5')
+            aides.EffetsOrdres.ordres(self, a)
+            aides.EffetsOrdres.ordres(self, preteur, [1006])
+            aides.EffetsOrdres.ordres(self, ennemi)
+            avant = self.photo()
+            with self.soldats.participation_temporaire([
+                    self.contribution(a), self.contribution(preteur)]) as groupe:
+                ids = groupe.selections_homologues()[('avant', 'piquier')]
+                commun = groupe.bloc(ids)
+                self.assertEqual(commun['nombre'], 10)
+                with ordres_pipeline.duel(a, ennemi):
+                    sans_bonus = self.combats.combat_bloc(commun, self.infos(ennemi),
+                        bloc_1='avant', bloc_2='avant', general_1=a, general_2=ennemi)
+                    self.assertFalse(ordres_pipeline.effet(a, 'herisson'))
+                    # Les connaissances du prêteur ne deviennent pas celles du bénéficiaire.
+                    self.assertEqual(sans_bonus, self.combats.combat_bloc(
+                        commun, self.infos(ennemi), bloc_1='avant', bloc_2='avant'))
+                self.assertEqual(self.photo(), avant)
+                aides.EffetsOrdres.ordres(self, a, [1006])
+                with ordres_pipeline.duel(a, ennemi):
+                    avec_bonus = self.combats.combat_bloc(commun, self.infos(ennemi),
+                        bloc_1='avant', bloc_2='avant', general_1=a, general_2=ennemi)
+                    self.assertGreater(avec_bonus[0], sans_bonus[0])
+                self.assertEqual(len(groupe.bilan()[(joueur, 'general4', 'avant')]['survivants']), 4)
+            self.assertEqual(self.soldats._prets.get(), set())
+
+    def test_previsions_muraille_blocs_distincts_sans_mutation_ni_classement(self):
+        for joueur, adverse in (('j1', 'j2'), ('j2', 'j1')):
+            a = self.troupe(joueur, 'piquier', 6, numero=3, place='3')
+            b = self.troupe(joueur, 'archer', 4, numero=4, place='4')
+            cible = self.troupe(adverse, 'cavalier', 4, numero=5, place='5')
+            entrees = [(a, self.infos(a), True), (b, self.infos(b), False)]
+            adverse_infos = self.infos(cible)
+            original = copy.deepcopy((entrees, adverse_infos))
+            avant, rng = self.photo(), random.getstate()
+            resultat = self.combats.previsions_avant_muraille(entrees, adverse_infos,
+                bloc_adverse='avant', general_adverse=cible)
+            self.assertEqual([r['origine'] for r in resultat],
+                             [(joueur, 'general3'), (joueur, 'general4')])
+            for (g, infos, fatigue), resultat_bloc in zip(entrees, resultat):
+                self.assertEqual(resultat_bloc['survivants'], self.combats.combat_bloc(
+                    infos, adverse_infos, fatigue, False, 'avant', 'avant',
+                    general_1=g, general_2=cible))
+            # Une prévision ne transforme pas la suivante en engagement réel.
+            inverse = self.combats.previsions_avant_muraille(reversed(entrees), adverse_infos,
+                bloc_adverse='avant', general_adverse=cible)
+            self.assertEqual(inverse, tuple(reversed(resultat)))
+            self.assertEqual((entrees, adverse_infos), original)
+            self.assertEqual(self.photo(), avant)
+            self.assertEqual(random.getstate(), rng)
+            with self.assertRaises(ValueError):
+                self.combats.previsions_avant_muraille(entrees * 2, adverse_infos,
+                    bloc_adverse='avant', general_adverse=cible)
+
     def test_perte_explicitement_designee_reste_chez_son_proprietaire(self):
         a, b = self.deux_generaux()
         avant = copy.deepcopy(self.soldats.charger())
@@ -139,6 +198,91 @@ class ParticipationsTemporaires(unittest.TestCase):
             for ids in ([identifiant, identifiant], ['inconnu']):
                 with self.assertRaises(ValueError):
                     groupe.bloc(ids)
+
+    def test_prets_successifs_conservent_pertes_blessures_et_xp_unique(self):
+        a, b = self.deux_generaux()
+        avant = self.soldats.charger()
+        for identifiant, valeur in avant.items():
+            valeur['batailles'] = 7
+        self.soldats.sauvegarder(avant)
+        with self.soldats.bataille_complete('lot-b:prets-successifs'):
+            with self.soldats.participation_temporaire([self.contribution(a), self.contribution(b)]) as premier:
+                ids = [p.identifiant for p in premier.participants]
+                mort, blesse = premier.participants[0], premier.participants[3]
+                premier.participer(ids)
+                premier.appliquer_pertes([mort.identifiant], 0, moral=0)
+                premier.appliquer_pertes([blesse.identifiant], 0, moral=100)
+            apres_premier = self.soldats.charger()
+            with self.soldats.participation_temporaire([self.contribution(b), self.contribution(a)]) as second:
+                survivants = {p.identifiant for p in second.participants}
+                self.assertEqual(survivants, set(ids) - {mort.identifiant})
+                self.assertEqual(self.soldats.charger(), apres_premier)
+                second.participer(survivants)
+                second.appliquer_pertes([blesse.identifiant], 0, moral=100)
+                self.assertEqual(second.bloc()['nombre'], 5)
+                self.assertEqual(self.soldats.charger()[blesse.identifiant]['blessures'], 2)
+        apres = self.soldats.charger()
+        self.assertEqual(set(apres), set(avant))
+        self.assertEqual(apres[mort.identifiant], dict(avant[mort.identifiant], detruit=True))
+        self.assertFalse(mort.chemin.exists())
+        for p in premier.participants:
+            if p.identifiant == mort.identifiant:
+                continue
+            valeur = apres[p.identifiant]
+            self.assertEqual(valeur['chemin'], avant[p.identifiant]['chemin'])
+            self.assertEqual((valeur['batailles'], valeur['batailles_comptees']),
+                             (8, ['lot-b:prets-successifs']))
+            self.assertEqual(valeur['blessures'], 2 if p == blesse else 0)
+            infos = p.chemin.stat()
+            self.assertEqual((infos.st_dev, infos.st_ino, infos.st_uid, infos.st_gid),
+                             (p.device, p.inode, p.uid, p.gid))
+        self.assertEqual(self.soldats._prets.get(), set())
+
+    def test_exception_groupe_interieur_ne_libere_pas_pret_exterieur(self):
+        a, b = self.deux_generaux()
+        with self.soldats.participation_temporaire([self.contribution(a)]) as exterieur:
+            ids_exterieurs = {p.identifiant for p in exterieur.participants}
+            with self.assertRaisesRegex(RuntimeError, 'interruption intérieure'):
+                with self.soldats.participation_temporaire([self.contribution(b)]) as interieur:
+                    mort = interieur.participants[0]
+                    interieur.appliquer_pertes([mort.identifiant], 0, moral=0)
+                    raise RuntimeError('interruption intérieure')
+            self.assertEqual(self.soldats._prets.get(), ids_exterieurs)
+            self.assertEqual(exterieur.bloc()['nombre'], 3)
+            with self.assertRaisesRegex(RuntimeError, 'fermée'):
+                interieur.bilan()
+            with self.assertRaisesRegex(ValueError, 'deux fois'):
+                with self.soldats.participation_temporaire([self.contribution(a)]):
+                    self.fail('Le groupe intérieur a libéré le prêt extérieur.')
+            with self.soldats.participation_temporaire([self.contribution(b)]) as nouveau:
+                self.assertEqual(nouveau.bloc()['nombre'], 2)
+                self.assertNotIn(mort.identifiant, {p.identifiant for p in nouveau.participants})
+            self.assertEqual(self.soldats._prets.get(), ids_exterieurs)
+        self.assertTrue(self.soldats.charger()[mort.identifiant]['detruit'])
+        self.assertEqual(self.soldats._prets.get(), set())
+
+    def test_copie_d_un_mort_ne_peut_pas_reentrer_dans_un_pret(self):
+        a = self.troupe('j1', 'piquier', 1)
+        unite = self.infos(a)['unites'][0]
+        sauvegarde = self.racine / 'copie_ancienne_unite'
+        shutil.copytree(unite, sauvegarde)
+        with self.soldats.participation_temporaire([self.contribution(a)]) as groupe:
+            mort = groupe.participants[0]
+            groupe.appliquer_pertes([mort.identifiant], 0, moral=0)
+        shutil.copytree(sauvegarde, unite)
+        avant = self.photo()
+        # Le même ancien UUID reste refusé, y compris lors de la lecture par
+        # marqueur d'une génération privée. Ce test n'autorise aucune résurrection.
+        with self.assertRaisesRegex(RuntimeError, 'non authentifié'):
+            with self.soldats.participation_temporaire([(a, 'avant', [unite])]):
+                self.fail('Un mort a récupéré son ancienne identité publique.')
+        with self.config.racines_generation(self.config.game_path, {}):
+            with self.assertRaisesRegex(RuntimeError, 'non authentifié'):
+                with self.soldats.participation_temporaire([(a, 'avant', [unite])]):
+                    self.fail('Un mort a récupéré son ancien UUID privé.')
+        self.assertEqual(self.photo(), avant)
+        self.assertTrue(self.soldats.charger()[mort.identifiant]['detruit'])
+        self.assertEqual(self.soldats._prets.get(), set())
 
     def test_selections_homologues_gardent_blocs_types_et_tous_les_uuid(self):
         a, b = self.deux_generaux()

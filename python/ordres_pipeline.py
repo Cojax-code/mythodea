@@ -50,6 +50,8 @@ def ordres_du_general(general, categorie=None, catalogue=None):
         if identifiant is None:
             continue
         fiche = catalogue[identifiant]
+        if not progression.ordre_autorise(general.get('caracteristiques', {}), fiche.get('nom')):
+            continue
         if not fiche["disponible"] or (
                 categorie is not None and fiche["categorie"] != categorie):
             continue
@@ -473,7 +475,7 @@ def intention_personnelle(general, categorie, inclure_frontal=False):
     """
     import generaux
     fiche = progression.caracteristiques_general(general)
-    if not fiche or fiche.get('etat_zombie') or not general['chemin'].is_dir():
+    if not fiche or not general['chemin'].is_dir():
         return None
     officiel = {**general, 'caracteristiques': fiche,
                 'ordres': generaux.lire_ordres_general(general['chemin'])}
@@ -503,6 +505,15 @@ def duel(general_1, general_2):
     sources_cruelles = {}
     for categorie in ('globale', 'duel', 'individuelle'):
         donneurs = [intention(g, categorie) for g in generaux]
+        # Le droit du QG émetteur ne suffit pas à autoriser le destinataire.
+        # Filtrer avant la confrontation évite qu'un ordre interdit annule
+        # celui de l'adversaire. Ne pas confondre ce profil avec ses troupes.
+        for n, general in enumerate(generaux):
+            fiche = progression.caracteristiques_general(general)
+            if fiche and donneurs[n]:
+                interdits = {catalogues.ORDRES[i]['nom'] for i in donneurs[n]['identifiants']
+                             if not progression.ordre_autorise(fiche, catalogues.ORDRES[i]['nom'])}
+                donneurs[n] = retirer_ordres_annules(donneurs[n], interdits)
         if not any(donneurs):
             continue
         points = [(points_globaux_officiels(d) if categorie == 'globale'

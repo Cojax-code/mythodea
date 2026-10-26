@@ -8,6 +8,23 @@ import ordres_pipeline
 
 
 class PipelineOrdresTest(unittest.TestCase):
+    def test_zombie_ordres_officiels_filtrent_meme_les_anciens_acquis(self):
+        from copy import deepcopy
+        import catalogues
+        ids = list(catalogues.ORDRES)
+        general = dict(joueur='j1', nom='general1', total_unites=2,
+            caracteristiques=dict(etat_zombie=False),
+            ordres=[dict(identifiant=o['jeton']) for o in catalogues.ORDRES.values()])
+        avant = deepcopy(general)
+        officiel = dict(nature='stratege', etat_zombie=True, evolutions_acquises=ids)
+        with patch.object(ordres_pipeline.progression, 'caracteristiques_general', return_value=officiel):
+            donneurs = ordres_pipeline.donneurs_officiels({'camp': {'1': general}})
+        self.assertEqual([d['identifiants'] for d in donneurs], [[1012]])
+        self.assertEqual(general, avant)
+        officiel['evolutions_acquises'] = []
+        with patch.object(ordres_pipeline.progression, 'caracteristiques_general', return_value=officiel):
+            self.assertEqual(ordres_pipeline.donneurs_officiels({'camp': {'1': general}}), [])
+
     def setUp(self):
         self.cat = {
             1002: dict(jeton="1-2", disponible=True, categorie="globale", contre=False),

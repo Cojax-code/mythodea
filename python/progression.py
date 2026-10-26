@@ -83,6 +83,15 @@ def capacite_maximale_general(general):
     return capacite_maximale(caracteristiques_general(general))
 
 
+def ordre_autorise(fiche, nom):
+    """Restriction du général Zombie, indépendante du type de ses soldats.
+
+    Le moteur doit fournir le profil privé. Cette condition ne remplace ni
+    l'apprentissage, ni la nature, ni la disponibilité dans le catalogue.
+    """
+    return not fiche.get('etat_zombie') or nom in ('spora_adicte', 'propagafion')
+
+
 def evolutions_eligibles(fiche, catalogue=None, apprentissage=True):
     catalogue = catalogues.EVOLUTIONS if catalogue is None else catalogue
     resultat = {}
@@ -92,6 +101,9 @@ def evolutions_eligibles(fiche, catalogue=None, apprentissage=True):
         if not compatible(fiche, evolution['natures'], apprentissage):
             continue
         categorie = evolution['categorie']
+        if categorie == 'ordre' and not ordre_autorise(
+                fiche, catalogues.ORDRES.get(evolution.get('cible', identifiant), {}).get('nom')):
+            continue
         if categorie == 'moral' and fiche['moral'] >= 100:
             continue
         if categorie in ('unite', 'ordre') and identifiant in fiche['evolutions_acquises']:

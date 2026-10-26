@@ -1734,6 +1734,14 @@ un Trop gros zombie. La Morgue ouvre dès la première résurrection zombie.
 mais sa capacité globale augmente définitivement de deux places par niveau gagné
 **après** la transformation. La capacité initiale demeure 20 places.
 
+Pour les ordres, la restriction commune du profil privé autorise uniquement
+Spora-adicte et Propagafion à un général Zombie, sans rendre disponibles les
+effets encore en conception ni accorder une acquisition implicite. Aucun autre
+ordre V2 ne peut être appris ou exécuté, même transmis par un QG extérieur.
+Cela ne supprime pas les capacités raciales des unités Zombies et ne les exclut
+pas automatiquement des effets collectifs alliés. La progression sans récompense
+de niveau ci-dessus reste inchangée.
+
 Une armée de général zombie ne peut posséder qu'un seul
 `Trop_gros_zombie`. Celui-ci occupe dix places, n'inflige pas de pertes
 directes et porte les étiquettes `bouclier_vivant` et `spore`.

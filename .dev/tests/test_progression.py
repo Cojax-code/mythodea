@@ -12,6 +12,26 @@ import progression
 
 
 class Progression(unittest.TestCase):
+    def test_zombie_apprentissage_limite_sans_recompense_de_niveau(self):
+        fiche = self.fiche('stratege', etat_zombie=True)
+        avant = deepcopy(fiche)
+        eligibles = progression.evolutions_eligibles(fiche)
+        self.assertEqual({i for i, e in eligibles.items() if e['categorie'] == 'ordre'}, {1012})
+        self.assertTrue(progression.ordre_autorise(fiche, 'spora_adicte'))
+        self.assertFalse(progression.ordre_autorise(fiche, 'inconnu'))
+        self.assertFalse(progression.ordre_autorise(fiche, 'confinement'))
+        apres, recompense = progression.monter_niveau(fiche)
+        self.assertIsNone(recompense)
+        self.assertEqual(apres['evolutions_acquises'], [])
+        self.assertEqual(apres['niveau'], 1)
+        self.assertEqual(apres['niveaux_zombie'], 1)
+        self.assertEqual(fiche, avant)
+        # Cette restriction n'accorde ni nature compatible ni connaissance.
+        fiche['nature'] = 'instinctif'
+        self.assertNotIn(1012, progression.evolutions_eligibles(fiche))
+        fiche.update(nature='stratege', evolutions_acquises=[1012])
+        self.assertNotIn(1012, progression.evolutions_eligibles(fiche))
+
     def test_tirage_uniforme_ordres_et_seed_reproductible(self):
         import random
         catalogue = {i: dict(categorie='ordre', disponible=True, natures=None)

@@ -99,14 +99,19 @@ def reserve_peut_intercepter(victoire_adverse, unites_reserve, deja_elimine=Fals
     return victoire_adverse and unites_reserve > 0 and not deja_elimine
 
 
-def derniere_charge_possible(general_precedent_vaincu, flanc):
+def derniere_charge_possible(general_precedent_vaincu, flanc, *, effectif_eligible=None):
     """L'activation impose la défaite du précédent et un flanc unique G/D.
 
     Ne réanime aucune unité ; les règles d'éligibilité physique des soldats
-    restent une étape distincte à définir.
+    restent une étape distincte à définir. Si l'appelant connaît l'effectif
+    éligible, zéro interdit l'effet ; son absence ne sélectionne aucun mort.
+    G/g et D/d sont équivalents, sans changer ici la grammaire d'ordre.txt.
     """
-    if type(general_precedent_vaincu) is not bool or flanc not in ("G", "D"):
+    if type(general_precedent_vaincu) is not bool or flanc not in ("G", "D", "g", "d"):
         raise ValueError("Défaite booléenne et flanc G/D requis.")
+    if effectif_eligible is not None:
+        _naturel(effectif_eligible, 'Soldats éligibles à la dernière charge')
+        return general_precedent_vaincu and effectif_eligible > 0
     return general_precedent_vaincu
 
 def tentatives_rafale(nombre_archers_arriere):

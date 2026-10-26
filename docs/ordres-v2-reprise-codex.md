@@ -1,8 +1,114 @@
 # Reprise du chantier des ordres V2 — état réel
 
+## Lot B — clarifications après acaba3e, 26 octobre 2026
+
+**Cette section fait foi ; les états précédents ci-dessous sont des archives.**
+
+### Reprise et périmètre
+
+- Branche `feat/ordres-v2`, initialement propre à
+  `acaba3ee68471c596d1507051bad9b1a647797f3`. Après fetch, HEAD et
+  `origin/feat/ordres-v2` identiques (0/0). Aucun pull ni changement de branche.
+- Lecture intégrale des deux documents de reprise/préparation et des deux SPEC,
+  puis inspection du socle, du calcul de combat, des pertes, de l'apprentissage
+  privé, des transmissions QG et de leurs tests.
+- `python/soldats.py` conservé tel quel : aucun déplacement physique, aucune
+  réécriture des références ou de leur protocole. Aucun changement de droits,
+  de format persistant, de catalogue exécutable ou de grammaire d'ordre.txt.
+- Aucun des quatre effets activé. Aucun merge vers `v2.0`, aucun changement de
+  Mythodea-web. Les décisions reçues et le questionnaire restant sont dans
+  `docs/ordres-v2-preparation.md`, section « Contrats reçus après acaba3e ».
+
+### Travail local préparé
+
+- **Gros_poisson** : tests du calcul homogène commun dans les deux camps,
+  avec le bonus du bénéficiaire et sans héritage de celui du prêteur. Le sens
+  des champs 3/4, les pertes aléatoires sans quotas et la restitution exacte
+  sont désormais validés. Aucun jeton existant trouvé pour cet ordre : le
+  conflit entre catégorie Duel et préfixe demandé `1-…` reste à trancher.
+- **Muraille** : nouvelle conception enregistrée, Avant distincts avec leur
+  commandement d'origine. `combats.previsions_avant_muraille()` retourne les
+  résultats numériques indépendants de `combat_bloc`, contre une cible donnée.
+  Aucun classement, engagement réel, rapport ou tirage. Ce n'est pas encore la
+  simulation complète : moral, capacités hors `combat_bloc` et préparation du
+  contexte de chaque général restent à raccorder après décisions.
+- **Ralliement** : calcul par type inchangé. La source « morts réanimés » est
+  confirmée ; aucune restauration de dossier, de registre ou de blessures.
+- **Dernière charge** : calcul préparatoire acceptant G/g, D/d et refusant
+  l'effet si l'effectif éligible fourni est nul. Aucune sélection des morts,
+  grammaire nouvelle ni réanimation en partie.
+- **Généraux Zombies** : correction des contrôles d'apprentissage et d'exécution
+  dans `progression.py` et `ordres_pipeline.py`, signalée avant modification.
+  Les seuls noms autorisés sont Spora-adicte et Propagafion ; apprentissage,
+  nature et disponibilité restent obligatoires. Filtrage du destinataire à
+  partir de sa fiche privée avant confrontation, pour qu'un ordre interdit
+  n'annule pas celui de l'adversaire. Aucun changement des capacités raciales
+  ou de la progression sans récompense de niveau. Spora-adicte reste inactif.
+- Neuf tests ajoutés : cinq groupes/prévisions (prêts successifs/XP unique,
+  exception imbriquée, copie d'un mort refusée, commandement Gros_poisson,
+  Avant séparés), un QG dans les deux camps, trois calculs/contrôles portables.
+  Les assertions antérieures sont conservées.
+
+### Décisions encore indispensables
+
+1. **Gros_poisson** : catégorie/jeton ; blocs absents ou types différents ;
+   capacités spéciales (Spore, Bouclier, composition et seuil lourd) ; traduction
+   de la fatigue hétérogène sans réinitialisation des soldats. Le moteur courant
+   reçoit un booléen de fatigue par bloc, pas par soldat.
+2. **Muraille** : forces adverses simulées, score, égalités et éventuel recalcul
+   entre engagements ; devenir des survivants sans général à la défaite
+   territoriale ou à la fin anticipée par disparition du QG. Le retour à la
+   victoire est défini, mais son stockage/audit `unites_sans_general` du lot C
+   n'est pas encore implémenté : ne pas prétendre réutiliser une API existante.
+3. **Ralliement** : sélection des morts, état physique, placement et durée du
+   prêt, destination si le général d'origine n'existe plus.
+4. **Dernière charge** : sélection des morts du flanc et blessures à la relève.
+   Absence de flanc, fatigue, défaite préalable et mort après choc sont résolues.
+5. **Apprentissage Zombie** : aucun gain de niveau nouveau n'est introduit ;
+   clarifier séparément la voie éventuelle d'apprentissage des deux exceptions.
+
+### Validation exacte et limites de cette étape
+
+- Compilation Linux et Windows : **9 fichiers Python, OK** ; caches locaux
+  ignorés dans `.dev/pycache-lot-b/`, aucun cache à commiter.
+- Passe portable finale : **60 tests, 0,025 s, OK**, sans test ignoré dans la
+  sélection, journal `.dev/ordres-v2-lot-b-portables.log`. Modules calculs,
+  progression, pipeline, conception et confrontation. Le test du pipeline
+  `test_calcul_pc_duel_depuis_donnees_officielles` est exclu explicitement de
+  cette passe Windows car il importe `grp` ; il reste intact pour Linux.
+- Tentative précédente sur 43 tests : 42 réussis, 1 erreur d'import `grp`.
+  Tentative Windows groupes/calculs : 41 tests, 58 erreurs (initialisation et
+  nettoyage des répertoires temporaires refusés), journal
+  `.dev/ordres-v2-lot-b-contrats-windows.log`. Un essai ciblé avec répertoire
+  temporaire dans le dépôt échoue également (1 test, 2 erreurs d'accès).
+  Ces tentatives ne valident pas les scénarios Linux et ne démontrent pas une
+  régression de combat. Ne pas assouplir les tests pour les rendre portables.
+- Les premières commandes WSL n'avaient pas démarré : quota du contrôle
+  automatique d'autorisation épuisé. Après son rétablissement (commit autorisé),
+  les validations Linux ont pu être exécutées normalement, sans contournement.
+- Ciblés Linux : **142 tests, 50,906 s, OK**, journal
+  `.dev/ordres-v2-lot-b-clarifications-cibles.log`. Groupes, calculs, progression,
+  pipeline, effets personnels/QG, soldats et formation ; les tests de
+  générations privées, rapports et interruptions inclus réussissent.
+- Permissions Linux root : **3 tests, 3,252 s, OK**, journal
+  `.dev/ordres-v2-lot-b-clarifications-permissions.log`. Les deux scénarios
+  `test_participations_permissions` et le contrôle administrateur Crypte.
+- Suite complète Linux : **704 tests, 241,911 s, OK (3 ignorés root)**,
+  journal `.dev/ordres-v2-lot-b-clarifications-complets.log`. Les trois contrôles
+  root réussis séparément couvrent ces seuls tests ignorés : **704 tests
+  distincts réussis**, sans additionner les passes ciblées.
+- Le répertoire temporaire du dépôt laissé par l'essai Windows a finalement
+  été supprimé par PowerShell, après vérification du chemin exact et autorisation.
+  Logs et caches ne sont pas livrés.
+
+La recette Raspberry Pi avec sessions SSH et gel cgroup réels reste distincte
+des tests de génération utilisant le gel simulé habituel. Les scénarios complets
+de chacun des quatre effets attendent leur contrat et leur raccordement :
+les tests de préparation ne permettent pas de les déclarer opérationnels.
+
 ## Lot B — groupes temporaires communs, 26 octobre 2026
 
-**Cette section fait foi ; les sections suivantes sont des archives.**
+Archive de la validation du socle livré dans `acaba3e`.
 
 ### Point de départ vérifié
 
