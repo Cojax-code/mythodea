@@ -96,7 +96,7 @@ Responsabilités :
 | `ordres_pipeline.py` | intentions authentifiées, confrontation et effets temporaires des ordres intégrés dans les duels |
 | `ordres_calculs_v2.py` | formules pures des ordres ; un calcul seul ne rend pas un effet disponible |
 | `ordres_conception.py` | registre documentaire immuable, sans droit d'apprentissage ou d'exécution |
-| `soldats.py` | identité individuelle, blessures, sauvetages et batailles survécues |
+| `soldats.py` | identité individuelle, blessures, sauvetages, batailles survécues et vues de participation temporaire |
 | `formation.py` | formation en réserve, hôpital, École et Forge, séjours, mémoires et transformations |
 | `cycle_linux.py` | gel Linux, capture privée, publication de générations et permissions des phases Survie |
 | `survie_admin.py` | diagnostic, dégel de secours et republication explicitement autorisée, sans rejeu métier |
@@ -1856,6 +1856,44 @@ au rangé, avant son tour normal, puis combat normalement à ce tour. Aucun malu
 de fatigue nouveau n'est défini. Les identités, pertes et retours de ces effets
 ne sont pas déduits de la seule compatibilité et restent à intégrer après leurs
 décisions manquantes.
+
+### Groupes temporaires — infrastructure préparatoire
+
+`soldats.participation_temporaire()` reçoit des contributions explicites
+`(général, bloc, chemins des soldats)` déjà authentifiées sous gel ou dans la
+génération privée. Elle ne déplace ni ne copie les dossiers. Chaque référence
+conserve UUID, joueur, général, bloc, chemin, inode et UID/GID. Les blessures et
+l'expérience sont relues dans le registre commun, sans copie d'état à restaurer.
+Un UUID ne peut appartenir à deux groupes temporaires simultanés du même contexte.
+
+`GroupeTemporaire.selections_homologues()` indexe les vivants par bloc d'origine
+et type, sans éliminer une minorité ni choisir les soldats à prêter. `bloc()`
+produit un instantané homogène accepté par `combats.combat_bloc()` ; une sélection
+mixte doit être explicitement séparée. L'instantané doit être relu après pertes.
+`appliquer_pertes()` exige une sélection d'UUID et un moral explicites, contrôle
+les survivants demandés, puis appelle `soldats.pertes()` : tirages, blessures et
+morts restent ceux du moteur commun. Cette API ne choisit aucun partage des
+pertes, moral collectif, bonus, fatigue ou traitement de soutien.
+
+`participer()` inscrit seulement les soldats explicitement engagés dans une
+`bataille_complete()` existante. Le comptage commun crédite les survivants une
+seule fois par bataille. Préparer une vue ne donne aucune expérience ; un prêt
+ne crédite pas automatiquement son général d'un affrontement personnel.
+`bilan()` retourne les survivants et morts réels par propriétaire, général et
+bloc d'origine. Un changement d'origine, d'identité, de type ou d'UID/GID, une
+disparition sans mort enregistrée ou un objet lié provoque une erreur.
+
+À la sortie du contexte, même après exception, les réservations sont libérées
+et la vue est fermée. Les pertes et blessures ne sont jamais annulées. Les
+méthodes refusent une vue fermée ou utilisée hors de sa racine et de son mode
+public/privé. Aucun nouveau format persistant ni protocole de publication n'est
+introduit ; une résolution privée interrompue suit la récupération commune.
+
+Ce socle n'active pas Gros_poisson, Muraille humaine, Ralliement ou Dernière
+charge. Les règles de sélection, phases et effets doivent encore être raccordées
+après les décisions de `docs/ordres-v2-preparation.md`. En particulier, une vue
+ne retire pas automatiquement ses soldats des autres lectures de leur général,
+ne ressuscite pas les morts et ne remplace pas un duel complet avec ses capacités.
 
 ### Blessures et batailles complètes
 

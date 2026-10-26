@@ -140,6 +140,142 @@ class ParticipationsTemporaires(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     groupe.bloc(ids)
 
+    def test_selections_homologues_gardent_blocs_types_et_tous_les_uuid(self):
+        a, b = self.deux_generaux()
+        self.speciale(a, 'archer', 20, 'droite')
+        self.speciale(b, 'archer', 20, 'avant')
+        # Contribution explicite de chaque type, sans lecture majoritaire du bloc.
+        contributions = [(g, bloc, list((g['chemin'] / bloc).iterdir()))
+                         for g, bloc in ((a, 'avant'), (a, 'droite'), (b, 'avant'))]
+        avant = self.photo()
+        with self.soldats.participation_temporaire(contributions) as groupe:
+            selections = groupe.selections_homologues()
+            self.assertEqual({cle: len(ids) for cle, ids in selections.items()},
+                             {('avant', 'piquier'): 6, ('avant', 'archer'): 1,
+                              ('droite', 'archer'): 1})
+            self.assertEqual({i for ids in selections.values() for i in ids},
+                             {p.identifiant for p in groupe.participants})
+            with self.assertRaises(AttributeError):
+                groupe.participants = ()
+            selections.clear()
+            self.assertEqual(len(groupe.selections_homologues()), 3)
+        self.assertEqual(self.photo(), avant)
+
+    def test_calcul_combat_commun_et_pertes_reelles_sans_politique_d_ordre(self):
+        a, b = self.deux_generaux()
+        adverse = self.troupe('bot', 'cavalier', 4)
+        with self.soldats.participation_temporaire([self.contribution(a), self.contribution(b)]) as groupe:
+            ids = groupe.selections_homologues()[('avant', 'piquier')]
+            instantane = groupe.bloc(ids)
+            ennemi = self.infos(adverse)
+            survivants, survivants_adverses = self.combats.combat_bloc(
+                instantane, ennemi, False, False, 'avant', 'avant')
+            self.assertEqual((survivants, survivants_adverses), (4, 0))
+            pertes = groupe.appliquer_pertes(ids, survivants, moral=0, aleatoire=random.Random(7))
+            self.combats.supprimer_unites(ennemi, survivants_adverses)
+            self.assertEqual(len(pertes), 2)
+            self.assertEqual(groupe.bloc(ids)['nombre'], 4)
+            self.assertEqual(instantane['nombre'], 6)  # Instantané, pas état vivant.
+            self.assertEqual(sum(len(v['pertes']) for v in groupe.bilan().values()), 2)
+            with self.assertRaisesRegex(ValueError, 'survivants'):
+                groupe.appliquer_pertes(ids, 5, moral=0)
+        self.assertEqual(sum(len(self.infos(g)['unites']) for g in (a, b)), 4)
+
+    def test_pertes_controlees_refusent_les_entrees_invalides_sans_ecriture(self):
+        a = self.troupe('j1', 'piquier', 1)
+        with self.soldats.participation_temporaire([self.contribution(a)]) as groupe:
+            ids = [groupe.participants[0].identifiant]
+            avant = self.photo()
+            for selection, survivants, moral in (
+                    (None, 0, 0), (ids * 2, 0, 0), (['inconnu'], 0, 0),
+                    (ids, -1, 0), (ids, 2, 0), (ids, True, 0),
+                    (ids, 0.5, 0), (ids, 0, 101)):
+                with self.subTest(selection=selection, survivants=survivants, moral=moral):
+                    with self.assertRaises(ValueError):
+                        groupe.appliquer_pertes(selection, survivants, moral=moral)
+                    self.assertEqual(self.photo(), avant)
+
+    def test_selection_morte_ne_recree_rien_et_vue_fermee_ne_peut_plus_agir(self):
+        a = self.troupe('j1', 'piquier', 1)
+        with self.soldats.participation_temporaire([self.contribution(a)]) as groupe:
+            ids = [groupe.participants[0].identifiant]
+            groupe.appliquer_pertes(ids, 0, moral=0)
+            apres = self.photo()
+            self.assertEqual(groupe.selections_homologues(), {})
+            self.assertEqual(groupe.appliquer_pertes(ids, 0, moral=100), [])
+            self.assertEqual(self.photo(), apres)
+        for action in (groupe.selections_homologues,
+                       lambda: groupe.appliquer_pertes(ids, 0, moral=0),
+                       lambda: groupe.participer(ids)):
+            with self.assertRaisesRegex(RuntimeError, 'fermée'):
+                action()
+        self.assertEqual(self.photo(), apres)
+
+    def test_participation_expresse_xp_commune_une_fois_sans_credit_au_preteur(self):
+        a, b = self.deux_generaux()
+        progression = copy.deepcopy(self.progression.charger())
+        with self.soldats.bataille_complete('lot-b:territoire'):
+            with self.soldats.participation_temporaire([self.contribution(a), self.contribution(b)]) as groupe:
+                ids = [p.identifiant for p in groupe.participants]
+                # Un seul soldat prêté est engagé ; une autre unité reste en réserve.
+                selection = ids[:4]
+                groupe.participer(selection)
+                groupe.participer(selection)
+                groupe.appliquer_pertes([ids[0]], 0, moral=0)
+                groupe.appliquer_pertes([ids[3]], 0, moral=100)
+        registre = self.soldats.charger()
+        self.assertEqual([registre[i]['batailles'] for i in ids], [0, 1, 1, 1, 0, 0])
+        self.assertEqual(registre[ids[3]]['blessures'], 1)
+        self.assertTrue(registre[ids[0]]['detruit'])
+        self.assertEqual(self.progression.charger(), progression)
+        # Le reçu commun interdit le double gain pour la même bataille.
+        with self.soldats.bataille_complete('lot-b:territoire'):
+            with self.soldats.participation_temporaire([self.contribution(b)]) as groupe:
+                groupe.participer([ids[3]])
+        self.assertEqual(self.soldats.charger(), registre)
+
+    def test_preparation_sans_engagement_ne_donne_aucune_experience(self):
+        a = self.troupe('j1', 'piquier')
+        avant = self.photo()
+        with self.soldats.bataille_complete('preparation'):
+            with self.soldats.participation_temporaire([self.contribution(a)]) as groupe:
+                ids = [p.identifiant for p in groupe.participants]
+                groupe.bloc(ids)
+        self.assertEqual(self.photo(), avant)
+        with self.soldats.participation_temporaire([self.contribution(a)]) as groupe:
+            with self.assertRaisesRegex(RuntimeError, 'hors bataille'):
+                groupe.participer(ids)
+            with self.assertRaises(ValueError):
+                groupe.participer(None)
+
+    def test_interruption_bataille_ne_compte_pas_xp_et_libere_les_prets(self):
+        a = self.troupe('j1', 'piquier', 2)
+        with self.assertRaisesRegex(RuntimeError, 'interruption'):
+            with self.soldats.bataille_complete('interrompue'):
+                with self.soldats.participation_temporaire([self.contribution(a)]) as groupe:
+                    ids = [p.identifiant for p in groupe.participants]
+                    groupe.participer(ids)
+                    groupe.appliquer_pertes(ids[:1], 0, moral=0)
+                    raise RuntimeError('interruption')
+        self.assertTrue(all(v['batailles'] == 0 for v in self.soldats.charger().values()))
+        self.assertEqual(self.soldats._prets.get(), set())
+        self.assertEqual(len(self.infos(a)['unites']), 1)
+
+    def test_changement_de_contexte_meme_racine_refuse(self):
+        a = self.troupe('j1', 'piquier', 1)
+        with self.soldats.participation_temporaire([self.contribution(a)]) as groupe:
+            with self.config.racines_generation(self.config.game_path, {}):
+                with self.assertRaisesRegex(RuntimeError, 'hors génération'):
+                    groupe.bilan()
+            self.assertEqual(groupe.bloc()['nombre'], 1)
+
+    def test_quatre_ordres_prepares_restent_hors_catalogue_executable(self):
+        import ordres_conception
+        noms = {'gros_poisson', 'muraille_humaine', 'ralliement', 'derniere_charge'}
+        actifs = {o['nom'] for o in self.combats.catalogues.ORDRES.values() if o['disponible']}
+        self.assertFalse(noms & actifs)
+        self.assertTrue(all(not ordres_conception.ORDRES_EN_CONCEPTION[n]['disponible'] for n in noms))
+
     def test_source_etrangere_bloc_incorrect_et_general_falsifie_refuses(self):
         a, b = self.deux_generaux()
         ua, ub = self.infos(a)['unites'], self.infos(b)['unites']
@@ -249,10 +385,10 @@ class ParticipationsTemporaires(unittest.TestCase):
             copies = [dict(g, chemin=self.config.racine_metier() /
                            g['chemin'].relative_to(self.config.game_path)) for g in (a, b)]
             with self.soldats.participation_temporaire([self.contribution(g) for g in copies]) as groupe:
-                self.soldats.pertes(groupe.bloc([groupe.participants[0].identifiant]), 0,
-                                   aleatoire=random.Random(1))
-                self.soldats.pertes(groupe.bloc([groupe.participants[-1].identifiant]), 0,
-                                   100, random.Random(1))
+                groupe.appliquer_pertes([groupe.participants[0].identifiant], 0,
+                                        moral=0, aleatoire=random.Random(1))
+                groupe.appliquer_pertes([groupe.participants[-1].identifiant], 0,
+                                        moral=100, aleatoire=random.Random(1))
                 self.rapports.ecrire_rapport_court('Scénario technique : une perte, un blessé.')
                 self.assertTrue(all(len(self.infos(g)['unites']) == 3 for g in (a, b)))
                 if interrompre:

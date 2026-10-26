@@ -28,6 +28,8 @@ class SoldatParticipant:
     type_unite: str
     device: int
     inode: int
+    uid: int
+    gid: int
 
 
 def _controler_dossier_participant(chemin):
@@ -54,9 +56,15 @@ class GroupeTemporaire:
     Cette classe ne sélectionne ni donneur, camp, phase, victime, moral ou fatigue.
     """
     def __init__(self, participants, racine):
-        self.participants = tuple(participants)
+        import config
+        self._participants = tuple(participants)
         self._racine = racine
+        self._generation_privee = config.dans_generation_privee()
         self._ouvert = True
+
+    @property
+    def participants(self):
+        return self._participants
 
     def bilan(self):
         """Relit les états réels, regroupés par (joueur, général, bloc d'origine).
@@ -66,7 +74,8 @@ class GroupeTemporaire:
         """
         import config
         import generaux
-        if not self._ouvert or config.racine_metier() != self._racine:
+        if (not self._ouvert or config.racine_metier() != self._racine
+                or config.dans_generation_privee() != self._generation_privee):
             raise RuntimeError('Participation temporaire fermée ou hors génération.')
         registre = charger()
         resultat = {}
@@ -82,6 +91,8 @@ class GroupeTemporaire:
                 groupe['pertes'].append(p)
                 continue
             infos = _controler_dossier_participant(p.chemin)
+            if (infos.st_uid, infos.st_gid) != (p.uid, p.gid):
+                raise RuntimeError('Propriétaire Linux du participant modifié.')
             if ((infos.st_dev, infos.st_ino) != (p.device, p.inode)
                     or retrouver(p.chemin, registre, config.dans_generation_privee()) != p.identifiant
                     or valeur['type'] != p.type_unite
@@ -91,25 +102,69 @@ class GroupeTemporaire:
         return {origine: {etat: tuple(soldats) for etat, soldats in groupe.items()}
                 for origine, groupe in resultat.items()}
 
-    def bloc(self, identifiants=None):
-        """Fournit une vue homogène de la sélection explicite encore vivante.
-
-        Aucun type majoritaire, plafonnement ou partage des pertes n'est choisi.
-        Le résultat est compatible avec soldats.pertes ; son moral et ses pertes
-        doivent être décidés par une règle validée, hors de cette API préparatoire.
-        """
+    def _selection_vivante(self, identifiants):
         bilan = self.bilan()
         selection = tuple(p.identifiant for p in self.participants) if identifiants is None else tuple(identifiants)
         connus = {p.identifiant for p in self.participants}
         if len(set(selection)) != len(selection) or not set(selection) <= connus:
             raise ValueError('Sélection dupliquée ou étrangère au groupe temporaire.')
         vivants = {p.identifiant: p for groupe in bilan.values() for p in groupe['survivants']}
-        presents = [vivants[i] for i in selection if i in vivants]
+        return tuple(vivants[i] for i in selection if i in vivants)
+
+    def selections_homologues(self):
+        """Indexe les vivants par (bloc d'origine, type), sans choisir un prêt.
+
+        Les identités gardent l'ordre des contributions. Aucun bloc mixte n'est
+        écrasé, aucun effectif plafonné, aucun soldat créé pour remplir un manque.
+        """
+        selections = {}
+        for p in self._selection_vivante(None):
+            selections.setdefault((p.bloc, p.type_unite), []).append(p.identifiant)
+        return {cle: tuple(ids) for cle, ids in selections.items()}
+
+    def bloc(self, identifiants=None):
+        """Instantané homogène compatible avec le calcul commun combat_bloc.
+
+        À relire après chaque perte. Aucun type majoritaire, moral, bonus,
+        fatigue, soutien ou partage des pertes n'est choisi implicitement.
+        """
+        presents = self._selection_vivante(identifiants)
         types = {p.type_unite for p in presents}
         if len(types) > 1:
             raise ValueError('Composition mixte : aucune règle de fusion implicite.')
         return dict(type=next(iter(types), 'vide'), nombre=len(presents),
                     unites=[p.chemin for p in presents])
+
+    def appliquer_pertes(self, identifiants, survivants, *, moral, aleatoire=None):
+        """Relit la sélection puis délègue aux pertes/blessures communes.
+
+        L'appelant fournit la sélection et le moral selon une règle validée.
+        Le nombre de survivants est celui du calcul avant sauvetages par moral.
+        Aucun partage par propriétaire n'est déduit du seul total de pertes.
+        """
+        if identifiants is None:
+            raise ValueError('Sélection explicite requise pour les pertes temporaires.')
+        infos = self.bloc(identifiants)
+        if type(survivants) is not int or not 0 <= survivants <= infos['nombre']:
+            raise ValueError('Nombre de survivants hors de la sélection vivante.')
+        resultat = pertes(infos, survivants, moral, aleatoire)
+        self.bilan()
+        return resultat
+
+    def participer(self, identifiants):
+        """Inscrit les soldats explicitement engagés au comptage territorial.
+
+        Préparer une vue ne rapporte aucune expérience. Cette inscription
+        réutilise le suivi commun, sans créditer automatiquement les généraux
+        prêteurs d'un affrontement personnel ou inscrire leurs autres soldats.
+        """
+        if identifiants is None:
+            raise ValueError('Sélection explicite requise pour la participation.')
+        presents = self._selection_vivante(identifiants)
+        participants = _participants.get()
+        if participants is None:
+            raise RuntimeError('Participation temporaire hors bataille complète.')
+        participants.update(p.chemin for p in presents)
 
 
 @contextmanager
@@ -148,7 +203,8 @@ def participation_temporaire(contributions):
                 raise ValueError('Un soldat ne peut participer deux fois simultanément.')
             identifiants.add(identifiant)
             participants.append(SoldatParticipant(identifiant, general['joueur'],
-                general['nom'], bloc, chemin, valeur['type'], infos.st_dev, infos.st_ino))
+                general['nom'], bloc, chemin, valeur['type'], infos.st_dev, infos.st_ino,
+                infos.st_uid, infos.st_gid))
     groupe = GroupeTemporaire(participants, racine)
     jeton = _prets.set(_prets.get() | identifiants)
     try:

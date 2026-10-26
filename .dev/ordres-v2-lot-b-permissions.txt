@@ -1,0 +1,8 @@
+test_changement_uid_ou_gid_detecte_avant_toute_perte (test_participations_permissions.PermissionsParticipations.test_changement_uid_ou_gid_detecte_avant_toute_perte) ... ok
+test_copie_privee_pertes_et_blessures_gardent_droits_reels (test_participations_permissions.PermissionsParticipations.test_copie_privee_pertes_et_blessures_gardent_droits_reels) ... ok
+test_17_script_administrateur_non_modifiable (test_crypte_scanner.ScannerCrypte.test_17_script_administrateur_non_modifiable) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 8.161s
+
+OK

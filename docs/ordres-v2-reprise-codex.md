@@ -1,8 +1,110 @@
 # Reprise du chantier des ordres V2 — état réel
 
-## Lot A — formations et compatibilités, 26 octobre 2026
+## Lot B — groupes temporaires communs, 26 octobre 2026
 
 **Cette section fait foi ; les sections suivantes sont des archives.**
+
+### Point de départ vérifié
+
+- Reprise sur `feat/ordres-v2`, propre, au commit `82672ee` (« lot b debut »).
+  Après `git fetch origin feat/ordres-v2`, HEAD et la référence distante étaient
+  identiques (0/0). Aucun changement de branche ni pull nécessaire.
+- Le dernier commit ajoutait déjà `GroupeTemporaire`, les références de soldats,
+  19 tests et le filtre pur de Muraille dans `ordres_calculs_v2.py`. Les
+  publications privées et interruptions avaient déjà leurs scénarios. Le
+  précédent journal s'arrêtait au Lot A et ne décrivait pas cette base.
+- Périmètre : moteur commun, tests et documentation de ce dépôt. Aucun merge
+  vers `v2.0`, aucune modification de Mythodea-web.
+
+### État livré
+
+- Dans `python/soldats.py`, une participation garde les dossiers à leur origine.
+  UUID, joueur, général, bloc, inode et UID/GID restent attachés au soldat réel.
+  La liste des participants est exposée en lecture seule. Le bilan relit le
+  registre privé et refuse les modifications d'origine, d'identité, de type ou
+  de propriétaire Linux, ainsi que les disparitions sans décès enregistré.
+- `selections_homologues()` fournit un index `(bloc, type) -> UUID vivants`.
+  Il ne choisit ni bénéficiaire, ni effectif à prêter, ni type majoritaire.
+  `bloc()` reste un instantané utilisable par `combats.combat_bloc()`.
+- `appliquer_pertes()` relit et contrôle la sélection avant de déléguer à
+  `soldats.pertes()`. Sélection et moral sont explicites ; aucun partage entre
+  propriétaires n'est activé par défaut. Les blessures, morts et champs privés
+  individuels restent ceux du moteur. Un instantané ancien ne sert pas à
+  restaurer les effectifs ou à ressusciter une unité.
+- `participer()` inscrit les UUID explicitement engagés au comptage commun de
+  bataille complète. Préparer un groupe ne donne pas d'XP ; les soldats non
+  prêtés ne sont pas engagés automatiquement, et le général prêteur ne reçoit
+  pas de crédit personnel implicite. Les reçus existants évitent les doubles gains.
+- Les prêts simultanés du même UUID sont refusés. Sortie normale ou exception
+  libèrent les réservations ; les vues fermées ou utilisées dans un autre
+  contexte public/privé sont refusées. Fermer ne restaure aucun état.
+- Les tests de capture/publication existants utilisent maintenant l'entrée
+  contrôlée de pertes. Le protocole commun conserve les résultats privés
+  jusqu'à publication et interdit le rejeu d'une résolution interrompue.
+- Aucun nouveau format persistant, permission, commande joueur, règle de combat
+  ou effet d'ordre actif. Les onze ordres V2 actifs et le frontal restent inchangés.
+
+### Préparation des quatre ordres et blocages
+
+La liste détaillée et les responsabilités de raccordement figurent dans
+`docs/ordres-v2-preparation.md`, section « Lot B — préparation et décisions
+bloquantes ». Résumé pour la prochaine reprise :
+
+1. **Gros_poisson** : syntaxe/sens des paramètres 3 et 4, participants et
+   bénéficiaire, partage des pertes. L'index homogène et la restitution virtuelle
+   par origine sont prêts ; les survivants doivent rester chez leurs propriétaires.
+2. **Muraille humaine** : résolution des types différents dans la ligne Avant,
+   répartition des pertes, statut physique de l'Avant du général vaincu.
+   Les exclusions QG_nommade/réserve et les règles de phases déjà confirmées ne
+   sont pas à redemander.
+3. **Ralliement** : source/identité des soldats récupérés, blessures/XP de ces
+   renforts, destination et devenir final quand leur général d'origine est vaincu.
+   Le calcul par type `pertes // 5` est prêt et ne crée aucune unité.
+4. **Dernière charge** : syntaxe G/D, cas du flanc absent, état physique des
+   relevés et devenir après leur retrait définitif du combat. Défaite préalable,
+   fatigue et remplacement du flanc au seul choc sont déjà confirmés.
+5. **Forces collectives** : préciser moral/fatigue/bonus lorsque les contributeurs
+   ont des caractéristiques différentes. Aucune caractéristique d'un prêteur ou
+   d'un bénéficiaire n'est choisie implicitement par le socle.
+
+**Les quatre effets restent désactivés.** Le socle ne masque pas les soldats dans
+les lectures ordinaires de leur général et ne remplace pas un duel complet.
+Le raccordement des phases, des capacités (dont les transferts réels de Spore)
+et des rapports de chaque ordre doit suivre les décisions ci-dessus. Il ne faut
+pas activer un ordre en ajoutant seulement une entrée au catalogue.
+
+### Validation
+
+- Référence avant modification : **29 tests, 17,801 s, OK**, sous WSL Ubuntu,
+  journal `.dev/ordres-v2-lot-b-reference.txt`.
+- Compilation des trois fichiers Python modifiés/ajoutés : OK sous Linux,
+  caches hors dépôt dans `/tmp`.
+- Première passe ciblée : **38 tests, 29,030 s, OK**, journal
+  `.dev/ordres-v2-lot-b-cibles.txt`.
+- Permissions Linux réelles sous root : **3 tests, 8,161 s, OK**, journal
+  `.dev/ordres-v2-lot-b-permissions.txt`. Deux nouveaux tests utilisent seulement
+  des dossiers temporaires et les UID/GID numériques 62001/62002, sans créer de
+  comptes : accès du seul propriétaire, registre root privé, copies privées,
+  conservation des droits après blessures/pertes et détection des changements
+  d'UID/GID. Le troisième couvre le contrôle administrateur Crypte ignoré sans root.
+- Régressions ciblées élargies : **145 tests, 152,778 s, OK**, journal
+  `.dev/ordres-v2-lot-b-regressions.txt` : groupes, calculs d'ordres, effets,
+  soldats/formation, générations, formations et pipeline QG.
+- Suite complète : **695 tests, 668,733 s, aucun échec, trois ignorés root**,
+  journal `.dev/ordres-v2-lot-b-complets.txt`. Les trois contrôles root ci-dessus
+  couvrent exactement ces tests ignorés : **695 tests distincts réussis** au
+  total, sans recompter les passes ciblées. Cette reprise ajoute 11 tests aux
+  684 présents dans `82672ee` ; aucune assertion antérieure n'a été assouplie.
+- `git diff --check` : OK. Aucun cache Python suivi. Le commit de reprise est
+  local sur `feat/ordres-v2` ; aucun push ni merge effectué.
+
+La validation WSL utilise un vrai noyau Linux pour les permissions. Les scénarios
+de génération emploient le gel simulé habituel : ils ne remplacent pas la recette
+Raspberry Pi avec sessions SSH et gel cgroup réels.
+
+## Lot A — formations et compatibilités, 26 octobre 2026
+
+Archive du Lot A ; la section Lot B ci-dessus décrit la reprise actuelle.
 
 ### Audit et périmètre
 

@@ -57,6 +57,54 @@ La destruction du QG laisse les ordres transmis actifs jusqu'à la fin du duel.
 Aucune transmission ultérieure, aucun remplacement, aucune réactivation si le
 bloc est repeuplé. Le mécanisme existant `qg.txt` est conservé.
 
+## Lot B — préparation et décisions bloquantes, 26 octobre 2026
+
+Le socle `soldats.participation_temporaire()` représente les soldats réels par
+références, sans déplacement physique. Il fournit les sélections par bloc/type,
+les bilans par origine, les pertes communes avec moral explicite et l'inscription
+explicite au comptage territorial. La fermeture ne restaure ni mort ni blessure.
+Les UUID absents ou détruits ne deviennent jamais des renforts par cette API.
+
+Les quatre ordres ci-dessous restent hors catalogue exécutable. Aucun jeton ni
+paramètre supplémentaire n'est attribué. Les tests techniques de groupes ne
+valident pas implicitement une politique de pertes pour un ordre.
+
+| Ordre | Préparation disponible | Décisions encore bloquantes |
+| --- | --- | --- |
+| Gros_poisson | Index des soldats vivants par bloc/type, vue homogène des contributions explicites, pertes et survivants rattachés à chaque propriétaire. | Syntaxe et signification exactes des troisième/quatrième champs ; désignation des participants et du bénéficiaire ; répartition des pertes entre les contributions. La restitution des survivants à leurs origines est déjà confirmée. |
+| Muraille humaine | Filtre `participants_muraille()` par identité `(joueur, generalN)`, exclusions du QG_nommade et de la réserve stratégique ; vue collective explicite et bilan par origine. | Résolution d'une ligne Avant contenant des types différents et répartition des pertes collectives ; état physique exact de l'Avant d'un général vaincu (« perdu »). L'exclusion des Avant des deux camps de la manœuvre et le retour des unités prêtées sont déjà confirmés. |
+| Ralliement | `renforts_ralliement()` : pertes du type `// 5`, seulement pour les types présents chez le bénéficiaire. Le socle sait suivre des renforts identifiés vivants si leur source est fournie. | Source concrète des soldats récupérés parmi les pertes de l'allié vaincu ; identité et état conservés ou rétablis (blessures, expérience) ; destination et devenir des survivants à la fin du renfort, notamment si le général d'origine est vaincu. Le quota n'autorise pas à créer ou ressusciter un soldat. |
+| Dernière charge | `derniere_charge_possible()` : défaite préalable obligatoire et choix unique G/D. Les références préservent les états de soldats existants. | Grammaire exacte du flanc dans `ordre.txt` ; comportement si ce flanc est absent ; état physique des unités « relevées » et leur devenir après leur disparition définitive du combat. Aucun effacement de blessures ni reconstruction de dossiers détruits n'est déduit du texte. |
+
+Pour les regroupements de plusieurs généraux, il reste également à préciser
+comment déterminer le moral, la fatigue et les bonus applicables à une force
+collective lorsque les contributeurs diffèrent. Le moteur commun les applique
+à un général et à sa composition ; la vue technique n'en choisit pas un
+implicitement. La fatigue de Dernière charge est déjà imposée par sa règle.
+
+### Raccordement technique après décisions
+
+Les responsabilités ci-dessous sont des travaux d'intégration, pas de nouvelles
+règles à demander :
+
+- Le pipeline existant doit authentifier le donneur, ses apprentissages, son
+  camp, les paramètres et la confrontation avant d'ouvrir un groupe.
+- Le pilote de combat doit fournir les sélections et exclure toute double
+  utilisation des mêmes soldats dans les vues de la phase. Les dossiers
+  d'origine restant présents, une simple relecture du général ne suffit pas.
+- Les effets définissent la durée du prêt et les phases concernées. Muraille
+  retire les Avant de la manœuvre ; Dernière charge rend au général suivant son
+  flanc normal pour la manœuvre. La fermeture technique d'une vue ne joue aucune
+  de ces règles à elle seule.
+- Le calcul de blocs, les permissions, les pertes, les capacités d'unités, les
+  rapports et la publication doivent continuer à utiliser le moteur commun.
+  La vue actuelle refuse les changements d'origine/type : l'intégration devra
+  prendre explicitement en charge les transferts réels déjà prévus par Spore,
+  sans les confondre avec la restitution d'un prêt.
+- L'expérience des soldats engagés utilise les reçus territoriaux existants ;
+  le crédit d'affrontement personnel d'un général reste distinct. Les scénarios
+  complets de chacun des quatre ordres devront précéder son activation.
+
 ## Catalogue de conception (18 ordres du brouillon JSON)
 
 | Ordre | Catégorie | Contre-ordre | Résumé |
