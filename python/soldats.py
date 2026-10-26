@@ -8,11 +8,154 @@ import uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
 from fractions import Fraction
+from dataclasses import dataclass
 
 
 _participants = ContextVar('soldats_bataille_complete', default=None)
 _generaux_engages = ContextVar('generaux_bataille_complete', default=None)
 _bataille = ContextVar('identite_bataille_complete', default=None)
+_prets = ContextVar('soldats_participation_temporaire', default=frozenset())
+
+
+@dataclass(frozen=True)
+class SoldatParticipant:
+    """Référence au soldat réel, jamais une copie de ses blessures ou de son XP."""
+    identifiant: str
+    joueur: str
+    general: str
+    bloc: str
+    chemin: Path
+    type_unite: str
+    device: int
+    inode: int
+
+
+def _controler_dossier_participant(chemin):
+    # API interne à utiliser sous gel ou dans la génération privée. Comme les
+    # autres lectures métier, ce contrôle n'est pas un verrou contre un écrivain.
+    for parent in (chemin, *chemin.parents):
+        if parent.is_symlink():
+            raise RuntimeError('Lien interdit dans une participation temporaire.')
+    if not chemin.is_dir():
+        raise RuntimeError('Dossier de soldat absent ou non ordinaire.')
+    for enfant in chemin.rglob('*'):
+        infos = enfant.lstat()
+        if not (stat.S_ISDIR(infos.st_mode) or
+                (stat.S_ISREG(infos.st_mode) and infos.st_nlink == 1)):
+            raise RuntimeError('Objet lié ou non ordinaire dans un soldat participant.')
+    return chemin.stat()
+
+
+class GroupeTemporaire:
+    """Vue interne de soldats explicitement sélectionnés, sans politique tactique.
+
+    Les dossiers restent chez leur général d'origine. Les pertes/blessures
+    réelles passent par le moteur existant ; fermer la vue ne les restaure pas.
+    Cette classe ne sélectionne ni donneur, camp, phase, victime, moral ou fatigue.
+    """
+    def __init__(self, participants, racine):
+        self.participants = tuple(participants)
+        self._racine = racine
+        self._ouvert = True
+
+    def bilan(self):
+        """Relit les états réels, regroupés par (joueur, général, bloc d'origine).
+
+        Un disparu sans décès officiel ou un soldat remplacé déclenche une
+        erreur ; aucune restitution ne crée implicitement un nouveau soldat.
+        """
+        import config
+        import generaux
+        if not self._ouvert or config.racine_metier() != self._racine:
+            raise RuntimeError('Participation temporaire fermée ou hors génération.')
+        registre = charger()
+        resultat = {}
+        for p in self.participants:
+            valeur = registre.get(p.identifiant)
+            if valeur is None or valeur['chemin'] != cle(p.chemin):
+                raise RuntimeError('Origine officielle du participant modifiée ou absente.')
+            groupe = resultat.setdefault((p.joueur, p.general, p.bloc),
+                                         dict(survivants=[], pertes=[]))
+            if valeur.get('detruit'):
+                if p.chemin.exists() or p.chemin.is_symlink():
+                    raise RuntimeError('Un soldat détruit possède encore un dossier.')
+                groupe['pertes'].append(p)
+                continue
+            infos = _controler_dossier_participant(p.chemin)
+            if ((infos.st_dev, infos.st_ino) != (p.device, p.inode)
+                    or retrouver(p.chemin, registre, config.dans_generation_privee()) != p.identifiant
+                    or valeur['type'] != p.type_unite
+                    or generaux.identifier_unite(p.chemin) != p.type_unite):
+                raise RuntimeError('Identité ou type du participant modifié.')
+            groupe['survivants'].append(p)
+        return {origine: {etat: tuple(soldats) for etat, soldats in groupe.items()}
+                for origine, groupe in resultat.items()}
+
+    def bloc(self, identifiants=None):
+        """Fournit une vue homogène de la sélection explicite encore vivante.
+
+        Aucun type majoritaire, plafonnement ou partage des pertes n'est choisi.
+        Le résultat est compatible avec soldats.pertes ; son moral et ses pertes
+        doivent être décidés par une règle validée, hors de cette API préparatoire.
+        """
+        bilan = self.bilan()
+        selection = tuple(p.identifiant for p in self.participants) if identifiants is None else tuple(identifiants)
+        connus = {p.identifiant for p in self.participants}
+        if len(set(selection)) != len(selection) or not set(selection) <= connus:
+            raise ValueError('Sélection dupliquée ou étrangère au groupe temporaire.')
+        vivants = {p.identifiant: p for groupe in bilan.values() for p in groupe['survivants']}
+        presents = [vivants[i] for i in selection if i in vivants]
+        types = {p.type_unite for p in presents}
+        if len(types) > 1:
+            raise ValueError('Composition mixte : aucune règle de fusion implicite.')
+        return dict(type=next(iter(types), 'vide'), nombre=len(presents),
+                    unites=[p.chemin for p in presents])
+
+
+@contextmanager
+def participation_temporaire(contributions):
+    """Prépare une vue depuis (général, bloc, chemins des soldats) explicites.
+
+    Exige des soldats déjà authentifiés par la synchronisation commune. Une
+    référence ne traverse pas une publication. Aucune unité, identité, copie de
+    fiche, permission, compteur ou donnée persistante n'est créée/modifiée ici.
+    Les droits tactiques et les limites de chaque ordre restent à l'appelant.
+    Aucun ordre désactivé n'appelle cette API.
+    """
+    import config
+    import generaux
+    racine = config.racine_metier()
+    registre = charger()
+    participants, identifiants = [], set()
+    for general, bloc, chemins in contributions:
+        origine = general['chemin']
+        if (bloc not in config.ordre_blocs or not origine.is_absolute()
+                or '..' in origine.parts or not origine.is_relative_to(racine)
+                or origine.name != general['nom']
+                or generaux.numero_general_depuis_nom(origine.name) is None
+                or general['joueur'] not in origine.relative_to(racine).parts[:-1]):
+            raise ValueError('Origine de contribution invalide.')
+        for chemin in chemins:
+            if '..' in chemin.parts or chemin.parent != origine / bloc:
+                raise ValueError('Soldat extérieur au bloc déclaré.')
+            infos = _controler_dossier_participant(chemin)
+            identifiant = retrouver(chemin, registre, config.dans_generation_privee())
+            valeur = registre.get(identifiant)
+            if (valeur is None or valeur['chemin'] != cle(chemin)
+                    or valeur['type'] != generaux.identifier_unite(chemin)):
+                raise RuntimeError('Soldat non authentifié à son origine officielle.')
+            if identifiant in identifiants or identifiant in _prets.get():
+                raise ValueError('Un soldat ne peut participer deux fois simultanément.')
+            identifiants.add(identifiant)
+            participants.append(SoldatParticipant(identifiant, general['joueur'],
+                general['nom'], bloc, chemin, valeur['type'], infos.st_dev, infos.st_ino))
+    groupe = GroupeTemporaire(participants, racine)
+    jeton = _prets.set(_prets.get() | identifiants)
+    try:
+        yield groupe
+    finally:
+        groupe._ouvert = False
+        _prets.reset(jeton)
 
 
 @contextmanager

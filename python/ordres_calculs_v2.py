@@ -55,6 +55,19 @@ def renforts_ralliement(pertes_par_type, types_du_beneficiaire):
     return resultat
 
 
+def participants_muraille(identites, qg_nommade=None, reserve_strategique=None):
+    """Exclut les deux rôles validés d'une liste de participants déjà admissibles.
+
+    Identités (joueur, generalN), jamais noms seuls ni places compactées. Aucun
+    choix de donneur, prêt de soldat ou règle de pertes n'est déduit de ce filtre.
+    L'appelant fournit le QG uniquement si QG_nommade a été retenu.
+    """
+    identites = tuple(identites)
+    if len(set(identites)) != len(identites):
+        raise ValueError('Un général ne contribue pas deux fois à la muraille.')
+    return tuple(i for i in identites if i not in (qg_nommade, reserve_strategique))
+
+
 def facteur_discours_de_la_mort(moral):
     """Moral * 1,10, cumul multiplicatif possible avec de futurs facteurs.
 
