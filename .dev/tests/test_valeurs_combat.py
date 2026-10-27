@@ -1,5 +1,7 @@
 """Valeurs individuelles et équivalence à l'ancien combat, en isolation."""
 from itertools import product
+from fractions import Fraction
+import random
 import unittest
 from unittest.mock import patch
 
@@ -88,6 +90,76 @@ class ValeursCombat(unittest.TestCase):
         for bloc in ('droite', 'gauche', 'arriere'):
             self.assertEqual(self.combats.combat_bloc(self.bloc('cavalerie_lourde', 15), adverse,
                                                     bloc_1=bloc), (5, 0))
+
+    def test_fatigue_individuelle_exemples_officiels_et_priorites(self):
+        # Effectifs, fatigués, bonus équivalents, puissances, résistances, survivants.
+        cas = (
+            (6, 0, 3, 3, (6, 0), (60, 15), (10, 5), (5, 0)),
+            (8, 0, 4, 1, (2, 0), (50, 20), (Fraction(25, 4), 5), (5, 0)),
+            (5, 0, 5, 1, (1, 0), (30, 25), (6, 5), (1, 0)),
+            # Fatigués/fatigués d'abord : un seul frais avantagé dans D1.
+            (5, 2, 5, 3, (1, 0), (30, 25), (6, 5), (1, 0)),
+            (5, 2, 5, 2, (0, 0), (25, 25), (5, 5), (0, 0)),
+            (8, 2, 4, 1, (1, 1), (45, 25), (Fraction(45, 8), Fraction(25, 4)), (4, 0)),
+            (7, 2, 3, 1, (Fraction(4, 3), 1), (Fraction(125, 3), 20),
+             (Fraction(125, 21), Fraction(20, 3)), (4, 0)),
+            # Le surnombre fatigué contribue mais ne reçoit aucun bonus.
+            (8, 8, 3, 1, (0, 2), (40, 25), (5, Fraction(25, 3)), (3, 0)),
+        )
+        for n1, t1, n2, t2, bonus, puissances, resistances, attendu in cas:
+            with self.subTest(effectifs=(n1, n2), fatigues=(t1, t2)):
+                f1, f2 = (False,) * (n1-t1) + (True,) * t1, (False,) * (n2-t2) + (True,) * t2
+                self.assertEqual(self.combats.bonus_fatigue(n1, f1, n2, f2), bonus)
+                self.assertEqual(tuple(5 * (n+b) for n, b in zip((n1, n2), bonus)), puissances)
+                self.assertEqual(tuple(Fraction(p, n) for p, n in zip(puissances, (n1, n2))), resistances)
+                a, b = self.bloc('piquier', n1), self.bloc('piquier', n2)
+                self.assertEqual(self.combats.combat_bloc(a, b, f1, f2), attendu)
+                self.assertEqual(self.combats.combat_bloc(b, a, f2, f1), attendu[::-1])
+                self.assertTrue(all(type(n) is int for n in self.combats.combat_bloc(a, b, f1, f2)))
+
+    def test_fatigue_individuelle_invariante_aux_permutations_sans_hasard(self):
+        a, b = self.bloc('piquier', 7), self.bloc('piquier', 3)
+        hasard = random.getstate()
+        for f1 in ((False,) * 5 + (True,) * 2, (True, False, False, True, False, False, False)):
+            for f2 in ((True, False, False), (False, False, True)):
+                self.assertEqual(self.combats.combat_bloc(a, b, f1, f2), (4, 0))
+        self.assertEqual(random.getstate(), hasard)
+
+    def test_fatigue_individuelle_conserve_types_herisson_et_seuil_lourd(self):
+        melange = (False,) * 3 + (True,) * 2
+        for fort, faible in (('archer', 'piquier'), ('piquier', 'cavalier'),
+                            ('cavalier', 'archer'), ('cavalerie_lourde', 'cavalier')):
+            self.assertEqual(self.combats.combat_bloc(self.bloc(fort, 5), self.bloc(faible, 5),
+                                                    melange, melange), (3, 0))
+        commandant = object()
+        with patch.object(self.combats.ordres_pipeline, 'effet',
+                          side_effect=lambda g, effet: g is commandant and effet == 'herisson'):
+            self.assertEqual(self.combats.combat_bloc(self.bloc('piquier', 5), self.bloc('cavalier', 5),
+                melange, melange, general_1=commandant), (4, 0))
+        # Même type lourd : formation ×2 puis fatigue individuelle (un frais avantagé).
+        lourd, adverse = self.bloc('cavalerie_lourde', 15), self.bloc('cavalerie_lourde', 15)
+        f1, f2 = (False,) * 14 + (True,), (False,) * 13 + (True,) * 2
+        self.assertEqual(self.combats.combat_bloc(lourd, adverse, f1, f2, 'avant', 'droite'), (8, 0))
+        # Le même bloc sous le seuil perd le facteur de formation.
+        lourd['nombre'] = 14
+        # Un frais adverse reste libre : bonus 1/14, résistance 211/42.
+        # floor(75 / (211/42)) = 14 pertes adverses, donc un survivant.
+        self.assertEqual(self.combats.combat_bloc(lourd, adverse, f1[1:], f2, 'avant', 'droite'), (0, 1))
+
+    def test_fatigue_individuelle_valide_effectifs_et_booleens(self):
+        a = self.bloc('archer', 3)
+        for fatigue in ((False,), (0, 0, 1), 'non', 2, None):
+            with self.subTest(fatigue=fatigue), self.assertRaises(ValueError):
+                self.combats.combat_bloc(a, a, fatigue, False)
+        self.assertEqual(self.combats.combat_bloc(self.bloc('vide', 0), a, (), (False,) * 3), (0, 3))
+
+    def test_fatigue_individuelle_homogene_equivalente_aux_booleens(self):
+        # Toutes les tailles classiques et surnombre ; tous les types, positions,
+        # fatigues homogènes sont déjà contrôlés contre l'oracle historique plus bas.
+        for n1, n2, f1, f2 in product((*range(21), 25), (*range(21), 25), (False, True), (False, True)):
+            a, b = self.bloc('piquier', n1), self.bloc('piquier', n2)
+            self.assertEqual(self.combats.combat_bloc(a, b, (f1,) * n1, (f2,) * n2),
+                             self.combats.combat_bloc(a, b, f1, f2))
 
     def test_blocs_vides_aucun_degats_ni_division(self):
         vide = self.bloc('vide', 0)

@@ -1,5 +1,6 @@
 """Calcul des combats, choc initial, manœuvres et combat rangé."""
 import random
+from fractions import Fraction
 
 import catalogues
 import bouclier_vivant
@@ -754,6 +755,36 @@ def valeur_base_bloc(infos, bloc=None):
     return valeur
 
 
+def bonus_fatigue(nombre_1, fatigue_1, nombre_2, fatigue_2):
+    """Équivalents de frais avantagés, sans paire d'UUID ni tirage.
+
+    Une fatigue est un booléen collectif ou une séquence de booléens individuels.
+    Priorités : fatigués/fatigués, frais/fatigués, frais/frais ; seuls les frais
+    restants reçoivent le complément proportionnel à la fatigue adverse initiale.
+    """
+    fatigues = []
+    for nombre, fatigue in ((nombre_1, fatigue_1), (nombre_2, fatigue_2)):
+        if type(fatigue) is bool:
+            fatigues.append(nombre if fatigue else 0)
+        elif (isinstance(fatigue, (tuple, list)) and len(fatigue) == nombre
+              and all(type(valeur) is bool for valeur in fatigue)):
+            fatigues.append(sum(fatigue))
+        else:
+            raise ValueError('Fatigue : un booléen ou un booléen par soldat est requis.')
+    if not nombre_1 or not nombre_2:
+        return 0, 0
+    fatigues_1, fatigues_2 = fatigues
+    frais_1, frais_2 = nombre_1 - fatigues_1, nombre_2 - fatigues_2
+    paires_fatiguees = min(fatigues_1, fatigues_2)
+    bonus_1 = min(frais_1, fatigues_2 - paires_fatiguees)
+    bonus_2 = min(frais_2, fatigues_1 - paires_fatiguees)
+    frais_1 -= bonus_1
+    frais_2 -= bonus_2
+    paires_fraiches = min(frais_1, frais_2)
+    return (bonus_1 + Fraction((frais_1 - paires_fraiches) * fatigues_2, nombre_2),
+            bonus_2 + Fraction((frais_2 - paires_fraiches) * fatigues_1, nombre_1))
+
+
 def combat_bloc(
     infos_1,
     infos_2,
@@ -767,9 +798,8 @@ def combat_bloc(
 ):
     # Calcule le résultat d'un combat entre deux blocs.
     #
-    # Règle de fatigue :
-    # si les deux unités sont normalement équivalentes,
-    # l'unité non fatiguée obtient l'avantage sur l'unité fatiguée.
+    # La fatigue accepte un booléen collectif ou les valeurs individuelles.
+    # Les bonus collectifs précèdent les équivalents de frais avantagés.
     #
     # La fatigue ne modifie pas les avantages naturels
     # entre types différents.
@@ -804,14 +834,9 @@ def combat_bloc(
     # ------------------------------------------
 
     if type_1 == type_2:
-
-        # Général 1 fatigué, général 2 frais.
-        if fatigue_1 and not fatigue_2:
-            valeur_2 *= 2
-
-        # Général 2 fatigué, général 1 frais.
-        elif fatigue_2 and not fatigue_1:
-            valeur_1 *= 2
+        bonus_1, bonus_2 = bonus_fatigue(nombre_1, fatigue_1, nombre_2, fatigue_2)
+        valeur_1 *= Fraction(nombre_1 + bonus_1, nombre_1)
+        valeur_2 *= Fraction(nombre_2 + bonus_2, nombre_2)
 
     degats_1 = nombre_1 * valeur_1
     degats_2 = nombre_2 * valeur_2
@@ -1010,6 +1035,15 @@ def resoudre_blocs(infos_1, infos_2, general_1, general_2, bloc_1, bloc_2,
     return pertes_1, pertes_2
 
 
+def afficher_fatigue(nom, fatigue):
+    """Le texte historique reste inchangé pour les blocs homogènes."""
+    if isinstance(fatigue, (tuple, list)):
+        rapports.afficher_et_ecrire(
+            f'{nom} : FATIGUE PARTIELLE ({sum(fatigue)}/{len(fatigue)} soldats)')
+    elif fatigue:
+        rapports.afficher_et_ecrire(f'{nom} : FATIGUÉ')
+
+
 def confrontation_directe(
     armee,
     general_1,
@@ -1044,11 +1078,8 @@ def confrontation_directe(
     rapports.afficher_et_ecrire(f"Choc initial : {bloc}")
     rapports.afficher_et_ecrire("")
 
-    if fatigue_1:
-        rapports.afficher_et_ecrire(f"{nom_1} : FATIGUÉ")
-
-    if fatigue_2:
-        rapports.afficher_et_ecrire(f"{nom_2} : FATIGUÉ")
+    afficher_fatigue(nom_1, fatigue_1)
+    afficher_fatigue(nom_2, fatigue_2)
 
     rapports.afficher_et_ecrire(f"{nom_1} : {rapports.formater_force(infos_1)}")
     rapports.afficher_et_ecrire(f"{nom_2} : {rapports.formater_force(infos_2)}")
@@ -1204,11 +1235,8 @@ def attaque_ciblee(
         f"attaque {nom_defenseur} {bloc_cible}"
     )
 
-    if fatigue_attaquant:
-        rapports.afficher_et_ecrire(f"{nom_attaquant} : FATIGUÉ")
-
-    if fatigue_defenseur:
-        rapports.afficher_et_ecrire(f"{nom_defenseur} : FATIGUÉ")
+    afficher_fatigue(nom_attaquant, fatigue_attaquant)
+    afficher_fatigue(nom_defenseur, fatigue_defenseur)
 
     rapports.afficher_et_ecrire("\nForces engagées :")
     rapports.afficher_et_ecrire(

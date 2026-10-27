@@ -106,17 +106,72 @@ class VueParticipants(unittest.TestCase):
         self.assertFalse(self.etat.general_est_fatigue(a))
         self.assertTrue(self.etat.general_est_fatigue(preteur))
 
-    def test_fatigue_heterogene_refusee_avant_perte_rapport_et_hasard(self):
-        a, preteur, ennemi = self.scenario()
+    def test_fatigue_heterogene_duel_reel_pertes_chez_les_origines(self):
+        a, preteur, ennemi = self.scenario(type_adverse='piquier')
         self.etat.sauvegarder_generaux_fatigues({'j1:general2'})
-        avant, rng = self.photo(), random.Random(8)
-        hasard = rng.getstate()
+        origines = copy.deepcopy(self.soldats.charger())
         with self.soldats.participation_temporaire([
                 self.contribution(a), self.contribution(preteur)]) as groupe:
-            with patch.object(self.combats, 'random', rng):
-                with self.assertRaisesRegex(NotImplementedError, 'Fatigue hétérogène'):
-                    self.combats.combat_entre_generaux(a, ennemi, participants=self.vue(groupe, a))
-        self.assertEqual((self.photo(), rng.getstate()), (avant, hasard))
+            vue = self.vue(groupe, a)
+            with patch.object(self.combats.rapports, 'afficher_et_ecrire') as rapport:
+                resultat = self.duel(a, ennemi, vue)
+            self.assertEqual((resultat['final_1'], resultat['final_2']), (2, 0))
+            self.assertIn('j1 general1 : FATIGUE PARTIELLE (3/6 soldats)',
+                          [appel.args[0] for appel in rapport.call_args_list])
+            bilan = groupe.bilan()
+            self.assertEqual(sum(len(b['pertes']) for b in bilan.values()), 4)
+            self.assertTrue(bilan[('j1', 'general2', 'avant')]['pertes'])
+            vivants = groupe._selection_vivante(None)
+            self.assertEqual(vue.fatigues_individuelles(a, vue.blocs(a)['avant']),
+                             tuple(p.general == preteur['nom'] for p in vivants))
+        registre = self.soldats.charger()
+        self.assertEqual(set(registre), set(origines))
+        for identifiant, origine in origines.items():
+            self.assertEqual(registre[identifiant]['chemin'], origine['chemin'])
+            self.assertEqual(registre[identifiant]['batailles'], origine['batailles'])
+        self.assertEqual(self.soldats._prets.get(), set())
+
+    def verifier_cas_b(self, bloc):
+        a = self.troupe('j1', 'piquier', 8)
+        b = self.troupe('j2', 'piquier', 3, bloc=bloc)
+        preteur = self.troupe('j2', 'piquier', 1, bloc=bloc, numero=2, place='2')
+        for g in (a, b, preteur):
+            self.ordres(g)
+        self.etat.sauvegarder_generaux_fatigues({'j2:general2'})
+        with self.soldats.participation_temporaire([
+                self.contribution(b, bloc), self.contribution(preteur, bloc)]) as groupe:
+            resultat = self.duel(a, b, self.vue(groupe, b, bloc))
+            self.assertEqual((resultat['final_1'], resultat['final_2']), (5, 0))
+            self.assertEqual(len(groupe.bilan()[('j2', 'general2', bloc)]['pertes']), 1)
+        return resultat
+
+    def test_cas_b_choc_surnombre_frais(self):
+        self.assertEqual(self.verifier_cas_b('avant')['chocs'][0]['final_1'], 5)
+
+    def test_cas_b_manoeuvre_surnombre_frais(self):
+        resultat = self.verifier_cas_b('arriere')
+        self.assertEqual(resultat['chocs'], [])
+        self.assertEqual(resultat['manoeuvres'][0]['final_attaquant'], 5)
+
+    def test_fatigue_heterogene_blessures_xp_et_droits_conserves(self):
+        a, preteur, ennemi = self.scenario(type_adverse='piquier')
+        self.ordres(a, moral=100)
+        self.etat.sauvegarder_generaux_fatigues({'j1:general2'})
+        with self.soldats.bataille_complete('fatigue-melangee'):
+            with self.soldats.participation_temporaire([
+                    self.contribution(a), self.contribution(preteur)]) as groupe:
+                droits = {p.chemin: (p.uid, p.gid, p.chemin.stat().st_mode) for p in groupe.participants}
+                ids = [p.identifiant for p in groupe.participants]
+                resultat = self.duel(a, ennemi, self.vue(groupe, a))
+                self.assertEqual((resultat['final_1'], resultat['final_2']), (6, 0))
+                groupe.participer(ids)
+        registre = self.soldats.charger()
+        self.assertEqual({registre[i]['batailles'] for i in ids}, {1})
+        self.assertEqual(sum(registre[i]['blessures'] for i in ids), 4)
+        self.assertEqual(self.etat.charger_generaux_fatigues(), {'j1:general2'})
+        for chemin, attendu in droits.items():
+            infos = chemin.stat()
+            self.assertEqual((infos.st_uid, infos.st_gid, infos.st_mode), attendu)
 
     def test_releve_individuel_3_et_5_par_uuid_sans_choisir_de_formule(self):
         generaux = [self.troupe(joueur, 'piquier', 5, numero=numero, place=str(numero))
@@ -211,6 +266,46 @@ class VueParticipants(unittest.TestCase):
             self.assertEqual(resultat['chocs'][0]['initial_1'], 5)
             self.assertTrue(groupe.bilan()[('j1', 'general2', 'avant')]['pertes'])
 
+    def test_fatigue_recalculee_sur_les_survivants_de_rafale(self):
+        a, preteur, ennemi = self.scenario(type_adverse='piquier')
+        self.etat.sauvegarder_generaux_fatigues({'j1:general2'})
+        for n in range(4):
+            self.speciale(ennemi, 'archer', n, 'arriere')
+        self.ordres(ennemi, [1009])
+        calcul = self.combats.combat_bloc
+        releves = []
+
+        def observer(infos_1, infos_2, fatigue_1, fatigue_2, *args, **kwargs):
+            releves.append((infos_1['nombre'], fatigue_1, infos_2['nombre'], fatigue_2))
+            return calcul(infos_1, infos_2, fatigue_1, fatigue_2, *args, **kwargs)
+
+        with self.soldats.participation_temporaire([
+                self.contribution(a), self.contribution(preteur)]) as groupe:
+            with patch.object(self.combats, 'combat_bloc', side_effect=observer):
+                resultat = self.duel(a, ennemi, self.vue(groupe, a))
+        self.assertEqual(resultat['rafales'][0]['pertes'], 1)
+        self.assertEqual(releves[0], (5, (False,) * 3 + (True,) * 2, 2, False))
+
+    def test_interruption_apres_choc_heterogene_sans_duplication(self):
+        a, preteur, ennemi = self.scenario(type_adverse='piquier')
+        self.etat.sauvegarder_generaux_fatigues({'j1:general2'})
+        identites = set(self.soldats.charger())
+        with self.assertRaisesRegex(RuntimeError, 'interruption après choc'):
+            with self.soldats.bataille_complete('fatigue-interrompue'):
+                with self.soldats.participation_temporaire([
+                        self.contribution(a), self.contribution(preteur)]) as groupe:
+                    vue = self.vue(groupe, a)
+                    with patch.object(self.combats.ordres_pipeline, 'fuir_apres_choc',
+                                      side_effect=RuntimeError('interruption après choc')):
+                        self.duel(a, ennemi, vue)
+        registre = self.soldats.charger()
+        self.assertEqual(set(registre), identites)
+        self.assertEqual(sum(bool(v.get('detruit')) for v in registre.values()), 6)
+        self.assertEqual({v['batailles'] for v in registre.values()}, {0})
+        self.assertEqual(self.soldats._prets.get(), set())
+        with self.assertRaises(RuntimeError):
+            vue.total(a)
+
     def test_affectation_dupliquee_etrangere_ou_adverse_refusee(self):
         a, preteur, ennemi = self.scenario()
         with self.soldats.participation_temporaire([
@@ -265,6 +360,59 @@ class VueParticipants(unittest.TestCase):
         noms = {'gros_poisson', 'muraille_humaine', 'ralliement', 'derniere_charge'}
         self.assertFalse(any(o['disponible'] and o['nom'] in noms
                              for o in self.combats.catalogues.ORDRES.values()))
+
+    def test_gros_poisson_vue_partielle_fatigue_pertes_retour_et_preteur_suivant(self):
+        a, preteur, ennemi = self.scenario(type_adverse='piquier')
+        natif_non_fusionne, _ = self.speciale(a, 'archer', 10, 'droite')
+        prete_non_fusionne, _ = self.speciale(preteur, 'cavalier', 10, 'droite')
+        self.etat.sauvegarder_generaux_fatigues({'j1:general2'})
+        contributions = [self.contribution(g, bloc) for g in (a, preteur)
+                         for bloc in ('avant', 'droite')]
+        origines = copy.deepcopy(self.soldats.charger())
+        with self.soldats.participation_temporaire(contributions) as groupe:
+            vue, motif = groupe.vue_gros_poisson(a, preteur, self.profil)
+            self.assertIsNone(motif)
+            self.assertEqual(vue.total(a), 7)
+            self.assertEqual(vue.total(preteur), 1)
+            self.assertEqual(vue.blocs(a)['droite']['unites'], [natif_non_fusionne])
+            resultat = self.duel(a, ennemi, vue)
+            self.assertEqual((resultat['final_1'], resultat['final_2']), (3, 0))
+            self.assertEqual(sum(len(v['pertes']) for v in groupe.bilan().values()), 4)
+            self.assertTrue(prete_non_fusionne.is_dir())
+        self.assertEqual(self.soldats._prets.get(), set())
+        registre = self.soldats.charger()
+        self.assertEqual(set(registre), set(origines))
+        for identifiant, origine in origines.items():
+            self.assertEqual(registre[identifiant]['chemin'], origine['chemin'])
+        effectif_preteur = self.generaux.total_general_depuis_chemin(preteur['chemin'])
+        autre = self.troupe('j2', 'cavalier', 1, numero=2, place='2')
+        self.ordres(autre)
+        suivant = self.duel(preteur, autre)
+        self.assertEqual(suivant['initial_1'], effectif_preteur)
+
+    def test_gros_poisson_vue_sans_homologue_motif_sans_mutation(self):
+        a = self.troupe('j1', 'piquier', 3)
+        preteur = self.troupe('j1', 'archer', 3, numero=2, place='2')
+        avant = self.photo()
+        with self.soldats.participation_temporaire([
+                self.contribution(a), self.contribution(preteur)]) as groupe:
+            vue, motif = groupe.vue_gros_poisson(a, preteur, self.profil)
+            self.assertIn('sans effet', motif)
+            self.assertEqual((vue.total(a), vue.total(preteur)), (3, 3))
+            self.assertEqual(self.photo(), avant)
+        self.assertEqual(self.photo(), avant)
+
+    def test_gros_poisson_vue_reutilise_les_restrictions_zombie(self):
+        a, preteur, _ = self.scenario()
+        registre = self.progression.charger()
+        registre['j1:general2']['etat_zombie'] = True
+        self.progression.sauvegarder(registre)
+        avant = self.photo()
+        with self.soldats.participation_temporaire([
+                self.contribution(a), self.contribution(preteur)]) as groupe:
+            with self.assertRaisesRegex(ValueError, 'Profil privé'):
+                groupe.vue_gros_poisson(a, preteur, self.profil)
+        self.assertEqual(self.photo(), avant)
 
     def test_duel_prive_publie_origines_pertes_xp_et_rapport(self):
         a = self.troupe('j1', 'piquier', 3)

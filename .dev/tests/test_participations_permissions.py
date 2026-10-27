@@ -29,6 +29,10 @@ class PermissionsParticipations(unittest.TestCase):
         racine = patch.object(self.config, 'game_path', self.public)
         racine.start()
         self.addCleanup(racine.stop)
+        fatigue = patch.object(self.config, 'fatigue_generaux_path',
+                               self.public / '.systeme/fatigue_generaux.txt')
+        fatigue.start()
+        self.addCleanup(fatigue.stop)
         self.cycle.dossier_prive(self.public / '.systeme')
         self.generaux = []
         registre = {}
@@ -107,12 +111,15 @@ class PermissionsParticipations(unittest.TestCase):
 
     def test_vue_commune_pertes_et_controle_des_proprietaires_reels(self):
         import random
+        import etat
+        etat.sauvegarder_generaux_fatigues({'j2:general1'})
         with self.soldats.participation_temporaire(self.contributions(self.generaux)) as groupe:
             a, b = groupe.participants
             vue = self.soldats.VueParticipants(groupe, [
                 (self.generaux[0], 'avant', (a.identifiant, b.identifiant))])
             infos = vue.blocs(self.generaux[0])['avant']
             self.assertEqual(infos['unites'], [a.chemin, b.chemin])
+            self.assertEqual(vue.fatigue(self.generaux[0], infos), (False, True))
             self.assertEqual(vue.total(self.generaux[1]), 0)
             os.chown(b.chemin, a.uid, a.gid)
             try:
@@ -123,6 +130,8 @@ class PermissionsParticipations(unittest.TestCase):
             self.soldats.pertes(infos, 1, moral=0, aleatoire=random.Random(1))
             self.assertFalse(a.chemin.exists())
             self.assertEqual(vue.total(self.generaux[0]), 1)
+            self.assertTrue(vue.fatigue(self.generaux[0], vue.blocs(self.generaux[0])['avant']))
+            self.assertEqual(etat.charger_generaux_fatigues(), {'j2:general1'})
             self.assertEqual((b.chemin.stat().st_uid, b.chemin.stat().st_gid), (62002, 62002))
             self.assertTrue(self.lisible(b.chemin / 'blessures.txt', 62002))
             self.assertFalse(self.lisible(b.chemin / 'blessures.txt', 62001))

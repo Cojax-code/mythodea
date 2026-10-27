@@ -19,7 +19,8 @@ git -C "$source_repo" ls-files -z | (
 cd "$travail"
 export PYTHONPYCACHEPREFIX="$travail/cache"
 python3 -m py_compile python/soldats.py python/combats.py python/ordres_pipeline.py \
-    .dev/tests/test_vue_participants.py .dev/comparer-vue.py
+    .dev/tests/test_vue_participants.py .dev/tests/test_valeurs_combat.py \
+    .dev/tests/test_participations_permissions.py .dev/comparer-vue.py
 
 case "${1:-cibles}" in
     complet)
@@ -36,7 +37,9 @@ case "${1:-cibles}" in
         tail -5 "$travail/vue-root.log"
         ;;
     cibles)
-        python3 -B -m unittest discover -s .dev/tests -p 'test_*participants.py' -v > "$travail/vue-cibles.log" 2>&1 ||
+        PYTHONPATH=.dev/tests python3 -B -m unittest -v \
+            test_vue_participants test_valeurs_combat test_participations_temporaires \
+            test_ordres_effets_v2 test_qg_effets_v2 > "$travail/vue-cibles.log" 2>&1 ||
             { tail -50 "$travail/vue-cibles.log"; exit 1; }
         tail -5 "$travail/vue-cibles.log"
         ;;

@@ -172,6 +172,18 @@ class GroupeTemporaire:
         return dict(selections=selections,
                     motif=None if selections else 'Gros_poisson sans effet : aucune unité homologue.')
 
+    def vue_gros_poisson(self, beneficiaire, preteur, configuration):
+        """Assemble les sélections validées et leur motif, sans autoriser l'ordre.
+
+        Le pilote doit encore authentifier QG, positions, acquisition et
+        confrontation. Les capacités non définies restent refusées par le duel.
+        La vue expire avec ce groupe ; fermer le groupe libère les survivants.
+        """
+        choix = self.selections_gros_poisson(beneficiaire, preteur, configuration)
+        affectations = [(beneficiaire, bloc, ids)
+                        for (bloc, _), ids in choix['selections'].items()]
+        return VueParticipants(self, affectations), choix['motif']
+
     def bloc(self, identifiants=None):
         """Instantané homogène compatible avec le calcul commun combat_bloc.
 
@@ -310,13 +322,14 @@ class VueParticipants:
                      else fatigue_general for u in infos['unites'])
 
     def fatigue(self, general, infos):
+        """Booléen historique si homogène, relevé individuel sinon."""
         import etat
         if not self.groupe:
             return etat.general_est_fatigue(general)
-        valeurs = set(self.fatigues_individuelles(general, infos))
-        if len(valeurs) > 1:
-            raise NotImplementedError('Fatigue hétérogène : règle de combat non définie.')
-        return next(iter(valeurs), etat.general_est_fatigue(general))
+        valeurs = self.fatigues_individuelles(general, infos)
+        if len(set(valeurs)) > 1:
+            return valeurs
+        return valeurs[0] if valeurs else etat.general_est_fatigue(general)
 
     def verifier_duel(self, *generaux_du_duel):
         """Refuser les dépendances ouvertes AVANT les contextes et pertes du duel."""

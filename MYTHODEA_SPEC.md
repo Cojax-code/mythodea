@@ -913,6 +913,32 @@ résistances par le même facteur : les pertes historiques restent identiques.
 Les sauvetages par le moral et les blessures sont appliqués ensuite par le
 traitement existant des pertes, sans nouveau bonus.
 
+Pour un bloc de fatigue mélangée, `combat_bloc()` accepte un booléen par soldat,
+dans l'ordre des unités du bloc, en plus du booléen collectif historique. Les
+bonus collectifs de valeur sont calculés d'abord. À type identique,
+`bonus_fatigue()` forme les paires par effectifs, sans UUID ni hasard :
+
+1. fatigué/fatigué, sans bonus ;
+2. frais/fatigué, ×2 uniquement au frais ;
+3. frais/frais, sans bonus ;
+4. les seuls frais restants reçoivent un bonus proportionnel au taux initial de
+   fatigue adverse (`fatigués adverses / effectif adverse`).
+
+Un adversaire n'entre que dans une paire directe. Tout soldat libre contribue
+à sa puissance ; un fatigué ne reçoit aucun bonus. Le nombre équivalent de bonus
+est `frais avantagés directement + frais libres × taux de fatigue adverse`.
+La puissance vaut `valeur collective × (effectif + bonus équivalent)` et la
+résistance moyenne `puissance / effectif`. Les fractions sont conservées
+exactement jusqu'à l'unique plancher de pertes de chaque camp, simultanées et
+plafonnées. Les cas vides et les capacités sans dégâts gardent leur traitement.
+Les types différents n'appliquent aucun bonus de fatigue. Les victimes restent
+sélectionnées collectivement par le mécanisme commun, sans quota par fatigue.
+
+Cette règle conserve les résultats homogènes pour tous les effectifs : contre
+100 % de fatigués, les frais libres ont eux aussi ×2. Ainsi 6 frais contre
+3 fatigués donnent 5/0 survivants ; 8 frais contre 3 frais et 1 fatigué donnent
+5/0 ; 5 frais contre 4 frais et 1 fatigué donnent 1/0 (valeur 5, avant moral).
+
 Pour définir ultérieurement une unité de puissance différente, attribuer un ID
 permanent, renseigner sa définition dans `catalogues.UNITES` avec un entier positif
 `valeur_combat`, puis suivre les règles de représentation et de déblocage du moteur.
@@ -1875,7 +1901,8 @@ Les blocs absents ou sans type commun sont ignorés ; les autres prêts demeuren
 possibles. Sans homologue, aucun effet, avec motif destiné au rapport. Aucun
 soldat ni bloc n'est créé ; les non-prêtés gardent leur commandement d'origine.
 Les généraux Zombies et les unités interdites aux ordres classiques ne bénéficient
-d'aucune exception. La fatigue hétérogène n'est pas remplacée par une valeur commune.
+d'aucune exception. Les états de fatigue restent individuels ; leur contribution
+et la résistance moyenne sont calculées par le moteur commun.
 Muraille humaine conserve au contraire chaque Avant distinct, avec les bonus
 de son général d'origine, et prévoit des engagements successifs après simulation
 contre l'Avant adverse, sans mutation. Le score est `ennemis éliminés - alliés
@@ -1933,12 +1960,20 @@ définir les dégâts/résistances d'un bloc mélangé.
 `VueParticipants.fatigues_individuelles(general, infos)` expose ce relevé dans
 l'ordre des chemins de `infos['unites']`, sans écriture persistante. Chaque
 participant prêté conserve la fatigue de son UUID d'origine ; le bloc doit être
-relu après les pertes. `fatigue()` n'en extrait un booléen de combat que pour
-une sélection homogène et refuse encore les mélanges. La base et les facteurs
+relu après les pertes. `fatigue()` fournit un booléen de combat pour une sélection
+homogène et le tuple individuel pour un mélange. La base et les facteurs
 collectifs de valeur précèdent l'avantage de fatigue : ×2 au frais contre un
 fatigué du même type, aucun changement des avantages entre types différents.
-La formule des mélanges reste à valider avec la conservation exigée des résultats
-historiques homogènes ; aucun cas particulier supplémentaire n'est activé.
+Le calcul commun applique les priorités et le surnombre proportionnel décrits
+dans la section combat. Les phases de choc et de manœuvre relisent cette fatigue,
+y compris après Rafale. Le rapport ajoute une mention du nombre de fatigués pour
+un bloc mélangé ; les rapports homogènes restent identiques.
+
+`GroupeTemporaire.vue_gros_poisson()` assemble les sélections homologues en vue
+du bénéficiaire et renvoie le motif éventuel sans homologue. Les autres blocs
+conservent leur commandement. Cette préparation ne vaut ni acquisition, ni
+contrôle QG/positions, ni confrontation gagnée. Les capacités/compositions encore
+non définies restent refusées par le duel, et Gros_poisson demeure désactivé.
 
 `participer()` inscrit seulement les soldats explicitement engagés dans une
 `bataille_complete()` existante. Le comptage commun crédite les survivants une
@@ -1956,9 +1991,10 @@ introduit ; une résolution privée interrompue suit la récupération commune.
 
 Ce socle n'active pas Gros_poisson, Muraille humaine, Ralliement ou Dernière
 charge. Les règles de sélection, phases et effets doivent encore être raccordées
-après les décisions de `docs/ordres-v2-preparation.md`. En particulier, une vue
-ne retire pas automatiquement ses soldats des autres lectures de leur général,
-ne ressuscite pas les morts et ne remplace pas un duel complet avec ses capacités.
+après les décisions de `docs/ordres-v2-preparation.md`. La vue retire les UUID
+affectés des autres lectures faites à travers elle ; un appel ordinaire doit
+refuser de réengager des soldats réservés sans leur vue. Elle ne ressuscite pas
+les morts et ne remplace pas le raccordement des capacités du duel complet.
 
 ### Restriction des ordres des généraux Zombies
 

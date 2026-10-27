@@ -2,6 +2,14 @@
 
 Date : 27 octobre 2026. **Analyse uniquement ; aucune activation ni modification du moteur.**
 
+**État ultérieur à cet audit :** la vue commune et la résolution partagée ont
+été intégrées. La fatigue individuelle est maintenant définie (paires prioritaires
+puis surnombre frais proportionnel), calculée dans `combat_bloc()` et transmise
+par `VueParticipants`. `vue_gros_poisson()` assemble les sélections existantes.
+Les mentions ci-dessous de fatigue encore indéfinie décrivent la base auditée,
+pas le blocage actuel. Consulter la [règle actuelle et les obstacles restants](ordres-v2-fatigue-individuelle.md)
+et le [bilan de reprise](ordres-v2-reprise-codex.md). Gros_poisson reste désactivé.
+
 ## 1. Base examinée et conclusion
 
 L’audit porte sur `feat/ordres-v2`, au commit
