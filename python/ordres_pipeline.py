@@ -514,7 +514,7 @@ def duel(general_1, general_2):
             fiche = progression.caracteristiques_general(general)
             if fiche and donneurs[n]:
                 interdits = {catalogues.ORDRES[i]['nom'] for i in donneurs[n]['identifiants']
-                             if not progression.ordre_autorise(fiche, catalogues.ORDRES[i]['nom'])}
+                             if not progression.reception_ordre_autorisee(fiche, catalogues.ORDRES[i]['nom'])}
                 donneurs[n] = retirer_ordres_annules(donneurs[n], interdits)
         if not any(donneurs):
             continue

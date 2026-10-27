@@ -12,25 +12,91 @@ import progression
 
 
 class Progression(unittest.TestCase):
-    def test_zombie_apprentissage_limite_sans_recompense_de_niveau(self):
+    def test_zombie_apprentissage_deux_ordres_toutes_natures(self):
         fiche = self.fiche('stratege', etat_zombie=True)
         avant = deepcopy(fiche)
         eligibles = progression.evolutions_eligibles(fiche)
-        self.assertEqual({i for i, e in eligibles.items() if e['categorie'] == 'ordre'}, {1012})
+        self.assertEqual({i for i, e in eligibles.items() if e['categorie'] == 'ordre'}, {1012, 1018})
         self.assertTrue(progression.ordre_autorise(fiche, 'spora_adicte'))
         self.assertFalse(progression.ordre_autorise(fiche, 'inconnu'))
         self.assertFalse(progression.ordre_autorise(fiche, 'confinement'))
-        apres, recompense = progression.monter_niveau(fiche)
+        apres, recompense = progression.monter_niveau(fiche, Mock(randint=Mock(return_value=85)))
         self.assertIsNone(recompense)
         self.assertEqual(apres['evolutions_acquises'], [])
         self.assertEqual(apres['niveau'], 1)
         self.assertEqual(apres['niveaux_zombie'], 1)
         self.assertEqual(fiche, avant)
-        # Cette restriction n'accorde ni nature compatible ni connaissance.
-        fiche['nature'] = 'instinctif'
-        self.assertNotIn(1012, progression.evolutions_eligibles(fiche))
+        for nature in progression.NATURES:
+            fiche['nature'] = nature
+            self.assertIn(1012, progression.evolutions_eligibles(fiche))
+            self.assertIn(1018, progression.evolutions_eligibles(fiche))
+            ordinaire = dict(fiche, etat_zombie=False)
+            self.assertNotIn(1012, progression.evolutions_eligibles(ordinaire))
+            self.assertNotIn(1018, progression.evolutions_eligibles(ordinaire))
         fiche.update(nature='stratege', evolutions_acquises=[1012])
         self.assertNotIn(1012, progression.evolutions_eligibles(fiche))
+
+    def test_distribution_zombie_exacte_et_second_tirage_conditionnel(self):
+        fiche = self.fiche(etat_zombie=True)
+        for premier in range(1, 101):
+            for second, attendu in ((1, 1018), (50, 1018), (51, 1012), (100, 1012)):
+                rng = Mock(randint=Mock(side_effect=[premier, second]))
+                resultat = progression.tirer_recompense_zombie(fiche, rng)
+                self.assertEqual(resultat, None if premier <= 85 else attendu)
+                self.assertEqual(rng.randint.call_count, 1 if premier <= 85 else 2)
+                self.assertTrue(all(c.args == (1, 100) for c in rng.randint.call_args_list))
+
+    def test_doublon_zombie_recommence_distribution_complete_sans_boucle(self):
+        for connu, inconnu in ((1012, 1018), (1018, 1012)):
+            fiche = self.fiche(etat_zombie=True)
+            fiche['evolutions_acquises'] = [1006, connu]
+            effectifs = {None: 0, inconnu: 0}
+            for tirage in range(1, 186):
+                rng = Mock(randint=Mock(return_value=tirage))
+                effectifs[progression.tirer_recompense_zombie(fiche, rng)] += 1
+                rng.randint.assert_called_once_with(1, 185)
+            self.assertEqual(effectifs, {None: 170, inconnu: 15})
+        fiche['evolutions_acquises'] = [1012, 1018]
+        rng = Mock()
+        self.assertIsNone(progression.tirer_recompense_zombie(fiche, rng))
+        rng.randint.assert_not_called()
+
+    def test_zombie_anciens_bonus_conserves_sans_double_gain_ni_retroactivite(self):
+        for nature in progression.NATURES:
+            fiche = self.fiche(nature, etat_zombie=True, niveaux_zombie=6)
+            fiche.update(niveau=12, moral=37, evolutions_acquises=[1006],
+                         histoire_inconnue={'origine': 'conservee'})
+            avant = deepcopy(fiche)
+            apres, ordre = progression.monter_niveau(fiche, Mock(randint=Mock(side_effect=[86, 51])))
+            self.assertEqual(ordre, 1012)
+            self.assertEqual((apres['niveau'], apres['niveaux_zombie'], apres['gains_capacite_zombie']), (13, 7, 6))
+            self.assertEqual(progression.capacite_maximale(apres), progression.capacite_maximale(fiche))
+            suivant, ordre = progression.monter_niveau(apres, Mock(randint=Mock(return_value=170)))
+            self.assertIsNone(ordre)
+            self.assertEqual(suivant['gains_capacite_zombie'], 7)
+            for cle in ('nature', 'trait_inne', 'moral', 'points_commandement', 'histoire_inconnue'):
+                self.assertEqual(suivant[cle], fiche[cle])
+            self.assertEqual(suivant['evolutions_acquises'], [1006, 1012])
+            self.assertEqual(fiche, avant)
+
+    def test_zombie_tirages_reproductibles_et_anciens_ordres_inexecutables(self):
+        import random
+        fiche = self.fiche('instinctif', etat_zombie=True)
+        fiche['evolutions_acquises'] = [1006, 1012, 1018]
+        for nature in progression.NATURES:
+            fiche['nature'] = nature
+            self.assertEqual(commandement.ordres_applicables([1012, 1018], nature,
+                'globale', acquis=fiche['evolutions_acquises'], ordres_adverses=[], profil=fiche), [1012])
+            self.assertEqual(commandement.ordres_applicables([1006], nature,
+                'individuelle', acquis=fiche['evolutions_acquises'], ordres_adverses=[], profil=fiche), [])
+            self.assertEqual(commandement.ordres_applicables([1012], nature,
+                'globale', acquis=[], ordres_adverses=[], profil=fiche), [])
+        fiche['evolutions_acquises'] = []
+        def suite():
+            rng = random.Random(27)
+            return [progression.tirer_recompense_zombie(fiche, rng) for _ in range(100)]
+        self.assertEqual(suite(), suite())
+        self.assertEqual(set(suite()), {None, 1012, 1018})
 
     def test_tirage_uniforme_ordres_et_seed_reproductible(self):
         import random

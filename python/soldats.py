@@ -122,6 +122,56 @@ class GroupeTemporaire:
             selections.setdefault((p.bloc, p.type_unite), []).append(p.identifiant)
         return {cle: tuple(ids) for cle, ids in selections.items()}
 
+    def fatigues_origine(self, identifiants):
+        """Fatigue officielle par UUID vivant, sans valeur collective de prêt.
+
+        Le stockage courant est par général. Ce relevé préserve cette origine
+        pour chaque participant ; il n'invente ni moyenne ni règle de dégâts.
+        Les autres états individuels restent dans le registre des soldats.
+        """
+        import etat
+        if identifiants is None:
+            raise ValueError('Sélection explicite requise pour la fatigue.')
+        fatigues = etat.charger_generaux_fatigues()
+        return {p.identifiant: f'{p.joueur}:{p.general}' in fatigues
+                for p in self._selection_vivante(identifiants)}
+
+    def selections_gros_poisson(self, beneficiaire, preteur, configuration):
+        """Sélections homologues partielles, après authentification du groupe.
+
+        Préparation seulement : ne vaut ni ordre acquis, ni transmission QG,
+        ni confrontation gagnée. Le pilote devra valider ces conditions avant
+        d'engager les sélections. Aucun soldat non prêté ne change de contexte.
+        """
+        import progression
+        import unites
+        origines = [(g['joueur'], g['nom']) for g in (beneficiaire, preteur)]
+        if origines[0] == origines[1]:
+            raise ValueError('Même bénéficiaire et prêteur : désignation non définie.')
+        camps = [configuration['acteurs'][g['joueur']]['camp'] for g in (beneficiaire, preteur)]
+        if camps[0] != camps[1]:
+            raise ValueError('Gros_poisson exige deux généraux alliés.')
+        for general in (beneficiaire, preteur):
+            fiche = progression.caracteristiques_general(general)
+            if not fiche or not progression.reception_ordre_autorisee(fiche, 'gros_poisson'):
+                raise ValueError('Profil privé incompatible avec Gros_poisson.')
+        index = {}
+        for p in self._selection_vivante(None):
+            origine = p.joueur, p.general
+            if origine not in origines:
+                raise ValueError('Participant extérieur aux deux généraux désignés.')
+            general = (beneficiaire, preteur)[origines.index(origine)]
+            if p.chemin.parent.parent != general['chemin']:
+                raise ValueError('Chemin différent du général authentifié.')
+            # Réutiliser la restriction raciale, même chez un général ordinaire.
+            if not unites.ordres_classiques(p.type_unite):
+                continue
+            index.setdefault((p.bloc, p.type_unite), {}).setdefault(origine, []).append(p.identifiant)
+        selections = {cle: tuple(ids[origines[0]] + ids[origines[1]])
+                      for cle, ids in index.items() if all(o in ids for o in origines)}
+        return dict(selections=selections,
+                    motif=None if selections else 'Gros_poisson sans effet : aucune unité homologue.')
+
     def bloc(self, identifiants=None):
         """Instantané homogène compatible avec le calcul commun combat_bloc.
 
@@ -447,20 +497,56 @@ def synchroniser(configuration, publication=False):
     sauvegarder(donnees)
 
 
+def selectionner_victimes(infos, survivants, moral, aleatoire):
+    """Tirages communs au combat et à sa prévision, sans accès au disque."""
+    if (type(moral) is not int and not isinstance(moral, Fraction)) or not 0 <= moral <= 100:
+        raise ValueError('Moral entier de 0 à 100 requis.')
+    nombre_pertes = infos['nombre'] - survivants
+    if nombre_pertes <= 0:
+        return [], []
+    perdus = aleatoire.sample(infos['unites'], nombre_pertes)
+    tentatives = aleatoire.sample(perdus, nombre_pertes * moral // 100) if moral else []
+    return perdus, tentatives
+
+
+def sauvetage_possible(valeur):
+    import unites
+    return valeur['blessures'] < unites.blessures_max(valeur['type'], valeur['batailles'])
+
+
+def prevoir_pertes(infos, survivants, moral, aleatoire):
+    """Lecture seule ; le demandeur fournit un générateur réservé aux simulations.
+
+    Les blessures limitent les sauvetages exactement comme dans pertes().
+    Un soldat non encore enregistré a les mêmes valeurs initiales que lors
+    de son premier sauvetage réel. Aucun UUID ou fichier n'est créé ici.
+    """
+    import config
+    import generaux
+    perdus, tentatives = selectionner_victimes(infos, survivants, moral, aleatoire)
+    registre = charger()
+    sauves = []
+    for unite in tentatives:
+        identifiant = retrouver(unite, registre, config.dans_generation_privee())
+        valeur = registre.get(identifiant)
+        if valeur is None:
+            valeur = dict(type=generaux.identifier_unite(unite), blessures=0, batailles=0)
+        if sauvetage_possible(valeur):
+            sauves.append(unite)
+    morts = tuple(u for u in perdus if u not in sauves)
+    return dict(pertes=morts, sauves=tuple(sauves),
+                survivants=infos['nombre'] - len(morts))
+
+
 def pertes(infos, survivants, moral=0, aleatoire=None):
     """Sélection collective puis sauvetages distincts, sans réattribuer un échec."""
     import config
     import generaux
     import shutil
-    import unites
     aleatoire = random if aleatoire is None else aleatoire
-    if (type(moral) is not int and not isinstance(moral, Fraction)) or not 0 <= moral <= 100:
-        raise ValueError('Moral entier de 0 à 100 requis.')
-    nombre_pertes = infos['nombre'] - survivants
-    if nombre_pertes <= 0:
+    perdus, tentatives = selectionner_victimes(infos, survivants, moral, aleatoire)
+    if not perdus:
         return []
-    perdus = aleatoire.sample(infos['unites'], nombre_pertes)
-    tentatives = aleatoire.sample(perdus, nombre_pertes * moral // 100) if moral else []
     donnees = charger()
     supprimes = []
     for unite in perdus:
@@ -468,8 +554,7 @@ def pertes(infos, survivants, moral=0, aleatoire=None):
         if identifiant is None and unite in tentatives:
             identifiant = enregistrer(unite, donnees, generaux.identifier_unite(unite))
         valeur = donnees.get(identifiant)
-        if (unite in tentatives and valeur['blessures'] <
-                unites.blessures_max(valeur['type'], valeur['batailles'])):
+        if unite in tentatives and sauvetage_possible(valeur):
             valeur['blessures'] += 1
             publier(unite, identifiant, valeur)
         else:

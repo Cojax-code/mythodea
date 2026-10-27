@@ -860,6 +860,76 @@ def previsions_avant_muraille(contributions, infos_adverses, *, bloc_adverse,
     ) for general, infos, fatigue in contributions)
 
 
+def simuler_avants_muraille(contributions, infos_adverses, *, general_adverse,
+                           fatigue_adverse=False, aleatoire):
+    """Prévisions Avant/Avant après moral, avec les contextes d'ordres fournis.
+
+    Copie indépendante du générateur pour chaque candidat : ni le parcours
+    des candidats ni cette simulation ne consomment les tirages du vrai combat.
+    Les commandements et compositions restent ceux des généraux d'origine.
+    Bouclier, Spore/Propagation et soutiens exigent encore leur simulateur :
+    refus explicite plutôt qu'un classement ignorant leurs protections.
+    Cette API préparatoire ne prépare pas les transmissions QG d'un duel.
+    """
+    from copy import deepcopy
+    contributions = tuple(contributions)
+    for general in (general_adverse, *(g for g, _, _ in contributions)):
+        composition = generaux.lire_composition_general(general['chemin'])
+        if any(bloc.get('Trop_gros_zombie', 0) for bloc in composition.values()):
+            raise NotImplementedError('Simulation Muraille : priorité du Bouclier hors Avant non raccordée.')
+    for infos in (infos_adverses, *(i for _, i, _ in contributions)):
+        if (infos.get('boucliers') or infos.get('soutiens') or
+                infos['nombre'] and any(unites.etiquette(infos['type'], etiquette)
+                    for etiquette in ('bouclier_vivant', 'propagation', 'non_combattant'))):
+            raise NotImplementedError('Simulation Muraille : Bouclier, Spore/Propagation ou soutien non raccordé.')
+    bruts = previsions_avant_muraille(contributions, infos_adverses,
+        bloc_adverse='avant', general_adverse=general_adverse, fatigue_adverse=fatigue_adverse)
+    resultat = []
+    for (general, infos, _), brut in zip(contributions, bruts):
+        hasard = deepcopy(aleatoire)
+        propres = soldats.prevoir_pertes(infos, brut['survivants'][0],
+                                         moral_des_pertes(infos, general), hasard)
+        adverses = soldats.prevoir_pertes(infos_adverses, brut['survivants'][1],
+            moral_des_pertes(infos_adverses, general_adverse), hasard)
+        pertes_alliees, elimines = len(propres['pertes']), len(adverses['pertes'])
+        resultat.append(dict(origine=brut['origine'], allies=propres, adverses=adverses,
+            allies_perdus=pertes_alliees, ennemis_elimines=elimines,
+            score=elimines - pertes_alliees))
+    return tuple(resultat)
+
+
+def prochain_avant_muraille(generaux_allies, general_adverse, *, aleatoire,
+                            qg_nommade=None, reserve_strategique=None):
+    """Relit les forces restantes et recalcule le meilleur Avant à chaque appel.
+
+    Aucune liste de classement figée, aucun engagement réel. Les exclusions
+    sont des identités officielles de rôles déjà retenus par le pilote.
+    Celui-ci devra encore préparer les contextes des ordres par confrontation.
+    """
+    from copy import deepcopy
+    generaux_allies = tuple(generaux_allies)
+    admis = ordres_calculs_v2.participants_muraille(
+        (ordres_pipeline.identite(g) for g in generaux_allies), qg_nommade, reserve_strategique)
+    contributions, positions = [], {}
+    for general in generaux_allies:
+        identite = ordres_pipeline.identite(general)
+        if identite not in admis:
+            continue
+        infos = generaux.lire_blocs_general(general['chemin'], lecture_seule=True)['avant']
+        if infos['nombre']:
+            contributions.append((general, infos, etat.general_est_fatigue(general)))
+            positions[identite] = general['emplacement']
+    adverse = generaux.lire_blocs_general(general_adverse['chemin'], lecture_seule=True)['avant']
+    if not adverse['nombre']:
+        return dict(choisi=None, previsions=())
+    previsions = simuler_avants_muraille(contributions, adverse,
+        general_adverse=general_adverse, fatigue_adverse=etat.general_est_fatigue(general_adverse),
+        aleatoire=aleatoire)
+    choisi = ordres_calculs_v2.choisir_avant_muraille(
+        {p['origine']: p['score'] for p in previsions}, positions, deepcopy(aleatoire))
+    return dict(choisi=choisi, previsions=previsions)
+
+
 def trouver_cible_facile(armee, joueur_attaquant, type_attaquant,
                          general_attaquant=None, general_defenseur=None):
     joueur_ennemi = adversaire_du_duel(armee, joueur_attaquant)
@@ -889,7 +959,8 @@ def trouver_cible_faible(armee, joueur_ennemi):
     return cible
 
 
-def supprimer_unites(infos, survivants, general=None):
+def moral_des_pertes(infos, general=None):
+    """Lecture commune au combat et aux prévisions, sans mutation persistante."""
     caracteristiques = progression.caracteristiques_general(general) if general else None
     moral = 0
     if caracteristiques and general['chemin'].is_dir():
@@ -899,7 +970,11 @@ def supprimer_unites(infos, survivants, general=None):
         bloc = infos['unites'][0].parent.name if infos['unites'] else None
         moral = unites.moral_bloc(caracteristiques, composition, bloc, general)
         moral = ordres_pipeline.moral(general, moral)
-    pertes = soldats.pertes(infos, survivants, moral, random)
+    return moral
+
+
+def supprimer_unites(infos, survivants, general=None):
+    pertes = soldats.pertes(infos, survivants, moral_des_pertes(infos, general), random)
     ordres_pipeline.verifier_qg()
     return pertes
 

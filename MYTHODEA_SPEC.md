@@ -1054,6 +1054,9 @@ ou :
 type-numero-specification
 ```
 
+La V2 réserve aussi `2-6-position_beneficiaire-position_preteur` pour Gros_poisson.
+Les quatre champs sont lus uniquement pour ce jeton, sans activer son effet.
+
 Ordres enregistrés :
 
 | ID | Nom interne | Catégorie | État V1.5 |
@@ -1753,8 +1756,10 @@ Ces IDs s'ajoutent aux cinq historiques, sans les renuméroter. Ils sont
 apprenables par les voies communes. Chaque ordre doit figurer dans les
 évolutions personnellement acquises du général, dans `progression.json` privé.
 Une mémoire en attente, le savoir d'un autre général et `fiche.txt` ne donnent
-aucun droit. Les généraux zombies ne donnent pas ces ordres, mais peuvent
-bénéficier des transmissions d'un QG extérieur. Ces onze jetons
+aucun droit. Les généraux Zombies ne donnent ou reçoivent que leurs ordres
+spécifiques ; Propagafion est exécutable, Spora-adicte reste désactivé.
+Les généraux ordinaires peuvent bénéficier d'un effet collectif allié sans
+acquérir le droit de l'apprendre ou de l'émettre. Ces onze jetons
 sont sans paramètre : une troisième valeur est refusée pour leur exécution.
 
 Les décisions sont arrêtées avant les effets du duel. Elles ne modifient ni
@@ -1863,17 +1868,45 @@ Contrats validés du lot B, encore non activés : Gros_poisson réunit uniquemen
 les mêmes blocs et types, sous le commandement du bénéficiaire désigné par le
 QG ; pertes aléatoires dans la formation engagée, propriétaires et états
 individuels conservés, retour des survivants à leurs origines après le duel.
+Son jeton réservé est `2-6-position_beneficiaire-position_preteur` (ID 1017).
+Le parseur conserve les deux positions dans un tuple `specification` ; cette
+lecture ne rend l'ordre ni apprenable ni exécutable. Le QG peut occuper un rôle.
+Les blocs absents ou sans type commun sont ignorés ; les autres prêts demeurent
+possibles. Sans homologue, aucun effet, avec motif destiné au rapport. Aucun
+soldat ni bloc n'est créé ; les non-prêtés gardent leur commandement d'origine.
+Les généraux Zombies et les unités interdites aux ordres classiques ne bénéficient
+d'aucune exception. La fatigue hétérogène n'est pas remplacée par une valeur commune.
 Muraille humaine conserve au contraire chaque Avant distinct, avec les bonus
 de son général d'origine, et prévoit des engagements successifs après simulation
-sans mutation. Aucun score de classement ou départage n'est encore fixé.
+contre l'Avant adverse, sans mutation. Le score est `ennemis éliminés - alliés
+perdus`, après les protections habituelles. La meilleure valeur prime, puis la
+position d'origine selon l'ordre numérique commun ; une égalité restante est
+tirée au hasard reproductible. Recalcul après chaque engagement réel contre les
+survivants, jusqu'à victoire ou défaite de la muraille. Les Avant participants
+sont exclus de la manœuvre. QG sous QG_nommade et réserve stratégique sont exclus.
+Les soldats d'un général vaincu restent engagés tant que la muraille existe.
+Les survivants sans général rentrent au village d'origine après le territoire,
+même perdu ; le stockage `unites_sans_general` est encore à réaliser au lot C.
+À la disparition du QG, l'effet transmis finit avec le duel, puis la muraille
+se dissout et les survivants reprennent leur circuit normal, sans nouveau QG.
 Les morts de Ralliement et Dernière charge nécessitent une réanimation explicite
 dont la sélection et l'état physique restent à définir. Les fonctions de groupes
 vivants ci-dessous ne constituent pas une procédure de résurrection.
 
 `combats.previsions_avant_muraille()` prépare seulement des résultats numériques
 indépendants contre un bloc adverse fourni explicitement, via `combat_bloc`.
-Pas de tri, pertes réelles, tirage, blessures, expérience ou rapport. Moral et
-capacités résolues hors de ce calcul restent à intégrer à la simulation complète.
+`simuler_avants_muraille()` ajoute les pertes après moral et limites de blessures,
+avec les statistiques d'origine et les effets du contexte fourni. La sélection
+des victimes et l'éligibilité au sauvetage sont communes avec `soldats.pertes()`.
+Chaque candidat emploie une copie du générateur ; aucun tirage réel, fichier,
+blessure, expérience, sauvegarde ou rapport n'est modifié.
+`prochain_avant_muraille()` relit les survivants et recalcule scores et choix,
+avec exclusions des rôles fournis. `lire_blocs_general(lecture_seule=True)`
+ne recrée aucun dossier, ne nettoie rien et refuse les blocs invalides ou mixtes.
+Ces API restent préparatoires : transmissions par confrontation, Bouclier,
+Spore/Propagation et soutiens ne sont pas encore simulés intégralement. Les
+capacités non prises en charge sont refusées explicitement, y compris un
+Bouclier situé hors Avant ; elles ne reçoivent pas un score incomplet.
 
 `soldats.participation_temporaire()` reçoit des contributions explicites
 `(général, bloc, chemins des soldats)` déjà authentifiées sous gel ou dans la
@@ -1890,6 +1923,12 @@ mixte doit être explicitement séparée. L'instantané doit être relu après p
 les survivants demandés, puis appelle `soldats.pertes()` : tirages, blessures et
 morts restent ceux du moteur commun. Cette API ne choisit aucun partage des
 pertes, moral collectif, bonus, fatigue ou traitement de soutien.
+`selections_gros_poisson()` extrait les homologues des deux alliés, sans retirer
+les autres soldats ; profils privés et restriction raciale restent obligatoires.
+Cette sélection ne remplace pas les contrôles du donneur QG, de son acquisition
+et de la confrontation. `fatigues_origine()` associe à chaque UUID vivant la
+fatigue officielle de son général d'origine, sans calculer une moyenne ni
+définir les dégâts/résistances d'un bloc mélangé.
 
 `participer()` inscrit seulement les soldats explicitement engagés dans une
 `bataille_complete()` existante. Le comptage commun crédite les survivants une
@@ -1915,11 +1954,31 @@ ne ressuscite pas les morts et ne remplace pas un duel complet avec ses capacit�
 
 Les généraux identifiés Zombies dans leur profil privé ne peuvent apprendre,
 donner ou recevoir que Spora-adicte et Propagafion, sous réserve des contrôles
-habituels de disponibilité, de nature et d'acquisition. Les anciens acquis ne
+habituels de disponibilité et d'acquisition. Leur nature initiale reste intacte :
+la politique logique Zombie est dérivée du seul `etat_zombie` existant.
+Toutes les natures Zombies peuvent apprendre les deux ordres. Propagafion peut
+être émis même par un instinctif, avec les règles QG et de confrontation communes.
+Spora-adicte (ID 1018, jeton réservé `1-8`) est apprenable et mémorisable, mais
+son exécution est désactivée jusqu'à définition du ciblage. Un non-Zombie ne
+peut apprendre ou émettre ces deux ordres. Les anciens acquis ne
 permettent pas d'exécuter un autre ordre après zombification. Les transmissions
 interdites sont filtrées avant la confrontation des ordres du duel. Cette règle
 ne prive pas les soldats Zombies de leurs capacités raciales ni des effets
-collectifs alliés par défaut. Elle n'ajoute aucune récompense de montée de niveau.
+collectifs alliés par défaut.
+
+À chaque niveau Zombie, premier tirage : 85 % pour +2 places, 15 % pour un ordre ;
+si ordre, second tirage uniforme entre Spora-adicte et Propagafion. Un doublon
+recommence l'ensemble du processus. Avec un seul ordre inconnu, la distribution
+conditionnelle exacte utilise les poids 170 pour la capacité et 15 pour cet ordre.
+Les deux connus donnent automatiquement +2 places, sans tirage.
+`niveaux_zombie` compte les niveaux après transformation ; `gains_capacite_zombie`
+compte uniquement les récompenses de capacité. La capacité est `20 + 2 * gains`.
+Pour une ancienne fiche sans ce nouveau compteur, les gains déjà accordés sont
+lus depuis `niveaux_zombie`, puis conservés à la prochaine montée de niveau.
+Aucun nouveau bonus automatique, retrait d'ancien bonus ou tirage rétroactif.
+La progression et son reçu atomique restent dans `progression.json`, sans registre
+Zombie concurrent. La mémoire scolaire reste conservée par la branche Zombie
+actuelle ; sa priorité éventuelle sur le tirage 85/15 reste à décider explicitement.
 
 ### Blessures et batailles complètes
 

@@ -107,6 +107,184 @@ class ParticipationsTemporaires(unittest.TestCase):
                 self.combats.previsions_avant_muraille(entrees * 2, adverse_infos,
                     bloc_adverse='avant', general_adverse=cible)
 
+    def test_gros_poisson_fusion_partielle_blocs_absents_types_distincts(self):
+        a, b = self.deux_generaux()  # j1 et j2 sont alliés dans le profil Survie.
+        self.speciale(a, 'archer', 10, 'droite')
+        self.speciale(b, 'cavalier', 10, 'droite')
+        self.speciale(a, 'archer', 11, 'gauche')
+        # Même type dans un autre bloc : aucune correspondance implicite.
+        self.speciale(b, 'archer', 11, 'arriere')
+        (a['chemin'] / 'arriere').rmdir()
+        (b['chemin'] / 'gauche').rmdir()
+        avant = self.photo()
+        contributions = [(g, bloc, list((g['chemin'] / bloc).iterdir()))
+                         for g in (a, b) for bloc in self.config.ordre_blocs
+                         if (g['chemin'] / bloc).is_dir()]
+        with self.soldats.participation_temporaire(contributions) as groupe:
+            resultat = groupe.selections_gros_poisson(a, b, self.profil)
+            self.assertEqual(set(resultat['selections']), {('avant', 'piquier')})
+            self.assertEqual(len(resultat['selections'][('avant', 'piquier')]), 6)
+            self.assertIsNone(resultat['motif'])
+            self.assertEqual(len(groupe.participants), 10)
+            self.assertEqual(self.photo(), avant)
+        self.assertEqual(self.photo(), avant)
+
+    def test_gros_poisson_sans_homologue_ne_cree_rien_et_explique_absence_effet(self):
+        a = self.troupe('j1', 'archer', 2)
+        b = self.troupe('j2', 'piquier', 2, place='2')
+        avant = self.photo()
+        with self.soldats.participation_temporaire([self.contribution(a), self.contribution(b)]) as groupe:
+            resultat = groupe.selections_gros_poisson(a, b, self.profil)
+            self.assertEqual(resultat['selections'], {})
+            self.assertIn('sans effet', resultat['motif'])
+        self.assertEqual(self.photo(), avant)
+
+    def test_gros_poisson_syntaxe_quatre_champs_reservee_sans_activation(self):
+        import ordres_pipeline
+        a = self.troupe('j1', 'piquier', 2)
+        aides.EffetsOrdres.ordres(self, a, [1017], texte='2-6-3-4\n2-6-4-3\n1-2-3-4\n2-6-３-4')
+        demandes = self.generaux.lire_ordres_general(a['chemin'])
+        self.assertEqual([d['specification'] for d in demandes], [(3, 4), (4, 3)])
+        self.assertEqual([d['identifiant'] for d in demandes], ['2-6', '2-6'])
+        officiel = dict(a, ordres=demandes,
+                        caracteristiques=self.progression.caracteristiques_general(a))
+        self.assertEqual(ordres_pipeline.ordres_du_general(officiel), [])
+
+    def test_gros_poisson_refuse_general_zombie_meme_si_fiche_publique_falsifiee(self):
+        a, b = self.deux_generaux()
+        for zombie in (a, b):
+            registre = self.progression.charger()
+            for g in (a, b):
+                registre[f"{g['joueur']}:{g['nom']}"]['etat_zombie'] = g is zombie
+                g['caracteristiques'] = dict(etat_zombie=False, evolutions_acquises=[1017])
+            self.progression.sauvegarder(registre)
+            avant = self.photo()
+            with self.soldats.participation_temporaire([self.contribution(a), self.contribution(b)]) as groupe:
+                with self.assertRaisesRegex(ValueError, 'Profil privé'):
+                    groupe.selections_gros_poisson(a, b, self.profil)
+            self.assertEqual(self.photo(), avant)
+        # Même chez un général ordinaire, les unités sans cerveau restent exclues.
+        c = self.troupe('j1', 'zombie', 2, numero=3, place='3')
+        d = self.troupe('j2', 'zombie', 2, numero=4, place='4')
+        with self.soldats.participation_temporaire([self.contribution(c), self.contribution(d)]) as groupe:
+            self.assertEqual(groupe.selections_gros_poisson(c, d, self.profil)['selections'], {})
+
+    def test_gros_poisson_fatigue_par_uuid_conservee_apres_pertes_et_retour(self):
+        a, b = self.deux_generaux()
+        self.etat.sauvegarder_generaux_fatigues({'j2:general1'})
+        with self.soldats.participation_temporaire([self.contribution(a), self.contribution(b)]) as groupe:
+            ids = groupe.selections_gros_poisson(a, b, self.profil)['selections'][('avant', 'piquier')]
+            avant = groupe.fatigues_origine(ids)
+            self.assertEqual(list(avant.values()), [False] * 3 + [True] * 3)
+            groupe.appliquer_pertes(ids, 5, moral=0, aleatoire=random.Random(27))
+            apres = groupe.fatigues_origine(ids)
+            self.assertEqual(len(apres), 5)
+            self.assertEqual(apres, {i: f for i, f in avant.items() if i in apres})
+        self.assertFalse(self.etat.general_est_fatigue(a))
+        self.assertTrue(self.etat.general_est_fatigue(b))
+        with self.assertRaises(RuntimeError):
+            groupe.fatigues_origine(ids)
+
+    def test_simulation_muraille_moral_blessures_identique_aux_pertes_reelles(self):
+        for joueur, adverse in (('j1', 'j2'), ('j2', 'j1')):
+            a = self.troupe(joueur, 'piquier', 8, numero=3, place='3')
+            b = self.troupe(adverse, 'piquier', 8, numero=4, place='4')
+            aides.EffetsOrdres.ordres(self, a, moral=100)
+            aides.EffetsOrdres.ordres(self, b, moral=50)
+            registre = self.soldats.charger()
+            for n, u in enumerate(self.infos(a)['unites']):
+                v = registre[self.soldats.marqueur(u)]
+                v.update(batailles=10 if n % 2 else 0, blessures=1)
+            self.soldats.sauvegarder(registre)
+            infos_a, infos_b = self.infos(a), self.infos(b)
+            avant, rng = self.photo(), random.Random(27)
+            etat_rng, etat_global = rng.getstate(), random.getstate()
+            prev = self.combats.simuler_avants_muraille([(a, infos_a, False)], infos_b,
+                general_adverse=b, aleatoire=rng)[0]
+            self.assertEqual((prev['allies_perdus'], prev['ennemis_elimines'], prev['score']), (4, 4, 0))
+            self.assertEqual(self.photo(), avant)
+            self.assertEqual((rng.getstate(), random.getstate()), (etat_rng, etat_global))
+            with patch.object(self.combats, 'random', rng):
+                resultat = self.combats.confrontation_directe(
+                    {joueur: {'avant': infos_a}, adverse: {'avant': infos_b}}, a, b, 'avant')
+            self.assertEqual((resultat['final_1'], resultat['final_2']),
+                             (prev['allies']['survivants'], prev['adverses']['survivants']))
+            for cote in ('allies', 'adverses'):
+                self.assertTrue(all(not p.exists() for p in prev[cote]['pertes']))
+                self.assertTrue(all(p.exists() for p in prev[cote]['sauves']))
+
+    def test_muraille_classement_recalcule_contre_survivants_et_exclusions(self):
+        a = self.troupe('j1', 'piquier', 8, numero=3, place='3')
+        b = self.troupe('j1', 'archer', 4, numero=4, place='4')
+        adverse = self.troupe('j2', 'cavalier', 8)
+        rng = random.Random(27)
+        etat_rng, avant = rng.getstate(), self.photo()
+        resultat = self.combats.prochain_avant_muraille([b, a], adverse, aleatoire=rng)
+        self.assertEqual(resultat['choisi'], ('j1', 'general3'))
+        exclu = self.combats.prochain_avant_muraille([b, a], adverse, aleatoire=rng,
+                                                   qg_nommade=('j1', 'general3'))
+        self.assertEqual(exclu['choisi'], ('j1', 'general4'))
+        aucun = self.combats.prochain_avant_muraille([b, a], adverse, aleatoire=rng,
+            qg_nommade=('j1', 'general3'), reserve_strategique=('j1', 'general4'))
+        self.assertIsNone(aucun['choisi'])
+        self.assertEqual((self.photo(), rng.getstate()), (avant, etat_rng))
+        self.soldats.pertes(self.infos(adverse), 2, aleatoire=random.Random(1))
+        apres = self.combats.prochain_avant_muraille([a, b], adverse, aleatoire=rng)
+        self.assertNotEqual({p['origine']: p['score'] for p in resultat['previsions']},
+                            {p['origine']: p['score'] for p in apres['previsions']})
+        inverse = self.combats.prochain_avant_muraille([b, a], adverse, aleatoire=rng)
+        self.assertEqual(apres['choisi'], inverse['choisi'])
+        self.assertEqual(apres['previsions'], tuple(reversed(inverse['previsions'])))
+
+    def test_muraille_refuse_prediction_incomplete_bouclier_ou_propagation(self):
+        a = self.troupe('j1', 'piquier', 4)
+        b = self.troupe('j2', 'zombie', 4)
+        avant = self.photo()
+        with self.assertRaisesRegex(NotImplementedError, 'Spore/Propagation'):
+            self.combats.prochain_avant_muraille([a], b, aleatoire=random.Random(27))
+        self.assertEqual(self.photo(), avant)
+        c = self.troupe('j2', 'piquier', 4, numero=3, place='3')
+        self.speciale(c, 'Trop_gros_zombie', 1, 'arriere')
+        avant = self.photo()
+        with self.assertRaisesRegex(NotImplementedError, 'Bouclier hors Avant'):
+            self.combats.prochain_avant_muraille([a], c, aleatoire=random.Random(27))
+        self.assertEqual(self.photo(), avant)
+
+    def test_muraille_chaque_moral_origine_et_blessures_changent_le_classement(self):
+        a = self.troupe('j1', 'piquier', 4, numero=3, place='3')
+        b = self.troupe('j1', 'piquier', 4, numero=2, place='2')
+        ennemi = self.troupe('j2', 'piquier', 4)
+        aides.EffetsOrdres.ordres(self, a, moral=100)
+        aides.EffetsOrdres.ordres(self, b, moral=0)
+        aides.EffetsOrdres.ordres(self, ennemi, moral=0)
+        resultat = self.combats.prochain_avant_muraille([a, b], ennemi, aleatoire=random.Random(1))
+        self.assertEqual(resultat['choisi'], ('j1', 'general3'))
+        self.assertEqual([p['score'] for p in resultat['previsions']], [4, 0])
+        self.combats.supprimer_unites(self.infos(a), 0, a)  # Tous sauvés, désormais blessés.
+        resultat = self.combats.prochain_avant_muraille([a, b], ennemi, aleatoire=random.Random(1))
+        self.assertEqual([p['score'] for p in resultat['previsions']], [0, 0])
+        self.assertEqual(resultat['choisi'], ('j1', 'general2'))
+
+    def test_muraille_lecture_seule_ne_nettoie_pas_et_ne_recree_pas_de_bloc(self):
+        a = self.troupe('j1', 'piquier', 4)
+        b = self.troupe('j2', 'cavalier', 4)
+        (a['chemin'] / 'droite').rmdir()
+        avant = self.photo()
+        self.combats.prochain_avant_muraille([a], b, aleatoire=random.Random(1))
+        self.assertEqual(self.photo(), avant)
+        invalide = a['chemin'] / 'avant/invalide'
+        invalide.mkdir()
+        avant = self.photo()
+        with self.assertRaisesRegex(ValueError, 'sans nettoyage'):
+            self.combats.prochain_avant_muraille([a], b, aleatoire=random.Random(1))
+        self.assertEqual(self.photo(), avant)
+        invalide.rmdir()
+        self.speciale(a, 'archer', 9)
+        avant = self.photo()
+        with self.assertRaisesRegex(ValueError, 'sans suppression'):
+            self.combats.prochain_avant_muraille([a], b, aleatoire=random.Random(1))
+        self.assertEqual(self.photo(), avant)
+
     def test_perte_explicitement_designee_reste_chez_son_proprietaire(self):
         a, b = self.deux_generaux()
         avant = copy.deepcopy(self.soldats.charger())

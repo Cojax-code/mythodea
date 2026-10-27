@@ -377,11 +377,11 @@ class UnitesV2(unittest.TestCase):
         self.assertEqual({self.soldats.marqueur(u) for u in self.infos(g)['unites']}, identifiants)
         self.assertEqual(self.unites.regenerer_fuite(g, self.profil), 0)
 
-    def test_zombie_niveau_sans_recompense_et_tirage_uniforme_unites(self):
+    def test_zombie_recompense_capacite_et_tirage_uniforme_unites(self):
         g = self.creer(nombre=0)
         fiche = self.progression.caracteristiques_general(g)
         fiche['etat_zombie'] = True
-        apres, recompense = self.progression.monter_niveau(fiche, Mock())
+        apres, recompense = self.progression.monter_niveau(fiche, Mock(randint=Mock(return_value=85)))
         self.assertIsNone(recompense)
         self.assertEqual(apres['niveau'], fiche['niveau'] + 1)
         self.assertEqual(apres['niveaux_zombie'], 1)
@@ -413,6 +413,28 @@ class UnitesV2(unittest.TestCase):
             fiche['gains_capacite_zombie'] = valeur
             with self.assertRaises(ValueError):
                 self.progression.capacite_maximale(fiche)
+
+    def test_recompense_zombie_persistante_reprise_sans_double_tirage(self):
+        g = self.creer(nombre=0)
+        registre = self.progression.charger()
+        cle = f"{g['joueur']}:{g['nom']}"
+        registre[cle].update(etat_zombie=True, niveaux_zombie=3, progression_combat=1)
+        self.progression.sauvegarder(registre)
+        capacite = self.progression.capacite_maximale(registre[cle])
+        rng = Mock(randint=Mock(side_effect=[86, 1]))
+        with patch.object(self.progression, 'publier_fiche', side_effect=RuntimeError('apres sauvegarde')):
+            with self.assertRaisesRegex(RuntimeError, 'apres sauvegarde'):
+                self.progression.valider_evenement(g, 'combat', 'zombie-interruption', rng)
+        apres = self.progression.charger()[cle]
+        self.assertEqual(apres['evolutions_acquises'], [1018])
+        self.assertEqual(apres['gains_capacite_zombie'], 3)
+        self.assertEqual(self.progression.capacite_maximale(apres), capacite)
+        self.assertEqual(apres['progression_combat'], 0)
+        rng = Mock()
+        self.assertFalse(self.progression.valider_evenement(g, 'combat', 'zombie-interruption', rng))
+        rng.randint.assert_not_called()
+        self.assertEqual(self.progression.charger()[cle], apres)
+        self.assertIn('evolutions_acquises=1018', (g['chemin'] / 'fiche.txt').read_text())
 
 
     def test_spore_transforme_le_moins_experimente_et_garde_identite(self):

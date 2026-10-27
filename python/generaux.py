@@ -324,8 +324,8 @@ def lire_ordres_general(chemin_general):
 
         morceaux = ligne.split("-")
 
-        # Un ordre contient deux ou trois nombres.
-        if len(morceaux) not in [2, 3]:
+        # Quatre champs réservés à Gros_poisson ; son effet reste désactivé.
+        if len(morceaux) not in [2, 3, 4]:
             rapports.afficher_et_ecrire(
                 f"Ordre ignoré pour "
                 f"{chemin_general.name} : "
@@ -350,7 +350,13 @@ def lire_ordres_general(chemin_general):
         try:
             type_ordre = int(morceaux[0])
             numero_ordre = int(morceaux[1])
-            specification = int(morceaux[2]) if len(morceaux) == 3 else None
+            if len(morceaux) == 4:
+                if (type_ordre, numero_ordre) != (2, 6):
+                    rapports.afficher_et_ecrire(f'Ordre ignoré pour {chemin_general.name} : [format invalide]')
+                    continue
+                specification = (int(morceaux[2]), int(morceaux[3]))
+            else:
+                specification = int(morceaux[2]) if len(morceaux) == 3 else None
         except ValueError:
             rapports.afficher_et_ecrire(f'Ordre ignoré pour {chemin_general.name} : [nombre invalide]')
             continue
@@ -731,7 +737,7 @@ def lire_composition_general(chemin_general):
     return composition
 
 
-def lire_blocs_general(chemin_general):
+def lire_blocs_general(chemin_general, *, lecture_seule=False):
     # Lit les unités d'un seul général.
     #
     # Structure attendue :
@@ -753,15 +759,23 @@ def lire_blocs_general(chemin_general):
     for bloc in config.ordre_blocs:
         bloc_dir = chemin_general / bloc
 
+        if lecture_seule:
+            from cycle_linux import sans_liens
+            sans_liens(bloc_dir)
+            if not bloc_dir.exists():
+                continue
         # Si le bloc manque, on le recrée.
         # Ça évite qu'un général soit cassé par erreur.
-        bloc_dir.mkdir(exist_ok=True)
+        if not lecture_seule:
+            bloc_dir.mkdir(exist_ok=True)
 
         type_trouves = []
         unites_trouvees = []
         a_supprimer = []
 
         for unite in bloc_dir.iterdir():
+            if lecture_seule:
+                sans_liens(unite)
             type_unite = identifier_unite(unite)
 
             if type_unite == "inconnu":
@@ -772,6 +786,8 @@ def lire_blocs_general(chemin_general):
             unites_trouvees.append(unite)
 
         # Supprimer les unités invalides.
+        if lecture_seule and a_supprimer:
+            raise ValueError('Bloc invalide : lecture seule sans nettoyage.')
         for unite in a_supprimer:
             if unite.is_dir():
                 shutil.rmtree(unite)
@@ -801,6 +817,8 @@ def lire_blocs_general(chemin_general):
                 effectifs[type_unite] = effectifs.get(type_unite, 0) + 1
 
             maximum = max(effectifs.values())
+            if lecture_seule and len(effectifs) > 1:
+                raise ValueError('Bloc mixte : lecture seule sans suppression.')
             types_majoritaires = [
                 type_unite for type_unite, nombre in effectifs.items()
                 if nombre == maximum

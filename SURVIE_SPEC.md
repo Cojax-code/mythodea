@@ -1730,17 +1730,26 @@ Lors de sa mort définitive, un général joueur dispose d'un unique tirage de
 5 % pour réapparaître comme général zombie à la Morgue. Cette transformation
 est permanente ; elle crée un cadavre officiel consommable une fois pour fabriquer
 un Trop gros zombie. La Morgue ouvre dès la première résurrection zombie.
-À la montée de niveau, un général zombie n'obtient aucun ordre ni autre récompense,
-mais sa capacité globale augmente définitivement de deux places par niveau gagné
-**après** la transformation. La capacité initiale demeure 20 places.
+À chaque montée de niveau **après** transformation : 85 % de chances de gagner
+deux places, 15 % d'apprendre un ordre Zombie (Spora-adicte ou Propagafion,
+50/50 au second tirage). Un doublon recommence l'ensemble du tirage ; les deux
+ordres déjà acquis donnent automatiquement deux places. La capacité initiale
+demeure 20 places. Le compteur `gains_capacite_zombie` distingue ces récompenses
+du nombre de niveaux Zombies : aucun cumul avec l'ancien bonus automatique.
+Une ancienne sauvegarde conserve les places déjà accordées via `niveaux_zombie`,
+sans tirage rétroactif. Le détail commun est dans `MYTHODEA_SPEC.md`, section 22.
 
 Pour les ordres, la restriction commune du profil privé autorise uniquement
-Spora-adicte et Propagafion à un général Zombie, sans rendre disponibles les
-effets encore en conception ni accorder une acquisition implicite. Aucun autre
+Spora-adicte et Propagafion à un général Zombie de toute nature initiale, sans
+remplacer cette nature ni ajouter un registre Zombie. Propagafion exige son
+acquisition et les contrôles QG/confrontation ordinaires, même chez un instinctif.
+Spora-adicte peut être appris ou mémorisé, mais son ciblage reste indéfini et
+son exécution désactivée. Les non-Zombies ne peuvent apprendre ces ordres. Aucun autre
 ordre V2 ne peut être appris ou exécuté, même transmis par un QG extérieur.
 Cela ne supprime pas les capacités raciales des unités Zombies et ne les exclut
-pas automatiquement des effets collectifs alliés. La progression sans récompense
-de niveau ci-dessus reste inchangée.
+pas automatiquement des effets collectifs alliés. Gros_poisson n'accorde aucune
+exception de général ou d'unité Zombie. La priorité éventuelle d'une mémoire
+scolaire sur le tirage Zombie reste à trancher ; son état est conservé.
 
 Une armée de général zombie ne peut posséder qu'un seul
 `Trop_gros_zombie`. Celui-ci occupe dix places, n'inflige pas de pertes

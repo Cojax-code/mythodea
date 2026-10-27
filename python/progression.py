@@ -105,6 +105,11 @@ def ordre_autorise(fiche, nom):
     return est_zombie(fiche) == (nom in ORDRES_ZOMBIES)
 
 
+def reception_ordre_autorisee(fiche, nom):
+    """Recevoir un effet allié ne signifie pas apprendre ou émettre cet ordre."""
+    return not est_zombie(fiche) or nom in ORDRES_ZOMBIES
+
+
 def nature_autorise_ordre(fiche, ordre):
     """Politique commune de race et de nature, hors acquisition/disponibilité."""
     if not ordre_autorise(fiche, ordre.get('nom')):

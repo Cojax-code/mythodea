@@ -145,6 +145,31 @@ class SoldatsFormation(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.formation.commencer_sejour(1, general, 'ecole_officiers', 'allies', [1], ecrire='001 201')
 
+    def test_ecole_memoire_spora_toutes_natures_zombies_seulement(self):
+        self.modules()
+        numero = 10
+        for nature in self.progression.NATURES:
+            for zombie in (False, True):
+                numero += 1
+                general = self.creer(numero=numero, nature=nature)
+                registre = self.progression.charger()
+                registre[f'j1:general{numero}']['etat_zombie'] = zombie
+                self.progression.sauvegarder(registre)
+                manuels = self.formation.charger()
+                manuels['manuels']['allies'] = {'001': 1018, '002': None, '003': None}
+                self.formation.sauvegarder(manuels)
+                self.formation.commencer_sejour(numero, general, 'ecole_officiers', 'allies', [numero], lire='001')
+                if zombie:
+                    self.assertTrue(self.formation.valider_sejour(numero, general,
+                        'ecole_officiers', 'allies', [numero], True))
+                    fiche = self.progression.caracteristiques_general(general)
+                    self.assertEqual(fiche['evolution_apprise'], 1018)
+                    self.assertNotIn(1018, fiche['evolutions_acquises'])
+                else:
+                    with self.assertRaisesRegex(ValueError, 'incompatible'):
+                        self.formation.valider_sejour(numero, general,
+                            'ecole_officiers', 'allies', [numero], True)
+
     def test_hopital_unite_sortie_non_soignee(self):
         general = self.creer()
         unite = self.infos(general)['unites'][0]

@@ -6,6 +6,91 @@ des activations est dans `ordres-v2-reprise-codex.md` ; le présent document con
 les décisions de conception, y compris celles des effets encore réservés.
 La vérification finale (suite Linux complète, WSL/Raspberry Pi) est confiée à Codex.
 
+## Contrats courants du lot B — 27 octobre 2026
+
+Cette section et les SPEC à jour priment sur les hypothèses historiques ci-dessous.
+
+- **Gros_poisson** : Duel, ID réservé 1017, `2-6-position_beneficiaire-position_preteur`.
+  Le QG choisit les positions et peut être l'un des participants. Fusion partielle
+  des seuls couples bloc/type communs ; blocs absents et types différents ignorés,
+  sans annuler les autres prêts. Aucune unité ni bloc créé. Sans homologue : aucun
+  effet, avec indication au rapport. Les non-prêtés gardent leur commandement.
+  Les engagés utilisent temporairement celui du bénéficiaire, conservent UUID,
+  propriétaire, XP, blessures et fatigue ; victimes aléatoires sans quota par
+  propriétaire, puis retour des survivants à leurs origines. Le prêteur conserve
+  son tour normal. Aucun contournement de la politique des généraux Zombies,
+  de la restriction raciale des unités, de l'apprentissage ou des permissions.
+- **Muraille** : blocs Avant distincts, avec leurs statistiques d'origine,
+  contre l'Avant adverse. Score après protections et moral : ennemis effectivement
+  éliminés moins alliés effectivement perdus. Meilleur score, puis position
+  d'origine selon l'ordre commun, puis hasard reproductible en cas d'égalité
+  restante. Recalcul après chaque engagement contre les forces restantes.
+  Aucun fichier, XP, blessure, sauvegarde ou tirage réel modifié par les simulations.
+  Victimes tirées dans le seul bloc engagé. Exclusion des Avant participants de
+  la manœuvre, du QG sous QG_nommade et du général de Réserve stratégique.
+  Les Avant vivants d'un général vaincu continuent tant que l'effet existe.
+  Après le territoire, retour des survivants sans général au village d'origine,
+  même si leur camp a perdu ; `unites_sans_general` demeure à construire au lot C.
+  Disparition du QG : fin des transmissions après le duel en cours, dissolution,
+  circuit normal des survivants, aucune nouvelle désignation. Matrice du lot A
+  conservée, dont les incompatibilités Attaque frontale et Retrait_tactique.
+- **Général Zombie** : politique issue du seul état privé existant, nature
+  initiale conservée. Seuls Spora-adicte et Propagafion sont apprenables, quelle
+  que soit cette nature ; aucun de ces deux ordres pour un non-Zombie. Propagafion
+  appris est exécutable même par un instinctif sous les conditions QG communes.
+  Spora-adicte est mémorisable mais son ciblage et son exécution restent désactivés.
+  Récompense : 85 % capacité +2, 15 % ordre puis 50/50 ; doublon = reprise du
+  processus entier. Poids conditionnels 170:15 avec un ordre connu, capacité
+  automatique avec les deux. Les anciennes places acquises sont conservées,
+  sans tirage rétroactif et sans cumul de deux systèmes de progression.
+- **Ralliement** : morts réanimés, UUID/blessures/XP conservés, bénéficiaire =
+  allié suivant ; quotas `pertes_du_type // 5` seulement pour ses types présents.
+  Retour à l'origine si le général existe ; aucune résurrection activée.
+- **Dernière charge** : précédent général obligatoirement vaincu, flanc G/g ou
+  D/d, flanc absent sans effet. Morts relevés et fatigués au choc seulement,
+  exclus de la manœuvre, survivants définitivement morts après leur charge.
+
+### Travail préparatoire disponible
+
+`GroupeTemporaire.selections_gros_poisson()` sélectionne les homologues partiels
+avec contrôles des profils privés et des unités sans cerveau ; le motif sans
+effet est prêt pour le futur rapport. `fatigues_origine()` conserve une valeur
+par UUID vivant. Le parseur lit les quatre champs réservés ; le catalogue et le
+pipeline maintiennent l'ordre désactivé. Ces fonctions ne remplacent pas les
+contrôles du donneur QG, des positions effectivement actives et de la confrontation.
+
+La simulation Muraille couvre le calcul commun, le moral d'origine et les
+limites individuelles de blessures/XP. Les tirages et tests de sauvetage sont
+partagés avec le combat réel. La sélection suivante relit et recalcule les
+scores ; elle ne programme pas toute la succession des duels. Les contextes
+d'ordres par candidat et les capacités Bouclier/Spore/Propagation/soutiens
+restent à raccorder ; les cas non simulés sont refusés explicitement. Il faut
+aussi réaliser le circuit du lot C avant toute activation de Muraille.
+
+### Questions de gameplay encore indispensables
+
+1. **Gros_poisson, fatigue hétérogène** : la résistance et les dégâts partagent
+   actuellement la même valeur effective. Les valeurs de fatigue peuvent être
+   conservées par UUID, mais la règle de résistance d'un mélange frais/fatigués
+   contre un même type reste à fixer. Ni moyenne ni sous-duels arbitraires.
+2. **Gros_poisson, capacités** : formation de référence pour le seuil de cavalerie
+   lourde et les bonus de composition/raciaux ; traitement des soutiens admis.
+   Conversion d'un soldat prêté par Spore adverse : origine/bloc après conversion
+   à définir avant de permettre ce transfert dans la vue temporaire.
+   Les Zombies/Boucliers sont exclus du prêt par les restrictions confirmées, pas prêtés
+   par une exception de Spore. Même bénéficiaire et prêteur : aucune fusion
+   exécutée tant que cette désignation n'est pas définie.
+3. **Mémoire Zombie** : la réponse reçue précisait les restrictions de Gros_poisson,
+   sans trancher la priorité d'une mémoire scolaire sur le tirage 85/15. La base
+   conserve cette mémoire et applique le tirage ; aucune nouvelle priorité ajoutée.
+4. **Ralliement** : éligibilité et sélection des morts, état physique au seuil
+   de blessure mortelle, bloc d'accueil si plusieurs conviennent, durée du prêt,
+   destination si le général d'origine n'existe plus.
+5. **Dernière charge** : sélection des morts et blessures à la relève.
+
+Les modalités de stockage et l'orchestration des phases sont des travaux
+techniques restant à faire, pas des nouvelles questions de gameplay.
+
 ## Règles transversales validées
 
 - Les ordres se confrontent par **catégorie et par donneur**. Ne pas fusionner les ordres de généraux différents pour former un cumul.
