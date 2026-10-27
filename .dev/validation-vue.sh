@@ -1,5 +1,10 @@
 #!/bin/bash
-set -eu
+set -euo pipefail
+
+if [ "${1:-cibles}" = root ] && [ "$(id -u)" -ne 0 ]; then
+    echo 'Le mode root exige les privilèges Linux root réels.' >&2
+    exit 2
+fi
 
 # Les tests travaillent sur une copie isolée et n'accèdent pas au /game monté.
 source_repo=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
@@ -13,7 +18,8 @@ git -C "$source_repo" ls-files -z | (
 
 cd "$travail"
 export PYTHONPYCACHEPREFIX="$travail/cache"
-python3 -m py_compile python/soldats.py python/combats.py python/ordres_pipeline.py
+python3 -m py_compile python/soldats.py python/combats.py python/ordres_pipeline.py \
+    .dev/tests/test_vue_participants.py .dev/comparer-vue.py
 
 case "${1:-cibles}" in
     complet)
@@ -22,7 +28,10 @@ case "${1:-cibles}" in
         tail -5 "$travail/vue-complets.log"
         ;;
     root)
-        python3 -B -m unittest discover -s .dev/tests -p test_participations_permissions.py -v > "$travail/vue-root.log" 2>&1 ||
+        PYTHONPATH=.dev/tests python3 -B -m unittest -v \
+            test_participations_permissions \
+            test_crypte_scanner.ScannerCrypte.test_17_script_administrateur_non_modifiable \
+            > "$travail/vue-root.log" 2>&1 ||
             { tail -50 "$travail/vue-root.log"; exit 1; }
         tail -5 "$travail/vue-root.log"
         ;;

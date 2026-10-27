@@ -293,14 +293,27 @@ class VueParticipants:
         return {bloc: {infos['type']: infos['nombre']} if infos['nombre'] else {}
                 for bloc, infos in self.blocs(general).items()}
 
+    def fatigues_individuelles(self, general, infos):
+        """Relevé dans l'ordre de infos['unites'], sans agrégation de combat.
+
+        Chaque chemin sélectionné désigne le soldat réel ; pour un prêt, son
+        UUID retrouve la fatigue officielle de son origine. Relire le bloc
+        après les pertes. Aucun état de fatigue n'est écrit ou transféré.
+        """
+        import etat
+        fatigue_general = etat.general_est_fatigue(general)
+        if not self.groupe:
+            return (fatigue_general,) * len(infos['unites'])
+        fatigues = self.groupe.fatigues_origine(tuple(self._affectes))
+        return tuple(fatigues[self._origines[u].identifiant] if u in self._origines
+                     and self._origines[u].identifiant in fatigues
+                     else fatigue_general for u in infos['unites'])
+
     def fatigue(self, general, infos):
         import etat
         if not self.groupe:
             return etat.general_est_fatigue(general)
-        fatigues = self.groupe.fatigues_origine(tuple(self._affectes))
-        valeurs = {fatigues[self._origines[u].identifiant] if u in self._origines
-                   and self._origines[u].identifiant in fatigues
-                   else etat.general_est_fatigue(general) for u in infos['unites']}
+        valeurs = set(self.fatigues_individuelles(general, infos))
         if len(valeurs) > 1:
             raise NotImplementedError('Fatigue hétérogène : règle de combat non définie.')
         return next(iter(valeurs), etat.general_est_fatigue(general))

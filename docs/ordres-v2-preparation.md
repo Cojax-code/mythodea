@@ -69,10 +69,21 @@ aussi réaliser le circuit du lot C avant toute activation de Muraille.
 
 ### Questions de gameplay encore indispensables
 
+La reprise du 27 octobre précise l'ordre **base → facteurs collectifs existants
+→ avantage individuel de fatigue → calcul des pertes**. Le frais reçoit ×2
+contre le fatigué de même type ; les types différents gardent leurs avantages.
+Le propriétaire privilégie ensuite l'appariement maximal sans réutilisation,
+avec somme des contributions et résistance moyenne : voir l'[analyse et les
+exemples 3/3 et 5/5](ordres-v2-fatigue-individuelle.md). Cette méthode ne préserve
+pas tous les résultats homogènes à effectifs inégaux, pourtant également exigés.
+Cette contradiction doit être arbitrée avant implémentation ; aucune exception
+supplémentaire n'est autorisée. Le relevé individuel de la vue est disponible.
+
 1. **Gros_poisson, fatigue hétérogène** : la résistance et les dégâts partagent
    actuellement la même valeur effective. Les valeurs de fatigue peuvent être
    conservées par UUID, mais la règle de résistance d'un mélange frais/fatigués
-   contre un même type reste à fixer. Ni moyenne ni sous-duels arbitraires.
+   contre un même type reste à finaliser selon l'arbitrage ci-dessus.
+   Ni exception pour les blocs homogènes ni sous-duels arbitraires.
 2. **Gros_poisson, capacités** : formation de référence pour le seuil de cavalerie
    lourde et les bonus de composition/raciaux ; traitement des soutiens admis.
    Conversion d'un soldat prêté par Spore adverse : origine/bloc après conversion

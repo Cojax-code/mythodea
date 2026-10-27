@@ -118,6 +118,60 @@ class VueParticipants(unittest.TestCase):
                     self.combats.combat_entre_generaux(a, ennemi, participants=self.vue(groupe, a))
         self.assertEqual((self.photo(), rng.getstate()), (avant, hasard))
 
+    def test_releve_individuel_3_et_5_par_uuid_sans_choisir_de_formule(self):
+        generaux = [self.troupe(joueur, 'piquier', 5, numero=numero, place=str(numero))
+                    for joueur in ('j1', 'j2') for numero in (1, 2)]
+        a, preteur_a, b, preteur_b = generaux
+        self.etat.sauvegarder_generaux_fatigues({'j1:general2', 'j2:general2'})
+        avant = self.photo()
+        with self.soldats.participation_temporaire([
+                self.contribution(g) for g in generaux]) as groupe:
+            ids = {(g['joueur'], g['nom']): tuple(p.identifiant for p in groupe.participants
+                   if (p.joueur, p.general) == (g['joueur'], g['nom'])) for g in generaux}
+            for n, fatigue_a, fatigue_b in ((3, 0, 0), (3, 3, 3), (3, 0, 3),
+                                          (3, 1, 0), (5, 2, 0), (5, 2, 3)):
+                with self.subTest(effectif=n, fatigue_a=fatigue_a, fatigue_b=fatigue_b):
+                    affectations = []
+                    for g, preteur, fatigues in ((a, preteur_a, fatigue_a), (b, preteur_b, fatigue_b)):
+                        selection = (ids[g['joueur'], g['nom']][:n-fatigues]
+                                     + ids[preteur['joueur'], preteur['nom']][:fatigues])
+                        affectations.append((g, 'avant', selection))
+                    vue = self.soldats.VueParticipants(groupe, affectations)
+                    for g, fatigues in ((a, fatigue_a), (b, fatigue_b)):
+                        infos = vue.blocs(g)['avant']
+                        releve = vue.fatigues_individuelles(g, infos)
+                        self.assertEqual(releve, (False,) * (n-fatigues) + (True,) * fatigues)
+                        par_uuid = groupe.fatigues_origine(affectations[0 if g is a else 1][2])
+                        self.assertEqual(releve, tuple(par_uuid[self.soldats.marqueur(u)]
+                                                      for u in infos['unites']))
+                    self.assertEqual(self.photo(), avant)
+        self.assertEqual(self.photo(), avant)
+
+    def test_releve_individuel_apres_perte_et_fermeture(self):
+        a, preteur, _ = self.scenario()
+        self.etat.sauvegarder_generaux_fatigues({'j1:general2'})
+        with self.soldats.participation_temporaire([
+                self.contribution(a), self.contribution(preteur)]) as groupe:
+            vue = self.vue(groupe, a)
+            fatigues = [p.identifiant for p in groupe.participants if p.general == preteur['nom']]
+            groupe.appliquer_pertes(fatigues[:1], 0, moral=0, aleatoire=random.Random(0))
+            infos = vue.blocs(a)['avant']
+            self.assertEqual(vue.fatigues_individuelles(a, infos), (False,) * 3 + (True,) * 2)
+            self.assertEqual(set(groupe.fatigues_origine(fatigues)), set(fatigues[1:]))
+            self.assertEqual(self.etat.charger_generaux_fatigues(), {'j1:general2'})
+        with self.assertRaises(RuntimeError):
+            vue.fatigues_individuelles(a, infos)
+
+    def test_releve_ordinaire_et_bloc_vide(self):
+        a, _, _ = self.scenario()
+        vue = self.soldats.VueParticipants()
+        for fatigue in (False, True):
+            self.etat.sauvegarder_generaux_fatigues({'j1:general1'} if fatigue else set())
+            infos = vue.blocs(a)
+            self.assertEqual(vue.fatigues_individuelles(a, infos['avant']), (fatigue,) * 3)
+            self.assertEqual(vue.fatigues_individuelles(a, infos['arriere']), ())
+            self.assertEqual(vue.fatigue(a, infos['arriere']), fatigue)
+
     def test_capacite_ambigue_refusee_avant_mutation(self):
         a, preteur, ennemi = self.scenario()
         self.speciale(ennemi, 'Trop_gros_zombie', 1, 'arriere')

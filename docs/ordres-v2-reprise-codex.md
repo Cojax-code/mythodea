@@ -2,9 +2,56 @@
 
 **Entrée de reprise courte.** État fonctionnel ci-dessous ; [audit d'architecture](ordres-v2-audit-architecture.md) pour les dépendances et fonctions réutilisables ; [contrats en vigueur](ordres-v2-preparation.md) et SPEC pour les règles. Les anciens bilans du Lot A et des étapes précédentes restent consultables dans l'historique Git (avant l'élagage documentaire du 27 octobre 2026).
 
-## Lot B — reprise depuis d32fdeb, 27 octobre 2026
+## Reprise actuelle — VueParticipants et fatigue individuelle, 27 octobre 2026
 
-**Cette section fait foi ; toutes les sections suivantes sont des archives.**
+**Cette section fait foi ; le bilan suivant est antérieur.**
+
+- Branche `feat/ordres-v2`, départ propre `9b41906`, synchronisée par avance
+  rapide vers `3c8f675` : les deux corrections GitHub des scripts sont récupérées.
+  Aucune branche créée, aucun merge vers `v2.0`, aucun changement Mythodea-web.
+- Vue commune validée dans son périmètre actuel : choc, manœuvre et Rafale
+  utilisent les soldats sélectionnés, avec pertes chez leurs véritables origines.
+  Les capacités/compositions encore ouvertes et la fatigue mélangée sont refusées.
+- Préparation : `VueParticipants.fatigues_individuelles()` expose le relevé des
+  survivants dans l'ordre des chemins, via les UUID de `GroupeTemporaire` et
+  `fatigues_origine()`. `fatigue()` le réutilise sans accepter les mélanges.
+  Aucun nouveau registre ni écriture de fatigue ; combat et pertes inchangés.
+- Validation fiabilisée : fins de ligne LF pour `.dev/*.sh`, erreurs des pipelines
+  propagées, mode root réellement exigé et test administrateur Crypte ajouté.
+  Le comparateur contrôle aussi UID/GID et modes, en plus des états, rapports,
+  UUID et générateurs aléatoires. Copies temporaires exclusivement.
+- **Arbitrage bloquant** : le propriétaire privilégie l'appariement maximal
+  frais/fatigués sans réutilisation, somme des contributions, résistance moyenne.
+  Mais 6 frais contre 3 fatigués donnent 4 survivants contre 5 historiquement.
+  La conservation de tous les cas homogènes est aussi exigée, sans mécanisme
+  supplémentaire. Donc aucune formule activée. [Calculs exacts, exemples et
+  obstacles de Gros_poisson](ordres-v2-fatigue-individuelle.md).
+- Gros_poisson reste désactivé. Décisions indispensables : composition de référence,
+  seuil lourd (10 + 5), rattachement des soutiens, devenir d'un prêté converti
+  par Spore, auto-désignation des deux rôles. Commandement bénéficiaire, fusions
+  partielles, retour ordinaire et restrictions Zombie restent acquis.
+- Aucun travail nouveau sur Muraille, Ralliement ou Dernière charge.
+
+Validation Linux WSL Ubuntu / Python 3.14.4 :
+
+- Avant préparation : **13 tests ciblés, 1,936 s, OK** ; **740 tests complets,
+  92,014 s, OK (4 réservés root)** ; **4 contrôles root, 3,424 s, OK**.
+- Après préparation : compilation des Python concernés et syntaxe Bash **OK** ;
+  **16 tests ciblés, 2,764 s, OK** ; **743 tests complets, 96,705 s,
+  OK (4 réservés root)** ; **4 contrôles root, 3,371 s, OK**.
+  Soit **743 tests distincts réussis**, sans addition des passes ciblées.
+- **30 scénarios strictement identiques à `980a3d7`**, après ajout de la comparaison
+  des droits. Seuls inodes/devices et racines temporaires sont normalisés.
+- Refus du mode root sous utilisateur ordinaire : **code 2 confirmé**.
+- Exemples d'appariement vérifiés avec `Fraction` et comparaison des cas homogènes
+  au vrai `combat_bloc()`. Aucun test ne déclare la formule hétérogène validée.
+- Premier lancement interrompu par CRLF ; relances ci-dessus réussies après
+  correction. Premier contrôle root bloqué par la protection Git du propriétaire ;
+  exception limitée au processus de validation, aucune configuration globale.
+  Les droits ont été testés avec de vrais UID/GID sous Linux. Les scénarios de
+  cycle conservent leur gel simulé ; la recette Raspberry Pi/SSH reste distincte.
+
+## Bilan antérieur du lot B — reprise depuis d32fdeb
 
 ### État de départ et périmètre
 

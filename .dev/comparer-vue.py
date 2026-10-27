@@ -4,6 +4,7 @@ import io
 import itertools
 import json
 import random
+import stat
 import sys
 import uuid
 from pathlib import Path
@@ -58,14 +59,17 @@ for graine in (0, 3, 17):
                     t.speciale(a, 'Trop_gros_zombie', 1, 'arriere')
                 with t.soldats.bataille_complete('comparaison'):
                     r = t.combats.combat_entre_generaux(a, b)
-                fichiers = {}
+                fichiers, droits = {}, {}
                 for p in t.config.game_path.rglob('*'):
+                    infos = p.stat()
+                    droits[str(p.relative_to(t.config.game_path))] = (
+                        infos.st_uid, infos.st_gid, stat.S_IMODE(infos.st_mode))
                     if p.is_file():
                         contenu = p.read_text(encoding='utf-8')
                         if p.suffix == '.json':
                             contenu = json.dumps(nettoyer(json.loads(contenu)), sort_keys=True)
                         fichiers[str(p.relative_to(t.config.game_path))] = contenu
-                capture = json.dumps(dict(resultat=r, fichiers=fichiers, hasard=random.getstate(),
+                capture = json.dumps(dict(resultat=r, fichiers=fichiers, droits=droits, hasard=random.getstate(),
                     hasard_progression=t.progression.aleatoire_progression.getstate(),
                     hasard_caracteristiques=t.generaux.aleatoire_caracteristiques.getstate()),
                                      ensure_ascii=False, sort_keys=True, default=str)

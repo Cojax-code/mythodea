@@ -1930,6 +1930,16 @@ et de la confrontation. `fatigues_origine()` associe à chaque UUID vivant la
 fatigue officielle de son général d'origine, sans calculer une moyenne ni
 définir les dégâts/résistances d'un bloc mélangé.
 
+`VueParticipants.fatigues_individuelles(general, infos)` expose ce relevé dans
+l'ordre des chemins de `infos['unites']`, sans écriture persistante. Chaque
+participant prêté conserve la fatigue de son UUID d'origine ; le bloc doit être
+relu après les pertes. `fatigue()` n'en extrait un booléen de combat que pour
+une sélection homogène et refuse encore les mélanges. La base et les facteurs
+collectifs de valeur précèdent l'avantage de fatigue : ×2 au frais contre un
+fatigué du même type, aucun changement des avantages entre types différents.
+La formule des mélanges reste à valider avec la conservation exigée des résultats
+historiques homogènes ; aucun cas particulier supplémentaire n'est activé.
+
 `participer()` inscrit seulement les soldats explicitement engagés dans une
 `bataille_complete()` existante. Le comptage commun crédite les survivants une
 seule fois par bataille. Préparer une vue ne donne aucune expérience ; un prêt
