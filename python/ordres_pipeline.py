@@ -566,7 +566,7 @@ def moral(general, valeur):
     return max(0, min(100, valeur))
 
 
-def rafales(general_1, general_2, aleatoire, resoudre_pertes):
+def rafales(general_1, general_2, aleatoire, resoudre_pertes, *, participants=None):
     """Tirs préalables au choc, même en présence d'un Bouclier vivant.
 
     Les deux plans sont arrêtés avant les pertes ; aucun avantage de parcours
@@ -576,16 +576,17 @@ def rafales(general_1, general_2, aleatoire, resoudre_pertes):
     import generaux
     import soldats
     import unites
+    participants = participants if participants is not None else soldats.VueParticipants()
     plans = []
     for tireur, cible in ((general_1, general_2), (general_2, general_1)):
         if not effet(tireur, 'rafale'):
             continue
-        arriere = generaux.lire_blocs_general(tireur['chemin'])['arriere']
+        arriere = participants.blocs(tireur)['arriere']
         tirs = ordres_calculs_v2.tentatives_rafale(
             arriere['nombre'] if arriere['type'] == 'archer' else 0)
         if not tirs:
             continue
-        blocs = generaux.lire_blocs_general(cible['chemin'])
+        blocs = participants.blocs(cible)
         candidats = [u for b in config.ordre_blocs
                      for u in (*blocs[b]['unites'], *blocs[b].get('boucliers', ()),
                                *blocs[b].get('soutiens', ()))
@@ -608,5 +609,5 @@ def rafales(general_1, general_2, aleatoire, resoudre_pertes):
                             tirs=tirs, touches=len(victimes), pertes=pertes))
     for general in (general_1, general_2):
         if plans:
-            generaux.supprimer_general_si_vide(general)
+            participants.supprimer_general_si_vide(general)
     return details

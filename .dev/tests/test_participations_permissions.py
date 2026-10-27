@@ -104,3 +104,26 @@ class PermissionsParticipations(unittest.TestCase):
                     self.assertEqual(self.soldats.charger(), avant)
                 finally:
                     os.chown(participant.chemin, participant.uid, participant.gid)
+
+    def test_vue_commune_pertes_et_controle_des_proprietaires_reels(self):
+        import random
+        with self.soldats.participation_temporaire(self.contributions(self.generaux)) as groupe:
+            a, b = groupe.participants
+            vue = self.soldats.VueParticipants(groupe, [
+                (self.generaux[0], 'avant', (a.identifiant, b.identifiant))])
+            infos = vue.blocs(self.generaux[0])['avant']
+            self.assertEqual(infos['unites'], [a.chemin, b.chemin])
+            self.assertEqual(vue.total(self.generaux[1]), 0)
+            os.chown(b.chemin, a.uid, a.gid)
+            try:
+                with self.assertRaisesRegex(RuntimeError, 'Propriétaire Linux'):
+                    vue.blocs(self.generaux[0])
+            finally:
+                os.chown(b.chemin, b.uid, b.gid)
+            self.soldats.pertes(infos, 1, moral=0, aleatoire=random.Random(1))
+            self.assertFalse(a.chemin.exists())
+            self.assertEqual(vue.total(self.generaux[0]), 1)
+            self.assertEqual((b.chemin.stat().st_uid, b.chemin.stat().st_gid), (62002, 62002))
+            self.assertTrue(self.lisible(b.chemin / 'blessures.txt', 62002))
+            self.assertFalse(self.lisible(b.chemin / 'blessures.txt', 62001))
+            self.assertEqual(self.soldats.charger()[b.identifiant]['batailles'], 7)

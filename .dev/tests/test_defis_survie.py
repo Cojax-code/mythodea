@@ -435,7 +435,7 @@ class DefisSurvie(unittest.TestCase):
         armee = {'j1': self.generaux.lire_blocs_general(chemin),
                  'bot': self.generaux.lire_blocs_general(adverse)}
         original = self.combats.combat_bloc
-        def simuler_pertes(infos, survivants, general=None):
+        def simuler_pertes(infos, survivants, general=None, *, participants=None):
             # Les effectifs après pertes incluent désormais les sauvetages.
             # Simuler leur actualisation sans modifier les dossiers de ce test.
             infos['nombre'] = survivants

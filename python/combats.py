@@ -28,35 +28,44 @@ def camps_du_combat(configuration):
     return camps
 
 
-def combat_entre_generaux(general_1, general_2):
+def combat_entre_generaux(general_1, general_2, *, participants=None):
     if (general_1['joueur'] == general_2['joueur'] or
             general_1.get('camp', general_1['joueur']) == general_2.get('camp', general_2['joueur'])):
         raise ValueError("Un duel doit opposer deux généraux de camps différents.")
-    with ordres_pipeline.duel(general_1, general_2) as decisions, unites.duel(general_1, general_2):
-        for general in (general_1, general_2):
-            if general['chemin'].is_dir():
-                soldats.participer(general)
-        initiales = [generaux.total_general_depuis_chemin(g['chemin']) for g in (general_1, general_2)]
-        rafales = ordres_pipeline.rafales(general_1, general_2, random, supprimer_unites)
-        resultat = _combat_entre_generaux(general_1, general_2)
-        if rafales:
-            resultat['initial_1'], resultat['initial_2'] = initiales
-            resultat['rafales'] = rafales
+    participants = participants if participants is not None else soldats.VueParticipants()
+    participants.verifier_duel(general_1, general_2)
+    with ordres_pipeline.duel(general_1, general_2) as decisions:
+        if participants.groupe and any(ordres_pipeline.effet(g, 'choca_fuite')
+                                      for g in (general_1, general_2)):
+            raise NotImplementedError('Retraite avec participants temporaires non définie.')
+        with unites.duel(general_1, general_2):
+            for general in (general_1, general_2):
+                if participants.present(general):
+                    participants.participer(general)
+            initiales = [participants.total(g) for g in (general_1, general_2)]
+            rafales = ordres_pipeline.rafales(general_1, general_2, random,
+                lambda infos, n, g: supprimer_unites(infos, n, g, participants=participants),
+                participants=participants)
+            resultat = _combat_entre_generaux(general_1, general_2, participants=participants)
+            if rafales:
+                resultat['initial_1'], resultat['initial_2'] = initiales
+                resultat['rafales'] = rafales
     if decisions:
         resultat['ordres_v2'] = decisions
     for numero, general in enumerate((general_1, general_2), 1):
-        generaux.supprimer_general_si_vide(general)
-        resultat[f'final_{numero}'] = generaux.total_general_depuis_chemin(general['chemin'])
+        participants.supprimer_general_si_vide(general)
+        resultat[f'final_{numero}'] = participants.total(general)
     return resultat
 
 
-def _combat_entre_generaux(general_1, general_2):
+def _combat_entre_generaux(general_1, general_2, *, participants=None):
     # Affrontement complet entre deux généraux.
     #
     # Déroulement :
     # 1. Choc initial entre les blocs placés face à face.
     # 2. Manœuvres entre les blocs survivants.
 
+    participants = participants if participants is not None else soldats.VueParticipants()
     joueur_1 = general_1["joueur"]
     joueur_2 = general_2["joueur"]
     camp_1 = general_1.get("camp", joueur_1)
@@ -64,14 +73,11 @@ def _combat_entre_generaux(general_1, general_2):
     if camp_1 == camp_2 or joueur_1 == joueur_2:
         raise ValueError("Un duel doit opposer deux généraux de camps différents.")
 
-    chemin_1 = general_1["chemin"]
-    chemin_2 = general_2["chemin"]
-
-    initial_1 = generaux.total_general_depuis_chemin(chemin_1)
-    initial_2 = generaux.total_general_depuis_chemin(chemin_2)
+    initial_1 = participants.total(general_1)
+    initial_2 = participants.total(general_2)
 
     # Rafale peut avoir éliminé un camp avant tout choc ou priorité de bouclier.
-    if not chemin_1.is_dir() or not chemin_2.is_dir():
+    if not participants.present(general_1) or not participants.present(general_2):
         return dict(joueur_1=joueur_1, joueur_2=joueur_2, camp_1=camp_1, camp_2=camp_2,
                     general_1=general_1['nom'], general_2=general_2['nom'],
                     affichage_1=rapports.nom_affichage_general(general_1),
@@ -103,17 +109,17 @@ def _combat_entre_generaux(general_1, general_2):
                 "general_1": general_1["nom"],
                 "affichage_1": rapports.nom_affichage_general(general_1),
                 "initial_1": initial_1,
-                "final_1": generaux.total_general_depuis_chemin(chemin_1),
+                "final_1": participants.total(general_1),
                 "joueur_2": joueur_2, "general_2": general_2["nom"],
                 "affichage_2": rapports.nom_affichage_general(general_2),
                 "initial_2": initial_2,
-                "final_2": generaux.total_general_depuis_chemin(chemin_2),
+                "final_2": participants.total(general_2),
                 "chocs": details_bouclier, "manoeuvres": [],
             }
 
     initiative_avant, details_choc = phase_engagement_initial(
         general_1,
-        general_2
+        general_2, participants=participants
     )
     details_choc = details_bouclier + details_choc
 
@@ -121,7 +127,7 @@ def _combat_entre_generaux(general_1, general_2):
 
     fuites = ordres_pipeline.fuir_apres_choc((general_1, general_2))
     # Le choc peut avoir détruit un général ou déclenché une retraite acceptée.
-    if fuites or not chemin_1.exists() or not chemin_2.exists():
+    if fuites or not participants.present(general_1) or not participants.present(general_2):
         return {
             "joueur_1": joueur_1,
             "camp_1": camp_1,
@@ -129,12 +135,12 @@ def _combat_entre_generaux(general_1, general_2):
             "general_1": general_1["nom"],
             "affichage_1": rapports.nom_affichage_general(general_1),
             "initial_1": initial_1,
-            "final_1": generaux.total_general_depuis_chemin(chemin_1),
+            "final_1": participants.total(general_1),
             "joueur_2": joueur_2,
             "general_2": general_2["nom"],
             "affichage_2": rapports.nom_affichage_general(general_2),
             "initial_2": initial_2,
-            "final_2": generaux.total_general_depuis_chemin(chemin_2),
+            "final_2": participants.total(general_2),
             "chocs": details_choc,
             "manoeuvres": details_manoeuvre,
             "fuites": fuites,
@@ -148,12 +154,12 @@ def _combat_entre_generaux(general_1, general_2):
     while tour < 10:
         tour += 1
 
-        if not chemin_1.exists() or not chemin_2.exists():
+        if not participants.present(general_1) or not participants.present(general_2):
             break
 
         armee = {
-            joueur_1: generaux.lire_blocs_general(chemin_1),
-            joueur_2: generaux.lire_blocs_general(chemin_2),
+            joueur_1: participants.blocs(general_1),
+            joueur_2: participants.blocs(general_2),
         }
 
         if (
@@ -178,12 +184,12 @@ def _combat_entre_generaux(general_1, general_2):
         )
 
         for joueur_attaquant, bloc_attaquant in actions:
-            if not chemin_1.exists() or not chemin_2.exists():
+            if not participants.present(general_1) or not participants.present(general_2):
                 break
 
             armee = {
-                joueur_1: generaux.lire_blocs_general(chemin_1),
-                joueur_2: generaux.lire_blocs_general(chemin_2),
+                joueur_1: participants.blocs(general_1),
+                joueur_2: participants.blocs(general_2),
             }
 
             if generaux.total_unites_general(armee[joueur_1]) == 0:
@@ -219,7 +225,7 @@ def _combat_entre_generaux(general_1, general_2):
                 general_attaquant,
                 general_defenseur,
                 bloc_attaquant,
-                cible
+                cible, participants=participants
             )
 
             numero_manoeuvre += 1
@@ -234,10 +240,10 @@ def _combat_entre_generaux(general_1, general_2):
             )
             break
 
-    if chemin_1.exists():
-        generaux.supprimer_general_si_vide(general_1)
-    if chemin_2.exists():
-        generaux.supprimer_general_si_vide(general_2)
+    if participants.present(general_1):
+        participants.supprimer_general_si_vide(general_1)
+    if participants.present(general_2):
+        participants.supprimer_general_si_vide(general_2)
 
     return {
         "joueur_1": joueur_1,
@@ -246,12 +252,12 @@ def _combat_entre_generaux(general_1, general_2):
         "general_1": general_1["nom"],
         "affichage_1": rapports.nom_affichage_general(general_1),
         "initial_1": initial_1,
-        "final_1": generaux.total_general_depuis_chemin(chemin_1),
+        "final_1": participants.total(general_1),
         "joueur_2": joueur_2,
         "general_2": general_2["nom"],
         "affichage_2": rapports.nom_affichage_general(general_2),
         "initial_2": initial_2,
-        "final_2": generaux.total_general_depuis_chemin(chemin_2),
+        "final_2": participants.total(general_2),
         "chocs": details_choc,
         "manoeuvres": details_manoeuvre,
     }
@@ -959,31 +965,56 @@ def trouver_cible_faible(armee, joueur_ennemi):
     return cible
 
 
-def moral_des_pertes(infos, general=None):
+def moral_des_pertes(infos, general=None, *, participants=None):
     """Lecture commune au combat et aux prévisions, sans mutation persistante."""
     caracteristiques = progression.caracteristiques_general(general) if general else None
     moral = 0
     if caracteristiques and general['chemin'].is_dir():
         if caracteristiques['nature'] == 'stratege':
             caracteristiques['moral'] = 0
-        composition = generaux.lire_composition_general(general['chemin'])
+        composition = (participants.composition(general) if participants is not None
+                       else generaux.lire_composition_general(general['chemin']))
         bloc = infos['unites'][0].parent.name if infos['unites'] else None
         moral = unites.moral_bloc(caracteristiques, composition, bloc, general)
         moral = ordres_pipeline.moral(general, moral)
     return moral
 
 
-def supprimer_unites(infos, survivants, general=None):
-    pertes = soldats.pertes(infos, survivants, moral_des_pertes(infos, general), random)
+def supprimer_unites(infos, survivants, general=None, *, participants=None):
+    if participants is not None and participants.groupe:
+        participants.groupe.bilan()
+    pertes = soldats.pertes(infos, survivants,
+                           moral_des_pertes(infos, general, participants=participants), random)
     ordres_pipeline.verifier_qg()
+    if participants is not None and participants.groupe:
+        participants.groupe.bilan()
     return pertes
+
+
+def resoudre_blocs(infos_1, infos_2, general_1, general_2, bloc_1, bloc_2,
+                   fatigue_1, fatigue_2, *, participants=None):
+    """Résolution commune du choc et de la manœuvre, dans leur ordre historique.
+
+    Les deux dégâts sont calculés avant les pertes ; les sauvetages puis les
+    capacités gardent leur séquence et leurs tirages. La phase fait son rapport.
+    """
+    survivants_1, survivants_2 = combat_bloc(
+        infos_1, infos_2, fatigue_1, fatigue_2, bloc_1, bloc_2,
+        general_1=general_1, general_2=general_2)
+    if infos_1['nombre'] > 0 and infos_2['nombre'] > 0:
+        soldats.affrontement(general_1, general_2)
+    pertes_1 = supprimer_unites(infos_1, survivants_1, general_1, participants=participants)
+    pertes_2 = supprimer_unites(infos_2, survivants_2, general_2, participants=participants)
+    unites.apres_confrontation(general_1, general_2, bloc_1, bloc_2,
+                              infos_1, infos_2, pertes_1, pertes_2)
+    return pertes_1, pertes_2
 
 
 def confrontation_directe(
     armee,
     general_1,
     general_2,
-    bloc
+    bloc, *, participants=None
 ):
     # Résout le choc initial entre deux blocs placés face à face.
     # Retourne aussi les données structurées utilisées par le rapport de bataille.
@@ -994,8 +1025,9 @@ def confrontation_directe(
     nom_1 = f"{joueur_1} {rapports.nom_affichage_general(general_1)}"
     nom_2 = f"{joueur_2} {rapports.nom_affichage_general(general_2)}"
 
-    infos_1 = armee[joueur_1][bloc]
-    infos_2 = armee[joueur_2][bloc]
+    participants = participants if participants is not None else soldats.VueParticipants()
+    infos_1 = participants.blocs(general_1)[bloc] if participants.groupe else armee[joueur_1][bloc]
+    infos_2 = participants.blocs(general_2)[bloc] if participants.groupe else armee[joueur_2][bloc]
 
     if infos_1["nombre"] == 0 or infos_2["nombre"] == 0:
         return None
@@ -1005,8 +1037,8 @@ def confrontation_directe(
     type_1 = infos_1["type"]
     type_2 = infos_2["type"]
 
-    fatigue_1 = etat.general_est_fatigue(general_1)
-    fatigue_2 = etat.general_est_fatigue(general_2)
+    fatigue_1 = participants.fatigue(general_1, infos_1)
+    fatigue_2 = participants.fatigue(general_2, infos_2)
 
     rapports.afficher_et_ecrire("\n" + "-" * 60)
     rapports.afficher_et_ecrire(f"Choc initial : {bloc}")
@@ -1021,19 +1053,9 @@ def confrontation_directe(
     rapports.afficher_et_ecrire(f"{nom_1} : {rapports.formater_force(infos_1)}")
     rapports.afficher_et_ecrire(f"{nom_2} : {rapports.formater_force(infos_2)}")
 
-    survivants_1, survivants_2 = combat_bloc(
-        infos_1,
-        infos_2,
-        fatigue_1,
-        fatigue_2,
-        bloc, bloc,
-        general_1=general_1, general_2=general_2,
-    )
-    soldats.affrontement(general_1, general_2)
-
-    pertes_1 = supprimer_unites(infos_1, survivants_1, general_1)
-    pertes_2 = supprimer_unites(infos_2, survivants_2, general_2)
-    unites.apres_confrontation(general_1, general_2, bloc, bloc, infos_1, infos_2, pertes_1, pertes_2)
+    pertes_1, pertes_2 = resoudre_blocs(
+        infos_1, infos_2, general_1, general_2, bloc, bloc,
+        fatigue_1, fatigue_2, participants=participants)
     survivants_1, survivants_2 = infos_1['nombre'], infos_2['nombre']
 
     rapports.afficher_et_ecrire("\nRésultat :")
@@ -1059,18 +1081,16 @@ def confrontation_directe(
     }
 
 
-def phase_engagement_initial(general_1, general_2):
+def phase_engagement_initial(general_1, general_2, *, participants=None):
+    participants = participants if participants is not None else soldats.VueParticipants()
     joueur_1 = general_1["joueur"]
     joueur_2 = general_2["joueur"]
-
-    chemin_1 = general_1["chemin"]
-    chemin_2 = general_2["chemin"]
 
     rapports.afficher_et_ecrire("\n=== CHOC INITIAL ===")
 
     armee_depart = {
-        joueur_1: generaux.lire_blocs_general(chemin_1),
-        joueur_2: generaux.lire_blocs_general(chemin_2),
+        joueur_1: participants.blocs(general_1),
+        joueur_2: participants.blocs(general_2),
     }
 
     initiative_avant = {
@@ -1118,29 +1138,29 @@ def phase_engagement_initial(general_1, general_2):
     rapports.afficher_et_ecrire("\n--- Résolution du choc initial ---")
 
     for bloc in combats_prevus:
-        if not chemin_1.exists() or not chemin_2.exists():
+        if not participants.present(general_1) or not participants.present(general_2):
             break
 
         armee = {
-            joueur_1: generaux.lire_blocs_general(chemin_1),
-            joueur_2: generaux.lire_blocs_general(chemin_2),
+            joueur_1: participants.blocs(general_1),
+            joueur_2: participants.blocs(general_2),
         }
 
         detail = confrontation_directe(
             armee,
             general_1,
             general_2,
-            bloc
+            bloc, participants=participants
         )
 
         if detail is not None:
             details_choc.append(detail)
 
-        if chemin_1.exists():
-            generaux.supprimer_general_si_vide(general_1)
+        if participants.present(general_1):
+            participants.supprimer_general_si_vide(general_1)
 
-        if chemin_2.exists():
-            generaux.supprimer_general_si_vide(general_2)
+        if participants.present(general_2):
+            participants.supprimer_general_si_vide(general_2)
 
     return initiative_avant, details_choc
 
@@ -1150,7 +1170,7 @@ def attaque_ciblee(
     general_attaquant,
     general_defenseur,
     bloc_attaquant,
-    bloc_cible
+    bloc_cible, *, participants=None
 ):
     # Résout une manœuvre contre un bloc ennemi.
     # Retourne les données nécessaires au rapport de bataille.
@@ -1161,16 +1181,19 @@ def attaque_ciblee(
     nom_attaquant = f"{joueur_attaquant} {rapports.nom_affichage_general(general_attaquant)}"
     nom_defenseur = f"{joueur_ennemi} {rapports.nom_affichage_general(general_defenseur)}"
 
-    infos_attaquant = armee[joueur_attaquant][bloc_attaquant]
-    infos_defenseur = armee[joueur_ennemi][bloc_cible]
+    participants = participants if participants is not None else soldats.VueParticipants()
+    infos_attaquant = (participants.blocs(general_attaquant)[bloc_attaquant] if participants.groupe
+                       else armee[joueur_attaquant][bloc_attaquant])
+    infos_defenseur = (participants.blocs(general_defenseur)[bloc_cible] if participants.groupe
+                       else armee[joueur_ennemi][bloc_cible])
 
     initial_attaquant = infos_attaquant["nombre"]
     initial_defenseur = infos_defenseur["nombre"]
     type_attaquant = infos_attaquant["type"]
     type_defenseur = infos_defenseur["type"]
 
-    fatigue_attaquant = etat.general_est_fatigue(general_attaquant)
-    fatigue_defenseur = etat.general_est_fatigue(general_defenseur)
+    fatigue_attaquant = participants.fatigue(general_attaquant, infos_attaquant)
+    fatigue_defenseur = participants.fatigue(general_defenseur, infos_defenseur)
 
     rapports.afficher_et_ecrire("\n" + "-" * 60)
     rapports.afficher_et_ecrire("Manœuvre")
@@ -1195,21 +1218,10 @@ def attaque_ciblee(
         f"{nom_defenseur} {bloc_cible} : {rapports.formater_force(infos_defenseur)}"
     )
 
-    survivants_attaquant, survivants_defenseur = combat_bloc(
-        infos_attaquant,
-        infos_defenseur,
-        fatigue_attaquant,
-        fatigue_defenseur,
-        bloc_attaquant, bloc_cible,
-        general_1=general_attaquant, general_2=general_defenseur,
-    )
-    if initial_attaquant > 0 and initial_defenseur > 0:
-        soldats.affrontement(general_attaquant, general_defenseur)
-
-    pertes_attaquant = supprimer_unites(infos_attaquant, survivants_attaquant, general_attaquant)
-    pertes_defenseur = supprimer_unites(infos_defenseur, survivants_defenseur, general_defenseur)
-    unites.apres_confrontation(general_attaquant, general_defenseur, bloc_attaquant, bloc_cible,
-                              infos_attaquant, infos_defenseur, pertes_attaquant, pertes_defenseur)
+    pertes_attaquant, pertes_defenseur = resoudre_blocs(
+        infos_attaquant, infos_defenseur, general_attaquant, general_defenseur,
+        bloc_attaquant, bloc_cible, fatigue_attaquant, fatigue_defenseur,
+        participants=participants)
     survivants_attaquant, survivants_defenseur = infos_attaquant['nombre'], infos_defenseur['nombre']
 
     rapports.afficher_et_ecrire("\nRésultat :")

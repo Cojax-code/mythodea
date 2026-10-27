@@ -269,7 +269,7 @@ class EffetsOrdres(unittest.TestCase):
         engagements = []
         # Même moteur territorial et mêmes demandes, effet de duel remplacé
         # par un observateur sans pertes pour comparer les deux parcours.
-        def observer(g1, g2):
+        def observer(g1, g2, *, participants=None):
             engagements.append((g1['joueur'], g1['nom'], g2['joueur'], g2['nom']))
             return dict(joueur_1=g1['joueur'], joueur_2=g2['joueur'],
                 general_1=g1['nom'], general_2=g2['nom'], initial_1=4, initial_2=4,
@@ -297,8 +297,8 @@ class EffetsOrdres(unittest.TestCase):
         avant = self.preparation_tour_rafale()
         origine = ordres_pipeline.rafales
         executions = []
-        def verifier(a, b, hasard, pertes):
-            resultat = origine(a, b, hasard, pertes)
+        def verifier(a, b, hasard, pertes, *, participants=None):
+            resultat = origine(a, b, hasard, pertes, participants=participants)
             if resultat:
                 executions.append(resultat)
                 self.assertEqual({p: p.read_bytes() for p in avant}, avant)
@@ -318,8 +318,8 @@ class EffetsOrdres(unittest.TestCase):
         avant = self.preparation_tour_rafale()
         soldats_avant = copy.deepcopy(self.soldats.charger())
         origine = ordres_pipeline.rafales
-        def interrompre(a, b, hasard, pertes):
-            resultat = origine(a, b, hasard, pertes)
+        def interrompre(a, b, hasard, pertes, *, participants=None):
+            resultat = origine(a, b, hasard, pertes, participants=participants)
             if resultat:
                 raise RuntimeError('interruption après Rafale')
             return resultat

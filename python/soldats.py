@@ -217,6 +217,142 @@ class GroupeTemporaire:
         participants.update(p.chemin for p in presents)
 
 
+class VueParticipants:
+    """Lecture du duel, passée explicitement aux phases, sans nouvel état métier.
+
+    Une affectation (commandant, bloc, UUID) remplace la sélection de ce bloc.
+    Les mêmes soldats sont retirés des autres lectures de cette vue. Le groupe
+    conserve leurs origines et contrôle leurs droits ; aucun dossier ne bouge.
+    Sans affectation, les lecteurs historiques restent utilisés tels quels.
+    Construire/lire une vue ne vaut ni engagement, ni autorisation d'ordre.
+    """
+    def __init__(self, groupe=None, affectations=()):
+        import config
+        self.groupe = groupe
+        self._affectations = {}
+        self._affectes = set()
+        for general, bloc, identifiants in affectations:
+            if groupe is None or bloc not in config.ordre_blocs:
+                raise ValueError('Affectation sans groupe ou bloc valide.')
+            cle_general = general['joueur'], general['nom']
+            cle_bloc = cle_general, bloc
+            ids = tuple(identifiants)
+            presents = groupe._selection_vivante(ids)
+            if (cle_bloc in self._affectations or self._affectes.intersection(ids)
+                    or len(presents) != len(ids)):
+                raise ValueError('Affectation répétée ou soldat détruit.')
+            if any(p.bloc != bloc for p in presents):
+                raise ValueError('Le bloc d’origine doit être conservé.')
+            self._affectations[cle_bloc] = (general['chemin'], ids)
+            self._affectes.update(ids)
+        self._origines = {p.chemin: p for p in groupe.participants} if groupe else {}
+
+    def blocs(self, general):
+        import generaux
+        if self.groupe is not None:
+            self.groupe.bilan()
+        blocs = generaux.lire_blocs_general(
+            general['chemin'], lecture_seule=True) if self.groupe else generaux.lire_blocs_general(general['chemin'])
+        if not self.groupe:
+            # Un appel ordinaire ne peut ignorer une réservation ouverte ailleurs.
+            if _prets.get():
+                import config
+                registre = charger()
+                if any(retrouver(u, registre, config.dans_generation_privee()) in _prets.get()
+                       for b in blocs.values() for u in b['unites']):
+                    raise RuntimeError('Soldats réservés : fournir leur vue explicite.')
+            return blocs
+        for bloc, infos in blocs.items():
+            infos['unites'] = [u for u in infos['unites']
+                              if u not in self._origines or
+                              self._origines[u].identifiant not in self._affectes]
+            infos['nombre'] = len(infos['unites'])
+            if not infos['nombre']:
+                infos['type'] = 'vide'
+            affectation = self._affectations.get(((general['joueur'], general['nom']), bloc))
+            if affectation is not None:
+                chemin, ids = affectation
+                if chemin != general['chemin']:
+                    raise RuntimeError('Commandant utilisé hors de son origine.')
+                blocs[bloc] = self.groupe.bloc(ids)
+        return blocs
+
+    def total(self, general):
+        import generaux
+        if self.groupe:
+            return generaux.total_unites_general(self.blocs(general))
+        return generaux.total_general_depuis_chemin(general['chemin'])
+
+    def present(self, general):
+        return self.total(general) > 0 if self.groupe else general['chemin'].exists()
+
+    def composition(self, general):
+        import generaux
+        if not self.groupe:
+            return generaux.lire_composition_general(general['chemin'])
+        return {bloc: {infos['type']: infos['nombre']} if infos['nombre'] else {}
+                for bloc, infos in self.blocs(general).items()}
+
+    def fatigue(self, general, infos):
+        import etat
+        if not self.groupe:
+            return etat.general_est_fatigue(general)
+        fatigues = self.groupe.fatigues_origine(tuple(self._affectes))
+        valeurs = {fatigues[self._origines[u].identifiant] if u in self._origines
+                   and self._origines[u].identifiant in fatigues
+                   else etat.general_est_fatigue(general) for u in infos['unites']}
+        if len(valeurs) > 1:
+            raise NotImplementedError('Fatigue hétérogène : règle de combat non définie.')
+        return next(iter(valeurs), etat.general_est_fatigue(general))
+
+    def verifier_duel(self, *generaux_du_duel):
+        """Refuser les dépendances ouvertes AVANT les contextes et pertes du duel."""
+        import generaux
+        if not self.groupe:
+            if _prets.get():
+                for general in generaux_du_duel:
+                    self.blocs(general)
+            return
+        self.groupe.bilan()
+        commandants = {(g['joueur'], g['nom']) for g in generaux_du_duel}
+        if any(cle not in commandants for cle, _ in self._affectations):
+            raise ValueError('Affectation à un commandant extérieur au duel.')
+        for (commandant, _), (_, ids) in self._affectations.items():
+            adversaires = {g['joueur'] for g in generaux_du_duel
+                           if (g['joueur'], g['nom']) != commandant}
+            if any(p.joueur in adversaires for p in self.groupe._selection_vivante(ids)):
+                raise ValueError('Un participant ne peut provenir du camp adverse du duel.')
+        # Les bonus de composition, conversions et déplacements d’un prêt sont
+        # encore ouverts. Ce refus technique ne définit aucune règle de Gros_poisson.
+        chemins = {g['chemin'] for g in generaux_du_duel}
+        chemins.update(p.chemin.parent.parent for p in self.groupe.participants)
+        for chemin in chemins:
+            composition = generaux.lire_composition_general(chemin)
+            if any(t not in ('archer', 'piquier', 'cavalier')
+                   for bloc in composition.values() for t in bloc):
+                raise NotImplementedError('Capacités/composition des participants temporaires non définies.')
+        for general in generaux_du_duel:
+            for infos in self.blocs(general).values():
+                self.fatigue(general, infos)
+
+    def participer(self, general):
+        if not self.groupe:
+            participer(general)
+        elif _participants.get() is not None:
+            for infos in self.blocs(general).values():
+                _participants.get().update(infos['unites'])
+
+    def supprimer_general_si_vide(self, general):
+        import generaux
+        # Un commandant ayant encore des prêtés ne disparaît pas parce que son
+        # propre dossier est vide. Les non-engagés à l’origine restent vivants.
+        if self.groupe:
+            if self.total(general) or any(sum(b.values()) for b in
+                    generaux.lire_composition_general(general['chemin']).values()):
+                return False
+        return generaux.supprimer_general_si_vide(general)
+
+
 @contextmanager
 def participation_temporaire(contributions):
     """Prépare une vue depuis (général, bloc, chemins des soldats) explicites.
