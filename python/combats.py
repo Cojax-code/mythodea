@@ -976,6 +976,35 @@ def prochain_avant_muraille(generaux_allies, general_adverse, *, aleatoire,
 
 
 
+
+def engager_avant_muraille(general_allie, general_adverse, *, participants=None):
+    """Résout un choc Avant/Avant de Muraille avec le moteur réel existant.
+
+    Pertes, moral, blessures, XP et effets après confrontation suivent
+    confrontation_directe -> resoudre_blocs, sans deuxième formule de combat.
+    Le pilote du territoire reste responsable des transmissions QG et des
+    priorités précédant le choc (dont Bouclier vivant). Aucun effet d'ordre
+    global n'est activé par ce raccordement seul.
+    """
+    if general_allie['joueur'] == general_adverse['joueur']:
+        raise ValueError('Muraille exige deux joueurs adversaires.')
+    if (general_allie.get('camp', general_allie['joueur']) ==
+            general_adverse.get('camp', general_adverse['joueur'])):
+        raise ValueError('Muraille exige deux camps adversaires.')
+    if (bouclier_vivant.presence_bouclier(general_allie)
+            or bouclier_vivant.presence_bouclier(general_adverse)):
+        raise NotImplementedError(
+            'Muraille : priorité du Bouclier vivant avant le choc non raccordée.')
+    participants = participants if participants is not None else soldats.VueParticipants()
+    participants.verifier_duel(general_allie, general_adverse)
+    armee = {
+        general_allie['joueur']: participants.blocs(general_allie),
+        general_adverse['joueur']: participants.blocs(general_adverse),
+    }
+    return confrontation_directe(
+        armee, general_allie, general_adverse, 'avant', participants=participants)
+
+
 def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
                              engager, qg_nommade=None, reserve_strategique=None):
     """Sélection successive des Avant de Muraille, sans classement figé.
