@@ -667,31 +667,15 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
                     generaux_territoire, formations, camp, adversaire,
                     aleatoire=simulateur)
         if murailles:
-            # La résolution de Muraille n'est actuellement définie que pour
-            # un camp à la fois. Ne jamais jouer deux murs comme des duels
-            # ordinaires ni activer une formation sans sélection valide.
+            # Aucun changement sur les unités tant que le cycle territorial,
+            # y compris le combat des autres blocs et son rapport, n'est pas
+            # entièrement raccordé.
             if len(murailles) != 1:
                 raise NotImplementedError(
                     'Muraille contre Muraille : confrontation collective à définir.')
-            camp_muraille, preparation = next(iter(murailles.items()))
-            if not preparation['participants']:
-                raise ValueError('Muraille retenue sans général admissible.')
-            adversaire = (general_camp_2 if camp_muraille == camp_1
-                          else general_camp_1)
-            formation = formations[camp_muraille]
-            qg_exclu = (formation['qg']
-                       if 'qg_nommade' in formation['ordres'] else None)
-            engagements_muraille = enchainer_avants_muraille(
-                preparation['participants'], adversaire, aleatoire=random,
-                qg_nommade=qg_exclu, camp=camp_muraille)
-            rapports.afficher_et_ecrire(
-                f'Muraille humaine {camp_muraille} : '
-                f'{len(engagements_muraille)} choc(s) Avant résolu(s).')
-            # Les autres blocs doivent encore achever le combat rangé en
-            # excluant les Avant déjà engagés. Ne pas produire un bilan faux.
             raise NotImplementedError(
-                'Muraille : chocs collectifs réalisés ; suite des autres blocs '
-                'et rapport territorial encore à raccorder.')
+                'Muraille : chocs collectifs disponibles mais cycle territorial '
+                'et rapports encore incomplets ; aucun soldat modifié.')
 
         rapports.afficher_et_ecrire(
             f"\n--- Combat rangé "
