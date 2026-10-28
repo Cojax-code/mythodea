@@ -181,6 +181,45 @@ class TestOrdresCalculsV2(unittest.TestCase):
         self.assertEqual(set(choisir.call_args.args[0]), {'g1', 'g2'})
         self.assertEqual(appliquer.call_args.args[2], {'g1': 30, 'g2': 60})
 
+    def test_muraille_exclut_les_autres_types_du_tirage(self):
+        from unittest.mock import Mock, patch
+        from pathlib import Path
+        import combats
+        a = {'joueur': 'j1', 'camp': 'a', 'chemin': Path('/tmp/muraille-a')}
+        b = {'joueur': 'j1', 'camp': 'a', 'chemin': Path('/tmp/muraille-b')}
+        c = {'joueur': 'j1', 'camp': 'a', 'chemin': Path('/tmp/muraille-c')}
+        adverse = {'joueur': 'j2', 'camp': 'b', 'chemin': Path('/tmp/muraille-adv')}
+        blocs = {
+            id(a): {'nombre': 10, 'type': 'piquier', 'unites': list(range(10))},
+            id(b): {'nombre': 8, 'type': 'piquier', 'unites': list(range(10, 18))},
+            id(c): {'nombre': 6, 'type': 'archer', 'unites': list(range(18, 24))},
+            id(adverse): {'nombre': 4, 'type': 'cavalier', 'unites': list(range(24, 28))},
+        }
+        vue = Mock()
+        vue.blocs.side_effect = lambda g: {'avant': blocs[id(g)]}
+        vue.fatigue.return_value = False
+        with patch.object(combats.ordres_pipeline, 'identite',
+                          side_effect=lambda g: str(id(g))), patch.object(
+                combats.bouclier_vivant, 'presence_bouclier', return_value=False), patch.object(
+                combats.unites, 'etiquette', return_value=False), patch.object(
+                combats, 'combat_bloc', return_value=(16, 2)) as combat, patch.object(
+                combats.soldats, 'affrontement'), patch.object(
+                combats.soldats, 'repartir_victimes_muraille',
+                side_effect=lambda blocs, *_: {identite: [] for identite in blocs}) as choisir, patch.object(
+                combats, 'moral_des_pertes', return_value=0), patch.object(
+                combats.soldats, 'appliquer_victimes_muraille',
+                side_effect=lambda blocs, *_: {identite: [] for identite in blocs}) as appliquer, patch.object(
+                combats, 'supprimer_unites', return_value=[]), patch.object(
+                combats.unites, 'apres_confrontation'), patch.object(
+                combats.ordres_pipeline, 'verifier_qg'), patch.object(
+                combats.generaux, 'supprimer_general_si_vide'):
+            combats.engager_avant_muraille(
+                a, adverse, participants=vue, generaux_muraille=(a, b, c),
+                aleatoire=random.Random(3))
+        self.assertEqual(combat.call_args.args[0]['nombre'], 18)
+        self.assertEqual(set(choisir.call_args.args[0]), {str(id(a)), str(id(b))})
+        self.assertNotIn(str(id(c)), appliquer.call_args.args[0])
+
     def test_muraille_choc_reutilise_resolution_reelle(self):
         from unittest.mock import patch
         import combats
