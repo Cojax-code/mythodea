@@ -29,7 +29,8 @@ def camps_du_combat(configuration):
     return camps
 
 
-def combat_entre_generaux(general_1, general_2, *, participants=None):
+def combat_entre_generaux(general_1, general_2, *, participants=None,
+                          avant_exclus_manoeuvre=False):
     if (general_1['joueur'] == general_2['joueur'] or
             general_1.get('camp', general_1['joueur']) == general_2.get('camp', general_2['joueur'])):
         raise ValueError("Un duel doit opposer deux généraux de camps différents.")
@@ -45,7 +46,9 @@ def combat_entre_generaux(general_1, general_2, *, participants=None):
                 rafales = ordres_pipeline.rafales(general_1, general_2, random,
                     lambda infos, n, g: supprimer_unites(infos, n, g, participants=vue),
                     participants=vue)
-                resultat = _combat_entre_generaux(general_1, general_2, participants=vue)
+                resultat = _combat_entre_generaux(
+                    general_1, general_2, participants=vue,
+                    avant_exclus_manoeuvre=avant_exclus_manoeuvre)
                 if rafales:
                     resultat['initial_1'], resultat['initial_2'] = initiales
                     resultat['rafales'] = rafales
