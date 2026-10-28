@@ -241,6 +241,40 @@ class TestOrdresCalculsV2(unittest.TestCase):
                 contributions_1=[(a, premier), (b, second)])
         self.assertEqual(survivants, (14, 0))
 
+    def test_muraille_signale_tous_les_generaux_du_type_engage(self):
+        from unittest.mock import Mock, patch
+        from pathlib import Path
+        import combats
+        a = {'joueur': 'j1', 'camp': 'a', 'chemin': Path('/tmp/muraille-x')}
+        b = {'joueur': 'j1', 'camp': 'a', 'chemin': Path('/tmp/muraille-y')}
+        adverse = {'joueur': 'j2', 'camp': 'b', 'chemin': Path('/tmp/muraille-z')}
+        avant_a = {'nombre': 2, 'type': 'piquier', 'unites': ['a', 'b']}
+        avant_b = {'nombre': 2, 'type': 'piquier', 'unites': ['c', 'd']}
+        avant_adv = {'nombre': 2, 'type': 'cavalier', 'unites': ['e', 'f']}
+        vue = Mock()
+        vue.blocs.side_effect = lambda g: {'avant': avant_a if g is a else avant_b if g is b else avant_adv}
+        vue.fatigue.return_value = False
+        with patch.object(combats.ordres_pipeline, 'identite',
+                          side_effect=lambda g: str(id(g))), patch.object(
+                combats.bouclier_vivant, 'presence_bouclier', return_value=False), patch.object(
+                combats.unites, 'etiquette', return_value=False), patch.object(
+                combats, 'combat_bloc', return_value=(4, 2)), patch.object(
+                combats.soldats, 'affrontement') as rencontres, patch.object(
+                combats.soldats, 'repartir_victimes_muraille',
+                side_effect=lambda blocs, *_: {i: [] for i in blocs}), patch.object(
+                combats, 'moral_des_pertes', return_value=0), patch.object(
+                combats.soldats, 'appliquer_victimes_muraille',
+                side_effect=lambda blocs, *_: {i: [] for i in blocs}), patch.object(
+                combats, 'supprimer_unites', return_value=[]), patch.object(
+                combats.unites, 'apres_confrontation'), patch.object(
+                combats.ordres_pipeline, 'verifier_qg'), patch.object(
+                combats.generaux, 'supprimer_general_si_vide'):
+            combats.engager_avant_muraille(
+                a, adverse, participants=vue, generaux_muraille=(a, b),
+                aleatoire=random.Random(3))
+        self.assertEqual(rencontres.call_count, 2)
+        self.assertEqual([call.args[0] for call in rencontres.call_args_list], [a, b])
+
     def test_muraille_exclut_les_autres_types_du_tirage(self):
         from unittest.mock import Mock, patch
         from pathlib import Path
