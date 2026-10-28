@@ -74,6 +74,20 @@ class TestOrdresCalculsV2(unittest.TestCase):
                 combats.engager_avant_muraille(a, b, participants=Mock())
             reel.assert_not_called()
 
+    def test_muraille_pilote_utilise_choc_reel_par_defaut(self):
+        from unittest.mock import patch
+        import combats
+        general = {'id': 1}
+        with patch.object(combats.ordres_pipeline, 'identite',
+                          return_value=('j1', 'g1')), patch.object(
+                combats, 'prochain_avant_muraille',
+                side_effect=[{'choisi': ('j1', 'g1')}, {'choisi': None}]), patch.object(
+                combats, 'engager_avant_muraille', return_value={'moment': 'Choc'}) as choc:
+            resultats = combats.enchainer_avants_muraille(
+                [general], object(), aleatoire=random.Random(1))
+        self.assertEqual(resultats, ((('j1', 'g1'), {'moment': 'Choc'}),))
+        choc.assert_called_once()
+
     def test_muraille_recalcule_apres_chaque_engagement(self):
         from unittest.mock import patch
         import combats
