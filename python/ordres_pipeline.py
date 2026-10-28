@@ -464,6 +464,22 @@ def formations_retenues(forces):
 
 
 
+
+def transmission_muraille_active(camp):
+    """Une Muraille ne reçoit plus de désignations si son QG a disparu.
+
+    Réutilise l'état territorial du QG, qui mémorise sa destruction même si
+    des capacités spéciales repeuplent ensuite un bloc.
+    """
+    courant = _bataille.get()
+    if courant is None:
+        return False
+    verifier_qg()
+    quartier = courant['quartiers'].get(camp)
+    return bool(quartier is not None and quartier.general is not None
+                and not quartier.detruit)
+
+
 def participants_muraille_territoire(forces, formations, camp, *,
                                    reserve_strategique=None):
     """Prépare la formation Muraille depuis les décisions territoriales retenues.
