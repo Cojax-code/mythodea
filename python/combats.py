@@ -1235,7 +1235,10 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None,
         collectif, adverse, fatigue_1, fatigue_2, 'avant', 'avant',
         general_1=general_allie, general_2=general_adverse,
         contributions_1=[(g, blocs[ordres_pipeline.identite(g)]) for g in membres])
-    soldats.affrontement(general_allie, general_adverse)
+    # Tous les généraux dont les soldats frappent dans ce bloc collectif
+    # ont effectivement participé au choc (expérience/statuts de bataille).
+    for membre in membres:
+        soldats.affrontement(membre, general_adverse)
     nombre_pertes = effectif - survivants_1
     selection = soldats.repartir_victimes_muraille(
         blocs, nombre_pertes, engage, aleatoire)
