@@ -61,6 +61,25 @@ class TestOrdresCalculsV2(unittest.TestCase):
         self.assertEqual(pertes.call_args_list[0].kwargs['unites_prioritaires'], ('a',))
         self.assertEqual(pertes.call_args_list[1].kwargs['unites_prioritaires'], ())
 
+    def test_muraille_applique_victimes_sans_second_tirage(self):
+        import soldats
+        from unittest.mock import patch
+        blocs = {
+            'g1': {'unites': ['a', 'b'], 'nombre': 2},
+            'g2': {'unites': ['c', 'd'], 'nombre': 2},
+        }
+        victimes = {'g1': ['a'], 'g2': ['d']}
+        moraux = {'g1': 20, 'g2': 40}
+        with patch.object(soldats, 'pertes', return_value=[]) as appliquer:
+            resultats = soldats.appliquer_victimes_muraille(
+                blocs, victimes, moraux, random.Random(3))
+        self.assertEqual(resultats, {'g1': [], 'g2': []})
+        self.assertEqual(appliquer.call_count, 2)
+        self.assertEqual(appliquer.call_args_list[0].kwargs['victimes_choisies'], ['a'])
+        self.assertEqual(appliquer.call_args_list[1].kwargs['victimes_choisies'], ['d'])
+        self.assertEqual(appliquer.call_args_list[0].args[2], 20)
+        self.assertEqual(appliquer.call_args_list[1].args[2], 40)
+
     def test_muraille_victimes_collectives_gardent_leur_general(self):
         import soldats
         from collections import Counter
