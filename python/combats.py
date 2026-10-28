@@ -57,8 +57,27 @@ def combat_entre_generaux(general_1, general_2, *, participants=None):
     return resultat
 
 
-def _combat_entre_generaux(general_1, general_2, *, participants=None):
+
+def retirer_avants_de_manoeuvre(armee):
+    """Vue de manœuvre sans Avant de Muraille, sans mutation des soldats.
+
+    La suppression est seulement logique : les blocs restent sur disque,
+    conservent leurs UUID et peuvent retourner à leur général après le choc.
+    Ni attaque depuis Avant, ni ciblage d'Avant pendant cette manœuvre.
+    """
+    resultat = {}
+    for joueur, blocs in armee.items():
+        copies = dict(blocs)
+        if 'avant' in copies:
+            copies['avant'] = dict(copies['avant'], nombre=0, unites=[])
+        resultat[joueur] = copies
+    return resultat
+
+
+def _combat_entre_generaux(general_1, general_2, *, participants=None,
+                            avant_exclus_manoeuvre=False):
     # Affrontement complet entre deux généraux.
+    # Muraille peut retirer les Avant de la manœuvre sans détruire leurs soldats.
     #
     # Déroulement :
     # 1. Choc initial entre les blocs placés face à face.
@@ -160,6 +179,8 @@ def _combat_entre_generaux(general_1, general_2, *, participants=None):
             joueur_1: participants.blocs(general_1),
             joueur_2: participants.blocs(general_2),
         }
+        if avant_exclus_manoeuvre:
+            armee = retirer_avants_de_manoeuvre(armee)
 
         if (
             generaux.total_unites_general(armee[joueur_1]) == 0
@@ -190,6 +211,8 @@ def _combat_entre_generaux(general_1, general_2, *, participants=None):
                 joueur_1: participants.blocs(general_1),
                 joueur_2: participants.blocs(general_2),
             }
+            if avant_exclus_manoeuvre:
+                armee = retirer_avants_de_manoeuvre(armee)
 
             if generaux.total_unites_general(armee[joueur_1]) == 0:
                 break
