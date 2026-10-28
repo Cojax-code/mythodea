@@ -739,6 +739,42 @@ def selectionner_victimes(infos, survivants, moral, aleatoire, *,
     return perdus, tentatives
 
 
+
+def repartir_victimes_muraille(blocs, pertes, general_engage, aleatoire):
+    """Désigne des victimes parmi les Avant distincts de la Muraille.
+
+    `blocs` associe une identité de général à son bloc Avant ; aucune fusion
+    de blocs, aucun changement de propriétaire ni effet sur les fichiers.
+    La sélection est sans remise et utilise le tirage pondéré commun : poids 2
+    pour le général engagé, poids 1 pour les autres. Le résultat conserve
+    chaque victime sous son propriétaire, pour la résolution ultérieure de
+    son moral et de ses blessures dans son bloc d'origine.
+    """
+    if type(pertes) is not int or pertes < 0:
+        raise ValueError('Nombre de pertes Muraille invalide.')
+    if general_engage not in blocs:
+        raise ValueError('Le général engagé doit appartenir à Muraille.')
+    proprietaires = {}
+    for identite, bloc in blocs.items():
+        for unite in bloc['unites']:
+            if unite in proprietaires:
+                raise ValueError('Un soldat ne peut appartenir à deux blocs.')
+            proprietaires[unite] = identite
+    if pertes > len(proprietaires):
+        raise ValueError('Pertes supérieures aux soldats présents dans Muraille.')
+    if not pertes:
+        return {identite: [] for identite in blocs}
+    pool = list(proprietaires)
+    priorites = tuple(blocs[general_engage]['unites'])
+    selection, _ = selectionner_victimes(
+        {'unites': pool, 'nombre': len(pool)},
+        len(pool) - pertes, 0, aleatoire, unites_prioritaires=priorites)
+    resultat = {identite: [] for identite in blocs}
+    for unite in selection:
+        resultat[proprietaires[unite]].append(unite)
+    return resultat
+
+
 def sauvetage_possible(valeur):
     import unites
     return valeur['blessures'] < unites.blessures_max(valeur['type'], valeur['batailles'])
