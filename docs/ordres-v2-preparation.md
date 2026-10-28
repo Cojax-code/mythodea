@@ -6,11 +6,11 @@ des activations est dans `ordres-v2-reprise-codex.md` ; le présent document con
 les décisions de conception, y compris celles des effets encore réservés.
 La vérification finale (suite Linux complète, WSL/Raspberry Pi) est confiée à Codex.
 
-## Contrats courants du lot B — 27 octobre 2026
+## Contrats courants du lot B — 28 octobre 2026
 
 Cette section et les SPEC à jour priment sur les hypothèses historiques ci-dessous.
 
-- **Gros_poisson** : Duel, ID réservé 1017, `2-6-position_beneficiaire-position_preteur`.
+- **Gros_poisson** : Duel, ID actif 1017, `2-6-position_beneficiaire-position_preteur`.
   Le QG choisit les positions et peut être l'un des participants. Fusion partielle
   des seuls couples bloc/type communs ; blocs absents et types différents ignorés,
   sans annuler les autres prêts. Aucune unité ni bloc créé. Sans homologue : aucun
@@ -20,6 +20,17 @@ Cette section et les SPEC à jour priment sur les hypothèses historiques ci-des
   propriétaire, puis retour des survivants à leurs origines. Le prêteur conserve
   son tour normal. Aucun contournement de la politique des généraux Zombies,
   de la restriction raciale des unités, de l'apprentissage ou des permissions.
+  Plusieurs prêteurs pour le même bénéficiaire sont réunis avant le duel ; les
+  lignes identiques sont ignorées, l'auto-désignation est sans effet. Un prêteur
+  ne peut contribuer à deux bénéficiaires simultanés : conflit détecté avant
+  réservation, sans priorité implicite. La composition effective fournit les
+  bonus collectifs avant la fatigue ; le seuil lourd est relu après les pertes.
+  Les chamans prêtés soutiennent le groupe ; les soins restent territoriaux.
+  Les effets non combattants restent attachés à leur origine au début de
+  l'attaque ; aucun bonus de messager supplémentaire n'est défini ou activé.
+  Spore reconnaît la conversion officielle d'un prêté sans le restituer.
+  Spore et Propagation créent chez leur général source, dans son bloc contenant
+  le plus de zombies, au hasard entre maxima, sinon en Arrière.
 - **Muraille** : blocs Avant distincts, avec leurs statistiques d'origine,
   contre l'Avant adverse. Score après protections et moral : ennemis effectivement
   éliminés moins alliés effectivement perdus. Meilleur score, puis position
@@ -56,7 +67,7 @@ Cette section et les SPEC à jour priment sur les hypothèses historiques ci-des
 avec contrôles des profils privés et des unités sans cerveau ; le motif sans
 effet est prêt pour le futur rapport. `fatigues_origine()` conserve une valeur
 par UUID vivant. Le parseur lit les quatre champs réservés ; le catalogue et le
-pipeline maintiennent l'ordre désactivé. Ces fonctions ne remplacent pas les
+pipeline exécutent désormais l'ordre validé. Ces fonctions ne remplacent pas les
 contrôles du donneur QG, des positions effectivement actives et de la confrontation.
 
 La simulation Muraille couvre le calcul commun, le moral d'origine et les
@@ -76,16 +87,12 @@ résistance moyenne et fractions exactes jusqu'au plancher collectif. Le taux
 adverse utilise les effectifs initiaux ; les types différents gardent leurs
 avantages. Cette règle remplace l'appariement maximal précédent et conserve les
 cas homogènes. Voir les [exemples et le raccordement](ordres-v2-fatigue-individuelle.md).
-`vue_gros_poisson()` réutilise les sélections et le relevé par UUID sans activer
-l'ordre. La fatigue n'est plus une question bloquante.
+`vue_gros_poisson()` réutilise les sélections et le relevé par UUID. La fatigue
+n'est plus une question bloquante ; le pipeline réel active maintenant l'ordre.
 
-1. **Gros_poisson, capacités** : formation de référence pour le seuil de cavalerie
-   lourde et les bonus de composition/raciaux ; traitement des soutiens admis.
-   Conversion d'un soldat prêté par Spore adverse : origine/bloc après conversion
-   à définir avant de permettre ce transfert dans la vue temporaire.
-   Les Zombies/Boucliers sont exclus du prêt par les restrictions confirmées, pas prêtés
-   par une exception de Spore. Même bénéficiaire et prêteur : aucune fusion
-   exécutée tant que cette désignation n'est pas définie.
+1. **Gros_poisson** : les décisions de composition, soutiens, conversion et
+   auto-désignation sont appliquées dans le contrat courant ci-dessus. Elles
+   ne constituent plus des questions ouvertes.
 2. **Mémoire Zombie** : la réponse reçue précisait les restrictions de Gros_poisson,
    sans trancher la priorité d'une mémoire scolaire sur le tirage 85/15. La base
    conserve cette mémoire et applique le tirage ; aucune nouvelle priorité ajoutée.

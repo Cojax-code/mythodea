@@ -227,15 +227,15 @@ class VueParticipants(unittest.TestCase):
             self.assertEqual(vue.fatigues_individuelles(a, infos['arriere']), ())
             self.assertEqual(vue.fatigue(a, infos['arriere']), fatigue)
 
-    def test_capacite_ambigue_refusee_avant_mutation(self):
-        a, preteur, ennemi = self.scenario()
+    def test_bouclier_et_spore_utilisent_la_vue_du_pret(self):
+        a, preteur, ennemi = self.scenario(type_adverse='zombie')
         self.speciale(ennemi, 'Trop_gros_zombie', 1, 'arriere')
-        avant = self.photo()
         with self.soldats.participation_temporaire([
                 self.contribution(a), self.contribution(preteur)]) as groupe:
-            with self.assertRaisesRegex(NotImplementedError, 'Capacités/composition'):
-                self.duel(a, ennemi, self.vue(groupe, a))
-        self.assertEqual(self.photo(), avant)
+            resultat = self.duel(a, ennemi, self.vue(groupe, a))
+            groupe.bilan()
+            self.assertTrue(self.unites.charger_capacites()['spores'])
+            self.assertLess(resultat['final_1'], 6)
 
     def test_blessures_moral_commandant_xp_unique_sans_credit_preteur(self):
         a, preteur, ennemi = self.scenario()
@@ -357,7 +357,7 @@ class VueParticipants(unittest.TestCase):
         self.assertEqual(self.infos(preteur)['nombre'], 5)
 
     def test_ordres_lot_b_restent_inactifs(self):
-        noms = {'gros_poisson', 'muraille_humaine', 'ralliement', 'derniere_charge'}
+        noms = {'muraille_humaine', 'ralliement', 'derniere_charge'}
         self.assertFalse(any(o['disponible'] and o['nom'] in noms
                              for o in self.combats.catalogues.ORDRES.values()))
 

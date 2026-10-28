@@ -139,7 +139,7 @@ class ParticipationsTemporaires(unittest.TestCase):
             self.assertIn('sans effet', resultat['motif'])
         self.assertEqual(self.photo(), avant)
 
-    def test_gros_poisson_syntaxe_quatre_champs_reservee_sans_activation(self):
+    def test_gros_poisson_syntaxe_quatre_champs_avec_positions_explicites(self):
         import ordres_pipeline
         a = self.troupe('j1', 'piquier', 2)
         aides.EffetsOrdres.ordres(self, a, [1017], texte='2-6-3-4\n2-6-4-3\n1-2-3-4\n2-6-３-4')
@@ -148,7 +148,7 @@ class ParticipationsTemporaires(unittest.TestCase):
         self.assertEqual([d['identifiant'] for d in demandes], ['2-6', '2-6'])
         officiel = dict(a, ordres=demandes,
                         caracteristiques=self.progression.caracteristiques_general(a))
-        self.assertEqual(ordres_pipeline.ordres_du_general(officiel), [])
+        self.assertEqual(ordres_pipeline.ordres_du_general(officiel), [1017])
 
     def test_gros_poisson_refuse_general_zombie_meme_si_fiche_publique_falsifiee(self):
         a, b = self.deux_generaux()
@@ -593,7 +593,7 @@ class ParticipationsTemporaires(unittest.TestCase):
 
     def test_quatre_ordres_prepares_restent_hors_catalogue_executable(self):
         import ordres_conception
-        noms = {'gros_poisson', 'muraille_humaine', 'ralliement', 'derniere_charge'}
+        noms = {'muraille_humaine', 'ralliement', 'derniere_charge'}
         actifs = {o['nom'] for o in self.combats.catalogues.ORDRES.values() if o['disponible']}
         self.assertFalse(noms & actifs)
         self.assertTrue(all(not ordres_conception.ORDRES_EN_CONCEPTION[n]['disponible'] for n in noms))

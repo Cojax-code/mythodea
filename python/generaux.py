@@ -324,7 +324,7 @@ def lire_ordres_general(chemin_general):
 
         morceaux = ligne.split("-")
 
-        # Quatre champs réservés à Gros_poisson ; son effet reste désactivé.
+        # Gros_poisson désigne les positions du bénéficiaire et du prêteur.
         if len(morceaux) not in [2, 3, 4]:
             rapports.afficher_et_ecrire(
                 f"Ordre ignoré pour "
@@ -853,7 +853,37 @@ def lire_blocs_general(chemin_general, *, lecture_seule=False):
             blocs_general[bloc]["nombre"] = len(unites_conservees)
             blocs_general[bloc]["unites"] = unites_conservees
 
-    return blocs_general
+    return {bloc: infos_bloc_valide(chemins_bloc(infos))
+            for bloc, infos in blocs_general.items()}
+
+
+def chemins_bloc(infos):
+    """Tous les soldats du bloc, soutiens et boucliers compris, une seule fois."""
+    return [*infos['unites'], *infos.get('soutiens', ()), *infos.get('boucliers', ())]
+
+
+def infos_bloc_valide(chemins):
+    """Lit une sélection déjà validée, sans nettoyer ni déplacer ses soldats."""
+    import unites as capacites
+    chemins = list(chemins)
+    types = {u: identifier_unite(u) for u in chemins}
+    if 'inconnu' in types.values():
+        raise ValueError('Bloc invalide : aucune suppression implicite.')
+    soutiens = [u for u in chemins if capacites.etiquette(types[u], 'non_combattant')]
+    boucliers = [u for u in chemins if types[u] == 'Trop_gros_zombie']
+    combattants = [u for u in chemins if u not in soutiens and u not in boucliers]
+    # Un bloc exclusivement non combattant garde son comportement historique.
+    if len(soutiens) == len(chemins):
+        combattants, soutiens = soutiens, []
+    types_combat = {types[u] for u in combattants}
+    if len(types_combat) > 1:
+        raise ValueError('Bloc mixte ou invalide : aucune suppression implicite.')
+    infos = dict(type=next(iter(types_combat), 'vide'), nombre=len(combattants), unites=combattants)
+    if soutiens:
+        infos['soutiens'] = soutiens
+    if boucliers:
+        infos['boucliers'] = boucliers
+    return infos
 
 
 def total_unites_general(blocs_general):

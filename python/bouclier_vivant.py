@@ -38,7 +38,8 @@ def bloc_destination_spore(effectifs_par_bloc, blocs_eligibles, rng=None):
     if not possibles:
         return None
     maxi = max(effectifs_par_bloc[b] for b in possibles)
-    return (rng or random).choice([b for b in possibles if effectifs_par_bloc[b] == maxi])
+    candidats = [b for b in possibles if effectifs_par_bloc[b] == maxi]
+    return candidats[0] if len(candidats) == 1 else (rng or random).choice(candidats)
 
 
 def choisir_bloc_favorable(blocs_adverses, potentiel, rng=None):
@@ -127,7 +128,7 @@ def retirer_bouclier(general):
     return nombre
 
 
-def convertir_spore(general_zombie, adversaire, bloc_adverse, evenement, rng=None):
+def convertir_spore(general_zombie, adversaire, bloc_adverse, evenement, rng=None, *, participants=None):
     """Change de camp un soldat réel, avec son identité et son expérience.
 
     L'événement est réservé avant écriture. Une mutation interrompue exige une
@@ -153,7 +154,9 @@ def convertir_spore(general_zombie, adversaire, bloc_adverse, evenement, rng=Non
     dossier = adversaire['chemin'] / bloc_adverse
     candidats = []
     nouveaux_bot = False
-    for chemin in dossier.iterdir():
+    chemins = (generaux.chemins_bloc(participants.blocs(adversaire)[bloc_adverse])
+               if participants is not None else dossier.iterdir())
+    for chemin in chemins:
         type_unite = generaux.identifier_unite(chemin)
         if type_unite in ('inconnu', 'Trop_gros_zombie', 'zombie'):
             continue
@@ -172,16 +175,7 @@ def convertir_spore(general_zombie, adversaire, bloc_adverse, evenement, rng=Non
     victime = choisir_spore(candidats, rng)
     if victime is None:
         return None
-    composition = generaux.lire_composition_general(general_zombie['chemin'])
-    # Spore rejoint prioritairement les blocs contenant des Zombies ordinaires,
-    # jamais un bloc comportant un autre type combattant.
-    eligibles = [bloc for bloc in config.ordre_blocs
-                 if all(t in ('zombie', TYPE_BOUCLIER, 'messager_du_QG')
-                        for t in composition[bloc])]
-    tailles = {bloc: sum(composition[bloc].values()) for bloc in eligibles}
-    destination_bloc = bloc_destination_spore(tailles, eligibles, rng)
-    if destination_bloc is None:
-        raise RuntimeError('Aucun bloc zombie compatible pour Spore.')
+    destination_bloc = unites.bloc_destination_zombies(general_zombie, rng)
     identifiant = victime['id']
     destination = general_zombie['chemin'] / destination_bloc / ('zombi_' + identifiant)
     if destination.exists():
@@ -205,17 +199,19 @@ def convertir_spore(general_zombie, adversaire, bloc_adverse, evenement, rng=Non
     soldats.publier(destination, identifiant, valeur)
     # Le soldat transformé a survécu à son affrontement et doit recevoir
     # exactement le crédit de cette bataille territoriale, pas deux.
-    participants = soldats._participants.get()
-    if participants is not None:
-        participants.add(destination)
+    engages = soldats._participants.get()
+    if engages is not None:
+        engages.add(destination)
     preuves[evenement]['terminee'] = True
     unites.sauver_capacites(donnees)
+    if participants is not None and participants.groupe:
+        participants.groupe.enregistrer_spore(identifiant, destination, evenement)
     return identifiant
 
 
-def _infos(general):
+def _infos(general, participants=None):
     import generaux
-    return generaux.lire_blocs_general(general['chemin'])
+    return participants.blocs(general) if participants is not None else generaux.lire_blocs_general(general['chemin'])
 
 
 def _zombies_vivants(general):
@@ -230,7 +226,7 @@ def _puissance_bloc_adverse(infos, bloc):
             combats.multiplicateur(infos['type'], TYPE_BOUCLIER))
 
 
-def _cible_zombie(general_zombie, adversaire):
+def _cible_zombie(general_zombie, adversaire, participants=None):
     """Une cible gagnable d'abord ; sinon le bloc équivalent, ou un bloc vivant.
 
     L'égalité de puissance est une chance d'affrontement et non une victoire
@@ -238,7 +234,7 @@ def _cible_zombie(general_zombie, adversaire):
     """
     import combats
     import config
-    zombies, ennemis = _infos(general_zombie), _infos(adversaire)
+    zombies, ennemis = _infos(general_zombie, participants), _infos(adversaire, participants)
     candidats = [(b, zombies[b]) for b in config.ordre_blocs
                  if zombies[b]['type'] == 'zombie' and zombies[b]['nombre'] > 0]
     for bloc, infos in candidats:
@@ -262,7 +258,7 @@ def _cible_zombie(general_zombie, adversaire):
     return None
 
 
-def resoudre_priorite(general_zombie, adversaire):
+def resoudre_priorite(general_zombie, adversaire, *, participants=None):
     """Joue Bouclier -> blocs adverses -> Zombies -> Bouclier (survivants).
 
     Retourne (combat_termine, détails). Si le bouclier meurt, renvoie False :
@@ -274,6 +270,7 @@ def resoudre_priorite(general_zombie, adversaire):
     import rapports
     import soldats
     import unites
+    participants = participants if participants is not None else soldats.VueParticipants()
     if not presence_bouclier(general_zombie):
         return False, []
     for general in (general_zombie, adversaire):
@@ -307,7 +304,7 @@ def resoudre_priorite(general_zombie, adversaire):
             return True, details
         if not presence_bouclier(general_zombie):
             return False, details
-        ennemis = _infos(adversaire)
+        ennemis = _infos(adversaire, participants)
         for bloc in config.ordre_blocs:
             infos = ennemis[bloc]
             if infos['nombre'] <= 0 or infos['type'] in ('vide', 'messager_du_QG', 'zombie', TYPE_BOUCLIER):
@@ -320,7 +317,7 @@ def resoudre_priorite(general_zombie, adversaire):
             contexte['confrontation'] += 1
             evenement = (f"spore:{contexte['id']}:{contexte['confrontation']}:"
                          f"{general_zombie['joueur']}:{general_zombie['nom']}")
-            contamine = convertir_spore(general_zombie, adversaire, bloc, evenement)
+            contamine = convertir_spore(general_zombie, adversaire, bloc, evenement, participants=participants)
             rapports.afficher_et_ecrire(
                 f'Bouclier vivant contre {bloc} : {avant} contre {force} ; '
                 f'{"résiste (" + str(resistance) + ")" if survit else "détruit"} ; '
@@ -339,24 +336,24 @@ def resoudre_priorite(general_zombie, adversaire):
                 return False, details
             if not adversaire['chemin'].is_dir():
                 return True, details
-        generaux.supprimer_general_si_vide(adversaire)
-        if not adversaire['chemin'].is_dir():
+        participants.supprimer_general_si_vide(adversaire)
+        if not participants.present(adversaire):
             return True, details
         if _zombies_vivants(general_zombie) == 0:
             retirer_bouclier(general_zombie)
             generaux.supprimer_general_si_vide(general_zombie)
             return True, details
-        cible = _cible_zombie(general_zombie, adversaire)
+        cible = _cible_zombie(general_zombie, adversaire, participants)
         if cible is None:
             # Aucun ennemi ordinaire et pas de cible : terminaison contrôlée.
             return True, details
         bloc_zombie, bloc_adverse = cible
         armee = {
-            general_zombie['joueur']: _infos(general_zombie),
-            adversaire['joueur']: _infos(adversaire),
+            general_zombie['joueur']: _infos(general_zombie, participants),
+            adversaire['joueur']: _infos(adversaire, participants),
         }
         detail = combats.attaque_ciblee(armee, general_zombie, adversaire,
-                                       bloc_zombie, bloc_adverse)
+                                       bloc_zombie, bloc_adverse, participants=participants)
         details.append(dict(moment='Zombies ordinaires',
                             bloc_1=bloc_zombie, type_1=detail['type_attaquant'],
                             initial_1=detail['initial_attaquant'],
@@ -364,7 +361,7 @@ def resoudre_priorite(general_zombie, adversaire):
                             bloc_2=bloc_adverse, type_2=detail['type_defenseur'],
                             initial_2=detail['initial_defenseur'],
                             final_2=detail['final_defenseur']))
-        generaux.supprimer_general_si_vide(adversaire)
-        if not adversaire['chemin'].is_dir():
+        participants.supprimer_general_si_vide(adversaire)
+        if not participants.present(adversaire):
             return True, details
     raise RuntimeError('Bouclier vivant : limite de cycles atteinte ; ne pas publier un combat incomplet.')

@@ -1766,7 +1766,10 @@ territoriaux, si le bouclier existe toujours.
 Chaque rencontre du Bouclier vivant avec un bloc adverse applique `spore`,
 même lorsque le bouclier est détruit : parmi les soldats adverses réellement
 présents, le moins expérimenté est transformé en Zombie (tirage aléatoire à
-égalité), conserve son identité et rejoint le plus gros bloc zombie compatible.
+égalité), conserve son identité et rejoint le bloc de son créateur qui contient
+le plus de zombies (`mort_vivant`, y compris le Trop gros zombie, hors messagers).
+Les blocs ex aequo au maximum sont départagés par le hasard du moteur. Sans
+zombie, la destination est Arrière ; un maximum unique ne consomme aucun tirage.
 L'affrontement ne tue pas directement d'autres soldats adverses.
 Les Zombies ordinaires attaquent ensuite un bloc présentant une possibilité
 favorable d'affrontement ; à défaut, les positions identiques prévalent, puis
@@ -1776,7 +1779,9 @@ sa phase prioritaire. Si aucun Zombie combattant ordinaire ne subsiste, le boucl
 disparaît et son général est vaincu.
 
 Après chaque affrontement d'un bloc de Zombies ordinaires non décimé,
-`propagation` crée ceil(pertes adverses/2) Zombies dans ce bloc. Les débordements
+`propagation` crée ceil(pertes adverses/2) Zombies chez le général source,
+avec la même règle de placement que Spore. Un prêt temporaire ne transfère
+jamais la propriété des créations au bénéficiaire. Les débordements
 temporaires dus à `spore` ou `propagation` ne sont régulés qu'après l'ensemble
 de la résolution territoriale : les créations de ce territoire sont supprimées
 en premier et les soldats historiques sont préservés.
@@ -1786,3 +1791,14 @@ Lorsque deux généraux zombies adverses possèdent chacun un Bouclier vivant,
 les deux Gros zombies s'ignorent, et les autres Zombies combattent selon les
 règles ordinaires, sans intervention de Spore ni de Propagation entre eux.
 L'étiquette `infatigable` n'a pas encore d'effet activé.
+
+Gros_poisson (`2-6-position_beneficiaire-position_preteur`) est exécuté par le
+moteur commun après validation du QG, de l'apprentissage, des positions actives
+du camp et de la confrontation. Les positions logiques peuvent désigner des
+alliés de propriétaires différents. Plusieurs prêteurs compatibles sont réunis
+avant le duel ; doublons ignorés, auto-désignation sans effet. UUID, propriétés,
+fatigue et blessures restent attachés aux soldats réels. Les survivants restent
+chez leurs origines et le prêteur conserve son tour. Les unités `sans_cerveau`
+(Zombies et Trop gros zombie) sont exclues de ces prêts, quelle que soit la
+nature du général. Les règles communes des soutiens, de Spore et des retraites
+décrites dans `MYTHODEA_SPEC.md` s'appliquent ; aucun moteur Survie distinct.

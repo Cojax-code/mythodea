@@ -27,6 +27,26 @@ if cmp -s "$travail/reference.json" "$travail/resultat.json"; then
     echo '30 scénarios identiques entre 980a3d7 et les sources actuelles (hors inodes et racines temporaires).'
 else
     echo 'Différence de résultats : comparaison échouée.' >&2
-    diff -u "$travail/reference.json" "$travail/resultat.json" | cut -c1-350 | head -60 || true
+    python3 - "$travail/reference.json" "$travail/resultat.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+a, b = (json.loads(Path(p).read_text()) for p in sys.argv[1:])
+identiques = [k for k in a if a[k] == b[k]]
+print(f'{len(identiques)}/{len(a)} scénarios strictement identiques : ' + ', '.join(identiques))
+for scenario in a:
+    if a[scenario] == b[scenario]:
+        continue
+    print(scenario)
+    for champ in a[scenario]:
+        av, ap = a[scenario][champ], b[scenario][champ]
+        if av == ap:
+            continue
+        if isinstance(av, dict) and isinstance(ap, dict):
+            cles = sorted(k for k in av.keys() | ap.keys() if av.get(k) != ap.get(k))
+            print(' ', champ, ':', ', '.join(cles))
+        else:
+            print(' ', champ, ': différent')
+PY
     exit 1
 fi

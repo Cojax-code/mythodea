@@ -81,7 +81,7 @@ comparables à `980a3d7` ; leurs états, droits, rapports et tirages doivent êt
 identiques. Les mélanges nouvellement admis sont validés par leurs résultats
 numériques et leurs duels réels, pas par une ancienne formule inexistante.
 
-## Préparation technique et obstacles de Gros_poisson
+## Raccordement de Gros_poisson
 
 `VueParticipants.fatigues_individuelles()` fournit un booléen par chemin de la
 sélection vivante, dans le même ordre que `infos['unites']`. Le groupe résout
@@ -97,26 +97,23 @@ de fatigue ou mutation de `fatigue_generaux.txt` due au prêt.
 existantes en `VueParticipants` et renvoie le motif éventuel sans homologue.
 Les blocs non fusionnés restent à leur commandant. Ce raccordement est testé
 dans le duel commun, avec pertes réelles puis fermeture et combat du prêteur.
-Il n'autorise pas l'ordre : acquisition, QG, positions et confrontation doivent
-encore être raccordés, après les décisions indispensables ci-dessous.
+La vue seule n'autorise pas l'ordre : le pipeline valide maintenant acquisition,
+QG, positions alliées actives et confrontation avant d'ouvrir le groupe réel.
 
-| Interaction | Fonctions à réutiliser | Décision ou adaptation restante |
+| Interaction | Fonctions réutilisées | Règle appliquée |
 | --- | --- | --- |
-| Fusions partielles et retour | `selections_gros_poisson`, `vue_gros_poisson`, `VueParticipants`, `bilan` | Assemblage, motif sans homologue et restitution virtuelle testés. Raccorder QG, positions, confrontation et publication du motif dans l'ordre réel. |
-| Bonus de composition | `moral_des_pertes`, `unites.moral_bloc`, `caracteristiques_armee` | Armée physique du bénéficiaire ou sélection effectivement engagée ? Les Orcs et chevaliers modifient le moral ; les deux références peuvent différer. |
-| Cavalerie lourde | `valeur_base_bloc` | Le seuil Avant de 15 se mesure-t-il dans le bloc fusionné ou à l'origine ? Par exemple 10 + 5 déclenchent le bonus uniquement dans le premier cas. Recalcul commun après chaque perte. |
-| Effets d'ordres | `ordres_pipeline.duel`, `multiplicateur`, `rafales` | Conserver donneur et priorités. Cruelle utilise l'armée du donneur figée au début du duel, pas automatiquement l'effectif fusionné. |
-| Soutiens | `generaux.lire_blocs_general`, `soldats.pertes`, `rafales` | Fixer s'ils suivent le bloc prêté et quelle destruction emporte le soutien : bloc physique d'origine ou bloc engagé. La lecture seule distingue déjà combattants, soutiens et boucliers. |
-| Spore adverse | `choisir_spore`, `bloc_destination_spore`, `convertir_spore` | Spore change normalement type, propriétaire et destination, conserve UUID/XP et remet les blessures à zéro. Préciser le sort du prêté converti par rapport au retour à l'origine ; adapter ensuite le suivi à cet événement officiel sans affaiblir l'authentification. |
+| Fusions partielles et retour | `selections_gros_poisson`, `vue_gros_poisson`, `VueParticipants`, `bilan` | QG, positions, confrontation et motifs raccordés. Plusieurs prêteurs réunis avant le duel, UUID natifs dédupliqués. |
+| Bonus de composition | `moral_des_pertes`, `unites.moral_bloc`, `caracteristiques_armee` | Composition effective du bénéficiaire, puis fatigue individuelle. |
+| Cavalerie lourde | `valeur_base_bloc` | 10 + 5 activent le seuil Avant de 15 ; recalcul commun après pertes. |
+| Effets d'ordres | `ordres_pipeline.duel`, `multiplicateur`, `rafales` | Donneur et priorités conservés. Cruelle est recalculée après fusion, sur la composition effective de son donneur. |
+| Soutiens | `generaux.infos_bloc_valide`, `soldats.pertes`, `rafales` | Homologues prêtés, chamans dans la composition effective, messagers dans les pertes communes. Aucun bonus non combattant transféré ; aucun soin anticipé. |
+| Spore adverse | `choisir_spore`, `bloc_destination_zombies`, `convertir_spore` | Conversion officielle reconnue : UUID/XP conservés, nouveau propriétaire zombie, aucun retour à l'ancienne origine. Même placement pour Propagation. |
 
 La restriction commune Zombie reste applicable aux deux rôles. Elle n'empêche
-pas un adversaire d'utiliser Spore contre un prêté admissible. Les mêmes rôles
-désignés deux fois restent refusés. `verifier_duel()` maintient ses garde-fous
-pour capacités/compositions non définies ; `combat_entre_generaux()` refuse aussi
-Choca_fuite avec groupe temporaire tant que le cycle du prêt et de la retraite
-n'est pas raccordé. Ces limitations sont explicites, pas des effets disponibles.
+pas un adversaire d'utiliser Spore contre un prêté admissible. L'auto-désignation
+est sans effet et les lignes identiques sont ignorées. Choca_fuite réserve sa
+retraite normalement ; les prêts sont libérés avant les déplacements différés.
 
-L'activation reste conditionnée aux décisions ci-dessus, au raccordement et aux
-tests des capacités, aux identités/permissions/publication et à la non-régression
-du combat ordinaire. Aucun chantier Muraille, Ralliement ou Dernière charge n'est
-engagé par cette préparation.
+Gros_poisson est activé. Les validations Linux et root sont consignées dans le
+[bilan de reprise](ordres-v2-reprise-codex.md). Muraille, Ralliement et Dernière
+charge restent hors de ce chantier.

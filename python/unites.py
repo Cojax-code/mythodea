@@ -196,8 +196,22 @@ def sauver_capacites(donnees):
                       json.dumps(donnees, ensure_ascii=False) + '\n')
 
 
-def propager(general, bloc, pertes_adverses, survivants, evenement, duel):
-    """Le résolveur fournit le bloc destinataire et une identité de confrontation.
+def bloc_destination_zombies(general, rng=None):
+    """Placement commun Spore/Propagation chez le général source de la création."""
+    import config
+    import generaux
+    composition = generaux.lire_composition_general(general['chemin'])
+    effectifs = {b: sum(n for t, n in composition[b].items() if etiquette(t, 'mort_vivant'))
+                for b in config.ordre_blocs}
+    maximum = max(effectifs.values())
+    if maximum == 0:
+        return 'arriere'
+    from bouclier_vivant import bloc_destination_spore
+    return bloc_destination_spore(effectifs, config.ordre_blocs, rng)
+
+
+def propager(general, bloc, pertes_adverses, survivants, evenement, duel, rng=None):
+    """Le résolveur fournit le bloc source et une identité de confrontation.
 
     Aucune limite ici : elle s'applique exclusivement après la bataille territoriale.
     Une décision réservée n'est jamais tirée ni appliquée une seconde fois.
@@ -218,6 +232,7 @@ def propager(general, bloc, pertes_adverses, survivants, evenement, duel):
     import ordres_calculs_v2
     nombre = ordres_calculs_v2.conversions_propagation(
         nombre, ordres_pipeline.effet(general, 'propagafion'))
+    bloc = bloc_destination_zombies(general, rng)
     identifiants = [uuid.uuid4().hex for _ in range(nombre)]
     contexte_bataille = soldats._bataille.get()
     territoire = contexte_bataille[0] if contexte_bataille else None

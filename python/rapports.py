@@ -651,6 +651,8 @@ def ecrire_detail_engagement(territoire, etiquette, resultat):
             f"Ordres {decision['categorie']} — {decision['joueur']} {decision['general']} : "
             + (noms if noms else 'aucun ordre retenu'))
         ecrire_rapport_long(f"Confrontation V2 : {decision}")
+        if decision.get('motif'):
+            ecrire_rapport_territoire(territoire, decision['motif'])
     ecrire_rapport_territoire(territoire, "CHOC INITIAL")
     for fuite in resultat.get('fuites', ()):
         ecrire_rapport_territoire(territoire,

@@ -113,7 +113,7 @@ ORDRES = {
     # Réservation validée du lot B : ciblage QG bénéficiaire puis prêteur.
     # Ni apprentissage ni exécution avant clôture des cas de combat ouverts.
     1017: dict(jeton='2-6', nom='gros_poisson', categorie='duel',
-               disponible=False, contre=False, progression=False, acquisition_requise=True),
+               disponible=True, contre=False, progression=True, acquisition_requise=True),
     # Apprentissage Zombie autorisé ; ciblage et effet encore non exécutables.
     1018: dict(jeton='1-8', nom='spora_adicte', categorie='globale',
                disponible=False, contre=False, progression=True, acquisition_requise=True),

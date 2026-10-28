@@ -136,3 +136,41 @@ class PermissionsParticipations(unittest.TestCase):
             self.assertTrue(self.lisible(b.chemin / 'blessures.txt', 62002))
             self.assertFalse(self.lisible(b.chemin / 'blessures.txt', 62001))
             self.assertEqual(self.soldats.charger()[b.identifiant]['batailles'], 7)
+
+    def test_spore_sur_prete_transfere_seulement_au_createur_sous_uid_reels(self):
+        import bouclier_vivant
+        import unites
+        source = self.public / 'est_3/bot/1/general1'
+        for bloc in self.config.ordre_blocs:
+            dossier = source / bloc
+            dossier.mkdir(parents=True)
+            os.chown(dossier, 62003, 62003)
+            dossier.chmod(0o700)
+        os.chown(source, 62003, 62003)
+        source.chmod(0o700)
+        unites.creer_officielle(source / 'avant/zombi1', 'zombie', {'test': True})
+        zombie = dict(joueur='bot', nom='general1', chemin=source)
+        with self.soldats.participation_temporaire(self.contributions(self.generaux)) as groupe:
+            a, b = groupe.participants
+            registre = self.soldats.charger()
+            registre[b.identifiant]['batailles'] = 0
+            self.soldats.sauvegarder(registre)
+            vue = self.soldats.VueParticipants(groupe, [
+                (self.generaux[0], 'avant', (a.identifiant, b.identifiant))])
+            obtenu = bouclier_vivant.convertir_spore(zombie, self.generaux[0], 'avant',
+                                                     'root:spore', participants=vue)
+            self.assertEqual(obtenu, b.identifiant)
+            destination = source / 'avant' / ('zombi_' + obtenu)
+            self.assertFalse(b.chemin.exists())
+            self.assertEqual(vue.total(self.generaux[0]), 1)
+            self.assertEqual(len(groupe.bilan()[('j2', 'general1', 'avant')]['pertes']), 1)
+            for chemin in (destination, *destination.iterdir()):
+                infos = chemin.stat()
+                self.assertEqual((infos.st_uid, infos.st_gid), (62003, 62003))
+                self.assertEqual(stat.S_IMODE(infos.st_mode), 0o700 if chemin.is_dir() else 0o600)
+            self.assertFalse(self.lisible(destination / 'blessures.txt', 62001))
+            self.assertFalse(self.lisible(destination / 'blessures.txt', 62002))
+            self.assertTrue(self.lisible(destination / 'blessures.txt', 62003))
+            os.chown(destination, 62002, 62002)
+            with self.assertRaisesRegex(RuntimeError, 'Identité du participant converti'):
+                groupe.bilan()

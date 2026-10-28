@@ -1080,7 +1080,7 @@ ou :
 type-numero-specification
 ```
 
-La V2 réserve aussi `2-6-position_beneficiaire-position_preteur` pour Gros_poisson.
+La V2 utilise aussi `2-6-position_beneficiaire-position_preteur` pour Gros_poisson.
 Les quatre champs sont lus uniquement pour ce jeton, sans activer son effet.
 
 Ordres enregistrés :
@@ -1888,21 +1888,57 @@ de fatigue nouveau n'est défini. Les identités, pertes et retours de ces effet
 ne sont pas déduits de la seule compatibilité et restent à intégrer après leurs
 décisions manquantes.
 
-### Groupes temporaires — infrastructure préparatoire
+### Gros_poisson et groupes temporaires
 
-Contrats validés du lot B, encore non activés : Gros_poisson réunit uniquement
+Gros_poisson (ID 1017, apprenable et exécutable) réunit uniquement
 les mêmes blocs et types, sous le commandement du bénéficiaire désigné par le
 QG ; pertes aléatoires dans la formation engagée, propriétaires et états
 individuels conservés, retour des survivants à leurs origines après le duel.
-Son jeton réservé est `2-6-position_beneficiaire-position_preteur` (ID 1017).
+Son jeton est `2-6-position_beneficiaire-position_preteur`.
 Le parseur conserve les deux positions dans un tuple `specification` ; cette
-lecture ne rend l'ordre ni apprenable ni exécutable. Le QG peut occuper un rôle.
+lecture ne confère aucun droit : acquisition privée du QG, positions alliées
+actives, réception autorisée et confrontation restent obligatoires. Le QG peut occuper un rôle.
 Les blocs absents ou sans type commun sont ignorés ; les autres prêts demeurent
 possibles. Sans homologue, aucun effet, avec motif destiné au rapport. Aucun
 soldat ni bloc n'est créé ; les non-prêtés gardent leur commandement d'origine.
 Les généraux Zombies et les unités interdites aux ordres classiques ne bénéficient
 d'aucune exception. Les états de fatigue restent individuels ; leur contribution
 et la résistance moyenne sont calculées par le moteur commun.
+
+Plusieurs lignes peuvent désigner le même bénéficiaire avec des prêteurs
+différents. Les lignes identiques sont ignorées ; une auto-désignation est sans
+effet et ne constitue aucun groupe. Toutes les contributions compatibles sont
+fusionnées avant le duel, dans une seule `VueParticipants`, sans compter deux
+fois les natifs ni les UUID. Un prêteur ne peut contribuer simultanément à deux
+bénéficiaires du même duel : cette configuration est détectée avant réservation,
+sans priorité arbitraire. Le prêteur conserve ensuite son tour normal.
+
+Les bonus utilisent la composition effective après la fusion complète, puis la
+fatigue individuelle. Les recalculs habituels après pertes restent applicables :
+10 cavaliers lourds natifs + 5 prêtés en Avant activent le seuil de 15 ; un
+affrontement ultérieur sous ce seuil perd le bonus. Les soutiens combattants,
+dont les Orcs chamans, participent aux effets de composition du bénéficiaire.
+Les soins de victoire restent exclusivement territoriaux. Les effets des unités
+`non_combattant` sont attachés à leur général d'origine au début de l'attaque
+territoriale, sans transfert ni recalcul dû au prêt. Aucun bonus de messager
+n'étant actuellement défini dans le moteur, Gros_poisson n'en active aucun.
+Les messagers prêtés restent exposés aux pertes communes des soutiens.
+
+`ordres_pipeline.participations_duel()` ouvre le groupe après la confrontation,
+recalcule Cruelle avec la composition effective et le ferme après le duel.
+Les dossiers ne quittent pas leurs origines ; les pertes passent par
+`soldats.pertes()`. Choca_fuite réserve sa retraite selon les règles communes ;
+les prêts sont libérés avant l'application des déplacements différés.
+
+Spore et Propagation attribuent les zombies créés au général zombie source,
+jamais à un emprunteur. `unites.bloc_destination_zombies()` choisit son bloc
+contenant le plus d'unités `mort_vivant` (Zombies et Trop gros zombie), sans
+compter les messagers. Une égalité maximale utilise le hasard du moteur ; un
+maximum unique ne consomme aucun tirage. Sans zombie, la destination est Arrière.
+Déclencheurs et quantités de créations restent inchangés. Un prêté converti par
+Spore conserve son UUID/XP et reçoit le type, les blessures et le propriétaire
+prévus par la conversion commune ; il n'est pas restitué à son ancienne origine.
+
 Muraille humaine conserve au contraire chaque Avant distinct, avec les bonus
 de son général d'origine, et prévoit des engagements successifs après simulation
 contre l'Avant adverse, sans mutation. Le score est `ennemis éliminés - alliés
@@ -1972,8 +2008,9 @@ un bloc mélangé ; les rapports homogènes restent identiques.
 `GroupeTemporaire.vue_gros_poisson()` assemble les sélections homologues en vue
 du bénéficiaire et renvoie le motif éventuel sans homologue. Les autres blocs
 conservent leur commandement. Cette préparation ne vaut ni acquisition, ni
-contrôle QG/positions, ni confrontation gagnée. Les capacités/compositions encore
-non définies restent refusées par le duel, et Gros_poisson demeure désactivé.
+contrôle QG/positions, ni confrontation gagnée. Le pipeline effectue ces contrôles
+avant d'ouvrir le groupe réel. `generaux.infos_bloc_valide()` classe les soldats,
+soutiens et boucliers pour les lecteurs physique et temporaire communs.
 
 `participer()` inscrit seulement les soldats explicitement engagés dans une
 `bataille_complete()` existante. Le comptage commun crédite les survivants une
@@ -1981,7 +2018,10 @@ seule fois par bataille. Préparer une vue ne donne aucune expérience ; un prê
 ne crédite pas automatiquement son général d'un affrontement personnel.
 `bilan()` retourne les survivants et morts réels par propriétaire, général et
 bloc d'origine. Un changement d'origine, d'identité, de type ou d'UID/GID, une
-disparition sans mort enregistrée ou un objet lié provoque une erreur.
+disparition sans mort enregistrée ou un objet lié provoque une erreur. Seule une
+conversion Spore officiellement achevée est reconnue par `enregistrer_spore()` :
+elle figure parmi les pertes de l'origine, et sa nouvelle identité physique
+reste contrôlée jusqu'à la fermeture du groupe.
 
 À la sortie du contexte, même après exception, les réservations sont libérées
 et la vue est fermée. Les pertes et blessures ne sont jamais annulées. Les
@@ -1989,9 +2029,8 @@ méthodes refusent une vue fermée ou utilisée hors de sa racine et de son mode
 public/privé. Aucun nouveau format persistant ni protocole de publication n'est
 introduit ; une résolution privée interrompue suit la récupération commune.
 
-Ce socle n'active pas Gros_poisson, Muraille humaine, Ralliement ou Dernière
-charge. Les règles de sélection, phases et effets doivent encore être raccordées
-après les décisions de `docs/ordres-v2-preparation.md`. La vue retire les UUID
+Muraille humaine, Ralliement et Dernière charge restent inactifs ; leurs règles
+et circuits ne sont pas activés par Gros_poisson. La vue retire les UUID
 affectés des autres lectures faites à travers elle ; un appel ordinaire doit
 refuser de réengager des soldats réservés sans leur vue. Elle ne ressuscite pas
 les morts et ne remplace pas le raccordement des capacités du duel complet.

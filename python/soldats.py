@@ -61,6 +61,7 @@ class GroupeTemporaire:
         self._racine = racine
         self._generation_privee = config.dans_generation_privee()
         self._ouvert = True
+        self._conversions = {}
 
     @property
     def participants(self):
@@ -81,6 +82,26 @@ class GroupeTemporaire:
         resultat = {}
         for p in self.participants:
             valeur = registre.get(p.identifiant)
+            if p.identifiant in self._conversions:
+                destination, evenement, identite_dossier = self._conversions[p.identifiant]
+                if (valeur is None or valeur['chemin'] != cle(destination)
+                        or valeur['type'] != 'zombie'
+                        or valeur.get('origine_officielle', {}).get('spore') != evenement
+                        or p.chemin.exists() or p.chemin.is_symlink()):
+                    raise RuntimeError('Conversion Spore du participant altérée.')
+                if valeur.get('detruit'):
+                    if destination.exists() or destination.is_symlink():
+                        raise RuntimeError('Zombie détruit encore présent.')
+                else:
+                    infos = _controler_dossier_participant(destination)
+                    if (infos.st_dev, infos.st_ino, infos.st_uid, infos.st_gid) != identite_dossier:
+                        raise RuntimeError('Identité du participant converti altérée.')
+                    if (retrouver(destination, registre, self._generation_privee) != p.identifiant
+                            or generaux.identifier_unite(destination) != 'zombie'):
+                        raise RuntimeError('UUID du participant converti altéré.')
+                resultat.setdefault((p.joueur, p.general, p.bloc),
+                                     dict(survivants=[], pertes=[]))['pertes'].append(p)
+                continue
             if valeur is None or valeur['chemin'] != cle(p.chemin):
                 raise RuntimeError('Origine officielle du participant modifiée ou absente.')
             groupe = resultat.setdefault((p.joueur, p.general, p.bloc),
@@ -101,6 +122,23 @@ class GroupeTemporaire:
             groupe['survivants'].append(p)
         return {origine: {etat: tuple(soldats) for etat, soldats in groupe.items()}
                 for origine, groupe in resultat.items()}
+
+    def enregistrer_spore(self, identifiant, destination, evenement):
+        """Reconnaît uniquement une conversion officielle achevée, jamais un déplacement libre."""
+        import unites
+        if identifiant not in {p.identifiant for p in self.participants}:
+            return
+        preuve = unites.charger_capacites().get('spores', {}).get(evenement, {})
+        valeur = charger().get(identifiant, {})
+        if (not preuve.get('terminee') or preuve.get('victime') != identifiant
+                or preuve.get('bloc') != destination.parent.name
+                or valeur.get('chemin') != cle(destination)
+                or valeur.get('origine_officielle', {}).get('spore') != evenement):
+            raise RuntimeError('Conversion Spore non authentifiée.')
+        infos = _controler_dossier_participant(destination)
+        self._conversions[identifiant] = (destination, evenement,
+            (infos.st_dev, infos.st_ino, infos.st_uid, infos.st_gid))
+        self.bilan()
 
     def _selection_vivante(self, identifiants):
         bilan = self.bilan()
@@ -136,18 +174,18 @@ class GroupeTemporaire:
         return {p.identifiant: f'{p.joueur}:{p.general}' in fatigues
                 for p in self._selection_vivante(identifiants)}
 
-    def selections_gros_poisson(self, beneficiaire, preteur, configuration):
+    def selections_gros_poisson(self, beneficiaire, preteur, configuration, *, autres_couples=False):
         """Sélections homologues partielles, après authentification du groupe.
 
-        Préparation seulement : ne vaut ni ordre acquis, ni transmission QG,
-        ni confrontation gagnée. Le pilote devra valider ces conditions avant
+        Ne vaut ni ordre acquis, ni transmission QG,
+        ni confrontation gagnée. Le pilote valide ces conditions avant
         d'engager les sélections. Aucun soldat non prêté ne change de contexte.
         """
         import progression
         import unites
         origines = [(g['joueur'], g['nom']) for g in (beneficiaire, preteur)]
         if origines[0] == origines[1]:
-            raise ValueError('Même bénéficiaire et prêteur : désignation non définie.')
+            return dict(selections={}, motif='Gros_poisson sans effet : auto-désignation.')
         camps = [configuration['acteurs'][g['joueur']]['camp'] for g in (beneficiaire, preteur)]
         if camps[0] != camps[1]:
             raise ValueError('Gros_poisson exige deux généraux alliés.')
@@ -159,6 +197,8 @@ class GroupeTemporaire:
         for p in self._selection_vivante(None):
             origine = p.joueur, p.general
             if origine not in origines:
+                if autres_couples:
+                    continue
                 raise ValueError('Participant extérieur aux deux généraux désignés.')
             general = (beneficiaire, preteur)[origines.index(origine)]
             if p.chemin.parent.parent != general['chemin']:
@@ -175,14 +215,15 @@ class GroupeTemporaire:
     def vue_gros_poisson(self, beneficiaire, preteur, configuration):
         """Assemble les sélections validées et leur motif, sans autoriser l'ordre.
 
-        Le pilote doit encore authentifier QG, positions, acquisition et
-        confrontation. Les capacités non définies restent refusées par le duel.
+        Le pilote authentifie QG, positions, acquisition et confrontation.
         La vue expire avec ce groupe ; fermer le groupe libère les survivants.
         """
         choix = self.selections_gros_poisson(beneficiaire, preteur, configuration)
-        affectations = [(beneficiaire, bloc, ids)
-                        for (bloc, _), ids in choix['selections'].items()]
-        return VueParticipants(self, affectations), choix['motif']
+        par_bloc = {}
+        for (bloc, _), ids in choix['selections'].items():
+            par_bloc.setdefault(bloc, []).extend(ids)
+        affectations = [(beneficiaire, bloc, ids) for bloc, ids in par_bloc.items()]
+        return VueParticipants(self, affectations, conserver_non_affectes=True), choix['motif']
 
     def bloc(self, identifiants=None):
         """Instantané homogène compatible avec le calcul commun combat_bloc.
@@ -233,14 +274,17 @@ class VueParticipants:
     """Lecture du duel, passée explicitement aux phases, sans nouvel état métier.
 
     Une affectation (commandant, bloc, UUID) remplace la sélection de ce bloc.
+    Gros_poisson conserve en plus les natifs non affectés, notamment les soutiens
+    sans homologue ; les sélections explicites ordinaires restent inchangées.
     Les mêmes soldats sont retirés des autres lectures de cette vue. Le groupe
     conserve leurs origines et contrôle leurs droits ; aucun dossier ne bouge.
     Sans affectation, les lecteurs historiques restent utilisés tels quels.
     Construire/lire une vue ne vaut ni engagement, ni autorisation d'ordre.
     """
-    def __init__(self, groupe=None, affectations=()):
+    def __init__(self, groupe=None, affectations=(), *, conserver_non_affectes=False):
         import config
         self.groupe = groupe
+        self._conserver_non_affectes = conserver_non_affectes
         self._affectations = {}
         self._affectes = set()
         for general, bloc, identifiants in affectations:
@@ -271,22 +315,22 @@ class VueParticipants:
                 import config
                 registre = charger()
                 if any(retrouver(u, registre, config.dans_generation_privee()) in _prets.get()
-                       for b in blocs.values() for u in b['unites']):
+                       for b in blocs.values() for u in generaux.chemins_bloc(b)):
                     raise RuntimeError('Soldats réservés : fournir leur vue explicite.')
             return blocs
         for bloc, infos in blocs.items():
-            infos['unites'] = [u for u in infos['unites']
-                              if u not in self._origines or
-                              self._origines[u].identifiant not in self._affectes]
-            infos['nombre'] = len(infos['unites'])
-            if not infos['nombre']:
-                infos['type'] = 'vide'
+            chemins = [u for u in generaux.chemins_bloc(infos)
+                       if u not in self._origines or
+                       self._origines[u].identifiant not in self._affectes]
             affectation = self._affectations.get(((general['joueur'], general['nom']), bloc))
             if affectation is not None:
                 chemin, ids = affectation
                 if chemin != general['chemin']:
                     raise RuntimeError('Commandant utilisé hors de son origine.')
-                blocs[bloc] = self.groupe.bloc(ids)
+                if not self._conserver_non_affectes:
+                    chemins = []
+                chemins.extend(p.chemin for p in self.groupe._selection_vivante(ids))
+            blocs[bloc] = generaux.infos_bloc_valide(chemins)
         return blocs
 
     def total(self, general):
@@ -302,8 +346,13 @@ class VueParticipants:
         import generaux
         if not self.groupe:
             return generaux.lire_composition_general(general['chemin'])
-        return {bloc: {infos['type']: infos['nombre']} if infos['nombre'] else {}
-                for bloc, infos in self.blocs(general).items()}
+        composition = {}
+        for bloc, infos in self.blocs(general).items():
+            effectifs = composition[bloc] = {}
+            for chemin in generaux.chemins_bloc(infos):
+                type_unite = generaux.identifier_unite(chemin)
+                effectifs[type_unite] = effectifs.get(type_unite, 0) + 1
+        return composition
 
     def fatigues_individuelles(self, general, infos):
         """Relevé dans l'ordre de infos['unites'], sans agrégation de combat.
@@ -332,7 +381,7 @@ class VueParticipants:
         return valeurs[0] if valeurs else etat.general_est_fatigue(general)
 
     def verifier_duel(self, *generaux_du_duel):
-        """Refuser les dépendances ouvertes AVANT les contextes et pertes du duel."""
+        """Contrôler commandants, camps, identités et fatigue avant toute perte."""
         import generaux
         if not self.groupe:
             if _prets.get():
@@ -348,15 +397,6 @@ class VueParticipants:
                            if (g['joueur'], g['nom']) != commandant}
             if any(p.joueur in adversaires for p in self.groupe._selection_vivante(ids)):
                 raise ValueError('Un participant ne peut provenir du camp adverse du duel.')
-        # Les bonus de composition, conversions et déplacements d’un prêt sont
-        # encore ouverts. Ce refus technique ne définit aucune règle de Gros_poisson.
-        chemins = {g['chemin'] for g in generaux_du_duel}
-        chemins.update(p.chemin.parent.parent for p in self.groupe.participants)
-        for chemin in chemins:
-            composition = generaux.lire_composition_general(chemin)
-            if any(t not in ('archer', 'piquier', 'cavalier')
-                   for bloc in composition.values() for t in bloc):
-                raise NotImplementedError('Capacités/composition des participants temporaires non définies.')
         for general in generaux_du_duel:
             for infos in self.blocs(general).values():
                 self.fatigue(general, infos)
@@ -365,8 +405,9 @@ class VueParticipants:
         if not self.groupe:
             participer(general)
         elif _participants.get() is not None:
+            import generaux
             for infos in self.blocs(general).values():
-                _participants.get().update(infos['unites'])
+                _participants.get().update(generaux.chemins_bloc(infos))
 
     def supprimer_general_si_vide(self, general):
         import generaux

@@ -8,7 +8,9 @@ puis surnombre frais proportionnel), calculée dans `combat_bloc()` et transmise
 par `VueParticipants`. `vue_gros_poisson()` assemble les sélections existantes.
 Les mentions ci-dessous de fatigue encore indéfinie décrivent la base auditée,
 pas le blocage actuel. Consulter la [règle actuelle et les obstacles restants](ordres-v2-fatigue-individuelle.md)
-et le [bilan de reprise](ordres-v2-reprise-codex.md). Gros_poisson reste désactivé.
+et le [bilan de reprise](ordres-v2-reprise-codex.md). Gros_poisson a depuis été
+raccordé et activé avec prêts multiples, soutiens et Spore ; les refus et
+questions ouverts dans le corps de cet audit décrivent l'état du 27 octobre.
 
 ## 1. Base examinée et conclusion
 

@@ -30,10 +30,10 @@ class OrdresConceptionTest(unittest.TestCase):
         self.assertEqual(noms_actifs.intersection(ordres_conception.ORDRES_EN_CONCEPTION),
                          {'herisson', 'discours_de_la_mort', 'orc_un_jour_orc_toujour', 'rafale', 'cruelle',
                           'choca_fuite', 'propagafion', 'confinement', 'etincellant',
-                          'on_melange', 'qg_nommade'})
+                          'on_melange', 'qg_nommade', 'gros_poisson'})
         self.assertEqual({ordre["jeton"] for ordre in catalogues.ORDRES.values()
                           if ordre["disponible"]}, {"1-2", "3-2", "3-3", "2-3", "3-4", "2-4",
-                                                   "2-5", "1-3", "1-4", "1-5", "1-6", "1-7"})
+                                                   "2-5", "2-6", "1-3", "1-4", "1-5", "1-6", "1-7"})
 
     def test_registre_immuable(self):
         with self.assertRaises(TypeError):
@@ -41,12 +41,12 @@ class OrdresConceptionTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             ordres_conception.ORDRES_EN_CONCEPTION["derniere_charge"]["disponible"] = True
 
-    def test_gros_poisson_jeton_duel_reserve_sans_activation(self):
+    def test_gros_poisson_jeton_duel_active_et_apprenable(self):
         ordre = catalogues.ORDRES[1017]
         self.assertEqual((ordre['nom'], ordre['categorie'], ordre['jeton']),
                          ('gros_poisson', 'duel', '2-6'))
-        self.assertFalse(ordre['disponible'])
-        self.assertFalse(catalogues.EVOLUTIONS[1017]['disponible'])
+        self.assertTrue(ordre['disponible'])
+        self.assertTrue(catalogues.EVOLUTIONS[1017]['disponible'])
 
 
 if __name__ == "__main__":

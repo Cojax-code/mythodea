@@ -192,10 +192,10 @@ class EffetsOrdres(unittest.TestCase):
         import bouclier_vivant
         priorite = bouclier_vivant.resoudre_priorite
         vus = []
-        def verifier(zombie, ennemi):
+        def verifier(zombie, ennemi, **options):
             vus.append(self.infos(zombie)['nombre'])
             self.assertTrue(bouclier_vivant.presence_bouclier(zombie))
-            return priorite(zombie, ennemi)
+            return priorite(zombie, ennemi, **options)
         with patch.object(bouclier_vivant, 'resoudre_priorite', side_effect=verifier), \
                 patch.object(self.combats.random, 'sample', side_effect=lambda seq, n: list(seq)[:n]):
             r = self.combats.combat_entre_generaux(a, b)

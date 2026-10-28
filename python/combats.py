@@ -36,26 +36,24 @@ def combat_entre_generaux(general_1, general_2, *, participants=None):
     participants = participants if participants is not None else soldats.VueParticipants()
     participants.verifier_duel(general_1, general_2)
     with ordres_pipeline.duel(general_1, general_2) as decisions:
-        if participants.groupe and any(ordres_pipeline.effet(g, 'choca_fuite')
-                                      for g in (general_1, general_2)):
-            raise NotImplementedError('Retraite avec participants temporaires non définie.')
-        with unites.duel(general_1, general_2):
-            for general in (general_1, general_2):
-                if participants.present(general):
-                    participants.participer(general)
-            initiales = [participants.total(g) for g in (general_1, general_2)]
-            rafales = ordres_pipeline.rafales(general_1, general_2, random,
-                lambda infos, n, g: supprimer_unites(infos, n, g, participants=participants),
-                participants=participants)
-            resultat = _combat_entre_generaux(general_1, general_2, participants=participants)
-            if rafales:
-                resultat['initial_1'], resultat['initial_2'] = initiales
-                resultat['rafales'] = rafales
+        with ordres_pipeline.participations_duel(general_1, general_2, participants, decisions) as vue:
+            with unites.duel(general_1, general_2):
+                for general in (general_1, general_2):
+                    if vue.present(general):
+                        vue.participer(general)
+                initiales = [vue.total(g) for g in (general_1, general_2)]
+                rafales = ordres_pipeline.rafales(general_1, general_2, random,
+                    lambda infos, n, g: supprimer_unites(infos, n, g, participants=vue),
+                    participants=vue)
+                resultat = _combat_entre_generaux(general_1, general_2, participants=vue)
+                if rafales:
+                    resultat['initial_1'], resultat['initial_2'] = initiales
+                    resultat['rafales'] = rafales
+            for numero, general in enumerate((general_1, general_2), 1):
+                vue.supprimer_general_si_vide(general)
+                resultat[f'final_{numero}'] = vue.total(general)
     if decisions:
         resultat['ordres_v2'] = decisions
-    for numero, general in enumerate((general_1, general_2), 1):
-        participants.supprimer_general_si_vide(general)
-        resultat[f'final_{numero}'] = participants.total(general)
     return resultat
 
 
@@ -96,7 +94,7 @@ def _combat_entre_generaux(general_1, general_2, *, participants=None):
     if (bouclier_vivant.presence_bouclier(general_1)
             or bouclier_vivant.presence_bouclier(general_2)):
         zombie, ennemi = (general_1, general_2) if bouclier_vivant.presence_bouclier(general_1) else (general_2, general_1)
-        termine, details_bouclier = bouclier_vivant.resoudre_priorite(zombie, ennemi)
+        termine, details_bouclier = bouclier_vivant.resoudre_priorite(zombie, ennemi, participants=participants)
         if zombie is general_2:
             # Les colonnes des rapports suivent general_1 / general_2.
             details_bouclier = [
@@ -1001,7 +999,7 @@ def moral_des_pertes(infos, general=None, *, participants=None):
                        else generaux.lire_composition_general(general['chemin']))
         bloc = infos['unites'][0].parent.name if infos['unites'] else None
         moral = unites.moral_bloc(caracteristiques, composition, bloc, general)
-        moral = ordres_pipeline.moral(general, moral)
+        moral = ordres_pipeline.moral(general, moral, type_unite=infos['type'])
     return moral
 
 

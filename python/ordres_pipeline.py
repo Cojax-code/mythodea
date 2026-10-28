@@ -60,7 +60,12 @@ def ordres_du_general(general, categorie=None, catalogue=None):
             continue
         # Pas d'invention d'une cible par défaut : une spécification future
         # devra être validée selon la définition de l'ordre concerné.
-        if demande.get("specification") is not None:
+        specification = demande.get('specification')
+        if identifiant == 1017:
+            if (not isinstance(specification, tuple) or len(specification) != 2
+                    or any(type(p) is not int or p <= 0 for p in specification)):
+                continue
+        elif specification is not None:
             continue
         if identifiant not in resultat:
             resultat.append(identifiant)
@@ -279,15 +284,55 @@ def qg_du_general(general):
 def intention(general, categorie):
     if categorie != 'globale':
         personnelle = intention_personnelle(general, categorie)
+        personnelle = filtrer_gros_poisson(general, personnelle)
         if personnelle or categorie == 'individuelle':
             return personnelle
     qg = qg_du_general(general)
     donneur = intention_personnelle(qg, categorie) if qg is not None else None
+    donneur = filtrer_gros_poisson(general, donneur)
     if donneur and categorie == 'globale':
         courant = _bataille.get()
         camp = courant['configuration']['acteurs'][general['joueur']]['camp']
         annules = courant['annules'].get(camp, ())
         donneur = retirer_ordres_annules(donneur, annules)
+    return donneur
+
+
+def cibles_gros_poisson(beneficiaire, donneur):
+    """Résout les positions actives du camp, sous l'autorité du QG courant."""
+    courant = _bataille.get()
+    qg = qg_du_general(beneficiaire)
+    if courant is None or qg is None or identite(qg) != identite(donneur['general']):
+        return []
+    import generaux
+    configuration = courant['configuration']
+    camp = configuration['acteurs'][beneficiaire['joueur']]['camp']
+    forces = generaux.lire_forces_territoire(courant['territoire'], configuration)[camp]
+    couples = []
+    for demande in donneur['general']['ordres']:
+        if demande['identifiant'] != '2-6':
+            continue
+        specification = demande.get('specification')
+        if not isinstance(specification, tuple) or len(specification) != 2:
+            continue
+        a, b = (forces.get(str(p)) for p in specification)
+        if not a or not b or identite(a) != identite(beneficiaire):
+            continue
+        if identite(a) == identite(b):
+            continue  # Sans effet, y compris dans la confrontation d'ordres.
+        profils = [progression.caracteristiques_general(g) for g in (a, b)]
+        if any(not fiche or not progression.reception_ordre_autorisee(fiche, 'gros_poisson')
+               for fiche in profils):
+            continue
+        if not any(identite(b) == identite(preteur) for _, preteur in couples):
+            couples.append((a, b))
+    return couples
+
+
+def filtrer_gros_poisson(beneficiaire, donneur):
+    if donneur and 1017 in donneur['identifiants']:
+        if not cibles_gros_poisson(beneficiaire, donneur):
+            return retirer_ordres_annules(donneur, {'gros_poisson'})
     return donneur
 
 
@@ -464,7 +509,11 @@ def fuir_apres_choc(generaux):
     callback = _retraite.get()
     if callback is None:
         return []
-    candidats = [g for g in generaux if effet(g, 'choca_fuite') and g['chemin'].is_dir()]
+    import generaux as moteur_generaux
+    # Les prêts reviennent avant le déplacement : un bénéficiaire sans soldats
+    # propres ne peut réserver une retraite qui déplacerait un général supprimé.
+    candidats = [g for g in generaux if effet(g, 'choca_fuite') and g['chemin'].is_dir()
+                 and moteur_generaux.total_general_depuis_chemin(g['chemin']) > 0]
     return callback(candidats) if candidats else []
 
 
@@ -528,6 +577,8 @@ def duel(general_1, general_2):
             contexte[identite(general)]['effets'].update(catalogues.ORDRES[i]['nom'] for i in retenus)
             if any(catalogues.ORDRES[i]['nom'] == 'cruelle' for i in retenus):
                 sources_cruelles[identite(general)] = donneur['general']
+            if 1017 in retenus:
+                contexte[identite(general)]['gros_poisson'] = cibles_gros_poisson(general, donneur)
             decisions.append(dict(joueur=general['joueur'], general=general['nom'],
                 categorie=categorie, pc=points[numero - 1], demandes=donneur['identifiants'],
                 donneur_joueur=donneur['general']['joueur'], donneur_general=donneur['general']['nom'],
@@ -539,6 +590,7 @@ def duel(general_1, general_2):
     for donneur, cible in ((general_1, general_2), (general_2, general_1)):
         if 'cruelle' in contexte[identite(donneur)]['effets']:
             source = sources_cruelles[identite(donneur)]
+            contexte[identite(cible)]['source_cruelle'] = source
             composition = moteur_generaux.lire_composition_general(source['chemin'])
             nombre = sum(n for bloc in composition.values() for t, n in bloc.items()
                          if unites.etiquette(t, 'cruelle'))
@@ -550,15 +602,87 @@ def duel(general_1, general_2):
         _duel.reset(jeton)
 
 
+@contextmanager
+def participations_duel(general_1, general_2, participants, decisions):
+    """Ouvre les prêts retenus pour ce duel, puis libère toutes les réservations."""
+    import generaux
+    import soldats
+    courant = _duel.get() or {}
+    couples = [couple for g in (general_1, general_2)
+               for couple in courant.get(identite(g), {}).get('gros_poisson', ())]
+    if not couples:
+        yield participants
+        return
+    configuration = _bataille.get()['configuration']
+    contributions, origines, prets = [], {}, []
+    beneficiaires_par_preteur = {}
+    for beneficiaire, preteur in couples:
+        if identite(beneficiaire) == identite(preteur):
+            for decision in decisions:
+                if (decision['joueur'], decision['general']) == identite(beneficiaire) and 1017 in decision['retenus']:
+                    decision['motif'] = (decision.get('motif', '') +
+                        ' Ligne Gros_poisson sans effet : auto-désignation.').strip()
+            continue
+        benef = identite(beneficiaire)
+        origine = identite(preteur)
+        if origine in beneficiaires_par_preteur and beneficiaires_par_preteur[origine] != benef:
+            raise ValueError('Gros_poisson conflictuel : un prêteur désigne plusieurs bénéficiaires du duel.')
+        beneficiaires_par_preteur[origine] = benef
+        prets.append((beneficiaire, preteur))
+        for g in (beneficiaire, preteur):
+            origines[identite(g)] = g
+    if not prets:
+        yield participants
+        return
+    if participants.groupe:
+        raise RuntimeError('Le duel possède déjà une participation temporaire.')
+    for g in origines.values():
+        contributions.extend((g, b, generaux.chemins_bloc(infos))
+                             for b, infos in generaux.lire_blocs_general(g['chemin'], lecture_seule=True).items())
+    with soldats.participation_temporaire(contributions) as groupe:
+        par_commandant_bloc = {}
+        for beneficiaire, preteur in prets:
+            # Le groupe commun peut contenir les prêts des deux camps ; chaque
+            # sélection reste strictement limitée au couple autorisé.
+            choix = groupe.selections_gros_poisson(beneficiaire, preteur, configuration,
+                                                   autres_couples=True)
+            par_bloc = {}
+            for (bloc, _), ids in choix['selections'].items():
+                par_bloc.setdefault(bloc, []).extend(ids)
+            for bloc, ids in par_bloc.items():
+                cle = identite(beneficiaire), bloc
+                selection = par_commandant_bloc.setdefault(cle, (beneficiaire, {}))[1]
+                selection.update(dict.fromkeys(ids))
+            if choix['motif']:
+                for decision in decisions:
+                    if (decision['joueur'], decision['general']) == identite(beneficiaire) and 1017 in decision['retenus']:
+                        decision['motif'] = (decision.get('motif', '') +
+                            f" Prêteur {preteur['joueur']} {preteur['nom']} : {choix['motif']}").strip()
+        affectations = [(g, bloc, tuple(ids)) for (_, bloc), (g, ids) in par_commandant_bloc.items()]
+        vue = soldats.VueParticipants(groupe, affectations, conserver_non_affectes=True)
+        vue.verifier_duel(general_1, general_2)
+        import unites
+        for donnees in courant.values():
+            source = donnees.get('source_cruelle')
+            if source:
+                nombre = sum(n for bloc in vue.composition(source).values() for t, n in bloc.items()
+                             if unites.etiquette(t, 'cruelle'))
+                donnees['facteur_cruelle'] = ordres_calculs_v2.facteur_cruelle(nombre)
+        yield vue
+    for g in origines.values():
+        generaux.supprimer_general_si_vide(g)
+
+
 def effet(general, nom):
     contexte = _duel.get()
     return bool(general is not None and contexte and
                 nom in contexte.get(identite(general), {}).get('effets', ()))
 
 
-def moral(general, valeur):
+def moral(general, valeur, *, type_unite=None):
     """Les fractions vont jusqu'au plancher collectif des sauvetages existants."""
-    if effet(general, 'discours_de_la_mort'):
+    import unites
+    if effet(general, 'discours_de_la_mort') and (type_unite is None or unites.ordres_classiques(type_unite)):
         valeur = ordres_calculs_v2.facteur_discours_de_la_mort(valeur)
     contexte = _duel.get()
     if contexte and general is not None:
