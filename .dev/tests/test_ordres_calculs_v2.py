@@ -74,6 +74,32 @@ class TestOrdresCalculsV2(unittest.TestCase):
                 combats.engager_avant_muraille(a, b, participants=Mock())
             reel.assert_not_called()
 
+    def test_duel_transmet_exclusion_avant_sans_changer_defaut(self):
+        from unittest.mock import patch
+        import combats
+        a = {'joueur': 'j1', 'camp': 'a', 'nom': 'general1'}
+        b = {'joueur': 'j2', 'camp': 'b', 'nom': 'general2'}
+        vue = Mock()
+        vue.total.return_value = 3
+        vue.present.return_value = True
+        vue.supprimer_general_si_vide.return_value = False
+        class Contexte:
+            def __enter__(self):
+                return []
+            def __exit__(self, *_):
+                return False
+        with patch.object(combats.ordres_pipeline, 'duel', return_value=Contexte()), patch.object(
+                combats.ordres_pipeline, 'participations_duel',
+                return_value=Contexte()), patch.object(
+                combats.unites, 'duel', return_value=Contexte()), patch.object(
+                combats.ordres_pipeline, 'rafales', return_value=[]), patch.object(
+                combats, '_combat_entre_generaux', return_value={'chocs': [], 'manoeuvres': []}) as calcul:
+            combats.combat_entre_generaux(a, b, participants=vue,
+                                         avant_exclus_manoeuvre=True)
+            self.assertTrue(calcul.call_args.kwargs['avant_exclus_manoeuvre'])
+            combats.combat_entre_generaux(a, b, participants=vue)
+            self.assertFalse(calcul.call_args.kwargs['avant_exclus_manoeuvre'])
+
     def test_muraille_manoeuvre_masque_avant_sans_perte(self):
         import combats
         unites_avant = [object(), object()]
