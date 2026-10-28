@@ -315,6 +315,31 @@ règles à demander :
   le crédit d'affrontement personnel d'un général reste distinct. Les scénarios
   complets de chacun des quatre ordres devront précéder son activation.
 
+## Identifiants réservés — 28 octobre 2026
+
+Tous les ordres nommés dans le catalogue de conception et les trois ordres
+supplémentaires disposent désormais d'une entrée dans `catalogues.ORDRES`.
+Les entrées existantes 1001–1019 sont conservées sans renumérotation.
+
+| ID | Jeton | Ordre | Catégorie | Contre-ordre |
+|---|---|---|---|---|
+| 1020 | `3-5` | Charge suicidaire | Individuelle | Non |
+| 1021 | `1-10` | Retrait_tactique | Globale | Oui |
+| 1022 | `1-11` | Pour_l'honneur | Globale | Non |
+| 1023 | `1-12` | Ralliement | Globale | Non |
+| 1024 | `2-7` | Chat-man | Duel | Oui |
+| 1025 | `1-13` | Réserve stratégique | Globale | Non |
+| 1026 | `2-8` | Dernière charge | Duel | Oui |
+
+Les sept nouveaux ordres restent `disponible=False` et
+`progression=False` : les identifiants sont réservés, pas apprenables,
+ni exécutables. Les noms internes correspondants utilisent des
+underscores. La distinction entre l'ordre historique
+`retraite_apres_premiere_manche` (1001) et `retrait_tactique`
+(1021) doit être revalidée avant toute activation pour éviter deux
+effets doublons. Muraille humaine (1019 / `1-9`) reste également
+désactivée pendant sa finalisation.
+
 ## Catalogue de conception (18 ordres du brouillon JSON)
 
 Archive de conception : pour les quatre ordres du lot B, les contrats reçus
