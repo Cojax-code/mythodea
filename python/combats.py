@@ -1098,6 +1098,7 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None,
         return None
     fatigue_1 = participants.fatigue(general_allie, actif)
     fatigue_2 = participants.fatigue(general_adverse, adverse)
+    initial_allie, initial_adverse = actif['nombre'], adverse['nombre']
     survivants_1, survivants_2 = combat_bloc(
         actif, adverse, fatigue_1, fatigue_2, 'avant', 'avant',
         general_1=general_allie, general_2=general_adverse)
@@ -1123,7 +1124,7 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None,
     if general_adverse['chemin'].exists():
         generaux.supprimer_general_si_vide(general_adverse)
     return dict(moment='Choc', bloc_1='avant', bloc_2='avant',
-                initial_1=actif['nombre'] + len(selection[engage]),
+                initial_1=initial_allie, initial_2=initial_adverse,
                 final_1=actif['nombre'], final_2=adverse['nombre'],
                 pertes_collectives=pertes_collectives)
 
@@ -1142,7 +1143,10 @@ def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
     entre les chocs, jamais pendant celui déjà engagé.
     """
     if engager is None:
-        engager = lambda general: engager_avant_muraille(general, general_adverse)
+        engager = lambda general: engager_avant_muraille(
+            general, general_adverse, generaux_muraille=tuple(
+                g for g in generaux_allies if g['chemin'].exists()),
+            aleatoire=aleatoire)
     if not callable(engager):
         raise TypeError('Le pilote doit fournir une fonction engager.')
     if camp is not None:
