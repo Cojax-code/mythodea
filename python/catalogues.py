@@ -120,6 +120,21 @@ ORDRES = {
     # Muraille humaine : identifiant réservé, effet collectif non encore activé.
     1019: dict(jeton='1-9', nom='muraille_humaine', categorie='globale',
                disponible=False, contre=False, progression=True, acquisition_requise=True),
+    # Réservations V2 de conception : pas d'apprentissage ni d'exécution avant intégration.
+    1020: dict(jeton='3-5', nom='charge_suicidaire', categorie='individuelle',
+               disponible=False, contre=False, progression=False),
+    1021: dict(jeton='1-10', nom='retrait_tactique', categorie='globale',
+               disponible=False, contre=True, progression=False),
+    1022: dict(jeton='1-11', nom='pour_l_honneur', categorie='globale',
+               disponible=False, contre=False, progression=False),
+    1023: dict(jeton='1-12', nom='ralliement', categorie='globale',
+               disponible=False, contre=False, progression=False),
+    1024: dict(jeton='2-7', nom='chat_man', categorie='duel',
+               disponible=False, contre=True, progression=False),
+    1025: dict(jeton='1-13', nom='reserve_strategique', categorie='globale',
+               disponible=False, contre=False, progression=False),
+    1026: dict(jeton='2-8', nom='derniere_charge', categorie='duel',
+               disponible=False, contre=True, progression=False),
 }
 
 # 101..199 : apprentissages d'unités ; 201..299 : catégories de caractéristiques.
