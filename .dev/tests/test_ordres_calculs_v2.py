@@ -165,6 +165,22 @@ class TestOrdresCalculsV2(unittest.TestCase):
         self.assertEqual(resultats, ((('j1', 'g1'), {'moment': 'Choc'}),))
         choc.assert_called_once()
 
+    def test_muraille_utilise_qg_territorial_pour_les_designations(self):
+        from unittest.mock import patch
+        import combats
+        general = {'id': 1}
+        with patch.object(combats.ordres_pipeline, 'identite',
+                          return_value=('j1', 'g1')), patch.object(
+                combats.ordres_pipeline, 'transmission_muraille_active',
+                return_value=False) as transmission, patch.object(
+                combats, 'prochain_avant_muraille') as selection:
+            engagements = combats.enchainer_avants_muraille(
+                (general,), object(), aleatoire=random.Random(3),
+                camp='camp1', engager=lambda _: self.fail('Choc interdit'))
+        self.assertEqual(engagements, ())
+        transmission.assert_called_once_with('camp1')
+        selection.assert_not_called()
+
     def test_muraille_arrete_apres_perte_qg_sans_interrompre_choc(self):
         from unittest.mock import patch
         import combats
