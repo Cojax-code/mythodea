@@ -975,18 +975,16 @@ def combat_bloc(
         if (sum(nombre for _, nombre in effectifs) != nombre_1
                 or any(b['type'] != type_1 for _, b in contributions_1)):
             raise ValueError('Contributions collectives incompatibles avec le bloc.')
-        valeur_1 = sum(
-            nombre * valeur_base_bloc(bloc, bloc_1) *
+        valeur_1 = Fraction(sum(
+            bloc['nombre'] * valeur_base_bloc(bloc, bloc_1) *
             multiplicateur(type_1, type_2, general, general_2)
             for general, bloc in contributions_1 if bloc['nombre']
-            for nombre in (bloc['nombre'],)
-        ) / nombre_1
-        valeur_2 = sum(
-            nombre * valeur_base_bloc(infos_2, bloc_2) *
+        ), nombre_1)
+        valeur_2 = Fraction(sum(
+            bloc['nombre'] * valeur_base_bloc(infos_2, bloc_2) *
             multiplicateur(type_2, type_1, general_2, general)
             for general, bloc in contributions_1 if bloc['nombre']
-            for nombre in (bloc['nombre'],)
-        ) / nombre_1
+        ), nombre_1)
 
     # ------------------------------------------
     # Fatigue
