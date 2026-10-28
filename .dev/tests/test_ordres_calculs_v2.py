@@ -207,6 +207,28 @@ class TestOrdresCalculsV2(unittest.TestCase):
                 combats.engager_avant_muraille(a, b, participants=Mock())
             reel.assert_not_called()
 
+    def test_muraille_ne_refait_pas_choc_avant_pendant_suite(self):
+        from unittest.mock import Mock, patch
+        import combats
+        g1 = {'joueur': 'j1', 'nom': 'g1'}
+        g2 = {'joueur': 'j2', 'nom': 'g2'}
+        vue = Mock()
+        blocs = {
+            'avant': {'nombre': 3, 'type': 'piquier'},
+            'gauche': {'nombre': 2, 'type': 'archer'},
+            'droite': {'nombre': 0, 'type': 'vide'},
+            'arriere': {'nombre': 0, 'type': 'vide'},
+        }
+        vue.blocs.return_value = blocs
+        vue.present.return_value = True
+        with patch.object(combats.config, 'ordre_blocs', ('avant', 'gauche', 'droite', 'arriere')), patch.object(
+                combats, 'confrontation_directe', return_value={'moment': 'Choc'}) as choc, patch.object(
+                combats.rapports, 'afficher_et_ecrire'):
+            combats.phase_engagement_initial(
+                g1, g2, participants=vue, avant_deja_resolu=True)
+        self.assertEqual(choc.call_count, 1)
+        self.assertEqual(choc.call_args.args[3], 'gauche')
+
     def test_duel_transmet_exclusion_avant_sans_changer_defaut(self):
         from unittest.mock import patch
         import combats
