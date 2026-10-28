@@ -457,6 +457,29 @@ def formations_retenues(forces):
             for n, (camp, d) in enumerate(zip(camps, donneurs), 1) if d}
 
 
+
+def participants_muraille_territoire(forces, formations, camp, *,
+                                   reserve_strategique=None):
+    """Prépare la formation Muraille depuis les décisions territoriales retenues.
+
+    Ne lit ni ne déplace de soldats ; refuse une formation absente ou annulée.
+    Les exclusions QG_nommade, Réserve stratégique et Zombies précèdent
+    toute simulation. Les positions originales ne sont pas compactées.
+    """
+    import generaux
+    formation = formations.get(camp)
+    if not formation or 'muraille_humaine' not in formation['ordres']:
+        return ()
+    candidats = tuple(g for g in forces.get(camp, {}).values()
+                      if g and generaux.general_a_des_unites(g)
+                      and progression.general_recoit_ordre(g, 'muraille_humaine'))
+    qg_exclu = (formation['qg']
+                 if 'qg_nommade' in formation['ordres'] else None)
+    admissibles = ordres_calculs_v2.participants_muraille(
+        (identite(g) for g in candidats), qg_exclu, reserve_strategique)
+    return tuple(g for g in candidats if identite(g) in admissibles)
+
+
 def qg_hors_formation(general, formation):
     return bool(general and formation and 'qg_nommade' in formation['ordres']
                 and progression.general_recoit_ordre(general, 'qg_nommade')
