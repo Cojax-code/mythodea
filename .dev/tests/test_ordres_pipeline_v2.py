@@ -8,6 +8,29 @@ import ordres_pipeline
 
 
 class PipelineOrdresTest(unittest.TestCase):
+    def test_catalogue_ids_et_jetons_uniques_y_compris_reservations(self):
+        import catalogues
+        ordres = catalogues.ORDRES
+        jetons = [o['jeton'] for o in ordres.values()]
+        noms = [o['nom'] for o in ordres.values()]
+        self.assertEqual(len(jetons), len(set(jetons)))
+        self.assertEqual(len(noms), len(set(noms)))
+        attendus = {
+            1020: ('3-5', 'charge_suicidaire', 'individuelle', False),
+            1021: ('1-10', 'retrait_tactique', 'globale', True),
+            1022: ('1-11', 'pour_l_honneur', 'globale', False),
+            1023: ('1-12', 'ralliement', 'globale', False),
+            1024: ('2-7', 'chat_man', 'duel', True),
+            1025: ('1-13', 'reserve_strategique', 'globale', False),
+            1026: ('2-8', 'derniere_charge', 'duel', True),
+        }
+        for identifiant, (jeton, nom, categorie, contre) in attendus.items():
+            ordre = ordres[identifiant]
+            self.assertEqual((ordre['jeton'], ordre['nom'], ordre['categorie'],
+                              ordre['contre']), (jeton, nom, categorie, contre))
+            self.assertFalse(ordre['disponible'])
+            self.assertFalse(ordre['progression'])
+
     def test_formations_nactivent_pas_muraille_absente_du_catalogue(self):
         import catalogues
         # Aucun jeton officiel Muraille n'existe pour le moment.
