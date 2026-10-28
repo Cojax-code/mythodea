@@ -140,6 +140,44 @@ class TestOrdresCalculsV2(unittest.TestCase):
             infos, 2, 0, random.Random(graine))
         self.assertEqual(victimes, random.Random(graine).sample(infos['unites'], 1))
 
+    def test_muraille_choc_collectif_repartit_sans_bonus_moral(self):
+        from unittest.mock import patch, Mock
+        import combats
+        from pathlib import Path
+        g1 = {'joueur': 'j1', 'camp': 'a', 'chemin': Path('/tmp/test-m1')}
+        g2 = {'joueur': 'j1', 'camp': 'a', 'chemin': Path('/tmp/test-m2')}
+        adv = {'joueur': 'j2', 'camp': 'b', 'chemin': Path('/tmp/test-adv')}
+        blocs = {
+            'g1': {'nombre': 3, 'unites': ['a', 'b', 'c'], 'type': 'infanterie'},
+            'g2': {'nombre': 2, 'unites': ['d', 'e'], 'type': 'infanterie'},
+            'adv': {'nombre': 2, 'unites': ['x', 'y'], 'type': 'infanterie'},
+        }
+        vue = Mock()
+        vue.blocs.side_effect = lambda g: {'avant': blocs['adv' if g is adv else 'g1' if g is g1 else 'g2']}
+        vue.fatigue.return_value = False
+        with patch.object(combats.ordres_pipeline, 'identite',
+                          side_effect=lambda g: 'adv' if g is adv else 'g1' if g is g1 else 'g2'), patch.object(
+                combats.bouclier_vivant, 'presence_bouclier',
+                return_value=False), patch.object(
+                combats.unites, 'etiquette', return_value=False), patch.object(
+                combats, 'combat_bloc', return_value=(2, 1)), patch.object(
+                combats.soldats, 'affrontement'), patch.object(
+                combats.soldats, 'repartir_victimes_muraille',
+                return_value={'g1': [], 'g2': ['d']}) as choisir, patch.object(
+                combats, 'moral_des_pertes',
+                side_effect=lambda bloc, general, **kw: 30 if general is g1 else 60), patch.object(
+                combats.soldats, 'appliquer_victimes_muraille',
+                return_value={'g1': [], 'g2': ['d']}) as appliquer, patch.object(
+                combats, 'supprimer_unites', return_value=['x']), patch.object(
+                combats.unites, 'apres_confrontation'), patch.object(
+                combats.ordres_pipeline, 'verifier_qg'), patch.object(
+                combats.generaux, 'supprimer_general_si_vide'):
+            combats.engager_avant_muraille(
+                g1, adv, participants=vue,
+                generaux_muraille=(g1, g2), aleatoire=random.Random(2))
+        self.assertEqual(choisir.call_args.args[1:3], (1, 'g1'))
+        self.assertEqual(appliquer.call_args.args[2], {'g1': 30, 'g2': 60})
+
     def test_muraille_choc_reutilise_resolution_reelle(self):
         from unittest.mock import patch
         import combats
