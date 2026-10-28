@@ -30,7 +30,8 @@ def camps_du_combat(configuration):
 
 
 def combat_entre_generaux(general_1, general_2, *, participants=None,
-                          avant_exclus_manoeuvre=False):
+                          avant_exclus_manoeuvre=False,
+                          avant_deja_resolu=False):
     if (general_1['joueur'] == general_2['joueur'] or
             general_1.get('camp', general_1['joueur']) == general_2.get('camp', general_2['joueur'])):
         raise ValueError("Un duel doit opposer deux généraux de camps différents.")
@@ -48,7 +49,8 @@ def combat_entre_generaux(general_1, general_2, *, participants=None,
                     participants=vue)
                 resultat = _combat_entre_generaux(
                     general_1, general_2, participants=vue,
-                    avant_exclus_manoeuvre=avant_exclus_manoeuvre)
+                    avant_exclus_manoeuvre=avant_exclus_manoeuvre,
+                    avant_deja_resolu=avant_deja_resolu)
                 if rafales:
                     resultat['initial_1'], resultat['initial_2'] = initiales
                     resultat['rafales'] = rafales
@@ -78,7 +80,8 @@ def retirer_avants_de_manoeuvre(armee):
 
 
 def _combat_entre_generaux(general_1, general_2, *, participants=None,
-                            avant_exclus_manoeuvre=False):
+                            avant_exclus_manoeuvre=False,
+                            avant_deja_resolu=False):
     # Affrontement complet entre deux généraux.
     # Muraille peut retirer les Avant de la manœuvre sans détruire leurs soldats.
     #
@@ -140,7 +143,8 @@ def _combat_entre_generaux(general_1, general_2, *, participants=None,
 
     initiative_avant, details_choc = phase_engagement_initial(
         general_1,
-        general_2, participants=participants
+        general_2, participants=participants,
+        avant_deja_resolu=avant_deja_resolu
     )
     details_choc = details_bouclier + details_choc
 
@@ -1346,7 +1350,8 @@ def confrontation_directe(
     }
 
 
-def phase_engagement_initial(general_1, general_2, *, participants=None):
+def phase_engagement_initial(general_1, general_2, *, participants=None,
+                             avant_deja_resolu=False):
     participants = participants if participants is not None else soldats.VueParticipants()
     joueur_1 = general_1["joueur"]
     joueur_2 = general_2["joueur"]
@@ -1377,6 +1382,8 @@ def phase_engagement_initial(general_1, general_2, *, participants=None):
     combats_prevus = []
 
     for bloc in config.ordre_blocs:
+        if avant_deja_resolu and bloc == 'avant':
+            continue
         infos_1 = armee_depart[joueur_1][bloc]
         infos_2 = armee_depart[joueur_2][bloc]
 
