@@ -10,6 +10,41 @@ import ordres_calculs_v2 as calculs
 
 
 class TestOrdresCalculsV2(unittest.TestCase):
+    def test_prevision_muraille_fatigue_individuelle(self):
+        from unittest.mock import patch
+        import combats
+        general, adverse = object(), object()
+        avant = {'type': 'archer', 'nombre': 3}
+        oppose = {'type': 'archer', 'nombre': 2}
+        fatigue = (True, False, True)
+        fatigue_adverse = (False, True)
+        with patch.object(combats.progression, 'general_recoit_ordre', return_value=True), patch.object(
+                combats.ordres_pipeline, 'identite', return_value=('j1', 'general1')), patch.object(
+                combats, 'combat_bloc', return_value=(2, 1)) as calcul:
+            resultat = combats.previsions_avant_muraille(
+                [(general, avant, fatigue)], oppose, bloc_adverse='avant',
+                general_adverse=adverse, fatigue_adverse=fatigue_adverse)
+        self.assertEqual(resultat[0]['survivants'], (2, 1))
+        self.assertEqual(calcul.call_args.args[2:4], (fatigue, fatigue_adverse))
+
+    def test_prevision_muraille_refuse_fatigue_invalide(self):
+        from unittest.mock import patch
+        import combats
+        general, adverse = object(), object()
+        avant = {'type': 'archer', 'nombre': 3}
+        oppose = {'type': 'archer', 'nombre': 2}
+        with patch.object(combats.progression, 'general_recoit_ordre', return_value=True), patch.object(
+                combats.ordres_pipeline, 'identite', return_value=('j1', 'general1')):
+            with self.assertRaisesRegex(ValueError, 'Fatigue'):
+                combats.previsions_avant_muraille(
+                    [(general, avant, (True, False))], oppose,
+                    bloc_adverse='avant', general_adverse=adverse)
+            with self.assertRaisesRegex(ValueError, 'Fatigue'):
+                combats.previsions_avant_muraille(
+                    [(general, avant, False)], oppose,
+                    bloc_adverse='avant', general_adverse=adverse,
+                    fatigue_adverse=(True,))
+
     def test_muraille_meilleur_bilan_puis_position_numerique_origine(self):
         a, b = ('j1', 'general1'), ('j1', 'general2')
         positions = {a: '10', b: '2'}
