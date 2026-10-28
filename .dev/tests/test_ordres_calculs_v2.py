@@ -45,6 +45,35 @@ class TestOrdresCalculsV2(unittest.TestCase):
                     bloc_adverse='avant', general_adverse=adverse,
                     fatigue_adverse=(True,))
 
+    def test_muraille_choc_reutilise_resolution_reelle(self):
+        from unittest.mock import patch
+        import combats
+        a = {'joueur': 'j1', 'camp': 'a'}
+        b = {'joueur': 'j2', 'camp': 'b'}
+        vue = Mock()
+        vue.blocs.side_effect = lambda g: {'avant': {'nombre': 3 if g is a else 2}}
+        with patch.object(combats.bouclier_vivant, 'presence_bouclier',
+                          return_value=False), patch.object(
+                combats, 'confrontation_directe',
+                return_value={'moment': 'Choc', 'final_1': 2, 'final_2': 1}) as reel:
+            resultat = combats.engager_avant_muraille(a, b, participants=vue)
+        self.assertEqual(resultat['final_1'], 2)
+        self.assertEqual(reel.call_args.args[1:], (a, b, 'avant'))
+        self.assertIs(reel.call_args.kwargs['participants'], vue)
+        vue.verifier_duel.assert_called_once_with(a, b)
+
+    def test_muraille_refuse_bouclier_non_raccorde(self):
+        from unittest.mock import patch
+        import combats
+        a = {'joueur': 'j1', 'camp': 'a'}
+        b = {'joueur': 'j2', 'camp': 'b'}
+        with patch.object(combats.bouclier_vivant, 'presence_bouclier',
+                          return_value=True), patch.object(
+                combats, 'confrontation_directe') as reel:
+            with self.assertRaisesRegex(NotImplementedError, 'Bouclier'):
+                combats.engager_avant_muraille(a, b, participants=Mock())
+            reel.assert_not_called()
+
     def test_muraille_recalcule_apres_chaque_engagement(self):
         from unittest.mock import patch
         import combats
