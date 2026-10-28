@@ -1071,7 +1071,8 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None)
 
 
 def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
-                             engager=None, qg_nommade=None, reserve_strategique=None):
+                             engager=None, qg_nommade=None, reserve_strategique=None,
+                             transmission_active=None):
     """Sélection successive des Avant de Muraille, sans classement figé.
 
     Après chaque engagement, relit les blocs restants via prochain_avant_muraille.
@@ -1079,17 +1080,23 @@ def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
     il doit résoudre UN choc et appliquer ses pertes avant de rendre la main.
     Cette fonction ne déclenche pas encore Muraille dans la bataille normale.
     Un général ne fournit son Avant qu'une fois par choc initial.
+    Le pilote peut fournir transmission_active() : le QG est alors vérifié
+    entre les chocs, jamais pendant celui déjà engagé.
     """
     if engager is None:
         engager = lambda general: engager_avant_muraille(general, general_adverse)
     if not callable(engager):
         raise TypeError('Le pilote doit fournir une fonction engager.')
+    if transmission_active is not None and not callable(transmission_active):
+        raise TypeError('La vérification du QG doit être une fonction.')
     disponibles = tuple(generaux_allies)
     identites = [ordres_pipeline.identite(g) for g in disponibles]
     if len(set(identites)) != len(identites):
         raise ValueError('Un général ne peut contribuer deux fois à Muraille.')
     engagements = []
     while disponibles:
+        if transmission_active is not None and not transmission_active():
+            break
         decision = prochain_avant_muraille(
             disponibles, general_adverse, aleatoire=aleatoire,
             qg_nommade=qg_nommade, reserve_strategique=reserve_strategique)
