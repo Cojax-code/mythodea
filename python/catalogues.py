@@ -117,6 +117,9 @@ ORDRES = {
     # Apprentissage Zombie autorisé ; ciblage et effet encore non exécutables.
     1018: dict(jeton='1-8', nom='spora_adicte', categorie='globale',
                disponible=False, contre=False, progression=True, acquisition_requise=True),
+    # Muraille humaine : identifiant réservé, effet collectif non encore activé.
+    1019: dict(jeton='1-9', nom='muraille_humaine', categorie='globale',
+               disponible=False, contre=False, progression=True, acquisition_requise=True),
 }
 
 # 101..199 : apprentissages d'unités ; 201..299 : catégories de caractéristiques.
