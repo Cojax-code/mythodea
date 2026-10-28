@@ -436,8 +436,9 @@ def frontal_autorise(camp):
 def formations_retenues(forces):
     """Confronte les globaux avec les PC actuels avant de choisir le duel.
 
-    Seuls On_melange et QG_nommade déplacent actuellement la séquence. Les
-    autres globaux participent à la confrontation ordinaire, sans déplacement.
+    On_melange et QG_nommade modifient la séquence. Muraille humaine,
+    lorsqu'elle sera déclarée exécutable au catalogue, doit également
+    être transmise au pilote territorial ; elle ne déplace pas les généraux.
     """
     if _bataille.get() is None:
         return {}
@@ -447,7 +448,12 @@ def formations_retenues(forces):
         general = next((g for g in forces[camp].values()
                         if g and g.get('total_unites', 0)), None)
         donneurs.append(intention(general, 'globale') if general else None)
-    if not any(d and {1015, 1016}.intersection(d['identifiants']) for d in donneurs):
+    formations_territoriales = {'on_melange', 'qg_nommade', 'muraille_humaine'}
+    if not any(
+            d and any(catalogues.ORDRES[i]['nom'] in formations_territoriales
+                      and catalogues.ORDRES[i]['disponible']
+                      for i in d['identifiants'])
+            for d in donneurs):
         return {}
     points = [points_globaux_officiels(d) if d else 0 for d in donneurs]
     resultat = confronter_intentions(*donneurs, 'globale', *points)
