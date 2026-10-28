@@ -412,6 +412,28 @@ def resoudre_attaque_frontale(
     return resultats
 
 
+
+def preparer_muraille_territoire(forces, formations, camp, general_adverse, *,
+                                aleatoire, reserve_strategique=None):
+    """Prépare le prochain choc collectif depuis les forces territoriales.
+
+    Lecture seule : les exclusions des rôles viennent du pipeline, puis la
+    sélection relit les blocs Avant. Un ordre absent/annulé ne déclenche rien.
+    L'engagement et les pertes restent sous contrôle du pilote territorial.
+    """
+    participants = ordres_pipeline.participants_muraille_territoire(
+        forces, formations, camp, reserve_strategique=reserve_strategique)
+    if not participants:
+        return dict(choisi=None, previsions=(), participants=())
+    formation = formations[camp]
+    qg_exclu = (formation['qg']
+               if 'qg_nommade' in formation['ordres'] else None)
+    decision = prochain_avant_muraille(
+        participants, general_adverse, aleatoire=aleatoire,
+        qg_nommade=qg_exclu, reserve_strategique=reserve_strategique)
+    return dict(decision, participants=participants)
+
+
 def resoudre_combat_range(
     territory,
     mode_combat,
