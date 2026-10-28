@@ -686,9 +686,16 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
             engagements = enchainer_avants_muraille(
                 preparation['participants'], adversaire, aleatoire=random,
                 qg_nommade=qg_exclu, camp=camp_muraille)
-            muraille_chocs = [
-                dict(choc, muraille_general=identite)
-                for identite, choc in engagements if choc is not None]
+            muraille_chocs = []
+            for identite, choc in engagements:
+                if choc is None:
+                    continue
+                detail = dict(choc, muraille_general=identite)
+                if camp_muraille == camp_2:
+                    for champ in ('bloc', 'type', 'initial', 'final'):
+                        detail[f'{champ}_1'], detail[f'{champ}_2'] = (
+                            detail[f'{champ}_2'], detail[f'{champ}_1'])
+                muraille_chocs.append(detail)
             rapports.afficher_et_ecrire(
                 f'Muraille humaine {camp_muraille} : '
                 f'{len(muraille_chocs)} choc(s) Avant.')
@@ -1176,6 +1183,7 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None,
     if general_adverse['chemin'].exists():
         generaux.supprimer_general_si_vide(general_adverse)
     return dict(moment='Choc', bloc_1='avant', bloc_2='avant',
+                type_1=actif['type'], type_2=adverse['type'],
                 initial_1=initial_allie, initial_2=initial_adverse,
                 final_1=actif['nombre'], final_2=adverse['nombre'],
                 pertes_collectives=pertes_collectives)
