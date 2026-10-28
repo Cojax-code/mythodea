@@ -175,7 +175,10 @@ class TestOrdresCalculsV2(unittest.TestCase):
             combats.engager_avant_muraille(
                 g1, adv, participants=vue,
                 generaux_muraille=(g1, g2), aleatoire=random.Random(2))
-        self.assertEqual(choisir.call_args.args[1:3], (1, 'g1'))
+        # 3 soldats A + 2 soldats B : le choc calcule les pertes sur 5,
+        # et non sur les seuls 3 soldats du général engagé.
+        self.assertEqual(choisir.call_args.args[1:3], (3, 'g1'))
+        self.assertEqual(set(choisir.call_args.args[0]), {'g1', 'g2'})
         self.assertEqual(appliquer.call_args.args[2], {'g1': 30, 'g2': 60})
 
     def test_muraille_choc_reutilise_resolution_reelle(self):
