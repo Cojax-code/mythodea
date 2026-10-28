@@ -221,6 +221,7 @@ def auditer_unites_speciales(configuration):
     """Un nom de dossier ou un marqueur copié ne débloque jamais une unité."""
     import catalogues
     import soldats
+    import progression
     registre = soldats.charger()
     for joueur in configuration['joueurs']:
         for zone in generaux.zones_generaux(joueur, configuration):
@@ -229,6 +230,7 @@ def auditer_unites_speciales(configuration):
             for general in zone['chemin'].iterdir():
                 if not general.is_dir() or generaux.numero_general_depuis_nom(general.name) is None:
                     continue
+                fiche = progression.caracteristiques_general(dict(joueur=joueur, nom=general.name))
                 for bloc in config.ordre_blocs:
                     if not (general / bloc).is_dir():
                         continue
@@ -240,6 +242,9 @@ def auditer_unites_speciales(configuration):
                         officiel = registre.get(identifiant, {})
                         if (officiel.get('type') == type_unite and
                                 officiel.get('origine_officielle') and not officiel.get('detruit')):
+                            if not progression.unite_autorisee(fiche, type_unite):
+                                raise ValueError(f'{joueur}:{general.name} : unité {type_unite} '
+                                                 'réservée à un général Zombie ; état refusé.')
                             continue
                         shutil.rmtree(unite)
                         rapports.afficher_et_ecrire(

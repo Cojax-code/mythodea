@@ -1746,9 +1746,15 @@ acquisition et les contrôles QG/confrontation ordinaires, même chez un instinc
 Spora-adicte peut être appris ou mémorisé, mais son ciblage reste indéfini et
 son exécution désactivée. Les non-Zombies ne peuvent apprendre ces ordres. Aucun autre
 ordre V2 ne peut être appris ou exécuté, même transmis par un QG extérieur.
-Cela ne supprime pas les capacités raciales des unités Zombies et ne les exclut
-pas automatiquement des effets collectifs alliés. Gros_poisson n'accorde aucune
-exception de général ou d'unité Zombie. La priorité éventuelle d'une mémoire
+Seuls les généraux Zombies possèdent des unités zombies. Une possession
+authentique par un général ordinaire est refusée par l'audit et la publication,
+sans inventer de transfert ni de sanction. Tous les ordres classiques sont
+ignorés, individuels et globaux compris : Attaque frontale, On_melange,
+QG_nommade, Choca_fuite, Gros_poisson et Muraille humaine n'ont aucune exception.
+Les généraux Zombies ne sont pas engagés par le frontal et gardent leur rang
+normal dans les séquences globales ; seuls les généraux éligibles sont réordonnés.
+Ils restent vulnérables au combat ordinaire et conservent leurs capacités
+automatiques. La priorité éventuelle d'une mémoire
 scolaire sur le tirage Zombie reste à trancher ; son état est conservé.
 
 Une armée de général zombie ne peut posséder qu'un seul

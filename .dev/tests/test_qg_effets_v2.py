@@ -78,15 +78,15 @@ class EffetsQG(unittest.TestCase):
                 demandes_a = [i for d in decisions if d['joueur'] == joueur for i in d['demandes']]
                 self.assertEqual(demandes_a, [1012])
             self.assertEqual(self.progression.charger(), avant)
-            # Les soldats Zombies d'un général ordinaire ne l'interdisent pas.
+            # Cette composition est désormais illégale avant tout combat publié.
             self.ordres(a, etat_zombie=False)
             self.ordres(qg, [1008, 1014], pc=40, etat_zombie=False)
             profils = self.progression.charger()
             profils[f'{joueur}:general2']['nature'] = 'stratege'
             self.progression.sauvegarder(profils)
-            with self.bataille(), ordres_pipeline.duel(a, b):
-                self.assertTrue(ordres_pipeline.effet(a, 'etincellant'))
-                self.assertTrue(ordres_pipeline.effet(a, 'orc_un_jour_orc_toujour'))
+            with self.assertRaisesRegex(ValueError, 'réservée à un général Zombie'):
+                self.securite.auditer_unites_speciales(self.profil)
+            self.ordres(a, etat_zombie=True)
             (qg['chemin'] / 'qg.txt').unlink()
 
     def test_destruction_pendant_duel_preserve_transmis_et_interdit_suivant(self):
@@ -212,7 +212,7 @@ class EffetsQG(unittest.TestCase):
 
     def preparer_tour_global(self):
         a = self.troupe('j1', 'zombie', 16)
-        self.ordres(a)
+        self.ordres(a, etat_zombie=True)
         self.qg('j1', [1012], etat_zombie=True)
         self.general('bot', numero=99, territoire='est_3', nombre=4, equipement='pique')
         self.activer(0)

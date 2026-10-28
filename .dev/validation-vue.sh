@@ -21,7 +21,9 @@ export PYTHONPYCACHEPREFIX="$travail/cache"
 python3 -m py_compile python/soldats.py python/combats.py python/ordres_pipeline.py \
     python/generaux.py python/unites.py python/bouclier_vivant.py .dev/tests/test_gros_poisson.py \
     python/catalogues.py python/rapports.py .dev/tests/test_ordres_conception_v2.py \
+    python/progression.py python/securite.py .dev/tests/test_restrictions_zombies.py \
     .dev/tests/test_ordres_effets_v2.py .dev/tests/test_participations_temporaires.py \
+    .dev/tests/test_qg_effets_v2.py \
     .dev/tests/test_vue_participants.py .dev/tests/test_valeurs_combat.py \
     .dev/tests/test_participations_permissions.py .dev/comparer-vue.py
 
@@ -42,7 +44,8 @@ case "${1:-cibles}" in
     cibles)
         PYTHONPATH=.dev/tests python3 -B -m unittest -v \
             test_vue_participants test_valeurs_combat test_participations_temporaires \
-            test_ordres_effets_v2 test_qg_effets_v2 test_gros_poisson > "$travail/vue-cibles.log" 2>&1 ||
+            test_ordres_effets_v2 test_qg_effets_v2 test_gros_poisson \
+            test_restrictions_zombies test_formations_v2 > "$travail/vue-cibles.log" 2>&1 ||
             { tail -50 "$travail/vue-cibles.log"; exit 1; }
         tail -5 "$travail/vue-cibles.log"
         ;;

@@ -110,6 +110,18 @@ def reception_ordre_autorisee(fiche, nom):
     return not est_zombie(fiche) or nom in ORDRES_ZOMBIES
 
 
+def general_recoit_ordre(general, nom):
+    """Contrôle commun des effets, depuis le profil privé et jamais la fiche publique."""
+    return bool(general is not None and
+                reception_ordre_autorisee(caracteristiques_general(general), nom))
+
+
+def unite_autorisee(fiche, type_unite):
+    """Les unités sans cerveau du catalogue exigent un propriétaire général Zombie."""
+    import unites
+    return unites.ordres_classiques(type_unite) or est_zombie(fiche)
+
+
 def nature_autorise_ordre(fiche, ordre):
     """Politique commune de race et de nature, hors acquisition/disponibilité."""
     if not ordre_autorise(fiche, ordre.get('nom')):

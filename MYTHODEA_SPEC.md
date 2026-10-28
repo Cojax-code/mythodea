@@ -2047,9 +2047,26 @@ Spora-adicte (ID 1018, jeton réservé `1-8`) est apprenable et mémorisable, ma
 son exécution est désactivée jusqu'à définition du ciblage. Un non-Zombie ne
 peut apprendre ou émettre ces deux ordres. Les anciens acquis ne
 permettent pas d'exécuter un autre ordre après zombification. Les transmissions
-interdites sont filtrées avant la confrontation des ordres du duel. Cette règle
-ne prive pas les soldats Zombies de leurs capacités raciales ni des effets
-collectifs alliés par défaut.
+interdites sont filtrées avant la confrontation des ordres du duel.
+
+Seuls les généraux Zombies peuvent posséder les unités Zombies et Trop gros
+zombie. Le contrôle commun `progression.unite_autorisee()` réutilise la
+restriction `sans_cerveau` du catalogue. L'audit des unités authentiques et la
+publication refusent une possession par un général ordinaire, sans suppression,
+transfert, résurrection ou sanction supplémentaire. Une création sans origine
+officielle reste soumise à l'audit préexistant des unités spéciales.
+
+Les généraux Zombies et leurs unités ignorent **tous** les ordres classiques,
+y compris Attaque frontale, On_melange, QG_nommade, Choca_fuite, Gros_poisson et
+Muraille humaine. `progression.general_recoit_ordre()` vérifie le profil privé
+aux frontières des effets et des formations. Le frontal ne les engage pas ;
+ils restent disponibles pour le combat rangé normal. Les séquences globales
+conservent leur rang dans la liste normale des positions actives, places
+vacantes comprises : seuls les généraux éligibles sont réordonnés entre les
+rangs restants. Aucun bloc n'est détaché de son général. Les participants Zombies
+sont également exclus des préparateurs de Muraille, sans activer cet ordre.
+Ignorer ces ordres ne donne aucune protection contre les attaques ennemies et
+ne désactive ni le combat ordinaire, ni les capacités automatiques ou raciales.
 
 À chaque niveau Zombie, premier tirage : 85 % pour +2 places, 15 % pour un ordre ;
 si ordre, second tirage uniforme entre Spora-adicte et Propagafion. Un doublon

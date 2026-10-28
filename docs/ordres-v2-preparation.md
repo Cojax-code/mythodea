@@ -54,15 +54,15 @@ Cette section et les SPEC à jour priment sur les hypothèses historiques ci-des
   processus entier. Poids conditionnels 170:15 avec un ordre connu, capacité
   automatique avec les deux. Les anciennes places acquises sont conservées,
   sans tirage rétroactif et sans cumul de deux systèmes de progression.
-- **Ordres classiques et présence de zombies** : une armée qui contient des
-  zombies ne rend pas l'ordre globalement inapplicable. Le général possédant
-  ces zombies ne réagit pas à Choca_fuite, On_melange ou QG_nommade ;
-  les autres généraux éligibles exécutent normalement l'ordre.
-  Pour On_melange, les généraux non réactifs gardent leur emplacement ;
-  réordonner uniquement les emplacements libres des généraux éligibles,
-  sans doublon ni bloc privé de général. La restriction des unités zombies
-  ne leur confère pas d'immunité au combat. Ne pas confondre général possédant
-  des zombies et général de statut Zombie.
+<<<<<<< HEAD- **Ordres classiques et généraux Zombies** :
+  Seuls les généraux Zombies peuvent posséder des unités zombies ; audit et
+  publication refusent les possessions illégales sans sanction nouvelle.
+  Tous les ordres classiques sont ignorés, y compris Attaque frontale,
+  Choca_fuite, On_melange, QG_nommade et Muraille humaine.
+  Les généraux Zombies conservent leur rang normal ; seuls les autres
+  généraux éligibles sont réordonnés.
+  Le combat ordinaire et les capacités automatiques restent actifs.
+  Les zombies ne deviennent pas immunisés contre les attaques ennemies.>>>>>>> ed9e1cf (zombie etiquette defintion)
 - **Ralliement** : morts réanimés, UUID/blessures/XP conservés, bénéficiaire =
   allié suivant ; quotas `pertes_du_type // 5` seulement pour ses types présents.
   Retour à l'origine si le général existe ; aucune résurrection activée.

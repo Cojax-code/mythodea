@@ -1,67 +1,80 @@
 # Reprise du chantier des ordres V2 — état réel
 
-Branche unique : `feat/ordres-v2`. Reprise du 27 octobre 2026 depuis `f4bdad6`,
-propre et synchronisé avec `origin` après fetch. Aucun changement de branche,
+Branche unique : `feat/ordres-v2`. Reprise du 28 octobre 2026 depuis `da52467`,
+propre et synchronisé avec origin après fetch. Aucun changement de branche,
 merge vers `v2.0` ou modification de Mythodea-web.
 
-Références : [contrats courants](ordres-v2-preparation.md), [fatigue et obstacles
-Gros_poisson](ordres-v2-fatigue-individuelle.md), [audit de départ](ordres-v2-audit-architecture.md)
-et `MYTHODEA_SPEC.md`. Les anciens bilans restent dans l'historique Git.
+Références : `MYTHODEA_SPEC.md`, `SURVIE_SPEC.md`, [contrats courants](ordres-v2-preparation.md),
+[fatigue individuelle](ordres-v2-fatigue-individuelle.md). L'[audit du 27 octobre](ordres-v2-audit-architecture.md)
+reste historique ; ses anciennes questions Gros_poisson ne décrivent plus l'état courant.
 
-## Fatigue individuelle intégrée
+## Gros_poisson actif
 
-- La décision officielle remplace l'ancien appariement maximal : paires
-  fatigué/fatigué, frais/fatigué, frais/frais, puis bonus proportionnel pour les
-  seuls frais libres, selon le taux initial de fatigue adverse.
-- `combats.bonus_fatigue()` calcule les équivalents de bonus par effectifs,
-  sans ordre d'UUID ni hasard. `combat_bloc()` réutilise la base, les bonus
-  collectifs et les pertes simultanées existantes ; `Fraction` évite tout
-  arrondi avant le plancher final. Les types différents restent inchangés.
-- `VueParticipants.fatigue()` conserve le booléen historique si homogène et
-  transmet sinon `fatigues_individuelles()`. Le groupe relie les chemins aux
-  UUID et à `fatigues_origine()`. Aucun registre ni écriture de fatigue ajouté.
-- Choc et manœuvre utilisent les vrais participants, relus après Rafale et pertes.
-  Seuls les mélanges ajoutent une mention de fatigue partielle au rapport.
-  Moral, blessures, XP, propriétés Linux et publication restent communs.
-- Cas A, B, C : survivants **5/0, 5/0, 1/0**. Cas D : **1/0** pour 3 frais +
-  2 fatigués contre 2 frais + 3 fatigués ; **0/0** pour deux blocs 3 frais +
-  2 fatigués. Les puissances D sont maintenant 30/25 et 25/25, par priorité T/T.
+- ID 1017, ordre Duel `2-6-position_beneficiaire-position_preteur`, apprenable.
+  QG, profil privé, acquisition, positions actives du camp, réception et
+  confrontation sont validés avant le prêt. Priorité personnelle et PC conservés.
+  Deux Gros_poisson adverses à PC égaux s'annulent comme les autres ordres normaux.
+- Plusieurs prêteurs sont réunis avant le duel dans une seule `VueParticipants`.
+  Seuls les couples bloc/type homologues sont prêtés. Répétitions et UUID natifs
+  dédupliqués ; auto-désignation ignorée avant confrontation, sans groupe ni
+  annulation adverse. Un conflit de prêteur entre bénéficiaires simultanés est
+  détecté avant réservation, sans priorité inventée.
+- Réutilisation de `participation_temporaire`, `selections_gros_poisson`,
+  `VueParticipants`, `combat_bloc`, `soldats.pertes` et du comptage territorial
+  d'XP. Aucun dossier déplacé par le prêt ; UUID, blessures, XP, fatigue et
+  propriétaires conservés. Les survivants restent à l'origine, le prêteur garde son tour.
+- Composition effective après fusion, bonus collectifs puis fatigue individuelle.
+  10 + 5 cavaliers lourds activent le seuil Avant de 15, relu après pertes.
+  Chamans et Cruelle tiennent compte de la composition effective. Aucun soin
+  anticipé. Aucun bonus de messager n'étant actif, le prêt n'en crée ni n'en transfère.
+- Bouclier/Spore lisent la vue commune. Une conversion officielle conserve UUID/XP
+  et reconnaît le changement de propriétaire sans retour à l'ancienne origine.
+  Contrôles inode, type et UID/GID conservés.
+- Spore et Propagation partagent `bloc_destination_zombies` chez leur général
+  source : plus grand effectif mort-vivant, hasard entre maxima, Arrière sans
+  zombie. Les messagers ne comptent pas. Quantités et déclencheurs conservés.
+- Choca_fuite utilise la réservation commune ; prêts libérés avant déplacement.
+  Sans survivants propres, le bénéficiaire ne réserve pas une retraite vers un
+  général qui serait supprimé au retour des prêts.
 
-## Gros_poisson : raccordement préparatoire
+## Restrictions Zombies
 
-- `GroupeTemporaire.vue_gros_poisson()` assemble `selections_gros_poisson()`
-  et `VueParticipants`, avec motif sans homologue. Pas de nouveau système de prêt.
-- Fusion partielle, fatigue mélangée, pertes chez les origines, restitution
-  virtuelle et duel suivant du prêteur sont testés dans le moteur commun.
-  Les restrictions Zombies et les refus de capacités non définies restent actifs.
-- **L'ordre 1017 / `2-6` reste indisponible.** Il reste à raccorder QG, acquisition,
-  positions, confrontation et rapport du motif dans le pipeline réel.
-- Décisions bloquantes : composition de référence des bonus ; seuil lourd sur
-  le bloc fusionné ou les origines (exemple 10 + 5) ; rattachement/destruction des
-  soutiens ; sort d'un prêté converti par Spore adverse ; auto-désignation des rôles.
-  Le cycle du prêt avec Choca_fuite reste également à raccorder.
-- Aucun travail nouveau sur Muraille, Ralliement ou Dernière charge.
+- `progression` centralise profil Zombie, droit d'ordre et droit de possession.
+  Seuls les généraux Zombies peuvent posséder Zombies et Trop gros zombie.
+  Un soldat authentique chez un général ordinaire fait refuser l'audit/publication,
+  sans suppression ou transfert inventé. Les créations sans origine officielle
+  restent traitées par l'audit préexistant.
+- Seuls Spora-adicte et Propagafion sont autorisés. Spora-adicte reste mémorisable
+  mais son effet demeure désactivé ; aucun nouveau ciblage n'est introduit.
+- Frontal classique et Muraille préparatoire excluent les participants Zombies.
+  On_melange et QG_nommade ne réordonnent que les généraux éligibles ; les Zombies
+  gardent leurs rangs dans la séquence normale. Combat et capacités automatiques
+  restent actifs. Apprentissage, nature et progression Zombie restent inchangés.
 
-## Validation finale
+## Autres chantiers
 
-WSL Ubuntu / Python 3.14.4, copies et plateaux temporaires isolés exclusivement :
+La fatigue intégrée par `da52467` ne change pas : paires fatigué/fatigué,
+frais/fatigué, frais/frais, puis bonus proportionnel des seuls frais libres.
+Fractions exactes jusqu'au plancher collectif ; règles homogènes conservées.
+Muraille, Ralliement et Dernière charge restent inactifs. La mémoire Zombie et
+les autres chantiers antérieurs restent hors de cette intervention.
 
-- Compilation Python du lanceur, dont les cinq fichiers Python modifiés : **OK**.
-- `.dev/validation-vue.sh cibles` : **126 tests, 24,831 s, OK** (vue, valeurs,
-  participations temporaires, effets des ordres et effets QG).
-- `.dev/validation-vue.sh complet` : **756 tests, 99,037 s, OK, 4 réservés root**.
-- `.dev/validation-vue.sh root` sous Linux root : **4 tests, 3,208 s, OK**, avec
-  vrais UID/GID. Le chemin de fatigue est lui aussi injecté dans la racine temporaire.
-  Soit **756 tests distincts réussis**, sans additionner les passes ciblées.
-- `.dev/comparer-vue.sh` : **30 scénarios strictement identiques à `980a3d7`**,
-  états, UUID, rapports, UID/GID, permissions et tirages inclus ; seuls
-  inodes/devices et racines temporaires sont normalisés.
-- Oracle historique : **774 400 confrontations homogènes**, plus comparaison de
-  **1 936 profils individuels homogènes** aux booléens. Nouveaux mélanges validés
-  séparément : résultats numériques, fractions, priorités, permutations, capacités,
-  pertes, blessures, XP, relecture après Rafale et interruption sans duplication.
-- Première passe de développement : une erreur de calcul manuel dans un nouveau
-  test de seuil lourd, corrigée avec la fraction exacte 1/14 ; aucun résultat
-  historique attendu n'a été changé. Les relances finales ci-dessus passent.
-- Les scénarios de cycle gardent leur gel simulé habituel ; la validation réelle
-  Raspberry Pi/SSH/cgroup reste distincte. Aucun essai dans le véritable `/game`.
+## Validation Linux
+
+WSL Ubuntu / Python 3.14.4, copies et plateaux temporaires exclusivement ; aucun
+accès au vrai `/game`. Les scripts compilent tous les fichiers Python concernés.
+
+- Compilation : OK ; chiffres définitifs à reporter après validation des restrictions Zombies.
+- Root du raccordement Gros_poisson : **5 tests, 4,291 s, OK**, dont conversion
+  d'un prêté par Spore avec vrais UID/GID 62001, 62002 et 62003, sans créer de comptes.
+- Comparaison avant restrictions Zombies à `980a3d7` : **27/30 scénarios strictement
+  identiques**. Les trois Bouclier ont les mêmes résultats, fichiers, UUID et
+  permissions ; seul l'état RNG diffère car un maximum unique ne consomme plus
+  de tirage de placement. Le comparateur strict signale ces trois écarts et
+  détaille les scénarios/champs concernés.
+- Les attentes de statut désactivé ont été adaptées à l'activation demandée.
+  Les premiers essais ont corrigé le maintien des sélections explicites de la
+  vue, une valeur de test lourd (10, pas 15) et une hypothèse de test erronée sur
+  la coexistence d'ordres normaux adverses à PC égaux.
+- Les tests de cycle gardent leur gel simulé habituel ; une validation réelle
+  Raspberry Pi/SSH/cgroup reste distincte.

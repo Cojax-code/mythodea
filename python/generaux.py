@@ -414,8 +414,10 @@ def general_possede_ordre(
         return False
 
     if general.get('chemin'):
-        import morgue
-        if morgue.est_zombie(general):
+        import catalogues
+        nom = next((o['nom'] for o in catalogues.ORDRES.values()
+                    if o['jeton'] == identifiant_ordre), None)
+        if not progression.ordre_autorise(progression.caracteristiques_general(general), nom):
             return False
 
     for ordre in general.get("ordres", []):

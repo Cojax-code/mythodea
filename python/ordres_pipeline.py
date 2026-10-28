@@ -459,16 +459,23 @@ def formations_retenues(forces):
 
 def qg_hors_formation(general, formation):
     return bool(general and formation and 'qg_nommade' in formation['ordres']
+                and progression.general_recoit_ordre(general, 'qg_nommade')
                 and identite(general) == formation['qg'])
 
 
 def generaux_en_formation(actifs, formation):
     if not formation:
         return actifs
-    positions = {g['emplacement']: g for g in actifs}
+    # Les Zombies occupent leurs rangs de la séquence normale. Seuls les autres
+    # généraux sont réordonnés entre les places restantes, sans les compacter.
+    normaux = sorted(actifs, key=lambda g: int(g['emplacement']))
+    eligibles = [g for g in normaux if all(progression.general_recoit_ordre(g, nom)
+                                         for nom in formation['ordres'])]
+    positions = {g['emplacement']: g for g in eligibles}
     qg = next((p for p, g in positions.items() if identite(g) == formation['qg']), None)
     sequence = commandement.sequence_formation(positions, formation['ordres'], qg)
-    return [positions[p] for p in sequence]
+    reorganises = iter(positions[p] for p in sequence)
+    return [next(reorganises) if g['emplacement'] in positions else g for g in normaux]
 
 
 def points_globaux_officiels(donneur):
@@ -676,7 +683,8 @@ def participations_duel(general_1, general_2, participants, decisions):
 def effet(general, nom):
     contexte = _duel.get()
     return bool(general is not None and contexte and
-                nom in contexte.get(identite(general), {}).get('effets', ()))
+                nom in contexte.get(identite(general), {}).get('effets', ())
+                and progression.general_recoit_ordre(general, nom))
 
 
 def moral(general, valeur, *, type_unite=None):

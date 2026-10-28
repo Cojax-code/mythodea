@@ -635,6 +635,7 @@ def synchroniser(configuration, publication=False):
     import config
     import generaux
     import etat
+    import progression
     from cycle_linux import sans_liens
     donnees = charger()
     reference = etat.charger_unites_actions(configuration) or {'generaux': {}}
@@ -650,6 +651,8 @@ def synchroniser(configuration, publication=False):
             for general in parent.iterdir():
                 if not general.is_dir() or generaux.numero_general_depuis_nom(general.name) is None:
                     continue
+                fiche = (progression.caracteristiques_general(dict(joueur=joueur, nom=general.name))
+                         if publication else None)
                 for bloc in config.ordre_blocs:
                     if not (general / bloc).is_dir():
                         continue
@@ -658,6 +661,9 @@ def synchroniser(configuration, publication=False):
                         type_unite = generaux.identifier_unite(unite)
                         if type_unite == 'inconnu':
                             continue
+                        if publication and not progression.unite_autorisee(fiche, type_unite):
+                            raise ValueError(f'{joueur}:{general.name} : unité {type_unite} '
+                                             'réservée à un général Zombie ; publication refusée.')
                         observations.append((unite, type_unite,
                                              retrouver(unite, donnees, publication)))
     # Les identités reconnues par inode passent avant les copies revendiquant le
