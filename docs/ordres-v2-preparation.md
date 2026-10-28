@@ -6,6 +6,18 @@ des activations est dans `ordres-v2-reprise-codex.md` ; le présent document con
 les décisions de conception, y compris celles des effets encore réservés.
 La vérification finale (suite Linux complète, WSL/Raspberry Pi) est confiée à Codex.
 
+## Décision de simplification — 28 octobre 2026
+
+Le chantier `unites_sans_general` est **abandonné pour V2**. La mort d'un
+général entraîne la disparition définitive de ses unités ; aucun groupe
+résiduel, aucune réserve spéciale ni récupération n'est créé. Exception
+temporelle propre à **Muraille humaine** : ses blocs Avant peuvent continuer
+à combattre jusqu'à la dissolution de l'effet, mais les survivants dont le
+général est mort disparaissent alors. **Charge suicidaire** détruit également
+les unités du général tué. Cette décision remplace toute proposition historique
+contraire figurant plus bas dans ce document ; les ordres concernés restent
+inactifs tant que leur exécution complète n'est pas raccordée et testée.
+
 ## Contrats courants du lot B — 28 octobre 2026
 
 Cette section et les SPEC à jour priment sur les hypothèses historiques ci-dessous.
@@ -40,8 +52,8 @@ Cette section et les SPEC à jour priment sur les hypothèses historiques ci-des
   Victimes tirées dans le seul bloc engagé. Exclusion des Avant participants de
   la manœuvre, du QG sous QG_nommade et du général de Réserve stratégique.
   Les Avant vivants d'un général vaincu continuent tant que l'effet existe.
-  Après le territoire, retour des survivants sans général au village d'origine,
-  même si leur camp a perdu ; `unites_sans_general` demeure à construire au lot C.
+  À la dissolution de Muraille, les survivants d'un général mort disparaissent
+  définitivement. Aucun stockage ni retour au village sans général.
   Disparition du QG : fin des transmissions après le duel en cours, dissolution,
   circuit normal des survivants, aucune nouvelle désignation. Matrice du lot A
   conservée, dont les incompatibilités Attaque frontale et Retrait_tactique.
@@ -149,16 +161,12 @@ supplémentaire. La compatibilité ne lève pas les restrictions de donneur,
 catégorie, apprentissage et mélange ordre/contre-ordre. Pour_l'honneur reste
 non cumulable avec les autres ordres, sans exception validée.
 
-Charge suicidaire : les survivants humains rejoindront `unites_sans_general`,
-dans un groupe distinct par événement et avec leur propre compteur, à destination
-de la réserve du village d'origine. Délai commun de repli/distance, conservation
-des identités, blessures et expériences. À zéro, réaffectation manuelle des
-dossiers vers les blocs d'un général présent dans sa réserve, sous les restrictions
-ordinaires de capacité, type et permissions. Pour le bot, les survivants quittent
-définitivement la bataille : aucun village ni réserve de bot n'est créé. Le calcul
-reste `pertes_du_duel // 4` %, avec deux tirages indépendants et mort simultanée
-possible. Ces règles sont validées ; leur persistance et leur audit relèvent du lot C,
-pas d'une activation par les seules fonctions de calcul.
+Charge suicidaire : si un général est tué, toutes ses unités disparaissent
+également, y compris celles qui auraient survécu au duel. Aucun groupe de
+survivants sans général n'est créé, pour les joueurs comme pour les bots.
+Le calcul reste `pertes_du_duel // 4` %, avec deux tirages indépendants
+et mort simultanée possible. L'activation de cet ordre exige toujours
+l'intégration au moteur et ses tests.
 
 La destruction du QG laisse les ordres transmis actifs jusqu'à la fin du duel.
 Aucune transmission ultérieure, aucun remplacement, aucune réactivation si le
@@ -203,9 +211,9 @@ la fusion des Avant de Muraille et l'ambiguïté sur la provenance des réanimé
   selon leur efficacité jusqu'à victoire ou défaite de tous. La formule
   d'efficacité et le départage restent ouverts. Seul le bloc actuellement
   engagé subit les pertes, avec victimes aléatoires en son sein. Le général
-  vaincu ne tue pas ses soldats Avant survivants : ils restent dans la muraille
-  tant qu'elle existe. À la victoire territoriale, ceux sans général suivent
-  le retour `unites_sans_general` déjà défini (infrastructure du lot C à réaliser).
+  vaincu ne fait pas disparaître immédiatement ses soldats Avant encore engagés :
+  ils restent dans la muraille tant qu'elle existe, puis disparaissent à sa
+  dissolution si leur général est mort. Aucun retour sans général.
   À la disparition du QG, les effets s'arrêtent après le duel en cours, sans
   remplacement. Phases, restitution et exclusions QG_nommade/réserve conservées.
   Compatible avec On_melange, QG_nommade et Réserve stratégique ; incompatible
@@ -255,12 +263,10 @@ la fusion des Avant de Muraille et l'ambiguïté sur la provenance des réanimé
    infligées, aux survivants conservés, ou ordre explicite du créateur ; aucune
    formule ni pondération retenue. Préciser si le classement est recalculé
    après chaque engagement réel ou fixé avant la première confrontation.
-2. En cas de défaite territoriale, où vont les Avant survivants sans général ?
-   Décès, capture ou repli seraient des règles différentes : aucune n'est choisie.
-3. Si le QG disparaît et que la muraille cesse après le duel, quelle destination
-   immédiate pour les survivants dont le général a déjà disparu ? La durée de
-   l'ordre est fixée ; le stockage et la disponibilité de ces soldats restent
-   nécessaires pour éviter disparition ou prolongation implicite de la muraille.
+2. **Tranché** : tout survivant sans général disparaît à la dissolution de
+   Muraille, victoire ou défaite territoriale.
+3. **Tranché** : si le QG disparaît et que Muraille prend fin après le duel,
+   les survivants des généraux morts disparaissent à cette dissolution.
 
 **Ralliement**
 
@@ -390,21 +396,15 @@ Cette note est une photographie des décisions prises et des questions ouvertes 
 - Progression : tirage uniforme parmi les ordres éligibles lorsque la catégorie
   ordre est choisie. Pas de pondération interne ; générateur injectable avec seed.
 - Charge suicidaire : deux tirages indépendants si les deux généraux possèdent
-  l'ordre, décès simultanés possibles. Les soldats survivants ne sont pas tués.
-  Leur repli `unites_sans_general` doit conserver toutes leurs données dans un
-  groupe distinct par événement, vers la réserve de leur village d'origine,
-  avec le délai de distance existant et un compteur indépendant par groupe.
-  Au compteur nul, la réaffectation est manuelle, sans nouvelle commande ni
-  affectation automatique. Les survivants du bot sont retirés définitivement de
-  la bataille, sans base créée. L'inventaire et l'audit des groupes humains hors
-  général restent à implémenter au lot C selon la décision définitive ci-dessus.
+  l'ordre, décès simultanés possibles. Tout général tué entraîne la disparition
+  définitive de toutes ses unités, sans réserve, repli ni réaffectation.
 - Choca_fuite : utiliser la retraite Survie existante immédiatement après le
   choc initial. Les règles existantes excluent la retraite automatique au village.
   Ne pas donner de nouveaux ordres spéciaux aux bots.
 
 ## Clarifications ultérieures validées
 
-- **Muraille humaine :** les unités de blocs d'autres généraux engagées temporairement dans la formation collective **retournent à leur général d'origine** après l'intervention. Les pertes éventuelles ne sont pas annulées. Cela ne résout pas à lui seul l'état exact des unités du général vaincu ni la répartition des pertes collectives : ne pas les inventer.
+- **Muraille humaine :** les unités de blocs d'autres généraux engagées temporairement dans la formation collective **retournent à leur général d'origine** après l'intervention. Les pertes éventuelles ne sont pas annulées. Si leur général est mort, les survivants disparaissent à la dissolution de Muraille. La répartition des pertes collectives doit toujours respecter les blocs d'origine.
 - **Dernière charge :** déclenchement interdit si le général précédent **n'a pas perdu** son duel. La défaite de ce général est une condition nécessaire, pas seulement une condition de disponibilité du flanc. La règle de retour des unités de Muraille humaine ne s'applique pas automatiquement à Dernière charge.
 
 ### Muraille humaine — précision sur les phases (25 octobre 2026)
