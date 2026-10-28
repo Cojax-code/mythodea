@@ -45,6 +45,22 @@ class TestOrdresCalculsV2(unittest.TestCase):
                     bloc_adverse='avant', general_adverse=adverse,
                     fatigue_adverse=(True,))
 
+    def test_muraille_transmet_les_priorites_au_moteur_reel(self):
+        from unittest.mock import patch
+        import combats
+        infos_1 = {'nombre': 2, 'unites': ['a', 'b']}
+        infos_2 = {'nombre': 1, 'unites': ['c']}
+        g1, g2 = {'joueur': 'j1'}, {'joueur': 'j2'}
+        with patch.object(combats, 'combat_bloc', return_value=(1, 0)), patch.object(
+                combats, 'supprimer_unites', side_effect=[['a'], ['c']]) as pertes, patch.object(
+                combats.unites, 'apres_confrontation'), patch.object(
+                combats.soldats, 'affrontement'):
+            combats.resoudre_blocs(
+                infos_1, infos_2, g1, g2, 'avant', 'avant', False, False,
+                prioritaires_1=('a',))
+        self.assertEqual(pertes.call_args_list[0].kwargs['unites_prioritaires'], ('a',))
+        self.assertEqual(pertes.call_args_list[1].kwargs['unites_prioritaires'], ())
+
     def test_muraille_pondere_x2_le_general_engage_sans_remise(self):
         import soldats
         from collections import Counter
