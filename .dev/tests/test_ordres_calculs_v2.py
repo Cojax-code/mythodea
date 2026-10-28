@@ -165,6 +165,24 @@ class TestOrdresCalculsV2(unittest.TestCase):
         self.assertEqual(resultats, ((('j1', 'g1'), {'moment': 'Choc'}),))
         choc.assert_called_once()
 
+    def test_muraille_arrete_apres_perte_qg_sans_interrompre_choc(self):
+        from unittest.mock import patch
+        import combats
+        generaux = ({'id': 1}, {'id': 2})
+        transmissions = [True, False]
+        engages = []
+        with patch.object(combats.ordres_pipeline, 'identite',
+                          side_effect=lambda g: ('j1', f"g{g['id']}")), patch.object(
+                combats, 'prochain_avant_muraille',
+                return_value={'choisi': ('j1', 'g1'), 'previsions': ()}) as choisir:
+            resultat = combats.enchainer_avants_muraille(
+                generaux, object(), aleatoire=random.Random(1),
+                engager=lambda g: engages.append(g['id']) or {'choc': True},
+                transmission_active=lambda: transmissions.pop(0))
+        self.assertEqual(engages, [1])
+        self.assertEqual(resultat, ((('j1', 'g1'), {'choc': True}),))
+        choisir.assert_called_once()
+
     def test_muraille_recalcule_apres_chaque_engagement(self):
         from unittest.mock import patch
         import combats
