@@ -805,14 +805,29 @@ def prevoir_pertes(infos, survivants, moral, aleatoire, *, unites_prioritaires=(
                 survivants=infos['nombre'] - len(morts))
 
 
-def pertes(infos, survivants, moral=0, aleatoire=None, *, unites_prioritaires=()):
+def pertes(infos, survivants, moral=0, aleatoire=None, *,
+           unites_prioritaires=(), victimes_choisies=None):
     """Sélection collective puis sauvetages distincts, sans réattribuer un échec."""
     import config
     import generaux
     import shutil
     aleatoire = random if aleatoire is None else aleatoire
-    perdus, tentatives = selectionner_victimes(
-        infos, survivants, moral, aleatoire, unites_prioritaires=unites_prioritaires)
+    if victimes_choisies is None:
+        perdus, tentatives = selectionner_victimes(
+            infos, survivants, moral, aleatoire, unites_prioritaires=unites_prioritaires)
+    else:
+        # Muraille a déjà désigné les victimes dans tous les blocs Avant :
+        # ne pas tirer une seconde fois dans chaque bloc d'origine.
+        perdus = list(victimes_choisies)
+        if (len(perdus) != len(set(perdus))
+                or len(perdus) != infos['nombre'] - survivants
+                or any(unite not in infos['unites'] for unite in perdus)):
+            raise ValueError('Victimes Muraille incohérentes avec le bloc.')
+        if ((type(moral) is not int and not isinstance(moral, Fraction))
+                or not 0 <= moral <= 100):
+            raise ValueError('Moral entier de 0 à 100 requis.')
+        tentatives = (aleatoire.sample(perdus, len(perdus) * moral // 100)
+                      if moral else [])
     if not perdus:
         return []
     donnees = charger()
@@ -845,6 +860,24 @@ def pertes(infos, survivants, moral=0, aleatoire=None, *, unites_prioritaires=()
     if donnees:
         sauvegarder(donnees)
     return supprimes
+
+
+
+def appliquer_victimes_muraille(blocs, victimes, moraux, aleatoire):
+    """Applique une sélection collective aux blocs d'origine, sans nouveau tirage.
+
+    Les protections morales, blessures, UUID et écritures utilisent pertes()
+    pour chaque propriétaire, exactement comme un combat ordinaire.
+    """
+    if set(blocs) != set(victimes) or set(blocs) != set(moraux):
+        raise ValueError('Chaque bloc Muraille doit fournir victimes et moral.')
+    resultats = {}
+    for identite, infos in blocs.items():
+        candidats = victimes[identite]
+        resultats[identite] = pertes(
+            infos, infos['nombre'] - len(candidats), moraux[identite], aleatoire,
+            victimes_choisies=candidats)
+    return resultats
 
 
 def terminer_bataille(unites, identifiant_bataille):
