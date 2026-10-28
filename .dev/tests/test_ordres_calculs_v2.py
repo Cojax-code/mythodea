@@ -181,6 +181,63 @@ class TestOrdresCalculsV2(unittest.TestCase):
         self.assertEqual(set(choisir.call_args.args[0]), {'g1', 'g2'})
         self.assertEqual(appliquer.call_args.args[2], {'g1': 30, 'g2': 60})
 
+    def test_muraille_prevoit_les_blocs_collectifs_par_type(self):
+        from unittest.mock import patch
+        import combats
+        a, b, c, adv = (object() for _ in range(4))
+        contributions = [
+            (a, {'type': 'piquier', 'nombre': 10, 'unites': list(range(10))}, False),
+            (b, {'type': 'piquier', 'nombre': 8, 'unites': list(range(10, 18))}, False),
+            (c, {'type': 'archer', 'nombre': 6, 'unites': list(range(18, 24))}, False),
+        ]
+        oppose = {'type': 'cavalier', 'nombre': 4, 'unites': list(range(24, 28))}
+        identites = {a: 'a', b: 'b', c: 'c', adv: 'adv'}
+        groupes = []
+        def combat(collectif, adverse, *_args, **kwargs):
+            groupes.append((collectif['type'], collectif['nombre'],
+                            len(kwargs['contributions_1'])))
+            return collectif['nombre'] - 1, 3
+        def repartir(blocs, pertes, engage, _hasard):
+            resultat = {cle: [] for cle in blocs}
+            resultat[engage] = blocs[engage]['unites'][:pertes]
+            return resultat
+        with patch.object(combats.progression, 'general_recoit_ordre', return_value=True), patch.object(
+                combats.ordres_pipeline, 'identite', side_effect=lambda g: identites[g]), patch.object(
+                combats.generaux, 'lire_composition_general', return_value={}), patch.object(
+                combats.unites, 'etiquette', return_value=False), patch.object(
+                combats, 'combat_bloc', side_effect=combat), patch.object(
+                combats.soldats, 'repartir_victimes_muraille', side_effect=repartir), patch.object(
+                combats.soldats, 'prevoir_pertes',
+                side_effect=lambda _infos, _surv, _moral, _hasard, **kw:
+                    {'pertes': kw.get('victimes_choisies', ())}), patch.object(
+                combats, 'moral_des_pertes', return_value=0):
+            previsions = combats.simuler_avants_muraille(
+                contributions, oppose, general_adverse=adv,
+                aleatoire=random.Random(4))
+        self.assertEqual(groupes, [('piquier', 18, 2), ('piquier', 18, 2),
+                                   ('archer', 6, 1)])
+        self.assertEqual([p['origine'] for p in previsions], ['a', 'b', 'c'])
+
+    def test_herisson_ne_se_propage_pas_aux_piquiers_allies(self):
+        from unittest.mock import patch
+        import combats
+        a, b, adversaire = object(), object(), object()
+        premier = {'type': 'piquier', 'nombre': 10}
+        second = {'type': 'piquier', 'nombre': 8}
+        collectif = {'type': 'piquier', 'nombre': 18}
+        oppose = {'type': 'cavalier', 'nombre': 9}
+        def multiplicateur(atk, defense, general_atk, _general_def):
+            return 3 if atk == 'piquier' and general_atk is a else 1
+        with patch.object(combats.unites, 'etiquette', return_value=False), patch.object(
+                combats.unites, 'definition', return_value={'effets': ()}), patch.object(
+                combats, 'valeur_base_bloc', return_value=1), patch.object(
+                combats, 'multiplicateur', side_effect=multiplicateur):
+            survivants = combats.combat_bloc(
+                collectif, oppose, False, False, 'avant', 'avant',
+                general_1=a, general_2=adversaire,
+                contributions_1=[(a, premier), (b, second)])
+        self.assertEqual(survivants, (14, 0))
+
     def test_muraille_exclut_les_autres_types_du_tirage(self):
         from unittest.mock import Mock, patch
         from pathlib import Path
