@@ -654,6 +654,21 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
         general_camp_2 = ordres_pipeline.generaux_en_formation(
             actifs_camp_2, formations.get(camp_2))[0]
 
+        # Préparer les formations collectives au point d'entrée territorial.
+        # Tant que leur résolution multi-généraux n'est pas raccordée, refuser
+        # explicitement l'activation plutôt que jouer un duel ordinaire faux.
+        murailles = {}
+        for camp, adversaire in ((camp_1, general_camp_2),
+                                 (camp_2, general_camp_1)):
+            if 'muraille_humaine' in formations.get(camp, {}).get('ordres', ()):
+                murailles[camp] = preparer_muraille_territoire(
+                    generaux_territoire, formations, camp, adversaire,
+                    aleatoire=random)
+        if murailles:
+            raise NotImplementedError(
+                'Muraille humaine : préparation territoriale raccordée, '
+                'résolution collective et dissolution encore non raccordées.')
+
         rapports.afficher_et_ecrire(
             f"\n--- Combat rangé "
             f"{mode_combat} "
