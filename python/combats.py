@@ -671,6 +671,13 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
                     generaux_territoire, formations, camp, adversaire,
                     aleatoire=simulateur)
         muraille_chocs = []
+        camp_elimine_par_muraille = False
+        totaux_avant_muraille = (
+            generaux.total_unites_general(
+                generaux.lire_blocs_general(general_camp_1['chemin'])),
+            generaux.total_unites_general(
+                generaux.lire_blocs_general(general_camp_2['chemin'])),
+        ) if murailles else None
         if murailles:
             if len(murailles) != 1:
                 raise NotImplementedError(
@@ -683,8 +690,13 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
             formation = formations[camp_muraille]
             qg_exclu = (formation['qg']
                        if 'qg_nommade' in formation['ordres'] else None)
+            # Les prévisions copient leur RNG ; le module random ne peut
+            # pas être copié. Utiliser une instance ayant le même état initial.
+            # Les prévisions ne consomment ainsi aucun tirage du combat réel.
+            rng_muraille = random.Random()
+            rng_muraille.setstate(random.getstate())
             engagements = enchainer_avants_muraille(
-                preparation['participants'], adversaire, aleatoire=random,
+                preparation['participants'], adversaire, aleatoire=rng_muraille,
                 qg_nommade=qg_exclu, camp=camp_muraille)
             muraille_chocs = []
             for identite, choc in engagements:
@@ -703,7 +715,8 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
             forces_apres = generaux.lire_forces_territoire(territory, configuration)
             restants_1 = generaux.generaux_actifs_joueur(forces_apres, camp_1)
             restants_2 = generaux.generaux_actifs_joueur(forces_apres, camp_2)
-            if restants_1 and restants_2:
+            camp_elimine_par_muraille = not (restants_1 and restants_2)
+            if not camp_elimine_par_muraille:
                 general_camp_1 = ordres_pipeline.generaux_en_formation(
                     restants_1, formations.get(camp_1))[0]
                 general_camp_2 = ordres_pipeline.generaux_en_formation(
@@ -716,8 +729,7 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
             f"{round_combat} ---"
         )
 
-        if muraille_chocs and (not general_camp_1['chemin'].is_dir()
-                              or not general_camp_2['chemin'].is_dir()):
+        if camp_elimine_par_muraille:
             def effectif(general):
                 return (generaux.total_unites_general(
                     generaux.lire_blocs_general(general['chemin']))
@@ -726,11 +738,11 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
                 joueur_1=general_camp_1['joueur'], camp_1=camp_1,
                 general_1=general_camp_1['nom'],
                 affichage_1=rapports.nom_affichage_general(general_camp_1),
-                initial_1=0, final_1=effectif(general_camp_1),
+                initial_1=totaux_avant_muraille[0], final_1=effectif(general_camp_1),
                 joueur_2=general_camp_2['joueur'], camp_2=camp_2,
                 general_2=general_camp_2['nom'],
                 affichage_2=rapports.nom_affichage_general(general_camp_2),
-                initial_2=0, final_2=effectif(general_camp_2),
+                initial_2=totaux_avant_muraille[1], final_2=effectif(general_camp_2),
                 chocs=[], manoeuvres=[])
         else:
             resultat_combat_range = combat_entre_generaux(
