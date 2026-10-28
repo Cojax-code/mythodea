@@ -1145,7 +1145,8 @@ def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
     if engager is None:
         engager = lambda general: engager_avant_muraille(
             general, general_adverse, generaux_muraille=tuple(
-                g for g in generaux_allies if g['chemin'].exists()),
+                g for g in generaux_allies
+                if g.get('chemin') is None or g['chemin'].exists()),
             aleatoire=aleatoire)
     if not callable(engager):
         raise TypeError('Le pilote doit fournir une fonction engager.')
