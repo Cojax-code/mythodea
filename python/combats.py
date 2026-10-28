@@ -670,16 +670,38 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
                 murailles[camp] = preparer_muraille_territoire(
                     generaux_territoire, formations, camp, adversaire,
                     aleatoire=simulateur)
+        muraille_chocs = []
         if murailles:
-            # Aucun changement sur les unités tant que le cycle territorial,
-            # y compris le combat des autres blocs et son rapport, n'est pas
-            # entièrement raccordé.
             if len(murailles) != 1:
                 raise NotImplementedError(
                     'Muraille contre Muraille : confrontation collective à définir.')
-            raise NotImplementedError(
-                'Muraille : chocs collectifs disponibles mais cycle territorial '
-                'et rapports encore incomplets ; aucun soldat modifié.')
+            camp_muraille, preparation = next(iter(murailles.items()))
+            if not preparation['participants']:
+                raise ValueError('Muraille retenue sans général admissible.')
+            adversaire = (general_camp_2 if camp_muraille == camp_1
+                          else general_camp_1)
+            formation = formations[camp_muraille]
+            qg_exclu = (formation['qg']
+                       if 'qg_nommade' in formation['ordres'] else None)
+            engagements = enchainer_avants_muraille(
+                preparation['participants'], adversaire, aleatoire=random,
+                qg_nommade=qg_exclu, camp=camp_muraille)
+            muraille_chocs = [
+                dict(choc, muraille_general=identite)
+                for identite, choc in engagements if choc is not None]
+            rapports.afficher_et_ecrire(
+                f'Muraille humaine {camp_muraille} : '
+                f'{len(muraille_chocs)} choc(s) Avant.')
+            # Les généraux tués ne peuvent participer aux autres blocs.
+            forces_apres = generaux.lire_forces_territoire(territory, configuration)
+            restants_1 = generaux.generaux_actifs_joueur(forces_apres, camp_1)
+            restants_2 = generaux.generaux_actifs_joueur(forces_apres, camp_2)
+            if restants_1 and restants_2:
+                general_camp_1 = ordres_pipeline.generaux_en_formation(
+                    restants_1, formations.get(camp_1))[0]
+                general_camp_2 = ordres_pipeline.generaux_en_formation(
+                    restants_2, formations.get(camp_2))[0]
+
 
         rapports.afficher_et_ecrire(
             f"\n--- Combat rangé "
@@ -687,10 +709,30 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
             f"{round_combat} ---"
         )
 
-        resultat_combat_range = combat_entre_generaux(
-            general_camp_1,
-            general_camp_2
-        )
+        if muraille_chocs and (not general_camp_1['chemin'].is_dir()
+                              or not general_camp_2['chemin'].is_dir()):
+            def effectif(general):
+                return (generaux.total_unites_general(
+                    generaux.lire_blocs_general(general['chemin']))
+                    if general['chemin'].is_dir() else 0)
+            resultat_combat_range = dict(
+                joueur_1=general_camp_1['joueur'], camp_1=camp_1,
+                general_1=general_camp_1['nom'],
+                affichage_1=rapports.nom_affichage_general(general_camp_1),
+                initial_1=0, final_1=effectif(general_camp_1),
+                joueur_2=general_camp_2['joueur'], camp_2=camp_2,
+                general_2=general_camp_2['nom'],
+                affichage_2=rapports.nom_affichage_general(general_camp_2),
+                initial_2=0, final_2=effectif(general_camp_2),
+                chocs=[], manoeuvres=[])
+        else:
+            resultat_combat_range = combat_entre_generaux(
+                general_camp_1, general_camp_2,
+                avant_exclus_manoeuvre=bool(murailles),
+                avant_deja_resolu=bool(murailles))
+        if muraille_chocs:
+            resultat_combat_range['chocs'] = (
+                muraille_chocs + resultat_combat_range['chocs'])
 
         if round_combat == 1:
             rapports.ecrire_rapport_territoire(
