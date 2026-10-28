@@ -747,8 +747,8 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
         else:
             resultat_combat_range = combat_entre_generaux(
                 general_camp_1, general_camp_2,
-                avant_exclus_manoeuvre=bool(murailles),
-                avant_deja_resolu=bool(murailles))
+                avant_exclus_manoeuvre=bool(muraille_chocs),
+                avant_deja_resolu=bool(muraille_chocs))
         if muraille_chocs:
             resultat_combat_range['chocs'] = (
                 muraille_chocs + resultat_combat_range['chocs'])
