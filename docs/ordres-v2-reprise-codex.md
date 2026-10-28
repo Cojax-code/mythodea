@@ -64,7 +64,7 @@ les autres chantiers antérieurs restent hors de cette intervention.
 WSL Ubuntu / Python 3.14.4, copies et plateaux temporaires exclusivement ; aucun
 accès au vrai `/game`. Les scripts compilent tous les fichiers Python concernés.
 
-- Compilation : OK ; chiffres définitifs à reporter après validation des restrictions Zombies.
+- Dernière validation des restrictions Zombies rapportée par Codex : **179 tests ciblés réussis** ; **suite Linux de 787 tests réussie**, dont **5 contrôles root réservés et réussis séparément**. Ces chiffres proviennent de la session Codex précédente et n'ont pas été réexécutés lors de la présente mise à jour documentaire.
 - Root du raccordement Gros_poisson : **5 tests, 4,291 s, OK**, dont conversion
   d'un prêté par Spore avec vrais UID/GID 62001, 62002 et 62003, sans créer de comptes.
 - Comparaison avant restrictions Zombies à `980a3d7` : **27/30 scénarios strictement
@@ -78,3 +78,13 @@ accès au vrai `/game`. Les scripts compilent tous les fichiers Python concerné
   la coexistence d'ordres normaux adverses à PC égaux.
 - Les tests de cycle gardent leur gel simulé habituel ; une validation réelle
   Raspberry Pi/SSH/cgroup reste distincte.
+
+## Clôture documentaire — 28 octobre 2026
+
+Le dernier état poussé `9e44439` contient déjà la restriction Zombie, les tests
+`test_restrictions_zombies.py` et les mécanismes de Gros_poisson détaillés
+ci-dessus. La session Codex a été interrompue après les vérifications et avant
+son bilan final ; cette clôture ne constitue **pas** un nouveau passage des tests.
+Les trois écarts de comparaison concernant l'état RNG restent documentés comme
+différences attendues et non comme 30 scénarios strictement identiques.
+Il reste à valider sur Raspberry Pi/SSH, séparément des vérifications WSL.
