@@ -45,6 +45,48 @@ class TestOrdresCalculsV2(unittest.TestCase):
                     bloc_adverse='avant', general_adverse=adverse,
                     fatigue_adverse=(True,))
 
+    def test_muraille_recalcule_apres_chaque_engagement(self):
+        from unittest.mock import patch
+        import combats
+
+        a, b, c = ({'id': i} for i in (1, 2, 3))
+        appels = []
+        donnees = iter([
+            {'choisi': ('j1', 'g2'), 'previsions': ()},
+            {'choisi': ('j1', 'g3'), 'previsions': ()},
+            {'choisi': ('j1', 'g1'), 'previsions': ()},
+        ])
+
+        def selection(disponibles, *_args, **_kwargs):
+            appels.append(tuple(g['id'] for g in disponibles))
+            return next(donnees)
+
+        avec_identite = lambda g: ('j1', f"g{g['id']}")
+        with patch.object(combats.ordres_pipeline, 'identite',
+                          side_effect=avec_identite), patch.object(
+                combats, 'prochain_avant_muraille', side_effect=selection):
+            resultat = combats.enchainer_avants_muraille(
+                (a, b, c), object(), aleatoire=random.Random(1),
+                engager=lambda g: f"choc-{g['id']}")
+        self.assertEqual(appels, [(1, 2, 3), (1, 3), (1,)])
+        self.assertEqual(resultat, (
+            (('j1', 'g2'), 'choc-2'),
+            (('j1', 'g3'), 'choc-3'),
+            (('j1', 'g1'), 'choc-1'),
+        ))
+
+    def test_muraille_selection_sarrete_si_plus_de_cible(self):
+        from unittest.mock import patch
+        import combats
+        general = {'id': 1}
+        with patch.object(combats.ordres_pipeline, 'identite',
+                          return_value=('j1', 'g1')), patch.object(
+                combats, 'prochain_avant_muraille',
+                return_value={'choisi': None, 'previsions': ()}):
+            self.assertEqual(combats.enchainer_avants_muraille(
+                (general,), object(), aleatoire=random.Random(1),
+                engager=lambda _g: self.fail('Engagement inattendu')), ())
+
     def test_muraille_meilleur_bilan_puis_position_numerique_origine(self):
         a, b = ('j1', 'general1'), ('j1', 'general2')
         positions = {a: '10', b: '2'}
