@@ -1006,7 +1006,7 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None)
 
 
 def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
-                             engager, qg_nommade=None, reserve_strategique=None):
+                             engager=None, qg_nommade=None, reserve_strategique=None):
     """Sélection successive des Avant de Muraille, sans classement figé.
 
     Après chaque engagement, relit les blocs restants via prochain_avant_muraille.
@@ -1015,6 +1015,8 @@ def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
     Cette fonction ne déclenche pas encore Muraille dans la bataille normale.
     Un général ne fournit son Avant qu'une fois par choc initial.
     """
+    if engager is None:
+        engager = lambda general: engager_avant_muraille(general, general_adverse)
     if not callable(engager):
         raise TypeError('Le pilote doit fournir une fonction engager.')
     disponibles = tuple(generaux_allies)
