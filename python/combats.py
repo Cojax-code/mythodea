@@ -1168,6 +1168,13 @@ def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
         raise ValueError('Un général ne peut contribuer deux fois à Muraille.')
     engagements = []
     while disponibles:
+        # La destruction d'un général efface aussi ses Avant : ne pas relire
+        # un dossier disparu lors de la désignation suivante.
+        disponibles = tuple(
+            g for g in disponibles
+            if g.get('chemin') is None or g['chemin'].is_dir())
+        if not disponibles:
+            break
         if transmission_active is not None and not transmission_active():
             break
         decision = prochain_avant_muraille(
