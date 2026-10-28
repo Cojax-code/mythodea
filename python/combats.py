@@ -1158,11 +1158,13 @@ def moral_des_pertes(infos, general=None, *, participants=None):
     return moral
 
 
-def supprimer_unites(infos, survivants, general=None, *, participants=None):
+def supprimer_unites(infos, survivants, general=None, *, participants=None,
+                    unites_prioritaires=()):
     if participants is not None and participants.groupe:
         participants.groupe.bilan()
     pertes = soldats.pertes(infos, survivants,
-                           moral_des_pertes(infos, general, participants=participants), random)
+                           moral_des_pertes(infos, general, participants=participants), random,
+                           unites_prioritaires=unites_prioritaires)
     ordres_pipeline.verifier_qg()
     if participants is not None and participants.groupe:
         participants.groupe.bilan()
@@ -1170,7 +1172,8 @@ def supprimer_unites(infos, survivants, general=None, *, participants=None):
 
 
 def resoudre_blocs(infos_1, infos_2, general_1, general_2, bloc_1, bloc_2,
-                   fatigue_1, fatigue_2, *, participants=None):
+                   fatigue_1, fatigue_2, *, participants=None,
+                   prioritaires_1=(), prioritaires_2=()):
     """Résolution commune du choc et de la manœuvre, dans leur ordre historique.
 
     Les deux dégâts sont calculés avant les pertes ; les sauvetages puis les
@@ -1181,8 +1184,10 @@ def resoudre_blocs(infos_1, infos_2, general_1, general_2, bloc_1, bloc_2,
         general_1=general_1, general_2=general_2)
     if infos_1['nombre'] > 0 and infos_2['nombre'] > 0:
         soldats.affrontement(general_1, general_2)
-    pertes_1 = supprimer_unites(infos_1, survivants_1, general_1, participants=participants)
-    pertes_2 = supprimer_unites(infos_2, survivants_2, general_2, participants=participants)
+    pertes_1 = supprimer_unites(infos_1, survivants_1, general_1,
+                               participants=participants, unites_prioritaires=prioritaires_1)
+    pertes_2 = supprimer_unites(infos_2, survivants_2, general_2,
+                               participants=participants, unites_prioritaires=prioritaires_2)
     unites.apres_confrontation(general_1, general_2, bloc_1, bloc_2,
                               infos_1, infos_2, pertes_1, pertes_2)
     return pertes_1, pertes_2
