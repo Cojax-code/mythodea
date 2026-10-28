@@ -74,6 +74,27 @@ class TestOrdresCalculsV2(unittest.TestCase):
                 combats.engager_avant_muraille(a, b, participants=Mock())
             reel.assert_not_called()
 
+    def test_muraille_manoeuvre_masque_avant_sans_perte(self):
+        import combats
+        unites_avant = [object(), object()]
+        original = {
+            'j1': {
+                'avant': {'nombre': 2, 'unites': unites_avant, 'type': 'archer'},
+                'arriere': {'nombre': 3, 'unites': [object()], 'type': 'piquier'},
+            },
+            'j2': {
+                'avant': {'nombre': 1, 'unites': [object()], 'type': 'cavalier'},
+                'arriere': {'nombre': 1, 'unites': [object()], 'type': 'archer'},
+            },
+        }
+        vue = combats.retirer_avants_de_manoeuvre(original)
+        for camp in ('j1', 'j2'):
+            self.assertEqual(vue[camp]['avant']['nombre'], 0)
+            self.assertEqual(vue[camp]['avant']['unites'], [])
+            self.assertIs(vue[camp]['arriere'], original[camp]['arriere'])
+        self.assertEqual(original['j1']['avant']['nombre'], 2)
+        self.assertIs(original['j1']['avant']['unites'], unites_avant)
+
     def test_muraille_pilote_utilise_choc_reel_par_defaut(self):
         from unittest.mock import patch
         import combats
