@@ -61,6 +61,39 @@ class TestOrdresCalculsV2(unittest.TestCase):
         self.assertEqual(pertes.call_args_list[0].kwargs['unites_prioritaires'], ('a',))
         self.assertEqual(pertes.call_args_list[1].kwargs['unites_prioritaires'], ())
 
+    def test_muraille_victimes_collectives_gardent_leur_general(self):
+        import soldats
+        from collections import Counter
+        blocs = {
+            'g1': {'unites': ('g1_a', 'g1_b')},
+            'g2': {'unites': ('g2_a', 'g2_b')},
+        }
+        repartition = soldats.repartir_victimes_muraille(
+            blocs, 3, 'g1', random.Random(42))
+        self.assertEqual(sum(map(len, repartition.values())), 3)
+        self.assertTrue(set(repartition['g1']).issubset(set(blocs['g1']['unites'])))
+        self.assertTrue(set(repartition['g2']).issubset(set(blocs['g2']['unites'])))
+        comptes = Counter()
+        for graine in range(2400):
+            victime = soldats.repartir_victimes_muraille(
+                blocs, 1, 'g1', random.Random(graine))
+            comptes['g1'] += len(victime['g1'])
+            comptes['g2'] += len(victime['g2'])
+        self.assertGreater(comptes['g1'], comptes['g2'] * 1.7)
+        self.assertLess(comptes['g1'], comptes['g2'] * 2.3)
+        self.assertEqual(
+            soldats.repartir_victimes_muraille(blocs, 0, 'g1', random.Random(1)),
+            {'g1': [], 'g2': []})
+
+    def test_muraille_interdit_soldats_partages_et_pertes_excessives(self):
+        import soldats
+        blocs = {'a': {'unites': ['x']}, 'b': {'unites': ['x']}}
+        with self.assertRaises(ValueError):
+            soldats.repartir_victimes_muraille(blocs, 1, 'a', random.Random(1))
+        with self.assertRaises(ValueError):
+            soldats.repartir_victimes_muraille(
+                {'a': {'unites': ['x']}}, 2, 'a', random.Random(1))
+
     def test_muraille_pondere_x2_le_general_engage_sans_remise(self):
         import soldats
         from collections import Counter
