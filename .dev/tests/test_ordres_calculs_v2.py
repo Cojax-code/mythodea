@@ -45,6 +45,33 @@ class TestOrdresCalculsV2(unittest.TestCase):
                     bloc_adverse='avant', general_adverse=adverse,
                     fatigue_adverse=(True,))
 
+    def test_muraille_pondere_x2_le_general_engage_sans_remise(self):
+        import soldats
+        from collections import Counter
+        infos = {'unites': ['engage', 'allie'], 'nombre': 2}
+        tirages = Counter()
+        for graine in range(4000):
+            victimes, sauvetages = soldats.selectionner_victimes(
+                infos, 1, 0, random.Random(graine),
+                unites_prioritaires=('engage',))
+            tirages[victimes[0]] += 1
+            self.assertFalse(sauvetages)
+        self.assertGreater(tirages['engage'], tirages['allie'] * 1.7)
+        self.assertLess(tirages['engage'], tirages['allie'] * 2.3)
+        victimes, _ = soldats.selectionner_victimes(
+            infos, 0, 0, random.Random(12),
+            unites_prioritaires=('engage',))
+        self.assertEqual(set(victimes), set(infos['unites']))
+        self.assertEqual(len(victimes), 2)
+
+    def test_muraille_uniforme_par_defaut_inchange(self):
+        import soldats
+        infos = {'unites': ['engage', 'allie', 'autre'], 'nombre': 3}
+        graine = 73
+        victimes, _ = soldats.selectionner_victimes(
+            infos, 2, 0, random.Random(graine))
+        self.assertEqual(victimes, random.Random(graine).sample(infos['unites'], 1))
+
     def test_muraille_choc_reutilise_resolution_reelle(self):
         from unittest.mock import patch
         import combats
