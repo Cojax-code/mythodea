@@ -975,6 +975,38 @@ def prochain_avant_muraille(generaux_allies, general_adverse, *, aleatoire,
     return dict(choisi=choisi, previsions=previsions)
 
 
+
+def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
+                             engager, qg_nommade=None, reserve_strategique=None):
+    """Sélection successive des Avant de Muraille, sans classement figé.
+
+    Après chaque engagement, relit les blocs restants via prochain_avant_muraille.
+    `engager(general)` est le raccordement au combat réel, fourni par le pilote :
+    il doit résoudre UN choc et appliquer ses pertes avant de rendre la main.
+    Cette fonction ne déclenche pas encore Muraille dans la bataille normale.
+    Un général ne fournit son Avant qu'une fois par choc initial.
+    """
+    if not callable(engager):
+        raise TypeError('Le pilote doit fournir une fonction engager.')
+    disponibles = tuple(generaux_allies)
+    identites = [ordres_pipeline.identite(g) for g in disponibles]
+    if len(set(identites)) != len(identites):
+        raise ValueError('Un général ne peut contribuer deux fois à Muraille.')
+    engagements = []
+    while disponibles:
+        decision = prochain_avant_muraille(
+            disponibles, general_adverse, aleatoire=aleatoire,
+            qg_nommade=qg_nommade, reserve_strategique=reserve_strategique)
+        identite = decision['choisi']
+        if identite is None:
+            break
+        choisi = next(g for g in disponibles if ordres_pipeline.identite(g) == identite)
+        engagements.append((identite, engager(choisi)))
+        disponibles = tuple(g for g in disponibles
+                            if ordres_pipeline.identite(g) != identite)
+    return tuple(engagements)
+
+
 def trouver_cible_facile(armee, joueur_attaquant, type_attaquant,
                          general_attaquant=None, general_defenseur=None):
     joueur_ennemi = adversaire_du_duel(armee, joueur_attaquant)
