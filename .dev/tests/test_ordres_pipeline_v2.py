@@ -8,6 +8,23 @@ import ordres_pipeline
 
 
 class PipelineOrdresTest(unittest.TestCase):
+    def test_muraille_territoriale_exclut_qg_reserve_et_zombie(self):
+        a = dict(joueur='j1', nom='general1', emplacement='1')
+        b = dict(joueur='j1', nom='general2', emplacement='2')
+        c = dict(joueur='j1', nom='general3', emplacement='3')
+        d = dict(joueur='j1', nom='general4', emplacement='4')
+        forces = {'camp': {'1': a, '2': b, '3': c, '4': d}}
+        formations = {'camp': {'ordres': {'muraille_humaine', 'qg_nommade'},
+                               'qg': ('j1', 'general1')}}
+        with patch('generaux.general_a_des_unites', return_value=True), patch.object(
+                ordres_pipeline.progression, 'general_recoit_ordre',
+                side_effect=lambda g, _nom: g is not d):
+            participants = ordres_pipeline.participants_muraille_territoire(
+                forces, formations, 'camp', reserve_strategique=('j1', 'general2'))
+        self.assertEqual(participants, (c,))
+        self.assertEqual(ordres_pipeline.participants_muraille_territoire(
+            forces, {}, 'camp'), ())
+
     def test_zombie_ordres_officiels_filtrent_meme_les_anciens_acquis(self):
         from copy import deepcopy
         import catalogues
