@@ -123,6 +123,34 @@ class TestOrdresCalculsV2(unittest.TestCase):
         self.assertEqual(original['j1']['avant']['nombre'], 2)
         self.assertIs(original['j1']['avant']['unites'], unites_avant)
 
+    def test_muraille_preparation_territoriale_reutilise_pipeline(self):
+        from unittest.mock import patch
+        import combats
+        g = {'joueur': 'j1', 'nom': 'general1'}
+        forces = {'camp1': {'1': g}}
+        formations = {'camp1': {'ordres': {'muraille_humaine'}, 'qg': ('j1', 'general1')}}
+        attendu = {'choisi': ('j1', 'general1'), 'previsions': ('prevision',)}
+        with patch.object(combats.ordres_pipeline, 'participants_muraille_territoire',
+                          return_value=(g,)) as filtrer, patch.object(
+                combats, 'prochain_avant_muraille', return_value=attendu) as choisir:
+            decision = combats.preparer_muraille_territoire(
+                forces, formations, 'camp1', object(), aleatoire=random.Random(2))
+        self.assertEqual(decision['choisi'], ('j1', 'general1'))
+        self.assertEqual(decision['participants'], (g,))
+        filtrer.assert_called_once()
+        choisir.assert_called_once()
+
+    def test_muraille_preparation_territoriale_sans_participants(self):
+        from unittest.mock import patch
+        import combats
+        with patch.object(combats.ordres_pipeline, 'participants_muraille_territoire',
+                          return_value=()), patch.object(
+                combats, 'prochain_avant_muraille') as choisir:
+            resultat = combats.preparer_muraille_territoire(
+                {}, {}, 'camp1', object(), aleatoire=random.Random(1))
+        self.assertIsNone(resultat['choisi'])
+        choisir.assert_not_called()
+
     def test_muraille_pilote_utilise_choc_reel_par_defaut(self):
         from unittest.mock import patch
         import combats
