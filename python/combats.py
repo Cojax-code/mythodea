@@ -882,9 +882,19 @@ def previsions_avant_muraille(contributions, infos_adverses, *, bloc_adverse,
                           if progression.general_recoit_ordre(c[0], 'muraille_humaine'))
     ordres_calculs_v2.participants_muraille(
         ordres_pipeline.identite(general) for general, _, _ in contributions)
-    if type(fatigue_adverse) is not bool or any(
-            type(fatigue) is not bool for _, _, fatigue in contributions):
-        raise ValueError('Les états de fatigue doivent être booléens.')
+    # combat_bloc accepte déjà la fatigue collective ou individuelle.
+    # Valider ici sans perdre l'information des soldats d'origine.
+    def verifier_fatigue(fatigue, nombre):
+        if type(fatigue) is bool:
+            return
+        if (isinstance(fatigue, (tuple, list)) and len(fatigue) == nombre
+                and all(type(etat) is bool for etat in fatigue)):
+            return
+        raise ValueError('Fatigue : un booléen ou un booléen par soldat est requis.')
+
+    verifier_fatigue(fatigue_adverse, infos_adverses['nombre'])
+    for _, infos, fatigue in contributions:
+        verifier_fatigue(fatigue, infos['nombre'])
     return tuple(dict(
         origine=ordres_pipeline.identite(general),
         survivants=combat_bloc(infos, infos_adverses, fatigue, fatigue_adverse,
