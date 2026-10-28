@@ -32,6 +32,16 @@ Ne pas modifier silencieusement :
 
 Si une incohérence ou un bug potentiel est découvert, le signaler avant de le corriger.
 
+## Efficacité des interventions Codex
+
+- Objectif limité à la demande explicite : ne pas étendre le chantier spontanément.
+- Les SPEC et contrats existants sont la référence ; éviter de recopier leurs règles dans les prompts et comptes rendus.
+- En cas de règle ambiguë ou de blocage exigeant une refonte, arrêter la partie concernée et demander une décision avant de coder.
+- Après deux tentatives infructueuses sur le même défaut, arrêter, résumer le diagnostic et proposer des options ; ne pas multiplier les essais.
+- Préférer les tests ciblés pendant l'itération ; réserver la suite complète aux jalons de livraison ou changements transversaux sensibles, conformément aux obligations de validation ci-dessous.
+- Ne pas répéter des tests coûteux sans changement pertinent depuis leur dernier passage.
+- Bilan bref : travail terminé, tests réellement effectués, blocage éventuel, prochaine étape. Ne pas travailler uniquement pour prolonger une session.
+
 ## Architecture
 
 Le code Python se trouve dans `python/`.
