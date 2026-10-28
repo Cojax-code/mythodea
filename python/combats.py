@@ -932,6 +932,7 @@ def combat_bloc(
     *,
     general_1=None,
     general_2=None,
+    contributions_1=None,
 ):
     # Calcule le résultat d'un combat entre deux blocs.
     #
@@ -965,6 +966,27 @@ def combat_bloc(
         type_2,
         type_1, general_2, general_1
     )
+
+    if contributions_1 is not None:
+        # Les ordres individuels restent propres aux soldats de leur général.
+        # Calculer la valeur effective par soldat, et non attribuer Hérisson
+        # à l'ensemble des piquiers lorsqu'un seul général le possède.
+        effectifs = [(g, b['nombre']) for g, b in contributions_1 if b['nombre']]
+        if (sum(nombre for _, nombre in effectifs) != nombre_1
+                or any(b['type'] != type_1 for _, b in contributions_1)):
+            raise ValueError('Contributions collectives incompatibles avec le bloc.')
+        valeur_1 = sum(
+            nombre * valeur_base_bloc(bloc, bloc_1) *
+            multiplicateur(type_1, type_2, general, general_2)
+            for general, bloc in contributions_1 if bloc['nombre']
+            for nombre in (bloc['nombre'],)
+        ) / nombre_1
+        valeur_2 = sum(
+            nombre * valeur_base_bloc(infos_2, bloc_2) *
+            multiplicateur(type_2, type_1, general_2, general)
+            for general, bloc in contributions_1 if bloc['nombre']
+            for nombre in (bloc['nombre'],)
+        ) / nombre_1
 
     # ------------------------------------------
     # Fatigue
@@ -1189,7 +1211,8 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None,
     initial_allie, initial_adverse = effectif, adverse['nombre']
     survivants_1, survivants_2 = combat_bloc(
         collectif, adverse, fatigue_1, fatigue_2, 'avant', 'avant',
-        general_1=general_allie, general_2=general_adverse)
+        general_1=general_allie, general_2=general_adverse,
+        contributions_1=[(g, blocs[ordres_pipeline.identite(g)]) for g in membres])
     soldats.affrontement(general_allie, general_adverse)
     nombre_pertes = effectif - survivants_1
     selection = soldats.repartir_victimes_muraille(
