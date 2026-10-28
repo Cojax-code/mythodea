@@ -8,6 +8,15 @@ import ordres_pipeline
 
 
 class PipelineOrdresTest(unittest.TestCase):
+    def test_formations_nactivent_pas_muraille_absente_du_catalogue(self):
+        import catalogues
+        # Aucun jeton officiel Muraille n'existe pour le moment.
+        self.assertFalse(any(ordre['nom'] == 'muraille_humaine'
+                             and ordre['disponible']
+                             for ordre in catalogues.ORDRES.values()))
+        self.assertTrue(catalogues.ORDRES[1015]['disponible'])
+        self.assertTrue(catalogues.ORDRES[1016]['disponible'])
+
     def test_muraille_territoriale_exclut_qg_reserve_et_zombie(self):
         a = dict(joueur='j1', nom='general1', emplacement='1')
         b = dict(joueur='j1', nom='general2', emplacement='2')
