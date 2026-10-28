@@ -780,7 +780,8 @@ def sauvetage_possible(valeur):
     return valeur['blessures'] < unites.blessures_max(valeur['type'], valeur['batailles'])
 
 
-def prevoir_pertes(infos, survivants, moral, aleatoire, *, unites_prioritaires=()):
+def prevoir_pertes(infos, survivants, moral, aleatoire, *,
+                   unites_prioritaires=(), victimes_choisies=None):
     """Lecture seule ; le demandeur fournit un générateur réservé aux simulations.
 
     Les blessures limitent les sauvetages exactement comme dans pertes().
@@ -789,8 +790,20 @@ def prevoir_pertes(infos, survivants, moral, aleatoire, *, unites_prioritaires=(
     """
     import config
     import generaux
-    perdus, tentatives = selectionner_victimes(
-        infos, survivants, moral, aleatoire, unites_prioritaires=unites_prioritaires)
+    if victimes_choisies is None:
+        perdus, tentatives = selectionner_victimes(
+            infos, survivants, moral, aleatoire, unites_prioritaires=unites_prioritaires)
+    else:
+        perdus = list(victimes_choisies)
+        if (len(perdus) != len(set(perdus))
+                or len(perdus) != infos['nombre'] - survivants
+                or any(unite not in infos['unites'] for unite in perdus)):
+            raise ValueError('Victimes prédites incohérentes avec le bloc.')
+        if ((type(moral) is not int and not isinstance(moral, Fraction))
+                or not 0 <= moral <= 100):
+            raise ValueError('Moral entier de 0 à 100 requis.')
+        tentatives = (aleatoire.sample(perdus, len(perdus) * moral // 100)
+                      if moral else [])
     registre = charger()
     sauves = []
     for unite in tentatives:
