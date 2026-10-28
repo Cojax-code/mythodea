@@ -1082,19 +1082,43 @@ def simuler_avants_muraille(contributions, infos_adverses, *, general_adverse,
                 infos['nombre'] and any(unites.etiquette(infos['type'], etiquette)
                     for etiquette in ('bouclier_vivant', 'propagation', 'non_combattant'))):
             raise NotImplementedError('Simulation Muraille : Bouclier, Spore/Propagation ou soutien non raccordé.')
-    bruts = previsions_avant_muraille(contributions, infos_adverses,
-        bloc_adverse='avant', general_adverse=general_adverse, fatigue_adverse=fatigue_adverse)
     resultat = []
-    for (general, infos, _), brut in zip(contributions, bruts):
+    for general, infos, _ in contributions:
+        # Un candidat engage tous les Avant de son type, sans exposer les
+        # autres types. La simulation et le vrai choc partagent la formule.
+        groupe = tuple((g, b, fatigue) for g, b, fatigue in contributions
+                       if b['type'] == infos['type'])
+        blocs = {ordres_pipeline.identite(g): b for g, b, _ in groupe}
+        effectif = sum(b['nombre'] for _, b, _ in groupe)
+        collectif = dict(infos, nombre=effectif,
+                        unites=[u for _, b, _ in groupe for u in b['unites']])
+        fatigues = tuple(etat for _, b, fatigue in groupe
+                         for etat in (fatigue if isinstance(fatigue, (tuple, list))
+                                      else [fatigue] * b['nombre']))
+        survivants_allies, survivants_adverses = combat_bloc(
+            collectif, infos_adverses, fatigues, fatigue_adverse,
+            'avant', 'avant', general_1=general, general_2=general_adverse,
+            contributions_1=[(g, b) for g, b, _ in groupe])
         hasard = deepcopy(aleatoire)
-        propres = soldats.prevoir_pertes(infos, brut['survivants'][0],
-                                         moral_des_pertes(infos, general), hasard)
-        adverses = soldats.prevoir_pertes(infos_adverses, brut['survivants'][1],
+        victimes = soldats.repartir_victimes_muraille(
+            blocs, effectif - survivants_allies,
+            ordres_pipeline.identite(general), hasard)
+        propres = {}
+        for g, b, _ in groupe:
+            cle = ordres_pipeline.identite(g)
+            propres[cle] = soldats.prevoir_pertes(
+                b, b['nombre'] - len(victimes[cle]),
+                moral_des_pertes(b, g), hasard,
+                victimes_choisies=victimes[cle])
+        adverses = soldats.prevoir_pertes(
+            infos_adverses, survivants_adverses,
             moral_des_pertes(infos_adverses, general_adverse), hasard)
-        pertes_alliees, elimines = len(propres['pertes']), len(adverses['pertes'])
-        resultat.append(dict(origine=brut['origine'], allies=propres, adverses=adverses,
-            allies_perdus=pertes_alliees, ennemis_elimines=elimines,
-            score=elimines - pertes_alliees))
+        pertes_alliees = sum(len(v['pertes']) for v in propres.values())
+        elimines = len(adverses['pertes'])
+        resultat.append(dict(
+            origine=ordres_pipeline.identite(general), allies=propres,
+            adverses=adverses, allies_perdus=pertes_alliees,
+            ennemis_elimines=elimines, score=elimines - pertes_alliees))
     return tuple(resultat)
 
 
