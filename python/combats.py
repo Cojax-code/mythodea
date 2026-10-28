@@ -1072,7 +1072,7 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None)
 
 def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
                              engager=None, qg_nommade=None, reserve_strategique=None,
-                             transmission_active=None):
+                             transmission_active=None, camp=None):
     """Sélection successive des Avant de Muraille, sans classement figé.
 
     Après chaque engagement, relit les blocs restants via prochain_avant_muraille.
@@ -1087,6 +1087,10 @@ def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
         engager = lambda general: engager_avant_muraille(general, general_adverse)
     if not callable(engager):
         raise TypeError('Le pilote doit fournir une fonction engager.')
+    if camp is not None:
+        if transmission_active is not None:
+            raise ValueError('Choisir le QG territorial ou une vérification injectée.')
+        transmission_active = lambda: ordres_pipeline.transmission_muraille_active(camp)
     if transmission_active is not None and not callable(transmission_active):
         raise TypeError('La vérification du QG doit être une fonction.')
     disponibles = tuple(generaux_allies)
