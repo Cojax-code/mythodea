@@ -184,7 +184,10 @@ class TestOrdresCalculsV2(unittest.TestCase):
     def test_muraille_prevoit_les_blocs_collectifs_par_type(self):
         from unittest.mock import patch
         import combats
-        a, b, c, adv = (object() for _ in range(4))
+        class General(dict):
+            __hash__ = object.__hash__
+            __eq__ = object.__eq__
+        a, b, c, adv = (General(chemin='/tmp/test-muraille') for _ in range(4))
         contributions = [
             (a, {'type': 'piquier', 'nombre': 10, 'unites': list(range(10))}, False),
             (b, {'type': 'piquier', 'nombre': 8, 'unites': list(range(10, 18))}, False),
