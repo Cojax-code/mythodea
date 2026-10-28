@@ -706,14 +706,35 @@ def synchroniser(configuration, publication=False):
     sauvegarder(donnees)
 
 
-def selectionner_victimes(infos, survivants, moral, aleatoire):
-    """Tirages communs au combat et à sa prévision, sans accès au disque."""
+def selectionner_victimes(infos, survivants, moral, aleatoire, *,
+                         unites_prioritaires=(), ponderation=2):
+    """Tirages communs au combat et à sa prévision, sans accès au disque.
+
+    En Muraille, les soldats du général engagé peuvent avoir un poids double.
+    Hors Muraille, le tirage historique uniforme reste strictement identique.
+    """
     if (type(moral) is not int and not isinstance(moral, Fraction)) or not 0 <= moral <= 100:
         raise ValueError('Moral entier de 0 à 100 requis.')
     nombre_pertes = infos['nombre'] - survivants
     if nombre_pertes <= 0:
         return [], []
-    perdus = aleatoire.sample(infos['unites'], nombre_pertes)
+    if unites_prioritaires:
+        if type(ponderation) is not int or ponderation < 1:
+            raise ValueError('Pondération entière positive requise.')
+        prioritaires = set(unites_prioritaires)
+        candidats = list(infos['unites'])
+        perdus = []
+        for _ in range(nombre_pertes):
+            poids = [ponderation if unite in prioritaires else 1
+                     for unite in candidats]
+            tirage = aleatoire.randrange(sum(poids))
+            for index, poids_unite in enumerate(poids):
+                tirage -= poids_unite
+                if tirage < 0:
+                    perdus.append(candidats.pop(index))
+                    break
+    else:
+        perdus = aleatoire.sample(infos['unites'], nombre_pertes)
     tentatives = aleatoire.sample(perdus, nombre_pertes * moral // 100) if moral else []
     return perdus, tentatives
 
@@ -723,7 +744,7 @@ def sauvetage_possible(valeur):
     return valeur['blessures'] < unites.blessures_max(valeur['type'], valeur['batailles'])
 
 
-def prevoir_pertes(infos, survivants, moral, aleatoire):
+def prevoir_pertes(infos, survivants, moral, aleatoire, *, unites_prioritaires=()):
     """Lecture seule ; le demandeur fournit un générateur réservé aux simulations.
 
     Les blessures limitent les sauvetages exactement comme dans pertes().
@@ -732,7 +753,8 @@ def prevoir_pertes(infos, survivants, moral, aleatoire):
     """
     import config
     import generaux
-    perdus, tentatives = selectionner_victimes(infos, survivants, moral, aleatoire)
+    perdus, tentatives = selectionner_victimes(
+        infos, survivants, moral, aleatoire, unites_prioritaires=unites_prioritaires)
     registre = charger()
     sauves = []
     for unite in tentatives:
@@ -747,13 +769,14 @@ def prevoir_pertes(infos, survivants, moral, aleatoire):
                 survivants=infos['nombre'] - len(morts))
 
 
-def pertes(infos, survivants, moral=0, aleatoire=None):
+def pertes(infos, survivants, moral=0, aleatoire=None, *, unites_prioritaires=()):
     """Sélection collective puis sauvetages distincts, sans réattribuer un échec."""
     import config
     import generaux
     import shutil
     aleatoire = random if aleatoire is None else aleatoire
-    perdus, tentatives = selectionner_victimes(infos, survivants, moral, aleatoire)
+    perdus, tentatives = selectionner_victimes(
+        infos, survivants, moral, aleatoire, unites_prioritaires=unites_prioritaires)
     if not perdus:
         return []
     donnees = charger()
