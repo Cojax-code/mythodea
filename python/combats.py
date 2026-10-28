@@ -1154,6 +1154,12 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None,
     if any(g.get('camp', g['joueur']) != general_allie.get('camp', general_allie['joueur'])
            for g in membres):
         raise ValueError('Muraille ne peut réunir deux camps.')
+    # Un choc engage un seul type : les Avant des autres types restent
+    # totalement hors du calcul des dégâts et du tirage des victimes.
+    type_engage = participants.blocs(general_allie)['avant']['type']
+    membres = tuple(g for g in membres
+                    if participants.blocs(g)['avant']['type'] == type_engage
+                    and participants.blocs(g)['avant']['nombre'] > 0)
     blocs = {ordres_pipeline.identite(g): participants.blocs(g)['avant'] for g in membres}
     if any(b.get('boucliers') or b.get('soutiens') or
            (b['nombre'] and any(unites.etiquette(b['type'], e)
@@ -1167,14 +1173,25 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None,
     adverse = armee[general_adverse['joueur']]['avant']
     if not actif['nombre'] or not adverse['nombre']:
         return None
-    fatigue_1 = participants.fatigue(general_allie, actif)
+    # La force et la fatigue sont collectives ; les blocs persistants ne
+    # sont pas fusionnés, afin de préserver identités, blessures et moral.
+    effectif = sum(bloc['nombre'] for bloc in blocs.values())
+    collectif = dict(actif, nombre=effectif,
+                    unites=[u for bloc in blocs.values() for u in bloc['unites']])
+    fatigues = []
+    for g in membres:
+        b = blocs[ordres_pipeline.identite(g)]
+        fatigue = participants.fatigue(g, b)
+        fatigues.extend(fatigue if isinstance(fatigue, (list, tuple))
+                        else [fatigue] * b['nombre'])
+    fatigue_1 = tuple(fatigues)
     fatigue_2 = participants.fatigue(general_adverse, adverse)
-    initial_allie, initial_adverse = actif['nombre'], adverse['nombre']
+    initial_allie, initial_adverse = effectif, adverse['nombre']
     survivants_1, survivants_2 = combat_bloc(
-        actif, adverse, fatigue_1, fatigue_2, 'avant', 'avant',
+        collectif, adverse, fatigue_1, fatigue_2, 'avant', 'avant',
         general_1=general_allie, general_2=general_adverse)
     soldats.affrontement(general_allie, general_adverse)
-    nombre_pertes = actif['nombre'] - survivants_1
+    nombre_pertes = effectif - survivants_1
     selection = soldats.repartir_victimes_muraille(
         blocs, nombre_pertes, engage, aleatoire)
     moraux = {ordres_pipeline.identite(g): moral_des_pertes(
@@ -1197,7 +1214,8 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None,
     return dict(moment='Choc', bloc_1='avant', bloc_2='avant',
                 type_1=actif['type'], type_2=adverse['type'],
                 initial_1=initial_allie, initial_2=initial_adverse,
-                final_1=actif['nombre'], final_2=adverse['nombre'],
+                final_1=sum(b['nombre'] for b in blocs.values()),
+                final_2=adverse['nombre'],
                 pertes_collectives=pertes_collectives)
 
 
