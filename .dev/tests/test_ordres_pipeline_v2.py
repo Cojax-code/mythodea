@@ -40,6 +40,27 @@ class PipelineOrdresTest(unittest.TestCase):
         self.assertTrue(catalogues.ORDRES[1015]['disponible'])
         self.assertTrue(catalogues.ORDRES[1016]['disponible'])
 
+    def test_deux_murailles_ne_peuvent_etre_retenues_simultanement(self):
+        import commandement
+        # Activer uniquement dans ce catalogue local de test.
+        catalogue = {
+            1019: dict(jeton='1-9', nom='muraille_humaine',
+                       categorie='globale', disponible=True,
+                       contre=False, acquisition_requise=True),
+        }
+        for points_1, points_2, attendu in (
+                (12, 7, ([1019], [])),
+                (7, 12, ([], [1019])),
+                (10, 10, ([], [])),
+        ):
+            comparaison = commandement.comparer(points_1, points_2)
+            resultat = commandement.confronter_donneurs(
+                [1019], 'stratege', [1019],
+                [1019], 'stratege', [1019],
+                'globale', comparaison, catalogue)
+            self.assertEqual(resultat, attendu)
+            self.assertFalse(resultat[0] and resultat[1])
+
     def test_muraille_territoriale_exclut_qg_reserve_et_zombie(self):
         a = dict(joueur='j1', nom='general1', emplacement='1')
         b = dict(joueur='j1', nom='general2', emplacement='2')
