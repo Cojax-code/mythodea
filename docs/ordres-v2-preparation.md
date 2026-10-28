@@ -66,7 +66,7 @@ Cette section et les SPEC à jour priment sur les hypothèses historiques ci-des
   processus entier. Poids conditionnels 170:15 avec un ordre connu, capacité
   automatique avec les deux. Les anciennes places acquises sont conservées,
   sans tirage rétroactif et sans cumul de deux systèmes de progression.
-<<<<<<< HEAD- **Ordres classiques et généraux Zombies** :
+- **Ordres classiques et généraux Zombies** :
   Seuls les généraux Zombies peuvent posséder des unités zombies ; audit et
   publication refusent les possessions illégales sans sanction nouvelle.
   Tous les ordres classiques sont ignorés, y compris Attaque frontale,
