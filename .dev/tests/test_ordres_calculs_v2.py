@@ -314,6 +314,22 @@ class TestOrdresCalculsV2(unittest.TestCase):
         transmission.assert_called_once_with('camp1')
         selection.assert_not_called()
 
+    def test_muraille_ne_reselectionne_pas_general_disparu(self):
+        from unittest.mock import patch
+        from pathlib import Path
+        import combats
+        vivant = {'id': 1, 'chemin': Path('/game/general_vivant')}
+        mort = {'id': 2, 'chemin': Path('/game/general_mort')}
+        with patch.object(Path, 'is_dir', side_effect=lambda p: p.name == 'general_vivant'), patch.object(
+                combats.ordres_pipeline, 'identite',
+                side_effect=lambda g: ('j1', f"g{g['id']}")), patch.object(
+                combats, 'prochain_avant_muraille',
+                return_value={'choisi': None, 'previsions': ()}) as selection:
+            self.assertEqual(combats.enchainer_avants_muraille(
+                (vivant, mort), object(), aleatoire=random.Random(5),
+                engager=lambda _: None), ())
+        self.assertEqual(tuple(x['id'] for x in selection.call_args.args[0]), (1,))
+
     def test_muraille_arrete_apres_perte_qg_sans_interrompre_choc(self):
         from unittest.mock import patch
         import combats
