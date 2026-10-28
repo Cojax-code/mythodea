@@ -661,9 +661,11 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
         for camp, adversaire in ((camp_1, general_camp_2),
                                  (camp_2, general_camp_1)):
             if 'muraille_humaine' in formations.get(camp, {}).get('ordres', ()):
+                simulateur = random.Random()
+                simulateur.setstate(random.getstate())
                 murailles[camp] = preparer_muraille_territoire(
                     generaux_territoire, formations, camp, adversaire,
-                    aleatoire=random)
+                    aleatoire=simulateur)
         if murailles:
             raise NotImplementedError(
                 'Muraille humaine : préparation territoriale raccordée, '
