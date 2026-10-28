@@ -84,14 +84,16 @@ class TestOrdresCalculsV2(unittest.TestCase):
         vue.present.return_value = True
         vue.supprimer_general_si_vide.return_value = False
         class Contexte:
+            def __init__(self, valeur):
+                self.valeur = valeur
             def __enter__(self):
-                return []
+                return self.valeur
             def __exit__(self, *_):
                 return False
-        with patch.object(combats.ordres_pipeline, 'duel', return_value=Contexte()), patch.object(
+        with patch.object(combats.ordres_pipeline, 'duel', return_value=Contexte([])), patch.object(
                 combats.ordres_pipeline, 'participations_duel',
-                return_value=Contexte()), patch.object(
-                combats.unites, 'duel', return_value=Contexte()), patch.object(
+                return_value=Contexte(vue)), patch.object(
+                combats.unites, 'duel', return_value=Contexte(None)), patch.object(
                 combats.ordres_pipeline, 'rafales', return_value=[]), patch.object(
                 combats, '_combat_entre_generaux', return_value={'chocs': [], 'manoeuvres': []}) as calcul:
             combats.combat_entre_generaux(a, b, participants=vue,
