@@ -1042,7 +1042,8 @@ def prochain_avant_muraille(generaux_allies, general_adverse, *, aleatoire,
 
 
 
-def engager_avant_muraille(general_allie, general_adverse, *, participants=None):
+def engager_avant_muraille(general_allie, general_adverse, *, participants=None,
+                           generaux_muraille=None, aleatoire=None):
     """Résout un choc Avant/Avant de Muraille avec le moteur réel existant.
 
     Pertes, moral, blessures, XP et effets après confrontation suivent
@@ -1066,8 +1067,65 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None)
         general_allie['joueur']: participants.blocs(general_allie),
         general_adverse['joueur']: participants.blocs(general_adverse),
     }
-    return confrontation_directe(
-        armee, general_allie, general_adverse, 'avant', participants=participants)
+    if generaux_muraille is None:
+        return confrontation_directe(
+            armee, general_allie, general_adverse, 'avant', participants=participants)
+
+    # Le calcul des dégâts reste celui des deux blocs réellement opposés.
+    # Seule la répartition des pertes subies par le camp Muraille est collective.
+    # Chaque soldat reste sur son bloc et garde le moral de son général.
+    aleatoire = random if aleatoire is None else aleatoire
+    membres = tuple(generaux_muraille)
+    identites = [ordres_pipeline.identite(g) for g in membres]
+    engage = ordres_pipeline.identite(general_allie)
+    if engage not in identites or len(identites) != len(set(identites)):
+        raise ValueError('Le général engagé doit appartenir une seule fois à Muraille.')
+    if any(g.get('camp', g['joueur']) != general_allie.get('camp', general_allie['joueur'])
+           for g in membres):
+        raise ValueError('Muraille ne peut réunir deux camps.')
+    blocs = {ordres_pipeline.identite(g): participants.blocs(g)['avant'] for g in membres}
+    if any(b.get('boucliers') or b.get('soutiens') or
+           (b['nombre'] and any(unites.etiquette(b['type'], e)
+            for e in ('bouclier_vivant', 'propagation', 'non_combattant')))
+           for b in blocs.values()):
+        raise NotImplementedError('Muraille : capacités spéciales collectives non raccordées.')
+    for g in membres:
+        if bouclier_vivant.presence_bouclier(g):
+            raise NotImplementedError('Muraille : priorité Bouclier non raccordée.')
+    actif = blocs[engage]
+    adverse = armee[general_adverse['joueur']]['avant']
+    if not actif['nombre'] or not adverse['nombre']:
+        return None
+    fatigue_1 = participants.fatigue(general_allie, actif)
+    fatigue_2 = participants.fatigue(general_adverse, adverse)
+    survivants_1, survivants_2 = combat_bloc(
+        actif, adverse, fatigue_1, fatigue_2, 'avant', 'avant',
+        general_1=general_allie, general_2=general_adverse)
+    soldats.affrontement(general_allie, general_adverse)
+    nombre_pertes = actif['nombre'] - survivants_1
+    selection = soldats.repartir_victimes_muraille(
+        blocs, nombre_pertes, engage, aleatoire)
+    moraux = {ordres_pipeline.identite(g): moral_des_pertes(
+        blocs[ordres_pipeline.identite(g)], g, participants=participants)
+        for g in membres}
+    pertes_collectives = soldats.appliquer_victimes_muraille(
+        blocs, selection, moraux, aleatoire)
+    ordres_pipeline.verifier_qg()
+    pertes_adverses = supprimer_unites(
+        adverse, survivants_2, general_adverse, participants=participants)
+    pertes_alliees = [p for groupe in pertes_collectives.values() for p in groupe]
+    unites.apres_confrontation(general_allie, general_adverse,
+                              'avant', 'avant', actif, adverse,
+                              pertes_alliees, pertes_adverses)
+    for g in membres:
+        if g['chemin'].exists():
+            generaux.supprimer_general_si_vide(g)
+    if general_adverse['chemin'].exists():
+        generaux.supprimer_general_si_vide(general_adverse)
+    return dict(moment='Choc', bloc_1='avant', bloc_2='avant',
+                initial_1=actif['nombre'] + len(selection[engage]),
+                final_1=actif['nombre'], final_2=adverse['nombre'],
+                pertes_collectives=pertes_collectives)
 
 
 def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
