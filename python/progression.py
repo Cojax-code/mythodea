@@ -126,9 +126,9 @@ def unite_autorisee(fiche, type_unite):
     return unites.ordres_classiques(type_unite) or est_zombie(fiche)
 
 
-def nature_autorise_ordre(fiche, ordre):
+def nature_autorise_ordre(fiche, ordre, identifiant=None):
     """Politique commune de race et de nature, hors acquisition/disponibilité."""
-    if not ordre_autorise(fiche, ordre.get('nom')):
+    if not ordre_autorise(fiche, identifiant if identifiant is not None else ordre.get('nom')):
         return False
     if est_zombie(fiche):
         return True
@@ -166,7 +166,7 @@ def evolutions_eligibles(fiche, catalogue=None, apprentissage=True):
         categorie = evolution['categorie']
         if categorie == 'ordre':
             ordre = catalogues.ORDRES.get(evolution.get('cible', identifiant), {})
-            if not ordre_autorise(fiche, ordre.get('nom')):
+            if not ordre_autorise(fiche, evolution.get('cible', identifiant)):
                 continue
         if not (categorie == 'ordre' and est_zombie(fiche)) and not compatible(
                 fiche, evolution['natures'], apprentissage):
