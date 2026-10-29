@@ -52,8 +52,9 @@ def compatibilite_formations(ordres):
     couples = sorted(uniques, key=lambda ordre: (
         0 if isinstance(ordre, str) else 1, ordre))
     interdites, ouvertes = [], []
+    identifiants = {ordre: _identifiant_ordre(ordre) for ordre in couples}
     for a, b in combinations(couples, 2):
-        ids = frozenset((_identifiant_ordre(a), _identifiant_ordre(b)))
+        ids = frozenset((identifiants[a], identifiants[b]))
         # Deux représentations du même ordre ne créent pas de conflit.
         if len(ids) < 2:
             continue
