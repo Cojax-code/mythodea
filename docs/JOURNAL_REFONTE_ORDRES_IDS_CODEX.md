@@ -162,3 +162,7 @@ Commit `106ecf2` — `.dev/tests/test_formations_v2.py` seulement.
 - Vérification sur copie isolée de `Mythodea_code.zip` avec les six tests IDs corrigés : `PYTHONPATH=python:.dev/tests python3 -B -m unittest -q test_formations_v2` : **23 tests, OK**, ~9,8 secondes.
 - Avant correction : 23 tests, 1 FAIL + 8 ERROR. Les autres fichiers de la suite et les bugs Muraille non liés à ces deux causes restent à vérifier.
 - **Aucun module du moteur ou règle de gameplay modifié.** Ne pas assimiler ces 23 réussites à la validation totale de Mythodea.
+
+### Autre correction de mock — Grande Muraille
+
+Commit `5ce498e` — `.dev/tests/test_ordres_calculs_v2.py` seulement : `patch.object(Path, 'is_dir', autospec=True, side_effect=...)` transmet correctement le chemin au mock, alors que la version précédente causait `TypeError: <lambda>() missing 1 required positional argument: 'p'`. Validation locale : `PYTHONPATH=python:.dev/tests python3 -B -m unittest -q test_ordres_calculs_v2` : **40 tests, OK**. Aucun changement du moteur. Les autres anomalies de Grande Muraille demeurent non validées.
