@@ -43,12 +43,12 @@ class EffetsQG(unittest.TestCase):
             qg = self.qg(joueur, [1008], nature='instinctif')
             with self.bataille():
                 with ordres_pipeline.duel(a, b) as decisions:
-                    self.assertTrue(ordres_pipeline.effet(a, 'orc_un_jour_orc_toujour'))
+                    self.assertTrue(ordres_pipeline.effet(a, 1008))
                     self.assertEqual(decisions[0]['pc'], 40)
                     self.assertEqual(decisions[0]['donneur_general'], 'general2')
                 self.ordres(a, [1010], pc=1)
                 with ordres_pipeline.duel(a, b) as decisions:
-                    self.assertFalse(ordres_pipeline.effet(a, 'orc_un_jour_orc_toujour'))
+                    self.assertFalse(ordres_pipeline.effet(a, 1008))
                     self.assertEqual(decisions[0]['pc'], 1)
                     self.assertEqual(decisions[0]['donneur_general'], 'general3')
             (qg['chemin'] / 'qg.txt').unlink()
@@ -71,10 +71,10 @@ class EffetsQG(unittest.TestCase):
             a['caracteristiques'] = dict(etat_zombie=False)
             avant = copy.deepcopy(self.progression.charger())
             with self.bataille(), ordres_pipeline.duel(a, b) as decisions:
-                self.assertTrue(ordres_pipeline.effet(a, 'propagafion'))
-                self.assertFalse(ordres_pipeline.effet(a, 'etincellant'))
-                self.assertFalse(ordres_pipeline.effet(a, 'orc_un_jour_orc_toujour'))
-                self.assertTrue(ordres_pipeline.effet(b, 'orc_un_jour_orc_toujour'))
+                self.assertTrue(ordres_pipeline.effet(a, 1012))
+                self.assertFalse(ordres_pipeline.effet(a, 1014))
+                self.assertFalse(ordres_pipeline.effet(a, 1008))
+                self.assertTrue(ordres_pipeline.effet(b, 1008))
                 demandes_a = [i for d in decisions if d['joueur'] == joueur for i in d['demandes']]
                 self.assertEqual(demandes_a, [1012])
             self.assertEqual(self.progression.charger(), avant)
@@ -96,25 +96,25 @@ class EffetsQG(unittest.TestCase):
         with self.bataille():
             with ordres_pipeline.duel(a, b):
                 self.combats.supprimer_unites(self.infos(qg), 0, qg)
-                self.assertTrue(ordres_pipeline.effet(a, 'orc_un_jour_orc_toujour'))
-                self.assertTrue(ordres_pipeline.effet(a, 'etincellant'))
+                self.assertTrue(ordres_pipeline.effet(a, 1008))
+                self.assertTrue(ordres_pipeline.effet(a, 1014))
             self.speciale(qg, 'piquier', 9)
             with ordres_pipeline.duel(a, b) as decisions:
                 self.assertEqual(decisions, [])
-                self.assertFalse(ordres_pipeline.effet(a, 'etincellant'))
+                self.assertFalse(ordres_pipeline.effet(a, 1014))
 
     def test_qg_multiple_non_appris_et_nature_ne_donnent_aucun_global(self):
         a, b = self.troupe('j1', 'piquier'), self.troupe('j2', 'piquier')
         self.ordres(a); self.ordres(b)
         qg = self.qg('j1', [1014], nature='instinctif')
         with self.bataille(), ordres_pipeline.duel(a, b):
-            self.assertFalse(ordres_pipeline.effet(a, 'etincellant'))
+            self.assertFalse(ordres_pipeline.effet(a, 1014))
         self.ordres(qg, texte='1-5')
         with self.bataille(), ordres_pipeline.duel(a, b):
-            self.assertFalse(ordres_pipeline.effet(a, 'etincellant'))
+            self.assertFalse(ordres_pipeline.effet(a, 1014))
         self.declarer(a)
         with self.bataille(), ordres_pipeline.duel(a, b):
-            self.assertFalse(ordres_pipeline.effet(a, 'etincellant'))
+            self.assertFalse(ordres_pipeline.effet(a, 1014))
 
     def test_global_formule_egalite_normaux_et_contre_ordre(self):
         a, b = self.troupe('j1', 'piquier'), self.troupe('j2', 'piquier')
@@ -130,8 +130,8 @@ class EffetsQG(unittest.TestCase):
         registre['j2:general2']['etat_zombie'] = False
         self.progression.sauvegarder(registre)
         with self.bataille(), ordres_pipeline.duel(a, b):
-            self.assertTrue(ordres_pipeline.effet(a, 'etincellant'))
-            self.assertTrue(ordres_pipeline.effet(b, 'confinement'))
+            self.assertTrue(ordres_pipeline.effet(a, 1014))
+            self.assertTrue(ordres_pipeline.effet(b, 1013))
 
     def test_confinement_neutralise_conversion_reelle_et_preserve_soldats(self):
         a = self.troupe('j1', 'zombie', 1, 'arriere')
@@ -168,21 +168,21 @@ class EffetsQG(unittest.TestCase):
             self.progression.sauvegarder(registre)
             avant = copy.deepcopy(registre)
             with self.bataille(), ordres_pipeline.duel(a, b):
-                self.assertTrue(ordres_pipeline.effet(a, 'propagafion'))
-                self.assertFalse(ordres_pipeline.effet(a, 'spora_adicte'))
+                self.assertTrue(ordres_pipeline.effet(a, 1012))
+                self.assertFalse(ordres_pipeline.effet(a, 1018))
             self.assertEqual(self.progression.charger(), avant)
         # Une fiche publique ou une mémoire ne donne pas le droit d'émettre.
         self.ordres(qg, texte='1-3', etat_zombie=True, evolution_apprise=1012)
         qg['caracteristiques'] = dict(etat_zombie=True, evolutions_acquises=[1012])
         with self.bataille(), ordres_pipeline.duel(a, b):
-            self.assertFalse(ordres_pipeline.effet(a, 'propagafion'))
+            self.assertFalse(ordres_pipeline.effet(a, 1012))
         self.ordres(qg, [1012], etat_zombie=False)
         with self.bataille(), ordres_pipeline.duel(a, b):
-            self.assertFalse(ordres_pipeline.effet(a, 'propagafion'))
+            self.assertFalse(ordres_pipeline.effet(a, 1012))
         self.ordres(qg, [1012], etat_zombie=True)
         (qg['chemin'] / 'qg.txt').unlink()
         with self.bataille(), ordres_pipeline.duel(a, b):
-            self.assertFalse(ordres_pipeline.effet(a, 'propagafion'))
+            self.assertFalse(ordres_pipeline.effet(a, 1012))
 
     def test_etincellant_manoeuvre_reelle_avant_arriere_adverse(self):
         a = self.troupe('j1', 'chevalier_clinquant', 8, 'droite')
