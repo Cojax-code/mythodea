@@ -50,7 +50,7 @@ def ordres_du_general(general, categorie=None, catalogue=None):
         if identifiant is None:
             continue
         fiche = catalogue[identifiant]
-        if not progression.ordre_autorise(general.get('caracteristiques', {}), fiche.get('nom')):
+        if not progression.ordre_autorise(general.get('caracteristiques', {}), identifiant):
             continue
         if not fiche["disponible"] or (
                 categorie is not None and fiche["categorie"] != categorie):
