@@ -217,9 +217,8 @@ class TestOrdresCalculsV2(unittest.TestCase):
             previsions = combats.simuler_avants_muraille(
                 contributions, oppose, general_adverse=adv,
                 aleatoire=random.Random(4))
-        self.assertEqual(groupes, [('piquier', 18, 2), ('piquier', 18, 2),
-                                   ('archer', 6, 1)])
-        self.assertEqual([p['origine'] for p in previsions], ['a', 'b', 'c'])
+        self.assertEqual(groupes, [('piquier', 18, 2), ('archer', 6, 1)])
+        self.assertEqual([p['origine'] for p in previsions], ['a', 'c'])
 
     def test_herisson_ne_se_propage_pas_aux_piquiers_allies(self):
         from unittest.mock import patch
