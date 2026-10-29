@@ -1291,11 +1291,19 @@ def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
     entre les chocs, jamais pendant celui déjà engagé.
     """
     if engager is None:
-        engager = lambda general: engager_avant_muraille(
-            general, general_adverse, generaux_muraille=tuple(
+        def engager(general):
+            # Les exclusions des rôles valent aussi pour le choc réel :
+            # le QG nomade et la réserve ne prêtent pas leurs soldats.
+            admissibles = ordres_calculs_v2.participants_muraille(
+                (ordres_pipeline.identite(g) for g in generaux_allies),
+                qg_nommade, reserve_strategique)
+            membres = tuple(
                 g for g in generaux_allies
-                if g.get('chemin') is None or g['chemin'].exists()),
-            aleatoire=aleatoire)
+                if ordres_pipeline.identite(g) in admissibles
+                and (g.get('chemin') is None or g['chemin'].exists()))
+            return engager_avant_muraille(
+                general, general_adverse, generaux_muraille=membres,
+                aleatoire=aleatoire)
     if not callable(engager):
         raise TypeError('Le pilote doit fournir une fonction engager.')
     if camp is not None:
