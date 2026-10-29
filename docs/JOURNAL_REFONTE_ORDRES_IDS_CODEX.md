@@ -250,3 +250,11 @@ Lecture de `combats.engager_avant_muraille`, `combats.simuler_avants_muraille` e
 - `cebdb24` (`.dev/tests/test_ordres_calculs_v2.py`) : deux tests de régression, relais malgré `final_1 > 0` lorsque `combattants_1 == 0`, et arrêt malgré `final_2 > 0` lorsque `combattants_2 == 0`.
 
 **A vérifier par Codex** : exécuter tests ciblés et suite complète, avec scénarios de combat réel et moral 0/100 ; contrôler aussi l'intégration de ces deux nouveaux champs aux rapports. Aucun test d'exécution sur la branche GitHub n'a été réalisé durant cette modification, et il reste à auditer d'éventuels usages de `final_1` / `final_2` pour déterminer les engagements ailleurs dans le moteur.
+
+## Audit pondération x2 / représentant Muraille — 29 octobre 2026
+
+Le tirage `soldats.repartir_victimes_muraille` privilégie par poids 2 les soldats du général représentant, poids 1 ceux des autres contributeurs de même type ; tirage sans remise, victimes rattachées à leurs vrais propriétaires, et moral traité ensuite séparément. Les tests statistiques préexistants vérifient approximativement le ratio x2. Aucun changement de pondération ni de moral.
+
+**Incohérence corrigée** : les prévisions triaient les membres d'un bloc de même type par emplacement puis identité, mais `engager_avant_muraille` préservait l'ordre d'entrée. Pour un tirage reproductible, `e0812b8` ordonne désormais les contributeurs réels comme ceux des prévisions, avant la création du pool et le tirage. Le général engagé / représentant reste celui transmis par la sélection, sans changement de règle.
+
+**Régression ajoutée** : `4dcae5c` teste que le tirage reçoit les blocs dans l'ordre canonique même si les généraux sont fournis dans l'ordre inverse, et que la priorité x2 reste attachée au représentant engagé. À lancer sous Linux par Codex avec les tests `test_ordres_calculs_v2`, tests de prévision et suite complète. Pas de suite exécutée dans cette intervention ; prudence sur les autres effets aléatoires et rapports de combat.
