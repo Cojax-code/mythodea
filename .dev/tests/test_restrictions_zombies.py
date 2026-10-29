@@ -37,12 +37,13 @@ class RestrictionsZombies(unittest.TestCase):
             nom = ordre['nom']
             self.assertEqual(self.progression.ordre_autorise(fiche, nom), nom in autorises)
             self.assertEqual(self.progression.general_recoit_ordre(z, nom), nom in autorises)
-        contexte = {ordres_pipeline.identite(z): dict(effets={o['nom'] for o in self.combats.catalogues.ORDRES.values()})}
+        contexte = {ordres_pipeline.identite(z): dict(effets=set(self.combats.catalogues.ORDRES))}
         jeton = ordres_pipeline._duel.set(contexte)
         self.addCleanup(ordres_pipeline._duel.reset, jeton)
         z['caracteristiques'] = dict(etat_zombie=False)
-        for nom in contexte[ordres_pipeline.identite(z)]['effets']:
-            self.assertEqual(ordres_pipeline.effet(z, nom), nom in autorises)
+        for identifiant in contexte[ordres_pipeline.identite(z)]['effets']:
+            self.assertEqual(ordres_pipeline.effet(z, identifiant),
+                             self.combats.catalogues.ORDRES[identifiant]['nom'] in autorises)
 
     def test_unites_zombies_interdites_audit_et_publication_sans_sanction_inventee(self):
         for numero, type_unite in enumerate(('zombie', 'Trop_gros_zombie'), 1):
@@ -144,8 +145,8 @@ class RestrictionsZombies(unittest.TestCase):
         (qg['chemin'] / 'ordre.txt').write_text('2-5\n2-6-1-2', encoding='utf-8')
         with self.bataille(), ordres_pipeline.retraites_apres_choc(lambda g: self.fail('Zombie en fuite')):
             with ordres_pipeline.duel(z, b):
-                self.assertFalse(ordres_pipeline.effet(z, 'gros_poisson'))
-                self.assertFalse(ordres_pipeline.effet(z, 'choca_fuite'))
+                self.assertFalse(ordres_pipeline.effet(z, 1017))
+                self.assertFalse(ordres_pipeline.effet(z, 1011))
                 self.assertEqual(ordres_pipeline.fuir_apres_choc((z, b)), [])
 
 
