@@ -166,3 +166,13 @@ Commit `106ecf2` — `.dev/tests/test_formations_v2.py` seulement.
 ### Autre correction de mock — Grande Muraille
 
 Commit `5ce498e` — `.dev/tests/test_ordres_calculs_v2.py` seulement : `patch.object(Path, 'is_dir', autospec=True, side_effect=...)` transmet correctement le chemin au mock, alors que la version précédente causait `TypeError: <lambda>() missing 1 required positional argument: 'p'`. Validation locale : `PYTHONPATH=python:.dev/tests python3 -B -m unittest -q test_ordres_calculs_v2` : **40 tests, OK**. Aucun changement du moteur. Les autres anomalies de Grande Muraille demeurent non validées.
+
+## Diagnostic cible Grande Muraille — 29 octobre 2026
+
+Correction certaine du test (sans changement du moteur) : `7e248a6` modifie `.dev/tests/test_ordres_pipeline_v2.py` : la formation construite directement par le test utilise `{1019, 1016}` plutot que les noms. Verification locale : `PYTHONPATH=python:.dev/tests python3 -B -m unittest -q test_ordres_pipeline_v2` : **18 tests, OK**.
+
+Deux scenarios `test_participations_temporaires` revus individuellement :
+- `test_previsions_muraille_blocs_distincts_sans_mutation_ni_classement` : **OK** sur la copie du code ; ne pas attribuer `KeyError: survivants` a ce scenario sans traceback exact.
+- `test_muraille_chaque_moral_origine_et_blessures_changent_le_classement` : **FAIL confirme** : scores reels `[3, 2]`, attente `[4, 0]` lorsque deux generaux piquiers sont regroupes avec des moraux distincts. La simulation actuelle calcule le choc par groupe de meme type, puis repartit les victimes et applique le moral individuel. L'attente pourrait predater ce fonctionnement collectif : **ne pas changer la formule ni l'assertion sans trancher explicitement la signification du score par general**.
+
+Attente de decision de gameplay sur la notation des candidats au sein d'un meme groupe de type ; validation des autres anomalies encore ouverte.
