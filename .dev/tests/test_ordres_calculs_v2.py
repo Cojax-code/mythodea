@@ -536,6 +536,61 @@ class TestOrdresCalculsV2(unittest.TestCase):
             (('j1', 'g1'), 'choc-1'),
         ))
 
+    def test_muraille_un_type_collectif_ne_revient_pas_et_autre_type_relaie(self):
+        from unittest.mock import patch
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        import combats
+        with TemporaryDirectory() as dossier:
+            base = Path(dossier)
+            generaux = [
+                dict(id=i, chemin=base / str(i)) for i in (1, 2, 3)
+            ]
+            for general in generaux:
+                general['chemin'].mkdir()
+            types = {'1': 'piquier', '2': 'piquier', '3': 'archer'}
+            demandes = []
+
+            def selection(disponibles, *_args, **_kwargs):
+                demandes.append(tuple(g['id'] for g in disponibles))
+                g = disponibles[0]
+                return {'choisi': ('j1', f"g{g['id']}")}
+
+            with patch.object(combats.ordres_pipeline, 'identite',
+                              side_effect=lambda g: ('j1', f"g{g['id']}")), patch.object(
+                    combats.generaux, 'lire_blocs_general',
+                    side_effect=lambda chemin, **_kw: {
+                        'avant': {'type': types[chemin.name]}}), patch.object(
+                    combats, 'prochain_avant_muraille', side_effect=selection):
+                engagements = combats.enchainer_avants_muraille(
+                    generaux, object(), aleatoire=random.Random(1),
+                    engager=lambda g: {'final_2': 2})
+            self.assertEqual(demandes, [(1, 2, 3), (3,)])
+            self.assertEqual([g for g, _ in engagements],
+                             [('j1', 'g1'), ('j1', 'g3')])
+
+    def test_muraille_victoire_avant_adverse_arrete_les_relais(self):
+        from unittest.mock import patch
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        import combats
+        with TemporaryDirectory() as dossier:
+            base = Path(dossier)
+            generaux = [dict(id=i, chemin=base / str(i)) for i in (1, 2)]
+            for general in generaux:
+                general['chemin'].mkdir()
+            with patch.object(combats.ordres_pipeline, 'identite',
+                              side_effect=lambda g: ('j1', f"g{g['id']}")), patch.object(
+                    combats.generaux, 'lire_blocs_general',
+                    return_value={'avant': {'type': 'piquier'}}), patch.object(
+                    combats, 'prochain_avant_muraille',
+                    return_value={'choisi': ('j1', 'g1')}) as selection:
+                engagements = combats.enchainer_avants_muraille(
+                    generaux, object(), aleatoire=random.Random(1),
+                    engager=lambda g: {'final_2': 0})
+            self.assertEqual(len(engagements), 1)
+            selection.assert_called_once()
+
     def test_muraille_selection_sarrete_si_plus_de_cible(self):
         from unittest.mock import patch
         import combats
