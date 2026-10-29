@@ -1264,7 +1264,8 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None,
         blocs, selection, moraux, aleatoire)
     ordres_pipeline.verifier_qg()
     pertes_adverses = supprimer_unites(
-        adverse, survivants_2, general_adverse, participants=participants)
+        adverse, survivants_2, general_adverse, participants=participants,
+        aleatoire=aleatoire)
     pertes_alliees = [p for groupe in pertes_collectives.values() for p in groupe]
     unites.apres_confrontation(general_allie, general_adverse,
                               'avant', 'avant', actif, adverse,
@@ -1425,11 +1426,12 @@ def moral_des_pertes(infos, general=None, *, participants=None):
 
 
 def supprimer_unites(infos, survivants, general=None, *, participants=None,
-                    unites_prioritaires=()):
+                    unites_prioritaires=(), aleatoire=None):
     if participants is not None and participants.groupe:
         participants.groupe.bilan()
     pertes = soldats.pertes(infos, survivants,
-                           moral_des_pertes(infos, general, participants=participants), random,
+                           moral_des_pertes(infos, general, participants=participants),
+                           random if aleatoire is None else aleatoire,
                            unites_prioritaires=unites_prioritaires)
     ordres_pipeline.verifier_qg()
     if participants is not None and participants.groupe:
