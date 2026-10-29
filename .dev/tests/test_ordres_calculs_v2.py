@@ -455,6 +455,24 @@ class TestOrdresCalculsV2(unittest.TestCase):
         self.assertEqual(resultats, ((('j1', 'g1'), {'moment': 'Choc'}),))
         choc.assert_called_once()
 
+    def test_muraille_exclusions_qg_reserve_respectees_au_choc_reel(self):
+        from unittest.mock import patch
+        import combats
+        a, qg, reserve = ({'id': i} for i in (1, 2, 3))
+        identite = lambda g: ('j1', f"g{g['id']}")
+        with patch.object(combats.ordres_pipeline, 'identite',
+                          side_effect=identite), patch.object(
+                combats, 'prochain_avant_muraille',
+                side_effect=[{'choisi': ('j1', 'g1')}, {'choisi': None}]), patch.object(
+                combats, 'engager_avant_muraille',
+                return_value={'final_2': 1}) as choc:
+            combats.enchainer_avants_muraille(
+                [a, qg, reserve], object(), aleatoire=random.Random(1),
+                qg_nommade=('j1', 'g2'),
+                reserve_strategique=('j1', 'g3'))
+        choc.assert_called_once()
+        self.assertEqual(choc.call_args.kwargs['generaux_muraille'], (a,))
+
     def test_muraille_utilise_qg_territorial_pour_les_designations(self):
         from unittest.mock import patch
         import combats
