@@ -199,3 +199,9 @@ Points de vigilance pour Codex :
 - [ ] Verifier qu'apres chaque choc les effectifs sont relus et que les autres types restent intacts ; verifier egalement le cas de plusieurs generaux du meme type et la limite d'engagement par choc initial.
 - [ ] Examiner les autres tests de previsions qui supposaient un resultat par general, ainsi que l'effet des differentes fatigues, moraux et bonus individuels sur le score collectif.
 - [ ] Lancer les tests cibles complets puis la suite generale et consigner tout echec restant.
+
+## Audit complémentaire Muraille — décision nécessaire
+
+Lecture de `combats.enchainer_avants_muraille()` et `engager_avant_muraille()` : le pilote retire de `disponibles` seulement l'identité du général représentant après un choc, alors que le choc a employé les Avant de **tous** les généraux du même type. Ceux-ci peuvent donc rester candidats au choc suivant via un autre représentant. Inversement, un type représenté par un seul général ne peut plus être choisi, même s'il conserve des soldats. Ce comportement n'est pas une application uniforme de la règle de recalcul collectif après chaque choc.
+
+**Décision demandée avant correction :** un bloc collectif de type déjà engagé et survivant peut-il être sélectionné de nouveau au choc initial suivant contre le même Avant adverse, ou chaque bloc collectif n'a-t-il qu'un seul engagement au choc initial ? Selon la réponse, le pilote doit conserver ou retirer l'ensemble des contributeurs du type après un engagement. Vérifier également l'arrêt lors de la disparition du général adverse et les règles des Avant exclus de la manoeuvre. Aucun changement du moteur dans cet audit.
