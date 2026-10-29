@@ -452,7 +452,8 @@ def formations_retenues(forces):
         general = next((g for g in forces[camp].values()
                         if g and g.get('total_unites', 0)), None)
         donneurs.append(intention(general, 'globale') if general else None)
-    formations_territoriales = frozenset((1015, 1016, 1019))
+    # 1019 est archivé : ne jamais le considérer comme formation active.
+    formations_territoriales = frozenset((1015, 1016))
     if not any(
             d and any(i in formations_territoriales
                       and catalogues.ORDRES[i]['disponible']
