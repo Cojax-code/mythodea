@@ -155,7 +155,7 @@ def _ordres_eligibles(identifiants, nature, categorie, catalogue, acquis, profil
                 and not progression.est_zombie(profil) and identifiant not in acquis):
             continue
         ordre = catalogue.get(identifiant)
-        if ordre and not progression.nature_autorise_ordre(profil, ordre):
+        if ordre and not progression.nature_autorise_ordre(profil, ordre, identifiant):
             continue
         if ordre and ordre.get('acquisition_requise') and identifiant not in acquis:
             continue
