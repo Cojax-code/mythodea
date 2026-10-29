@@ -101,3 +101,22 @@ Attention : les tests du dépôt peuvent encore attendre des noms dans les conte
 - **Statut final :** EN ATTENTE DE VALIDATION
 
 **Prochaine étape recommandée :** confier ce lot à Codex et stabiliser la V2.0 avant d'envisager d'autres refontes.
+
+## Première campagne exécutée sur ZIP utilisateur — 29 octobre 2026
+
+Source : archive `Mythodea_code.zip` reçue dans la conversation, extraite dans un répertoire isolé ; aucune modification des fichiers Python sur GitHub.
+
+- **Compilation** : `python3 -m compileall -q python .dev/tests` : succès (code retour 0).
+- **Suite complète** : `PYTHONPATH=python:.dev/tests python3 -B -m unittest discover -s .dev/tests -v` : interrompue par la limite d'exécution pendant `test_audit_v2`, sans bilan final. Ne pas déclarer la suite réussie.
+- **Suite ciblée** : modules `test_formations_v2`, `test_ordres_calculs_v2`, `test_ordres_conception_v2`, `test_ordres_confrontation_v2`, `test_ordres_effets_v2`, `test_ordres_pipeline_v2`, `test_qg_effets_v2`, `test_qg_retraites_v2`, `test_soldats_formation` : interrompue pendant `test_qg_effets_v2`. Parmi **181 résultats affichés**, 21 ont le statut FAIL ou ERROR. Ce décompte n'est pas un résultat final d'une suite complète.
+- **Reproduction indépendante de quatre échecs ciblés** : 4 tests exécutés, 4 FAIL, en 0,629 s.
+
+Échecs reproduits :
+1. `test_ordres_pipeline_v2.PipelineOrdresTest.test_muraille_territoriale_exclut_qg_reserve_et_zombie` : participants `()` au lieu d'un général attendu.
+2. `test_qg_effets_v2.EffetsQG.test_destruction_pendant_duel_preserve_transmis_et_interdit_suivant` : `effet(a, 'orc_un_jour_orc_toujour')` faux au lieu de vrai.
+3. `test_qg_effets_v2.EffetsQG.test_global_formule_egalite_normaux_et_contre_ordre` : `effet(a, 'etincellant')` faux au lieu de vrai.
+4. `test_qg_effets_v2.EffetsQG.test_propagafion_zombie_toutes_natures_qg_acquisition_et_profil_prive` : `effet(a, 'propagafion')` faux au lieu de vrai.
+
+**Diagnostic provisoire** : plusieurs tests attendent des noms alors que le moteur utilise maintenant des IDs. Cela explique probablement certains FAIL, **mais pas nécessairement les autres erreurs de combat et de formation**. Codex doit examiner les traces complètes et vérifier le contrat avant de corriger. Ne pas faire passer artificiellement les tests en rétablissant des noms dans la logique interne, ni modifier les attentes sans justification. Les échecs sont observés sur le ZIP fourni ; vérifier qu'il correspond exactement au commit GitHub visé.
+
+**Statut : validation incomplète ; anomalies avérées dans l'exécution des tests existants.**
