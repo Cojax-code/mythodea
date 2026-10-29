@@ -1,194 +1,91 @@
-# Journal de refonte des ordres par identifiants — suivi Codex
+# Validation Codex — Grande Muraille et migration des IDs
 
-Date de mise à jour : 2026-10-29  
-Branche : `feat/ordres-v2`  
-État : **modifications enregistrées, non testées**. Les tests, corrections de régression et leur validation sont réservés à Codex.
+**Branche :** `feat/ordres-v2`  
+**Dernière mise à jour :** 29 octobre 2026  
+**État :** code enregistré ; **compilation, tests et régressions non vérifiés par ChatGPT**.  
+**Décision :** geler les refontes supplémentaires jusqu'à la validation de Codex. Aucune modification de gameplay demandée.
 
-## Objectif et limites
+## 1. Contrat à préserver
 
-Utiliser les identifiants permanents de `catalogues.ORDRES` dans les calculs et comparaisons internes. Conserver les noms pour les messages et rapports, les jetons historiques (`1-2`, `3-2`, etc.) pour `ordre.txt`. **Aucun changement intentionnel de gameplay.** Avant de retirer une compatibilité historique, rechercher tous ses appelants (y compris tests). Ne pas modifier les valeurs attendues d'un test simplement pour le faire réussir.
+- Le moteur utilise les IDs permanents de `catalogues.ORDRES` pour ses décisions, formations, annulations et effets.
+- Les jetons existants (`1-2`, `3-2`...) restent valides dans `ordre.txt` ; les noms restent lisibles dans les rapports et affichages.
+- Certaines interfaces publiques de `commandement.py` et `progression.py` acceptent encore des noms pour leurs appelants existants. **Ne pas les supprimer sans inventaire complet.**
+- Ne changer ni règles, ni priorités, ni tirages RNG, ni pertes, ni formats persistants. Une incohérence de gameplay exige une décision avant correction.
+- La présence de tests dans le dépôt **ne prouve pas leur réussite**. Codex est responsable de la vérification et des corrections.
 
-## Modifications enregistrées, dans l'ordre
+## 2. Changements à valider
 
-| Commit | Fichier | Modification précise |
+### A. Grande Muraille — travaux du 28 octobre
+
+| Domaine | Modifications enregistrées | Commits de référence |
 | --- | --- | --- |
-| `5fbe87f` | `python/combats.py` | Deux lectures de l'attaque frontale emploient `catalogues.ORDRES[1002]['jeton']` au lieu du jeton `"1-2"` écrit en dur. |
-| `9068766` | `python/ordres_pipeline.py` | `formations_retenues()` retourne `ordres` comme ensemble d'IDs plutôt que noms ; comparaisons Muraille `1019` et QG nomade `1016` adaptées. |
-| `de505cd` | `python/combats.py` | Consommateurs des formations adaptées pour `1019` et `1016`. |
-| `693d578` | `python/ordres_pipeline.py` | Le contexte des effets de duel mémorise les IDs retenus, non leurs noms. `effet(general, identifiant)` et ses appels internes utilisent les IDs : `1011` Choca-fuite, `1007` Discours de la mort, `1009` Rafale ; Cruelle vérifié avec `1010`. |
-| `b6e1251` | `python/combats.py` | Effets consultés par IDs : `1014` Étincellant et `1006` Hérisson. |
-| `1063c4b` | `python/ordres_pipeline.py` | Contrôles `progression.general_recoit_ordre` sur Muraille et QG nomade convertis en `1019` et `1016`. |
-| `87a45d1` | `python/combats.py` | Contrôles de réception Attaque frontale `1002`, Muraille `1019` convertis en IDs (quatre occurrences au total). |
+| Autorité du QG | Transmission fondée sur le QG territorial ; arrêt des nouvelles désignations après destruction du QG | `607cd78`, `0052dd6`, `f2ba039` |
+| Tirage et victimes | Tirage collectif sans remise, poids ×2 du général engagé, attribution des victimes aux propriétaires, sans second tirage | `f44df7a`, `51da0e9`, `11598aa`, `8080e1c` |
+| Engagements territoriaux | Enchaînement des chocs, effectifs initiaux, exclusion des généraux disparus et garde de résolution territoriale | `792a9cf`, `c45da43`, `6b7b636`, `e21cc2f`, `c9bacf1` |
+| Suite et rapports | Pas de second choc Avant ; orientation, types, bilan d'élimination et RNG des prévisions | `7d55e46`, `c940c99`, `3aa2327`, `a32e623`, `6cc282a` |
+| Compatibilités | Confrontation des PC lorsque deux Murailles sont demandées | `6498d16` |
+| Blocs et bonus | Comparaison collective par type engagé, bonus Hérisson par général, fractions exactes, prévisions sans double tirage | `f6a52c8`, `0692c2e`, `cd1f69f`, `04be4c5`, `4f618d1` |
+| Moral et participants | Moral individuel ; identité des participants consignée pour les chocs collectifs | `a49c9de`, `15f3e85` |
 
-## Vérifications obligatoires de Codex
+### B. Passage aux IDs — travaux du 29 octobre
 
-- **Avant exécution** : vérifier que toutes les modifications précédentes sont cohérentes avec l'état de la branche ; rechercher tous les appels à `ordres_pipeline.effet`, `formations_retenues`, `generaux_en_formation`, `qg_hors_formation`, `participants_muraille_territoire` et les usages de `formation['ordres']`. Rechercher aussi les accès directs au dictionnaire `['effets']`. Les tests et autres consommateurs peuvent attendre des noms.
-- **Attention à `commandement.compatibilite_formations`** : le diagnostic `annules` reste actuellement nominal dans `preparer_compatibilites` et dans la confrontation frontale. Ne pas convertir une moitié de cette chaîne indépendamment : `frontal_autorise`, `retirer_ordres_annules`, les rapports et les confrontations doivent rester synchronisés. Cette partie **n'a pas encore été migrée**.
-- Vérifier la politique Zombie / réception d'ordres dans `progression.py` : un nom et son ID doivent donner la même permission, notamment pour Attaque frontale, Muraille et QG nomade. Ne pas changer la règle.
-- Vérifier l'ordre des généraux, les exclusions QG, la Muraille, les annulations internes et les oppositions Attaque frontale / On_melange ; conserver les séquences, les pertes, les tirages RNG et les rapports à comportement égal.
-- Vérifier le fonctionnement de Hérisson, Étincellant, Cruelle, Rafale, Discours de la mort et Choca-fuite avec des demandes valides, annulées, indisponibles et des donneurs non autorisés.
-- Vérifier la lecture des jetons historiques de `ordre.txt`, les éventuels consommateurs d'API externes et les formats persistants.
-- **Tests confiés à Codex** : compilation Python des fichiers modifiés ; tests ciblés des ordres/formations/combats ; suite complète `python3 -B -m unittest discover -s .dev/tests -v` selon `AGENTS.md`. Fournir les résultats exacts (nombre de tests, échecs, corrections effectuées), puis seulement marquer ce journal « validé ».
+| Fichiers | Modifications | Commits |
+| --- | --- | --- |
+| `combats.py` | Attaque frontale via jeton du catalogue ; effets et réceptions via IDs ; consommateurs des formations adaptés | `5fbe87f`, `de505cd`, `b6e1251`, `87a45d1` |
+| `ordres_pipeline.py` | Formations et effets de duel par IDs ; annulations et filtrage par IDs ; restrictions et sélection par IDs | `9068766`, `693d578`, `1063c4b`, `9ebccd3`, `4acc229`, `02c3dcd`, `10eb53f` |
+| `commandement.py` | Autorisations par ID et conversion nom/ID mutualisée dans le diagnostic des formations | `fa1e757`, `ca6d920` |
+| `progression.py` | Contrôles des évolutions et permissions par ID ; logique Zombie regroupée, avec compatibilité nominale préservée | `6aacb00`, `e8d1525`, `8bda055` |
+| `generaux.py` | Vérification de possession d'ordre par ID, avec jeton externe inchangé | `e19506c` |
+| `bouclier_vivant.py`, `soldats.py`, `unites.py` | Confinement 1013, Gros Poisson 1017, Orc un jour orc toujours 1008, Propagafion 1012 | `cdd6d01`, `b98137f`, `237a60b` |
 
-## Points restant à migrer ou à décider
+Les commits ci-dessus permettent de retrouver les diffs exacts ; ce document évite de recopier chaque ligne changée. Les corrections d'une éventuelle régression doivent être décrites séparément.
 
-1. `preparer_compatibilites` manipule toujours des noms, par compatibilité avec les diagnostics et les rapports ; migration concertée nécessaire.
-2. `commandement.compatibilite_formations` et `sequence_formation` acceptent encore les noms historiques et les IDs. Ne supprimer la compatibilité qu'après inventaire des appels.
-3. Les textes de rapports et affichages doivent rester lisibles avec les noms du catalogue.
-4. À cette étape, **aucune validation runtime, compilation ni test effectué** par ChatGPT.
+## 3. Checklist de validation Codex
 
-## Consigne pour la reprise
+### Priorité 1 — Cohérence des interfaces ID/nom
 
-Lire ce journal **et les diffs des commits**, puis comparer au code courant avant toute nouvelle refonte. Ce document décrit ce qui a effectivement été édité ; il ne garantit pas l'absence de régression.
+- [ ] Inventorier les appels à `ordres_pipeline.effet`, `formations_retenues`, `generaux_en_formation`, `qg_hors_formation`, `retirer_ordres_annules` et les accès directs aux contextes `effets` / `annules`.
+- [ ] Comparer les attentes des tests existants, notamment `.dev/tests/test_formations_v2.py`, avec les nouvelles valeurs internes (IDs). **Adapter uniquement les assertions dont le contrat a effectivement changé**, sans masquer un bug.
+- [ ] Vérifier `compatibilite_formations` et `sequence_formation` pour noms, IDs, entrées mixtes et paires multiples : incompatibilités, ordre des diagnostics et placement identiques à l'existant.
+- [ ] Vérifier les annulations durables, notamment Attaque frontale / On_melange, PC égaux ou différents, et disparition du donneur.
+- [ ] Vérifier la lecture des anciens jetons `ordre.txt`, les formats persistants et les noms dans les rapports.
 
-## Grande Muraille : suivi des changements du 28 octobre 2026
+### Priorité 2 — Grande Muraille
 
-Ces points sont a verifier par Codex ; aucun resultat de tests n'est confirme dans ce journal.
+- [ ] Cas concret : **18 piquiers et 6 archers** dans des blocs distincts. Si seuls les piquiers combattent, les archers ne subissent aucune perte ; tester également le cas inverse.
+- [ ] Force collective du seul type engagé, avantages et Hérisson propres aux généraux, fractions exactes et gestion des blocs vides.
+- [ ] Tirage sans remise, pondération ×2 lorsque prévue, attribution aux vrais propriétaires et absence de double tirage / double perte.
+- [ ] Moral et sauvetages propres à chaque général ; vérifier les pertes après moral.
+- [ ] Relecture des Avant à chaque engagement, exclusion des généraux disparus, arrêt des nouvelles désignations quand le QG est détruit ; aucun second choc Avant.
+- [ ] Confrontation Muraille/Muraille, PC et incompatibilités ; ne pas supprimer arbitrairement un `NotImplementedError` relatif à une règle non tranchée.
+- [ ] Prévisions sans mutation ni consommation du RNG réel, reproductibilité, orientation des camps, participants et effectifs dans les rapports.
 
-- QG territorial et fin des nouvelles selections apres destruction du QG.
-- Tirage collectif sans remise, avec ponderation x2 pour le general engage.
-- Victimes retirees uniquement du type de bloc engage et attribuees a leur general d'origine.
-- Exemple : si 18 piquiers combattent et 6 archers restent inactifs, les archers ne perdent aucun soldat.
-- Multiplicateurs et bonus Herisson calcules pour chaque general, avec fractions exactes.
-- Moral propre a chaque general, sans double application des pertes.
-- Enchainement des chocs, exclusion des generaux disparus et aucun second choc Avant.
-- Rapports coherents, orientation des camps, effectifs et victimes, previsions sans mutation et RNG inchange.
-- Confrontation de deux Murailles et regles de PC.
+### Priorité 3 — Autres ordres, progression et régression
 
-Commits reperes : 607cd78, f44df7a, 11598aa, 8080e1c, 792a9cf, c45da43, 6b7b636, 7d55e46, c940c99, 6cc282a, f6a52c8, 0692c2e, cd1f69f, 04be4c5, 4f618d1, a49c9de, 15f3e85.
+- [ ] Hérisson, Étincellant, Cruelle, Rafale, Discours de la mort, Choca-fuite, Gros Poisson, Confinement, Orc un jour orc toujours et Propagafion : activation, annulation, indisponibilité et conditions d'éligibilité.
+- [ ] Restrictions Zombie / non-Zombie : **émission et réception distinctes** ; IDs et anciens noms acceptés aux interfaces prévues ; ordres inconnus.
+- [ ] Acquisition, nature (y compris hybrides), évolutions ciblées, possession d'ordres et absence de permissions accidentelles.
+- [ ] Aucune différence non voulue de déroulement, pertes, rapports ou tirages RNG par rapport au gameplay spécifié.
 
-Codex doit verifier les tests deja ecrits, executer les tests cibles et la suite complete prevue par AGENTS.md, puis documenter les resultats reels.
+## 4. Exécution et restitution attendues
 
-## Reprise du 29 octobre : annulations des formations
+Codex doit :
 
-Commit : 9ebccd3.
+1. Lire `AGENTS.md`, `MYTHODEA_SPEC.md`, `SURVIE_SPEC.md` selon le périmètre, ainsi que les fichiers et tests pertinents.
+2. Compiler les modules Python modifiés, puis exécuter les tests ciblés (formations, ordres, Muraille, progression).
+3. Exécuter la suite complète prévue par `AGENTS.md` : `python3 -B -m unittest discover -s .dev/tests -v`.
+4. Corriger uniquement les régressions confirmées ; **ne pas modifier le gameplay sans accord explicite**.
+5. Renseigner dans ce journal la date, le commit validé, les commandes, le nombre de tests réussis/échoués, les corrections, les cas non couverts et les blocages.
 
-Fichier modifie : python/ordres_pipeline.py.
+## 5. Résultats Codex — à compléter après exécution
 
-- preparer_compatibilites construit une collection d'identifiants d'ordres ; Attaque frontale y entre par l'ID 1002 et le jeton du catalogue.
-- Les incompatibilites continuent a passer par commandement.compatibilite_formations, qui sait deja recevoir des IDs.
-- Le contexte interne des annulations conserve des IDs ; confronter_frontal_melange y ajoute directement les identifiants annules.
-- frontal_autorise verifie l'ID 1002.
-- Le rapport convertit les IDs des deux formations en noms du catalogue pour rester lisible.
+- **Commit / date de validation :** à renseigner
+- **Compilation :** non vérifiée
+- **Tests ciblés :** non exécutés ici
+- **Suite complète :** non exécutée ici
+- **Échecs / régressions :** inconnus avant validation
+- **Corrections réalisées par Codex :** aucune consignée
+- **Décisions de gameplay en attente :** à préciser si rencontrées
+- **Statut final :** EN ATTENTE DE VALIDATION
 
-Verifications reservees a Codex :
-
-- [ ] Conflits de formations au sein d'un camp : deux ordres incompatibles sont annules, pas leurs voisins.
-- [ ] Confrontation Attaque frontale / On_melange avec PC differents ou egaux et annulations successives.
-- [ ] Aucun ordre annule n'est reactive apres disparition d'un donneur.
-- [ ] Rapports de conflits : noms des ordres, et non IDs, toujours affiches.
-- [ ] Rechercher les autres lecteurs de contexte['annules'] qui attendent potentiellement des noms.
-- [ ] Verifier avec les cas Grande Muraille puis executer les tests conformement a AGENTS.md.
-
-Statut : modification enregistree, aucun test execute dans cette session.
-
-## Suite : filtrage des annulations par identifiant
-
-Commit `4acc229` — `python/ordres_pipeline.py`.
-
-- `retirer_ordres_annules()` ne parcourt plus le catalogue pour convertir des noms : il retire directement les IDs demandes.
-- Le seul appel local encore nominal (`gros_poisson`) utilise desormais l'ID `1017`.
-- Les appels depuis les annulations de formations et les restrictions de reception fournissent deja des IDs. Aucun changement de regle intentionnel.
-
-**Attention pour Codex :** les tests dans `.dev/tests/test_formations_v2.py` utilisent encore des noms pour `commandement.compatibilite_formations()` et `sequence_formation()`, et attendent des noms dans certains resultats. Ils appellent aussi `ordres_pipeline.effet()` avec des noms et attendent des noms dans le contexte `annules`. La migration des effets et annulations du moteur vers les IDs rend ces attentes potentiellement obsoletes : Codex doit verifier la logique reellement voulue, adapter les tests si necessaire sans masquer une regression, puis lancer les validations.
-
-- [ ] Verifier tous les appels de `retirer_ordres_annules` sur la branche, y compris dans les tests, et confirmer qu'ils fournissent des IDs.
-- [ ] Verifier le cas `gros_poisson` sans cible : l'effet ID 1017 doit etre annule.
-- [ ] Verifier cumul et persistance des annulations, attaque frontale / On_melange et effets sur zombies.
-- [ ] Conserver temporairement l'interface nom/ID de `commandement.py` tant que les consommateurs et tests ne sont pas migrés.
-
-Statut : code et notes enregistres ; tests non executes.
-
-## Inventaire des dependances aux noms — 29 octobre 2026
-
-Commit `02c3dcd` : dans `python/ordres_pipeline.py`, `ordres_du_general()` transmet desormais l'ID de l'ordre a `progression.ordre_autorise()` plutot que son nom. Cette fonction accepte deja les IDs, notamment pour les restrictions Zombie.
-
-Inventaire actuel : les noms restent necessaires dans `commandement.compatibilite_formations()` et `sequence_formation()` pour des tests et interfaces existants, dans `progression.py` pour les politiques qui prennent des noms, ainsi que pour les rapports. Les jetons de `ordre.txt` sont conserves. La suppression globale de cette compatibilite n'est donc pas realisee.
-
-Tests pour Codex :
-- [ ] Verifier le filtrage `ordres_du_general()` pour profils Zombie et non-Zombie, ordres valides et interdits.
-- [ ] Rechercher les appels de fonctions acceptant des noms avant toute suppression de compatibilite.
-- [ ] Verifier les attentes des tests de formations et du pipeline qui utilisent encore les noms.
-- [ ] Tester les annulations de formations et la Grande Muraille apres cette migration.
-
-Statut : code et journal enregistres ; aucun test execute par ChatGPT.
-
-## Lot groupe : politique de progression par IDs
-
-Commits `6aacb00` (`python/progression.py`) et `fa1e757` (`python/commandement.py`).
-
-- `nature_autorise_ordre()` peut recevoir directement l'identifiant canonique de l'ordre. La prise en charge ancienne du nom reste disponible lorsque l'ID n'est pas fourni.
-- `_ordres_eligibles()` dans `commandement.py` lui transmet desormais l'identifiant pour eviter une conversion par nom.
-- `evolutions_eligibles()` controle les ordres candidats via `evolution['cible']` ou leur ID, et non le nom de la fiche.
-- Aucun changement de gameplay voulu. Les restrictions des Zombies, des profils hybrides et les evolutions demeurent les memes.
-
-A controler par Codex :
-- [ ] Autorisations des ordres Zombie / non-Zombie et profils hybrides, avec et sans ID explicite.
-- [ ] Evolutions eligibles : categorie ordre, cible presente/absente, progression acquise, acquisition et natures autorisees.
-- [ ] Confrontation globale et duel, et ordre des candidatures.
-- [ ] Cas d'entrees de catalogue artificielles dans les tests : aucun ordre autorise par erreur.
-- [ ] Suite de tests ordres, formations et progression, puis regression complete selon AGENTS.md.
-
-Statut : changements enregistres, tests non executes ici.
-
-## Lot suivant : possession d'ordres dans generaux.py
-
-Commit `e19506c` : `generaux.general_possede_ordre()` retrouve desormais l'identifiant permanent a partir du jeton historique puis transmet cet ID a `progression.ordre_autorise()`, au lieu de convertir le jeton en nom. Le format des ordres du general et le jeton d'entree sont conserves. Aucun changement de gameplay intentionnel.
-
-Points a verifier par Codex :
-- [ ] Possession des ordres connus et inconnus : general sans ordre, avec ou sans chemin, et jeton absent du catalogue.
-- [ ] Autorisations Zombie et non-Zombie pour ordre autorise et interdit, y compris jeton inconnu.
-- [ ] Integrite des ordres lus depuis ordre.txt ; aucun changement des noms publics ni des rapports.
-- [ ] Rechercher d'autres conversions jeton vers nom uniquement pour des tests de permission ; les migrer uniquement apres inventaire.
-- [ ] Verification croisee des formations, combats et tests de regression du moteur.
-
-Statut : commit enregistre, aucun test execute ici.
-
-## Lot transversal : combat, unites et Bouclier vivant
-
-Commits : `cdd6d01` (`python/bouclier_vivant.py`), `b98137f` (`python/soldats.py`), `237a60b` (`python/unites.py`).
-
-- Bouclier vivant consulte Confinement via ID `1013`, et non le nom.
-- La permission de reception Gros Poisson est consultee via ID `1017` dans soldats.py.
-- Les effets Orc un jour orc toujours (`1008`) et Propagafion (`1012`) sont consultes via IDs dans unites.py.
-- Aucun changement de regle intentionnel ; formats historiques et noms des rapports conserves.
-
-Verifications pour Codex :
-- [ ] Confinement contre Bouclier vivant et absence de Confinement : effets inchanges.
-- [ ] Gros Poisson : reception autorisee/interdite selon le profil, sans changement de cible ni repartition des pertes.
-- [ ] Orc un jour orc toujours : bonus et conditions de declenchement inchanges.
-- [ ] Propagafion : declenchement et restrictions Zombie inchanges.
-- [ ] Tester la suite de combat et les ordres avec la migration de contexte des effets vers les IDs.
-- [ ] Rapports, reproducibilite et tests complets selon AGENTS.md.
-
-Code et notes enregistres ; aucun test execute dans cette session.
-
-## Lot 29 octobre : simplification des conversions et estimation
-
-Commits : `e8d1525` (python/progression.py) et `ca6d920` (python/commandement.py).
-
-- La restriction d'emission Zombie dans `ordre_autorise` choisit toujours entre IDs et noms compatibles mais avec une expression unique, sans changer le resultat voulu.
-- `compatibilite_formations` calcule desormais la correspondance nom/ID une seule fois par ordre distinct avant l'analyse des paires. La forme des diagnostics est preservee, y compris les noms pour les appelants encore compatibles.
-
-Codex doit verifier :
-- [ ] Egalite des diagnostics de compatibilite pour toutes les paires, les saisies nominales, numeriques et mixtes ; ordre des paires signalees conserve.
-- [ ] Restrictions Zombie et non-Zombie sur nom, ID et ordre inconnu ; reception et emission ne doivent pas etre confondues.
-- [ ] Regressions Muraille, On_melange, QG et rapports ; tests complets selon AGENTS.md.
-
-Estimation indicative : environ 80-85 % de la migration de la logique du moteur vers les IDs, **pas une mesure de couverture**. La validation finale est reservee a Codex. L'interface de compatibilite des fonctions publiques dans commandement.py et progression.py subsiste volontairement.
-
-Statut : commits enregistres, aucun test execute ici.
-
-## Lot suivant : harmonisation finale des controles Zombie et formations
-
-Commits `8bda055` (`python/progression.py`) et `10eb53f` (`python/ordres_pipeline.py`).
-
-- `progression.py` centralise dans `_ordre_zombie(ordre)` la reconnaissance des deux ordres Zombies, tant par IDs que par noms encore admis aux frontieres. Les fonctions distinctes d'emission (`ordre_autorise`) et de reception (`reception_ordre_autorisee`) partagent desormais ce controle sans changer leurs politiques respectives.
-- Dans `generaux_en_formation`, la variable de boucle est nommee `identifiant` et non `nom` : les elements de `formation['ordres']` sont deja des IDs, transmis inchanges a `general_recoit_ordre`.
-
-Tests a effectuer par Codex :
-- [ ] Comparer les decisions d'emission et de reception Zombie/non-Zombie pour IDs, anciens noms, ordres inconnus et entrees absentes.
-- [ ] Verifier l'ordre des generaux et la reception des formations Muraille, QG nomade, On_melange et cas Zombie.
-- [ ] Passer les tests cibles puis les regressions de Grande Muraille et la suite complete ; reporter les resultats reels.
-
-Statut : commits et notes enregistres ; aucun test execute ici. Ne pas supprimer la compatibilite des interfaces nominales avant inventaire complet des tests et appelants.
+**Prochaine étape recommandée :** confier ce lot à Codex et stabiliser la V2.0 avant d'envisager d'autres refontes.
