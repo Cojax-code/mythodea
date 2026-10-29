@@ -130,3 +130,16 @@ A controler par Codex :
 - [ ] Suite de tests ordres, formations et progression, puis regression complete selon AGENTS.md.
 
 Statut : changements enregistres, tests non executes ici.
+
+## Lot suivant : possession d'ordres dans generaux.py
+
+Commit `e19506c` : `generaux.general_possede_ordre()` retrouve desormais l'identifiant permanent a partir du jeton historique puis transmet cet ID a `progression.ordre_autorise()`, au lieu de convertir le jeton en nom. Le format des ordres du general et le jeton d'entree sont conserves. Aucun changement de gameplay intentionnel.
+
+Points a verifier par Codex :
+- [ ] Possession des ordres connus et inconnus : general sans ordre, avec ou sans chemin, et jeton absent du catalogue.
+- [ ] Autorisations Zombie et non-Zombie pour ordre autorise et interdit, y compris jeton inconnu.
+- [ ] Integrite des ordres lus depuis ordre.txt ; aucun changement des noms publics ni des rapports.
+- [ ] Rechercher d'autres conversions jeton vers nom uniquement pour des tests de permission ; les migrer uniquement apres inventaire.
+- [ ] Verification croisee des formations, combats et tests de regression du moteur.
+
+Statut : commit enregistre, aucun test execute ici.
