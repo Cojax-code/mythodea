@@ -330,3 +330,16 @@ Commit `fca748b` : `enchainer_avants_muraille` ouvre `unites.duel(choisi, genera
 ## Audit d'integration des priorites — limites confirmees
 
 La sequence `combat_entre_generaux` est `duel -> participations_duel -> unites.duel -> rafales -> _combat_entre_generaux`, puis `bouclier_vivant.resoudre_priorite` dans `_combat_entre_generaux`. Le pilote de Muraille execute actuellement `enchainer_avants_muraille` **avant** `combat_entre_generaux` et ne prepare ni `participations_duel` ni `rafales` avant la premiere Muraille. Ne pas deplacer arbitrairement ces priorites sans tenir compte de la vue `soldats.VueParticipants` des prets. La simulation `simuler_avants_muraille` refuse deja les boucliers et la propagation. Le pilote refuse encore deux Murailles (`NotImplementedError`). Aucune regle specifique Muraille contre Muraille n'est attestee dans ce travail : demander la regle au concepteur avant implementation. Aucun test sur Raspberry avant la campagne finale prevue.
+
+## Décision finale : Grande Muraille 1019 archivée et désactivée (29 octobre 2026)
+
+**Statut canonique : ABANDON DE L'INTÉGRATION V2.0. NE PAS RÉACTIVER, NE PAS TERMINER ET NE PAS TESTER COMME FONCTIONNALITÉ ACTIVE.** Les règles documentées et le prototype sont conservés pour une éventuelle reprise future, sans échéance. Les notes précédentes décrivant un travail « à terminer » sur Muraille sont historiques et **ne sont plus des instructions pour Codex**.
+
+- Catalogue `python/catalogues.py` : l'entrée 1019, jeton `1-9`, catégorie `globale`, était **déjà** à `disponible=False`; elle reste réservée avec son identifiant. Ne pas supprimer ni réattribuer cet ID.
+- `python/ordres_pipeline.py` : 1019 supprimé de `formations_territoriales` pour empêcher la formation de devenir active dans le processus normal (commit `96bb826`).
+- `python/combats.py` : le point d'entrée de la Muraille territoriale vérifie explicitement `catalogues.ORDRES[1019]['disponible']` avant toute préparation (commit `d1c09c7`). Les fonctions expérimentales conservées ne sont donc pas atteintes par le moteur normal.
+- Test ajouté `test_muraille_1019_desactivee_et_identifiant_conserve` (`09ea586`) pour vérifier que l'ID, son jeton et sa catégorie restent réservés et désactivés.
+- **Codex** : à la campagne finale de régression, vérifier que la présence de jetons historiques `1-9` n'active ni formation, ni bonus, ni simulation et que les autres ordres restent inchangés. Ne pas « corriger » les limites fonctionnelles de Muraille, ne pas inclure ses anciennes recherches dans les objectifs actifs ; traiter une réactivation seulement sur demande explicite du concepteur.
+- Les anciens tests du prototype peuvent rester dans `.dev/tests` comme tests de composants isolés ; ils ne valent pas validation d'une fonctionnalité active. Aucun test Raspberry Pi demandé avant la fin de tous les ordres.
+
+**Portée :** suppression des chemins d'activation normale, conservation du code expérimental pour éviter une suppression massive risquée. Aucun changement aux règles des autres ordres ni aux PC dynamiques.
