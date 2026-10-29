@@ -704,11 +704,9 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
             for identite, choc in engagements:
                 if choc is None:
                     continue
-                detail = dict(choc, muraille_general=identite)
-                if camp_muraille == camp_2:
-                    for champ in ('bloc', 'type', 'initial', 'final', 'combattants'):
-                        detail[f'{champ}_1'], detail[f'{champ}_2'] = (
-                            detail[f'{champ}_2'], detail[f'{champ}_1'])
+                detail = orienter_choc_muraille(
+                    choc, inverser=(camp_muraille == camp_2))
+                detail['muraille_general'] = identite
                 muraille_chocs.append(detail)
             rapports.afficher_et_ecrire(
                 f'Muraille humaine {camp_muraille} : '
@@ -1288,6 +1286,21 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None,
                 combattants_1=survivants_1,
                 combattants_2=survivants_2,
                 pertes_collectives=pertes_collectives)
+
+
+def orienter_choc_muraille(choc, *, inverser=False):
+    """Oriente un bilan Muraille vers les colonnes du rapport territorial.
+
+    Conserve les effectifs vivants et les combattants aptes distincts.
+    Ne modifie pas le résultat original du choc.
+    """
+    detail = dict(choc)
+    if inverser:
+        for champ in ('bloc', 'type', 'initial', 'final', 'combattants'):
+            gauche, droite = f'{champ}_1', f'{champ}_2'
+            if gauche in detail and droite in detail:
+                detail[gauche], detail[droite] = detail[droite], detail[gauche]
+    return detail
 
 
 def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
