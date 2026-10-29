@@ -258,3 +258,12 @@ Le tirage `soldats.repartir_victimes_muraille` privilégie par poids 2 les solda
 **Incohérence corrigée** : les prévisions triaient les membres d'un bloc de même type par emplacement puis identité, mais `engager_avant_muraille` préservait l'ordre d'entrée. Pour un tirage reproductible, `e0812b8` ordonne désormais les contributeurs réels comme ceux des prévisions, avant la création du pool et le tirage. Le général engagé / représentant reste celui transmis par la sélection, sans changement de règle.
 
 **Régression ajoutée** : `4dcae5c` teste que le tirage reçoit les blocs dans l'ordre canonique même si les généraux sont fournis dans l'ordre inverse, et que la priorité x2 reste attachée au représentant engagé. À lancer sous Linux par Codex avec les tests `test_ordres_calculs_v2`, tests de prévision et suite complète. Pas de suite exécutée dans cette intervention ; prudence sur les autres effets aléatoires et rapports de combat.
+
+## Audit Herisson, bonus individuels et commandement — 29 octobre 2026
+
+- `combats.combat_bloc` calcule en Grande Muraille les valeurs par contributeur (`contributions_1`) et la moyenne ponderee par effectif, ce qui evite de donner Herisson aux piquiers d'un autre general ; `simuler_avants_muraille` et `engager_avant_muraille` utilisent tous deux cette fonction. **Pas de modification necessaire identifiee sur ce point.**
+- `combats.multiplicateur` donne aussi une faiblesse x3 contre les unites a distance quand le piquier defend sous Herisson. Ce comportement, initialement suspect, est **explicitement couvert** par `test_ordres_effets_v2.test_herisson_faiblesse_distance_egalement_augmente` : ne pas inverser ce bonus sans decision du concepteur.
+- La transmission QG est verifiee entre les engagements via `transmission_muraille_active` (pas pendant le choc), et `verifier_qg` intervient apres les pertes. L'usage des effets individuels `ordres_pipeline.effet` depend du contexte du duel : validation sur batailles reelles a demander a Codex.
+- Point d'audit encore ouvert : les simulations utilisent un RNG copie alors que certaines suppressions reelles passent par le RNG global ; confirmer la reproductibilite des previsions et l'absence de tirages consommes en double en test d'integration. Ne pas modifier sans reproduction.
+
+Pas de bug certain corrige ni de tests executes pendant cet audit. Les changements eventuels doivent respecter la mecanique intentionnelle d'Herisson contre les archers.
