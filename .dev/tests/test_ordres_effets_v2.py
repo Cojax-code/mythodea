@@ -105,8 +105,8 @@ class EffetsOrdres(unittest.TestCase):
         self.ordres(a, [1006, 1007]); self.ordres(b); self.ordres(voisin, [1009])
         with ordres_pipeline.duel(a, b) as decisions:
             self.assertEqual(decisions[0]['retenus'], [1006, 1007])
-            self.assertFalse(ordres_pipeline.effet(a, 'rafale'))
-            self.assertFalse(ordres_pipeline.effet(voisin, 'rafale'))
+            self.assertFalse(ordres_pipeline.effet(a, 1009))
+            self.assertFalse(ordres_pipeline.effet(voisin, 1009))
 
     def test_discours_exact_plafond_et_aucune_mutation_persistante(self):
         a, b = self.troupe('j1', 'piquier'), self.troupe('j2', 'cavalier')
