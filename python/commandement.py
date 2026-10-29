@@ -4,42 +4,62 @@ import progression
 from itertools import combinations
 
 
-# La compatibilité des effets ne dispense pas des règles de donneur/catégorie.
-FORMATIONS = frozenset(('on_melange', 'attaque_frontale', 'reserve_strategique',
-                       'retrait_tactique', 'muraille_humaine', 'qg_nommade'))
-FORMATIONS_INCOMPATIBLES = frozenset(frozenset(paire) for paire in (
-    ('on_melange', 'attaque_frontale'),
-    ('on_melange', 'reserve_strategique'),
-    ('on_melange', 'retrait_tactique'),
-    ('attaque_frontale', 'reserve_strategique'),
-    ('attaque_frontale', 'muraille_humaine'),
-    ('muraille_humaine', 'retrait_tactique'),
+# Identifiants permanents : les chaînes publiques restent acceptées pour
+# ordre.txt, les rapports et les appelants historiques.
+FORMATIONS_IDS = frozenset((1002, 1015, 1016, 1019, 1021, 1025))
+FORMATIONS_INCOMPATIBLES_IDS = frozenset(frozenset(p) for p in (
+    (1015, 1002), (1015, 1025), (1015, 1021),
+    (1002, 1025), (1002, 1019), (1019, 1021),
 ))
-FORMATIONS_COMPATIBLES = frozenset(frozenset(paire) for paire in (
-    ('muraille_humaine', 'on_melange'),
-    ('muraille_humaine', 'reserve_strategique'),
-    ('muraille_humaine', 'qg_nommade'),
-    ('retrait_tactique', 'reserve_strategique'),
-    ('qg_nommade', 'retrait_tactique'),
-    ('qg_nommade', 'reserve_strategique'),
-    ('qg_nommade', 'on_melange'),
-    ('qg_nommade', 'attaque_frontale'),
+FORMATIONS_COMPATIBLES_IDS = frozenset(frozenset(p) for p in (
+    (1019, 1015), (1019, 1025), (1019, 1016),
+    (1021, 1025), (1016, 1021), (1016, 1025),
+    (1016, 1015), (1016, 1002),
 ))
+_NOMS_ORDRES = {fiche['nom']: identifiant
+               for identifiant, fiche in catalogues.ORDRES.items()}
+if len(_NOMS_ORDRES) != len(catalogues.ORDRES):
+    raise ValueError('Noms d\'ordres ambigus dans le catalogue.')
+
+# Compatibilité des importateurs historiques qui consultent ces constantes.
+FORMATIONS = frozenset(catalogues.ORDRES[i]['nom'] for i in FORMATIONS_IDS)
+FORMATIONS_INCOMPATIBLES = frozenset(
+    frozenset(catalogues.ORDRES[i]['nom'] for i in paire)
+    for paire in FORMATIONS_INCOMPATIBLES_IDS)
+FORMATIONS_COMPATIBLES = frozenset(
+    frozenset(catalogues.ORDRES[i]['nom'] for i in paire)
+    for paire in FORMATIONS_COMPATIBLES_IDS)
+
+
+def _identifiant_ordre(ordre):
+    """Traduit un nom historique ou un ID officiel, sans deviner de jeton."""
+    if type(ordre) is int and ordre in catalogues.ORDRES:
+        return ordre
+    if isinstance(ordre, str):
+        return _NOMS_ORDRES.get(ordre)
+    return None
 
 
 def compatibilite_formations(ordres):
-    """Diagnostique toutes les paires avant toute annulation, sans priorité.
+    """Diagnostique toutes les paires via les IDs sans modifier les entrées.
 
-    Les paires non définies restent distinctes des paires autorisées ; elles
-    ne doivent pas être activées implicitement par un futur appelant.
-    Pour_l'honneur n'a actuellement aucune exception à son non-cumul.
+    Les résultats conservent la représentation (nom ou ID) fournie par
+    l'appelant, pour préserver les lecteurs historiques.
     """
+    uniques = set(ordres)
+    inconnus = [ordre for ordre in uniques if _identifiant_ordre(ordre) is None]
+    if inconnus:
+        raise ValueError('Ordre inconnu dans la compatibilité.')
+    couples = sorted(uniques, key=lambda ordre: (_identifiant_ordre(ordre), str(ordre)))
     interdites, ouvertes = [], []
-    for a, b in combinations(sorted(set(ordres)), 2):
-        paire = frozenset((a, b))
-        if 'pour_l_honneur' in paire or paire in FORMATIONS_INCOMPATIBLES:
+    for a, b in combinations(couples, 2):
+        ids = frozenset((_identifiant_ordre(a), _identifiant_ordre(b)))
+        # Deux représentations du même ordre ne créent pas de conflit.
+        if len(ids) < 2:
+            continue
+        if 1022 in ids or ids in FORMATIONS_INCOMPATIBLES_IDS:
             interdites.append((a, b))
-        elif paire <= FORMATIONS and paire not in FORMATIONS_COMPATIBLES:
+        elif ids <= FORMATIONS_IDS and ids not in FORMATIONS_COMPATIBLES_IDS:
             ouvertes.append((a, b))
     return dict(annules=frozenset(nom for paire in interdites for nom in paire),
                 incompatibles=interdites, non_definies=ouvertes)
@@ -48,22 +68,22 @@ def compatibilite_formations(ordres):
 def sequence_formation(positions, ordres, position_qg=None, position_retrait=None):
     """Ordre logique seulement : aucun déplacement ou comblement d'une place.
 
-    Les appelants valident les ordres et fournissent les positions officielles.
     Le retrait déjà décidé vient juste avant le QG ; aucun soin n'est déduit.
+    Accepte les noms historiques et les IDs sans changer le résultat.
     """
     diagnostic = compatibilite_formations(ordres)
     if diagnostic['annules'] or diagnostic['non_definies']:
         raise ValueError('La formation doit être validée avant son placement.')
-    sequence = sorted(positions, key=int, reverse='on_melange' in ordres)
+    identifiants = {_identifiant_ordre(ordre) for ordre in ordres}
+    sequence = sorted(positions, key=int, reverse=1015 in identifiants)
     derniers = []
-    if 'retrait_tactique' in ordres and position_retrait in sequence:
+    if 1021 in identifiants and position_retrait in sequence:
         derniers.append(position_retrait)
-    if 'qg_nommade' in ordres and position_qg in sequence:
+    if 1016 in identifiants and position_qg in sequence:
         if position_qg in derniers:
             derniers.remove(position_qg)
         derniers.append(position_qg)
     return [p for p in sequence if p not in derniers] + derniers
-
 
 def effectif(points, types_unites):
     # Les appelants transmettent les types génériques, jamais leurs étiquettes.
