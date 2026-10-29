@@ -216,3 +216,13 @@ Lecture de `combats.enchainer_avants_muraille()` et `engager_avant_muraille()` :
 - Le recalcul du meilleur bloc n'a lieu que lorsqu'un bloc Muraille de remplacement devient necessaire, et non apres chaque perte individuelle au cours du meme affrontement.
 
 **A verifier/corriger dans `combats.enchainer_avants_muraille()` :** retirer des candidats tout le bloc collectif de type deja engage, pas seulement le general representant ; interrompre des que l'Avant adverse a disparu ; conserver la repartition des pertes par origine, les regles de moral et les priorites deja definies. Tests cibles necessaires (relais piquiers -> archers, victoire du premier bloc, absence de second engagement du meme type, morts/blesses). **Aucune modification Python dans cette entree.**
+
+## Correctif : relais des blocs collectifs au choc initial — 29 octobre 2026
+
+**Règle confirmée :** un affrontement oppose le bloc Avant collectif sélectionné au bloc Avant adverse jusqu'à disparition complète d'un des deux. Si l'Avant Muraille est éliminé et que l'Avant adverse survit, seuls les autres types Avant non engagés peuvent prendre le relais. Si l'Avant adverse est éliminé, la séquence s'arrête. Aucun bloc collectif du même type ne peut être sélectionné plusieurs fois sous un autre général représentant.
+
+**Code** : commit `3c524a5` (`python/combats.py`, `enchainer_avants_muraille`). Capture du type de chaque contributeur avant le choc ; retrait de tous les représentants du type engagé ; arrêt immédiat lorsque le résultat indique `final_2 == 0` ou lorsque le dossier adverse disparaît. Conservation du comportement des appels de pilotage simulés sans chemin pour les anciens tests. Aucun changement des formules de dégâts, du moral ou des pertes.
+
+**Tests** : commit `ea28008` (`.dev/tests/test_ordres_calculs_v2.py`). Deux scénarios ajoutés : deux généraux piquiers partagent un engagement puis les archers prennent le relais ; victoire du premier bloc arrête la séquence. Vérification sur copie isolée avec le même correctif et deux tests équivalents : **42/42 OK** (40 anciens tests calculs + 2 tests de relais). Les tests nouvellement publiés sur GitHub et la suite exhaustive doivent encore être exécutés par Codex sur l'état final.
+
+**Attention Codex :** vérifier sur combats réels que `final_2` reflète les survivants du bloc adverse après toutes les pertes, et que des soldats sauvés par le moral ne provoquent pas un second engagement non voulu ; revoir également le cas de plusieurs types et des exclusions QG/réserve, la disparition d'un général et la reproductibilité RNG. Valider les limitations de la gestion du général représentant et les autres interactions Muraille documentées plus haut.
