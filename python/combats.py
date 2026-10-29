@@ -1083,11 +1083,21 @@ def simuler_avants_muraille(contributions, infos_adverses, *, general_adverse,
                     for etiquette in ('bouclier_vivant', 'propagation', 'non_combattant'))):
             raise NotImplementedError('Simulation Muraille : Bouclier, Spore/Propagation ou soutien non raccordé.')
     resultat = []
-    for general, infos, _ in contributions:
-        # Un candidat engage tous les Avant de son type, sans exposer les
-        # autres types. La simulation et le vrai choc partagent la formule.
-        groupe = tuple((g, b, fatigue) for g, b, fatigue in contributions
-                       if b['type'] == infos['type'])
+    # Une seule candidature par type de bloc collectif, pas par général.
+    # Le représentant est stable même si les contributions sont inversées.
+    types_vus = set()
+    for _, infos_candidat, _ in contributions:
+        type_candidat = infos_candidat['type']
+        if type_candidat in types_vus:
+            continue
+        types_vus.add(type_candidat)
+        groupe = tuple(sorted(
+            ((g, b, fatigue) for g, b, fatigue in contributions
+             if b['type'] == type_candidat),
+            key=lambda entree: (
+                int(entree[0].get('emplacement', '999999')),
+                ordres_pipeline.identite(entree[0]))))
+        general, infos, _ = groupe[0]
         blocs = {ordres_pipeline.identite(g): b for g, b, _ in groupe}
         effectif = sum(b['nombre'] for _, b, _ in groupe)
         collectif = dict(infos, nombre=effectif,
