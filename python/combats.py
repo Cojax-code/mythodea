@@ -493,7 +493,7 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
         generaux.joueur_possede_ordre_armee(
             generaux_depart,
             camp_1,
-            "1-2"
+            catalogues.ORDRES[1002]['jeton']
         )
     )
 
@@ -501,7 +501,7 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
         generaux.joueur_possede_ordre_armee(
             generaux_depart,
             camp_2,
-            "1-2"
+            catalogues.ORDRES[1002]['jeton']
         )
     )
 
