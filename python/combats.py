@@ -706,7 +706,7 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
                     continue
                 detail = dict(choc, muraille_general=identite)
                 if camp_muraille == camp_2:
-                    for champ in ('bloc', 'type', 'initial', 'final'):
+                    for champ in ('bloc', 'type', 'initial', 'final', 'combattants'):
                         detail[f'{champ}_1'], detail[f'{champ}_2'] = (
                             detail[f'{champ}_2'], detail[f'{champ}_1'])
                 muraille_chocs.append(detail)
