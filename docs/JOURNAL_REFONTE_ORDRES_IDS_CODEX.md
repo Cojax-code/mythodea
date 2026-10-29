@@ -162,3 +162,19 @@ Verifications pour Codex :
 - [ ] Rapports, reproducibilite et tests complets selon AGENTS.md.
 
 Code et notes enregistres ; aucun test execute dans cette session.
+
+## Lot 29 octobre : simplification des conversions et estimation
+
+Commits : `e8d1525` (python/progression.py) et `ca6d920` (python/commandement.py).
+
+- La restriction d'emission Zombie dans `ordre_autorise` choisit toujours entre IDs et noms compatibles mais avec une expression unique, sans changer le resultat voulu.
+- `compatibilite_formations` calcule desormais la correspondance nom/ID une seule fois par ordre distinct avant l'analyse des paires. La forme des diagnostics est preservee, y compris les noms pour les appelants encore compatibles.
+
+Codex doit verifier :
+- [ ] Egalite des diagnostics de compatibilite pour toutes les paires, les saisies nominales, numeriques et mixtes ; ordre des paires signalees conserve.
+- [ ] Restrictions Zombie et non-Zombie sur nom, ID et ordre inconnu ; reception et emission ne doivent pas etre confondues.
+- [ ] Regressions Muraille, On_melange, QG et rapports ; tests complets selon AGENTS.md.
+
+Estimation indicative : environ 80-85 % de la migration de la logique du moteur vers les IDs, **pas une mesure de couverture**. La validation finale est reservee a Codex. L'interface de compatibilite des fonctions publiques dans commandement.py et progression.py subsiste volontairement.
+
+Statut : commits enregistres, aucun test execute ici.
