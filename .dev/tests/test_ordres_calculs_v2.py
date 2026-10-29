@@ -10,6 +10,38 @@ import ordres_calculs_v2 as calculs
 
 
 class TestOrdresCalculsV2(unittest.TestCase):
+    def test_muraille_contexte_effets_individuels_et_restauration(self):
+        from unittest.mock import patch
+        from contextlib import contextmanager
+        import ordres_pipeline as pipeline
+        dominant = {'joueur': 'j1', 'nom': 'general1'}
+        autre = {'joueur': 'j1', 'nom': 'general2'}
+        ennemi = {'joueur': 'j2', 'nom': 'general1'}
+        @contextmanager
+        def duel_simule(_d, _e):
+            jeton = pipeline._duel.set({
+                ('j1', 'general1'): {'effets': set()},
+                ('j2', 'general1'): {'effets': set()}})
+            try:
+                yield []
+            finally:
+                pipeline._duel.reset(jeton)
+        donneur = {'general': autre, 'identifiants': [1006]}
+        with patch.object(pipeline, 'duel', side_effect=duel_simule), patch.object(
+                pipeline, 'intention_personnelle',
+                return_value=donneur), patch.object(
+                pipeline.progression, 'caracteristiques_general',
+                return_value={'nature': 'stratege'}), patch.object(
+                pipeline.progression, 'reception_ordre_autorisee',
+                return_value=True), patch.object(
+                pipeline, 'points_duel_officiels', return_value=20), patch.object(
+                pipeline, 'confronter_intentions',
+                return_value={'camp_1': [1006], 'camp_2': []}):
+            with pipeline.effets_muraille(dominant, ennemi, (dominant, autre)):
+                self.assertIn(1006, pipeline._duel.get()[('j1', 'general2')]['effets'])
+                self.assertNotIn(1006, pipeline._duel.get()[('j1', 'general1')]['effets'])
+        self.assertIsNone(pipeline._duel.get())
+
     def test_prevision_muraille_fatigue_individuelle(self):
         from unittest.mock import patch
         import combats
