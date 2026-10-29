@@ -54,6 +54,13 @@ class TestOrdresCalculsV2(unittest.TestCase):
         self.assertEqual((bilan['combattants_1'], bilan['combattants_2']), (0, 1))
         self.assertEqual(combats.orienter_choc_muraille(bilan), bilan)
 
+    def test_muraille_1019_desactivee_et_identifiant_conserve(self):
+        import catalogues
+        ordre = catalogues.ORDRES[1019]
+        self.assertEqual(ordre['jeton'], '1-9')
+        self.assertEqual(ordre['categorie'], 'globale')
+        self.assertFalse(ordre['disponible'])
+
     def test_prevision_muraille_fatigue_individuelle(self):
         from unittest.mock import patch
         import combats
