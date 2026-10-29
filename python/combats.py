@@ -1274,6 +1274,11 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None,
                 initial_1=initial_allie, initial_2=initial_adverse,
                 final_1=sum(b['nombre'] for b in blocs.values()),
                 final_2=adverse['nombre'],
+                # Les sauvés par moral vivent mais ne reprennent pas
+                # le choc initial : distinguer leur présence du résultat
+                # de l'affrontement avant les sauvetages.
+                combattants_1=survivants_1,
+                combattants_2=survivants_2,
                 pertes_collectives=pertes_collectives)
 
 
@@ -1347,9 +1352,16 @@ def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
         type_engage = types_avant.get(identite)
         choc = engager(choisi)
         engagements.append((identite, choc))
-        # L'Avant adverse est vaincu : aucun autre bloc Muraille à engager.
-        if isinstance(choc, dict) and choc.get('final_2') == 0:
-            break
+        # Le moral sauve des vies, mais pas les combattants de ce choc.
+        # Une élimination avant moral détermine la fin et le relais ;
+        # final_1/final_2 restent des effectifs physiquement vivants.
+        if isinstance(choc, dict):
+            adverses_aptes = choc.get('combattants_2', choc.get('final_2'))
+            allies_aptes = choc.get('combattants_1')
+            if adverses_aptes == 0:
+                break
+            if allies_aptes is not None and allies_aptes > 0:
+                break
         # Tous les contributeurs du type engagé ont déjà combattu.
         # Un bloc d'un AUTRE type peut prendre le relais s'il reste un Avant adverse.
         disponibles = tuple(
