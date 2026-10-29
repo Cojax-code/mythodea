@@ -571,7 +571,7 @@ def fuir_apres_choc(generaux):
     import generaux as moteur_generaux
     # Les prêts reviennent avant le déplacement : un bénéficiaire sans soldats
     # propres ne peut réserver une retraite qui déplacerait un général supprimé.
-    candidats = [g for g in generaux if effet(g, 'choca_fuite') and g['chemin'].is_dir()
+    candidats = [g for g in generaux if effet(g, 1011) and g['chemin'].is_dir()
                  and moteur_generaux.total_general_depuis_chemin(g['chemin']) > 0]
     return callback(candidats) if candidats else []
 
@@ -633,7 +633,7 @@ def duel(general_1, general_2):
             if not donneur:
                 continue
             retenus = resultat[f'camp_{numero}']
-            contexte[identite(general)]['effets'].update(catalogues.ORDRES[i]['nom'] for i in retenus)
+            contexte[identite(general)]['effets'].update(retenus)
             if 1010 in retenus:
                 sources_cruelles[identite(general)] = donneur['general']
             if 1017 in retenus:
@@ -647,7 +647,7 @@ def duel(general_1, general_2):
     import generaux as moteur_generaux
     import unites
     for donneur, cible in ((general_1, general_2), (general_2, general_1)):
-        if 'cruelle' in contexte[identite(donneur)]['effets']:
+        if 1010 in contexte[identite(donneur)]['effets']:
             source = sources_cruelles[identite(donneur)]
             contexte[identite(cible)]['source_cruelle'] = source
             composition = moteur_generaux.lire_composition_general(source['chemin'])
@@ -732,17 +732,17 @@ def participations_duel(general_1, general_2, participants, decisions):
         generaux.supprimer_general_si_vide(g)
 
 
-def effet(general, nom):
+def effet(general, identifiant):
     contexte = _duel.get()
     return bool(general is not None and contexte and
-                nom in contexte.get(identite(general), {}).get('effets', ())
-                and progression.general_recoit_ordre(general, nom))
+                identifiant in contexte.get(identite(general), {}).get('effets', ())
+                and progression.general_recoit_ordre(general, identifiant))
 
 
 def moral(general, valeur, *, type_unite=None):
     """Les fractions vont jusqu'au plancher collectif des sauvetages existants."""
     import unites
-    if effet(general, 'discours_de_la_mort') and (type_unite is None or unites.ordres_classiques(type_unite)):
+    if effet(general, 1007) and (type_unite is None or unites.ordres_classiques(type_unite)):
         valeur = ordres_calculs_v2.facteur_discours_de_la_mort(valeur)
     contexte = _duel.get()
     if contexte and general is not None:
@@ -763,7 +763,7 @@ def rafales(general_1, general_2, aleatoire, resoudre_pertes, *, participants=No
     participants = participants if participants is not None else soldats.VueParticipants()
     plans = []
     for tireur, cible in ((general_1, general_2), (general_2, general_1)):
-        if not effet(tireur, 'rafale'):
+        if not effet(tireur, 1009):
             continue
         arriere = participants.blocs(tireur)['arriere']
         tirs = ordres_calculs_v2.tentatives_rafale(
