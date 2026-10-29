@@ -337,9 +337,13 @@ def filtrer_gros_poisson(beneficiaire, donneur):
 
 
 def retirer_ordres_annules(donneur, annules):
+    """Filtre par IDs, en acceptant les anciens noms dans les appels existants."""
     if donneur is None:
         return None
-    ids = [i for i in donneur['identifiants'] if catalogues.ORDRES[i]['nom'] not in annules]
+    annules = set(annules)
+    ids_annules = {i for i, fiche in catalogues.ORDRES.items()
+                  if i in annules or fiche['nom'] in annules}
+    ids = [i for i in donneur['identifiants'] if i not in ids_annules]
     if not ids:
         return None
     jetons = {catalogues.ORDRES[i]['jeton'] for i in ids}
@@ -614,8 +618,9 @@ def duel(general_1, general_2):
         for n, general in enumerate(generaux):
             fiche = progression.caracteristiques_general(general)
             if fiche and donneurs[n]:
-                interdits = {catalogues.ORDRES[i]['nom'] for i in donneurs[n]['identifiants']
-                             if not progression.reception_ordre_autorisee(fiche, catalogues.ORDRES[i]['nom'])}
+                interdits = {i for i in donneurs[n]['identifiants']
+                             if not progression.reception_ordre_autorisee(
+                                 fiche, catalogues.ORDRES[i]['nom'])}
                 donneurs[n] = retirer_ordres_annules(donneurs[n], interdits)
         if not any(donneurs):
             continue
