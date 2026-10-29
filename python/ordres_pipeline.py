@@ -657,6 +657,47 @@ def duel(general_1, general_2):
         _duel.reset(jeton)
 
 
+
+@contextmanager
+def effets_muraille(dominant, adversaire, contributeurs):
+    """Contexte du choc collectif : commandement dominant et effets propres.
+
+    Les catégories globale/duel passent une seule fois par le duel officiel.
+    Les contributions supplémentaires ne transmettent pas leurs ordres de duel :
+    seules leurs demandes individuelles éligibles leur appartiennent.
+    """
+    contributeurs = tuple(contributeurs)
+    if len({identite(g) for g in contributeurs}) != len(contributeurs):
+        raise ValueError('Contributeur Muraille répété.')
+    with duel(dominant, adversaire) as decisions:
+        contexte = _duel.get()
+        for general in contributeurs:
+            cle = identite(general)
+            if cle in contexte:
+                continue
+            donneur = intention_personnelle(general, 'individuelle')
+            effets = set()
+            if donneur:
+                fiche = progression.caracteristiques_general(general)
+                demandes = retirer_ordres_annules(
+                    donneur, {i for i in donneur['identifiants']
+                             if not progression.reception_ordre_autorisee(fiche, i)})
+                if demandes:
+                    pc = points_duel_officiels(demandes['general'])
+                    resultat = confronter_intentions(
+                        demandes, None, 'individuelle', pc, 0)
+                    effets.update(resultat['camp_1'])
+                    decisions.append(dict(
+                        joueur=general['joueur'], general=general['nom'],
+                        categorie='individuelle', pc=pc,
+                        demandes=demandes['identifiants'],
+                        donneur_joueur=demandes['general']['joueur'],
+                        donneur_general=demandes['general']['nom'],
+                        retenus=resultat['camp_1']))
+            contexte[cle] = dict(effets=effets, facteur_cruelle=Fraction(1))
+        yield decisions
+
+
 @contextmanager
 def participations_duel(general_1, general_2, participants, decisions):
     """Ouvre les prêts retenus pour ce duel, puis libère toutes les réservations."""
