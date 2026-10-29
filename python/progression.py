@@ -26,7 +26,9 @@ RECOMPENSES = {
 NATURES = {'stratege': 45, 'instinctif': 45,
            'stratege_hybride': 5, 'instinctif_hybride': 5}
 SEUILS = {'combat': 2, 'formation': 3}
-ORDRES_ZOMBIES = ('spora_adicte', 'propagafion')
+# IDs canoniques, avec noms historiques conservés pour les appelants.
+ORDRES_ZOMBIES_IDS = (1018, 1012)
+ORDRES_ZOMBIES = tuple(catalogues.ORDRES[i]['nom'] for i in ORDRES_ZOMBIES_IDS)
 # Les récompenses ne modifient pas la suite des tirages des combats.
 aleatoire_progression = random.Random()
 
@@ -97,16 +99,18 @@ def est_zombie(fiche):
 
 
 def ordre_autorise(fiche, nom):
-    """Restriction du général Zombie, indépendante du type de ses soldats.
-
-    Le moteur doit fournir le profil privé. Cette condition ne remplace ni
-    l'apprentissage, ni la nature, ni la disponibilité dans le catalogue.
-    """
-    return est_zombie(fiche) == (nom in ORDRES_ZOMBIES)
+    """Restriction Zombie pour ID ou nom historique (sans valider l'acquisition)."""
+    if type(nom) is int:
+        est_ordre_zombie = nom in ORDRES_ZOMBIES_IDS
+    else:
+        est_ordre_zombie = nom in ORDRES_ZOMBIES
+    return est_zombie(fiche) == est_ordre_zombie
 
 
 def reception_ordre_autorisee(fiche, nom):
     """Recevoir un effet allié ne signifie pas apprendre ou émettre cet ordre."""
+    if type(nom) is int:
+        return not est_zombie(fiche) or nom in ORDRES_ZOMBIES_IDS
     return not est_zombie(fiche) or nom in ORDRES_ZOMBIES
 
 
@@ -142,8 +146,7 @@ def tirer_recompense_zombie(fiche, aleatoire=None):
     aleatoire = random if aleatoire is None else aleatoire
     if not est_zombie(fiche):
         raise ValueError('Récompense réservée au profil Zombie.')
-    par_nom = {o['nom']: i for i, o in catalogues.ORDRES.items()}
-    ids = [par_nom[nom] for nom in ORDRES_ZOMBIES]
+    ids = list(ORDRES_ZOMBIES_IDS)
     disponibles = [i for i in ids if i not in fiche['evolutions_acquises']]
     if not disponibles:
         return None
