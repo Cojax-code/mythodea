@@ -120,3 +120,20 @@ Source : archive `Mythodea_code.zip` reçue dans la conversation, extraite dans 
 **Diagnostic provisoire** : plusieurs tests attendent des noms alors que le moteur utilise maintenant des IDs. Cela explique probablement certains FAIL, **mais pas nécessairement les autres erreurs de combat et de formation**. Codex doit examiner les traces complètes et vérifier le contrat avant de corriger. Ne pas faire passer artificiellement les tests en rétablissant des noms dans la logique interne, ni modifier les attentes sans justification. Les échecs sont observés sur le ZIP fourni ; vérifier qu'il correspond exactement au commit GitHub visé.
 
 **Statut : validation incomplète ; anomalies avérées dans l'exécution des tests existants.**
+
+## Mise a jour des tests vers les IDs — 29 octobre 2026
+
+Six fichiers `.dev/tests` ont ete modifies directement sur `feat/ordres-v2` a partir des corrections preparees dans l'archive ZIP. **Aucun fichier du moteur Python n'a ete modifie.**
+
+| Fichier de test | Commit |
+| --- | --- |
+| `test_formations_v2.py` | `cd7727d` |
+| `test_qg_effets_v2.py` | `579a047` |
+| `test_restrictions_zombies.py` | `b3a8bef` |
+| `test_ordres_effets_v2.py` | `43b06b7` |
+| `test_gros_poisson.py` | `603f46e` |
+| `test_participations_temporaires.py` | `38f6710` |
+
+Seules les assertions qui interrogeaient les effets par leurs anciens noms, ainsi que le contexte interne `annules` et le jeu d'effets artificiel des tests Zombie, ont ete passes aux IDs du catalogue. Les noms attendus dans les rapports et les appels publics compatibles restent inchanges.
+
+Avant publication, les corrections locales sur ZIP avaient permis de faire passer les quatre cas d'echec reexamines et 13 tests du module QG ; **ces resultats ne sont pas une execution de la suite complete du nouvel etat GitHub**. Codex doit relancer les tests sur la pointe de branche, noter les echecs restants et verifier specialement Grande Muraille. Ne jamais modifier les assertions des regles de combat simplement pour obtenir un test vert.
