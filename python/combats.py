@@ -431,7 +431,7 @@ def preparer_muraille_territoire(forces, formations, camp, general_adverse, *,
         return dict(choisi=None, previsions=(), participants=())
     formation = formations[camp]
     qg_exclu = (formation['qg']
-               if 'qg_nommade' in formation['ordres'] else None)
+               if 1016 in formation['ordres'] else None)
     decision = prochain_avant_muraille(
         participants, general_adverse, aleatoire=aleatoire,
         qg_nommade=qg_exclu, reserve_strategique=reserve_strategique)
@@ -664,7 +664,7 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
         murailles = {}
         for camp, adversaire in ((camp_1, general_camp_2),
                                  (camp_2, general_camp_1)):
-            if 'muraille_humaine' in formations.get(camp, {}).get('ordres', ()):
+            if 1019 in formations.get(camp, {}).get('ordres', ()):
                 simulateur = random.Random()
                 simulateur.setstate(random.getstate())
                 murailles[camp] = preparer_muraille_territoire(
@@ -689,7 +689,7 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
                           else general_camp_1)
             formation = formations[camp_muraille]
             qg_exclu = (formation['qg']
-                       if 'qg_nommade' in formation['ordres'] else None)
+                       if 1016 in formation['ordres'] else None)
             # Les prévisions copient leur RNG ; le module random ne peut
             # pas être copié. Utiliser une instance ayant le même état initial.
             # Les prévisions ne consomment ainsi aucun tirage du combat réel.
