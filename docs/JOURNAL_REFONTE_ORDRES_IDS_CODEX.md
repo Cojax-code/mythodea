@@ -81,3 +81,20 @@ Verifications reservees a Codex :
 - [ ] Verifier avec les cas Grande Muraille puis executer les tests conformement a AGENTS.md.
 
 Statut : modification enregistree, aucun test execute dans cette session.
+
+## Suite : filtrage des annulations par identifiant
+
+Commit `4acc229` — `python/ordres_pipeline.py`.
+
+- `retirer_ordres_annules()` ne parcourt plus le catalogue pour convertir des noms : il retire directement les IDs demandes.
+- Le seul appel local encore nominal (`gros_poisson`) utilise desormais l'ID `1017`.
+- Les appels depuis les annulations de formations et les restrictions de reception fournissent deja des IDs. Aucun changement de regle intentionnel.
+
+**Attention pour Codex :** les tests dans `.dev/tests/test_formations_v2.py` utilisent encore des noms pour `commandement.compatibilite_formations()` et `sequence_formation()`, et attendent des noms dans certains resultats. Ils appellent aussi `ordres_pipeline.effet()` avec des noms et attendent des noms dans le contexte `annules`. La migration des effets et annulations du moteur vers les IDs rend ces attentes potentiellement obsoletes : Codex doit verifier la logique reellement voulue, adapter les tests si necessaire sans masquer une regression, puis lancer les validations.
+
+- [ ] Verifier tous les appels de `retirer_ordres_annules` sur la branche, y compris dans les tests, et confirmer qu'ils fournissent des IDs.
+- [ ] Verifier le cas `gros_poisson` sans cible : l'effet ID 1017 doit etre annule.
+- [ ] Verifier cumul et persistance des annulations, attaque frontale / On_melange et effets sur zombies.
+- [ ] Conserver temporairement l'interface nom/ID de `commandement.py` tant que les consommateurs et tests ne sont pas migrés.
+
+Statut : code et notes enregistres ; tests non executes.
