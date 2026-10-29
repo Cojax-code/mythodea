@@ -609,6 +609,45 @@ class TestOrdresCalculsV2(unittest.TestCase):
             self.assertEqual(len(engagements), 1)
             selection.assert_called_once()
 
+    def test_muraille_moral_sauve_des_vies_mais_relais_si_bloc_hors_combat(self):
+        from unittest.mock import patch
+        import combats
+        a, b = ({'id': i} for i in (1, 2))
+        appels = []
+        def selection(disponibles, *_args, **_kwargs):
+            appels.append(tuple(g['id'] for g in disponibles))
+            return {'choisi': ('j1', f"g{disponibles[0]['id']}")}
+        with patch.object(combats.ordres_pipeline, 'identite',
+                          side_effect=lambda g: ('j1', f"g{g['id']}")), patch.object(
+                combats, 'prochain_avant_muraille', side_effect=selection):
+            resultats = iter([
+                {'final_1': 2, 'final_2': 3,
+                 'combattants_1': 0, 'combattants_2': 3},
+                {'final_1': 1, 'final_2': 2,
+                 'combattants_1': 0, 'combattants_2': 0},
+            ])
+            engagements = combats.enchainer_avants_muraille(
+                [a, b], object(), aleatoire=random.Random(5),
+                engager=lambda _g: next(resultats))
+        self.assertEqual(appels, [(1, 2), (2,)])
+        self.assertEqual(len(engagements), 2)
+
+    def test_muraille_moral_adverse_ne_bloque_pas_fin_du_choc(self):
+        from unittest.mock import patch
+        import combats
+        generaux = ({'id': 1}, {'id': 2})
+        with patch.object(combats.ordres_pipeline, 'identite',
+                          side_effect=lambda g: ('j1', f"g{g['id']}")), patch.object(
+                combats, 'prochain_avant_muraille',
+                return_value={'choisi': ('j1', 'g1')}) as selection:
+            engagements = combats.enchainer_avants_muraille(
+                generaux, object(), aleatoire=random.Random(5),
+                engager=lambda _g: {
+                    'final_1': 2, 'final_2': 1,
+                    'combattants_1': 0, 'combattants_2': 0})
+        self.assertEqual(len(engagements), 1)
+        selection.assert_called_once()
+
     def test_muraille_selection_sarrete_si_plus_de_cible(self):
         from unittest.mock import patch
         import combats
