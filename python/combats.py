@@ -1376,7 +1376,13 @@ def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
                         chemin, lecture_seule=True)['avant']
                     types_avant[ordres_pipeline.identite(g)] = infos['type']
             type_engage = types_avant.get(identite)
-            choc = engager(choisi)
+            # Le choc collectif utilise aussi le cycle temporaire des unités :
+            # les hooks après confrontation ne doivent pas être silencieusement
+            # ignorés faute de contexte, contrairement au duel ordinaire.
+            cycle_unites = (unites.duel(choisi, general_adverse)
+                            if dominant_allie is not None else nullcontext())
+            with cycle_unites:
+                choc = engager(choisi)
             engagements.append((identite, choc))
         # Le moral sauve des vies, mais pas les combattants de ce choc.
         # Une élimination avant moral détermine la fin et le relais ;
