@@ -405,26 +405,30 @@ def confronter_frontal_melange(forces, contexte):
         ids = commandement.ordres_applicables(donneur['identifiants'],
             fiche['nature'], 'globale', acquis=fiche['evolutions_acquises'],
             ordres_adverses=[], profil=fiche) if donneur else []
-        noms = {catalogues.ORDRES[i]['nom'] for i in ids}
+        demandes_ids = set(ids)
         # Le déclencheur historique ne peut contourner l'autorité QG/PC
         # dans le cas désormais migré ; le comparateur recevra le vrai donneur.
         if (frontal_autorise(camp)
-                and generaux.joueur_possede_ordre_armee(forces, camp, '1-2')):
-            noms.add('attaque_frontale')
-        demandes.append(noms)
-    opposees = any('attaque_frontale' in demandes[a] and 'on_melange' in demandes[b]
+                and generaux.joueur_possede_ordre_armee(
+                    forces, camp, catalogues.ORDRES[1002]['jeton'])):
+            demandes_ids.add(1002)
+        demandes.append(demandes_ids)
+    opposees = any(1002 in demandes[a] and 1015 in demandes[b]
                    for a, b in ((0, 1), (1, 0)))
     if not opposees:
         return
     points = [points_globaux_officiels(d) if d else 0 for d in donneurs]
     resultat = confronter_intentions(*donneurs, 'globale', *points)
     for n, camp in enumerate(camps, 1):
-        demandes_formation = demandes[n - 1] & {'attaque_frontale', 'on_melange'}
-        retenus = {catalogues.ORDRES[i]['nom'] for i in resultat[f'camp_{n}']}
+        demandes_formation = demandes[n - 1] & {1002, 1015}
+        retenus = set(resultat[f'camp_{n}'])
         annules = demandes_formation - retenus
-        contexte['annules'][camp] |= annules
-        for nom in sorted(demandes_formation):
-            statut = 'retenu' if nom in retenus else 'annulé'
+        contexte['annules'][camp] |= {
+            catalogues.ORDRES[i]['nom'] for i in annules}
+        for identifiant in sorted(
+                demandes_formation, key=lambda i: catalogues.ORDRES[i]['nom']):
+            nom = catalogues.ORDRES[identifiant]['nom']
+            statut = 'retenu' if identifiant in retenus else 'annulé'
             rapports.ecrire_rapport_territoire(contexte['territoire'],
                 f'Formation {camp} : {nom} {statut} '
                 '(confrontation globale Attaque frontale / On_melange).')
