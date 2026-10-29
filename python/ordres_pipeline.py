@@ -501,7 +501,7 @@ def participants_muraille_territoire(forces, formations, camp, *,
         return ()
     candidats = tuple(g for g in forces.get(camp, {}).values()
                       if g and generaux.general_a_des_unites(g)
-                      and progression.general_recoit_ordre(g, 'muraille_humaine'))
+                      and progression.general_recoit_ordre(g, 1019))
     qg_exclu = (formation['qg']
                  if 1016 in formation['ordres'] else None)
     admissibles = ordres_calculs_v2.participants_muraille(
@@ -511,7 +511,7 @@ def participants_muraille_territoire(forces, formations, camp, *,
 
 def qg_hors_formation(general, formation):
     return bool(general and formation and 1016 in formation['ordres']
-                and progression.general_recoit_ordre(general, 'qg_nommade')
+                and progression.general_recoit_ordre(general, 1016)
                 and identite(general) == formation['qg'])
 
 
