@@ -362,9 +362,9 @@ def preparer_compatibilites(forces, contexte):
     import generaux
     import rapports
     for camp, quartier in contexte['quartiers'].items():
-        noms = set()
-        if generaux.joueur_possede_ordre_armee(forces, camp, '1-2'):
-            noms.add('attaque_frontale')
+        identifiants = set()
+        if generaux.joueur_possede_ordre_armee(forces, camp, catalogues.ORDRES[1002]['jeton']):
+            identifiants.add(1002)
         if quartier.general is not None:
             donneur = intention_personnelle(quartier.general, 'globale')
             if donneur:
@@ -372,15 +372,15 @@ def preparer_compatibilites(forces, contexte):
                 ids = commandement.ordres_applicables(donneur['identifiants'],
                     fiche['nature'], 'globale', acquis=fiche['evolutions_acquises'],
                     ordres_adverses=[], profil=fiche)
-                noms.update(catalogues.ORDRES[i]['nom'] for i in ids)
-        diagnostic = commandement.compatibilite_formations(noms)
+                identifiants.update(ids)
+        diagnostic = commandement.compatibilite_formations(identifiants)
         # Aucun effet de paire non définie ne peut être activé silencieusement.
         if diagnostic['non_definies']:
             raise ValueError('Compatibilité de formations non définie.')
         contexte['annules'][camp] = diagnostic['annules']
         for a, b in diagnostic['incompatibles']:
             rapports.ecrire_rapport_territoire(contexte['territoire'],
-                f'Formations {camp} : {a} et {b} annulés mutuellement '
+                f"Formations {camp} : {catalogues.ORDRES[a]['nom']} et {catalogues.ORDRES[b]['nom']} annulés mutuellement " 
                 '(combinaison incompatible).')
 
 
@@ -423,8 +423,7 @@ def confronter_frontal_melange(forces, contexte):
         demandes_formation = demandes[n - 1] & {1002, 1015}
         retenus = set(resultat[f'camp_{n}'])
         annules = demandes_formation - retenus
-        contexte['annules'][camp] |= {
-            catalogues.ORDRES[i]['nom'] for i in annules}
+        contexte['annules'][camp] |= annules
         for identifiant in sorted(
                 demandes_formation, key=lambda i: catalogues.ORDRES[i]['nom']):
             nom = catalogues.ORDRES[identifiant]['nom']
@@ -438,7 +437,7 @@ def confronter_frontal_melange(forces, contexte):
 
 def frontal_autorise(camp):
     contexte = _bataille.get()
-    return contexte is None or 'attaque_frontale' not in contexte['annules'].get(camp, ())
+    return contexte is None or 1002 not in contexte['annules'].get(camp, ())
 
 
 def formations_retenues(forces):
