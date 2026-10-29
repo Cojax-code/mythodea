@@ -191,7 +191,7 @@ class GroupeTemporaire:
             raise ValueError('Gros_poisson exige deux généraux alliés.')
         for general in (beneficiaire, preteur):
             fiche = progression.caracteristiques_general(general)
-            if not fiche or not progression.reception_ordre_autorisee(fiche, 'gros_poisson'):
+            if not fiche or not progression.reception_ordre_autorisee(fiche, 1017):
                 raise ValueError('Profil privé incompatible avec Gros_poisson.')
         index = {}
         for p in self._selection_vivante(None):
