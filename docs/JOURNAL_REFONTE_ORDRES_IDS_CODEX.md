@@ -182,3 +182,20 @@ Attente de decision de gameplay sur la notation des candidats au sein d'un meme 
 **Regle tranchee par le concepteur :** les candidats au combat sont des **blocs collectifs reconstitues par type d'unite** (par exemple les piquiers de G1 et G2 forment un seul bloc). On evalue la performance de ce bloc collectif contre le bloc Avant adverse actuel ; on ne classe pas les generaux selon une simulation de duel individuel. **Avant chaque nouvel affrontement**, relire les survivants et les blessures/pertes reelles, reconstruire les blocs collectifs eligibles, et recalculer lequel est le mieux adapte a l'Avant adverse restant. Un type non engage ne subit aucune perte de cet affrontement. La propriete et le moral des soldats restent propres a leurs generaux d'origine.
 
 **Impact sur le code actuel a auditer :** `combats.prochain_avant_muraille()` appelle `simuler_avants_muraille()` puis `choisir_avant_muraille({p['origine']: p['score'] ...})`, ce qui parait encore selectionner une **origine de general** au lieu de classer explicitement des **blocs collectifs par type**. `engager_avant_muraille()` maintient une identite de general engage et un traitement collectif des pertes ; il faut verifier que ce raccordement respecte la selection du meilleur type collectif. Ne pas modifier automatiquement les scores du test `test_muraille_chaque_moral_origine_et_blessures_changent_le_classement` : son classement individuel `[4, 0]` n'est potentiellement plus une attente pertinente. Revoir et renommer ce test pour couvrir la nouvelle regle, et ajouter un scenario de recalcul apres pertes. **Aucune correction du moteur effectuee au titre de cette decision dans cette entree.**
+
+## Correctif selection collective Grande Muraille — 29 octobre 2026
+
+Decision appliquee : les previsions comparables representent chacune **un type de bloc collectif**, et non chaque general qui possede ce type. Avant chaque affrontement, `prochain_avant_muraille()` relit les blocs des generaux actifs et relance les simulations pour les effectifs actuels. Les victimes du seul type engage conservent leur general proprietaire et son moral.
+
+Commits :
+- `a552245` — `python/combats.py` : `simuler_avants_muraille` groupe les contributions de meme type une fois, les ordonne de facon stable par emplacement/identite et retient un representant unique par groupe pour l'interface existante du moteur. Pas de modification des formules de degats ni du moral.
+- `cbd9e01` — `.dev/tests/test_ordres_calculs_v2.py` : une prevision de piquiers collectifs, une d'archers, au lieu d'une par general.
+- `bf6c8cf` — `.dev/tests/test_participations_temporaires.py` : le test remplace l'ancien classement individuel par regroupement, independance de l'ordre d'entree et recalcul apres blessures.
+
+Verification locale sur copie extraite du ZIP avec les memes changements : `PYTHONPATH=python:.dev/tests python3 -B -m unittest -q test_ordres_calculs_v2 test_participations_temporaires.ParticipationsTemporaires.test_muraille_meme_type_forme_un_bloc_et_recalcule_apres_blessures` : **41 tests, OK**. La suite complete et le nouveau commit GitHub ne sont pas verifies par cette execution.
+
+Points de vigilance pour Codex :
+- [ ] Le representant d'un type est choisi par la position numerique la plus basse, puis l'identite, afin de transmettre le choc existant. Verifier avec les regles d'autorite QG et de ponderation x2 des victimes.
+- [ ] Verifier qu'apres chaque choc les effectifs sont relus et que les autres types restent intacts ; verifier egalement le cas de plusieurs generaux du meme type et la limite d'engagement par choc initial.
+- [ ] Examiner les autres tests de previsions qui supposaient un resultat par general, ainsi que l'effet des differentes fatigues, moraux et bonus individuels sur le score collectif.
+- [ ] Lancer les tests cibles complets puis la suite generale et consigner tout echec restant.
