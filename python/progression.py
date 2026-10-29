@@ -98,18 +98,20 @@ def est_zombie(fiche):
     return bool(fiche and fiche.get('etat_zombie'))
 
 
+def _ordre_zombie(ordre):
+    """Identifie les ordres Zombies, par ID ou ancien nom accepté en entrée."""
+    return (ordre in ORDRES_ZOMBIES_IDS if type(ordre) is int
+            else ordre in ORDRES_ZOMBIES)
+
+
 def ordre_autorise(fiche, nom):
     """Restriction Zombie pour ID ou nom historique (sans valider l'acquisition)."""
-    est_ordre_zombie = (nom in ORDRES_ZOMBIES_IDS if type(nom) is int
-                        else nom in ORDRES_ZOMBIES)
-    return est_zombie(fiche) == est_ordre_zombie
+    return est_zombie(fiche) == _ordre_zombie(nom)
 
 
 def reception_ordre_autorisee(fiche, nom):
     """Recevoir un effet allié ne signifie pas apprendre ou émettre cet ordre."""
-    if type(nom) is int:
-        return not est_zombie(fiche) or nom in ORDRES_ZOMBIES_IDS
-    return not est_zombie(fiche) or nom in ORDRES_ZOMBIES
+    return not est_zombie(fiche) or _ordre_zombie(nom)
 
 
 def general_recoit_ordre(general, nom):
