@@ -205,3 +205,14 @@ Points de vigilance pour Codex :
 Lecture de `combats.enchainer_avants_muraille()` et `engager_avant_muraille()` : le pilote retire de `disponibles` seulement l'identité du général représentant après un choc, alors que le choc a employé les Avant de **tous** les généraux du même type. Ceux-ci peuvent donc rester candidats au choc suivant via un autre représentant. Inversement, un type représenté par un seul général ne peut plus être choisi, même s'il conserve des soldats. Ce comportement n'est pas une application uniforme de la règle de recalcul collectif après chaque choc.
 
 **Décision demandée avant correction :** un bloc collectif de type déjà engagé et survivant peut-il être sélectionné de nouveau au choc initial suivant contre le même Avant adverse, ou chaque bloc collectif n'a-t-il qu'un seul engagement au choc initial ? Selon la réponse, le pilote doit conserver ou retirer l'ensemble des contributeurs du type après un engagement. Vérifier également l'arrêt lors de la disparition du général adverse et les règles des Avant exclus de la manoeuvre. Aucun changement du moteur dans cet audit.
+
+## Clarification sur la fin d'un affrontement Grande Muraille — 29 octobre 2026
+
+**Decision du concepteur (remplace toute interpretation de reengagement continu) :** un affrontement oppose un bloc Avant collectif Muraille (un type, plusieurs generaux possibles) au bloc Avant du general adverse, **jusqu'a ce que l'un des deux blocs soit elimine**. On ne rechoisit pas le bloc Muraille a chaque perte partielle.
+
+- Si le bloc Muraille est elimine et que l'Avant adverse possede encore des soldats, choisir parmi les autres blocs collectifs Avant Muraille **non engages**, a partir des forces actuelles, puis lancer l'affrontement suivant contre les survivants adverses.
+- Si le bloc Avant adverse est elimine, il n'existe normalement plus de bloc Avant a affronter pour ce general : **arreter la sequence de Grande Muraille contre cet adversaire**.
+- Les blesses ne constituent pas un bloc disponible. Ne pas selectionner une seconde fois un bloc collectif deja engage et survivant.
+- Le recalcul du meilleur bloc n'a lieu que lorsqu'un bloc Muraille de remplacement devient necessaire, et non apres chaque perte individuelle au cours du meme affrontement.
+
+**A verifier/corriger dans `combats.enchainer_avants_muraille()` :** retirer des candidats tout le bloc collectif de type deja engage, pas seulement le general representant ; interrompre des que l'Avant adverse a disparu ; conserver la repartition des pertes par origine, les regles de moral et les priorites deja definies. Tests cibles necessaires (relais piquiers -> archers, victoire du premier bloc, absence de second engagement du meme type, morts/blesses). **Aucune modification Python dans cette entree.**
