@@ -66,7 +66,7 @@ class ParticipationsTemporaires(unittest.TestCase):
                 with ordres_pipeline.duel(a, ennemi):
                     sans_bonus = self.combats.combat_bloc(commun, self.infos(ennemi),
                         bloc_1='avant', bloc_2='avant', general_1=a, general_2=ennemi)
-                    self.assertFalse(ordres_pipeline.effet(a, 'herisson'))
+                    self.assertFalse(ordres_pipeline.effet(a, 1006))
                     # Les connaissances du prêteur ne deviennent pas celles du bénéficiaire.
                     self.assertEqual(sans_bonus, self.combats.combat_bloc(
                         commun, self.infos(ennemi), bloc_1='avant', bloc_2='avant'))
