@@ -313,6 +313,40 @@ class TestOrdresCalculsV2(unittest.TestCase):
         self.assertEqual(set(choisir.call_args.args[0]), {str(id(a)), str(id(b))})
         self.assertNotIn(str(id(c)), appliquer.call_args.args[0])
 
+    def test_muraille_choc_transmet_meme_rng_aux_pertes_adverses(self):
+        from unittest.mock import patch, Mock
+        from pathlib import Path
+        import combats
+        a = {'joueur': 'j1', 'camp': 'a', 'chemin': Path('/tmp/muraille-rng-a')}
+        b = {'joueur': 'j2', 'camp': 'b', 'chemin': Path('/tmp/muraille-rng-b')}
+        blocs = {
+            id(a): {'nombre': 2, 'type': 'piquier', 'unites': ['a1', 'a2']},
+            id(b): {'nombre': 2, 'type': 'archer', 'unites': ['b1', 'b2']},
+        }
+        vue = Mock()
+        vue.blocs.side_effect = lambda g: {'avant': blocs[id(g)]}
+        vue.fatigue.return_value = False
+        rng = random.Random(12)
+        with patch.object(combats.ordres_pipeline, 'identite',
+                          side_effect=lambda g: 'a' if g is a else 'b'), patch.object(
+                combats.bouclier_vivant, 'presence_bouclier', return_value=False), patch.object(
+                combats.unites, 'etiquette', return_value=False), patch.object(
+                combats, 'combat_bloc', return_value=(1, 1)), patch.object(
+                combats.soldats, 'affrontement'), patch.object(
+                combats.soldats, 'repartir_victimes_muraille',
+                return_value={'a': ['a1']}), patch.object(
+                combats, 'moral_des_pertes', return_value=0), patch.object(
+                combats.soldats, 'appliquer_victimes_muraille',
+                return_value={'a': []}), patch.object(
+                combats, 'supprimer_unites', return_value=[]) as supprimer, patch.object(
+                combats.unites, 'apres_confrontation'), patch.object(
+                combats.ordres_pipeline, 'verifier_qg'), patch.object(
+                combats.generaux, 'supprimer_general_si_vide'):
+            combats.engager_avant_muraille(
+                a, b, participants=vue, generaux_muraille=(a,),
+                aleatoire=rng)
+        self.assertIs(supprimer.call_args.kwargs['aleatoire'], rng)
+
     def test_muraille_choc_stabilise_ordre_du_tirage_collectif(self):
         from unittest.mock import Mock, patch
         from pathlib import Path
