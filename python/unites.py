@@ -15,7 +15,7 @@ def definition(type_unite):
 def etiquette(type_unite, nom, general=None):
     if nom == 'orc' and type_unite == 'sauvageon' and general is not None:
         import ordres_pipeline
-        if ordres_pipeline.effet(general, 'orc_un_jour_orc_toujour'):
+        if ordres_pipeline.effet(general, 1008):
             return True
     return nom in definition(type_unite)['etiquettes'] if type_unite != 'vide' else False
 
@@ -231,7 +231,7 @@ def propager(general, bloc, pertes_adverses, survivants, evenement, duel, rng=No
     import ordres_pipeline
     import ordres_calculs_v2
     nombre = ordres_calculs_v2.conversions_propagation(
-        nombre, ordres_pipeline.effet(general, 'propagafion'))
+        nombre, ordres_pipeline.effet(general, 1012))
     bloc = bloc_destination_zombies(general, rng)
     identifiants = [uuid.uuid4().hex for _ in range(nombre)]
     contexte_bataille = soldats._bataille.get()
