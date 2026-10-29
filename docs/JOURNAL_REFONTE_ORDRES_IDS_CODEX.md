@@ -137,3 +137,18 @@ Six fichiers `.dev/tests` ont ete modifies directement sur `feat/ordres-v2` a pa
 Seules les assertions qui interrogeaient les effets par leurs anciens noms, ainsi que le contexte interne `annules` et le jeu d'effets artificiel des tests Zombie, ont ete passes aux IDs du catalogue. Les noms attendus dans les rapports et les appels publics compatibles restent inchanges.
 
 Avant publication, les corrections locales sur ZIP avaient permis de faire passer les quatre cas d'echec reexamines et 13 tests du module QG ; **ces resultats ne sont pas une execution de la suite complete du nouvel etat GitHub**. Codex doit relancer les tests sur la pointe de branche, noter les echecs restants et verifier specialement Grande Muraille. Ne jamais modifier les assertions des regles de combat simplement pour obtenir un test vert.
+
+## Campagne complémentaire réelle sur copie isolée du ZIP — 29 octobre 2026
+
+Méthode : extraction de `Mythodea_code.zip`, superposition des six fichiers issus de `mythodea_tests_ids_corriges.zip`, environnement Python isolé ; aucune modification du moteur ni de la branche pendant l'exécution.
+
+- `python -m compileall -q python .dev/tests` : **OK**.
+- Groupe de 11 modules ciblés avec `unittest -q` : **230 tests exécutés**, **3 FAIL et 13 ERROR**, en 67,993 s. Ce groupe n'est pas la suite exhaustive.
+- Modules lancés séparément : `test_qg_effets_v2` **13/13 OK** ; `test_gros_poisson` **22/22 OK** ; `test_soldats_formation` **24/24 OK** ; `test_restrictions_zombies` **8/8 OK** ; `test_ordres_conception_v2` **5/5 OK** ; `test_ordres_confrontation_v2` **14/14 OK**.
+- `test_ordres_calculs_v2` : 40 tests, 1 ERROR ; mock `Path.is_dir` ne supportant pas l'argument nouvellement passe dans `test_muraille_ne_reselectionne_pas_general_disparu` (trace complète à vérifier).
+- `test_ordres_pipeline_v2` : 18 tests, 1 FAIL ; participants Muraille `()` au lieu de `(general3,)`.
+- `test_formations_v2` : 23 tests, 1 FAIL et 8 ERROR ; notamment wrappers de `combat_entre_generaux` qui n'acceptent pas les nouveaux arguments nommés `avant_exclus_manoeuvre` et `avant_deja_resolu` (vérifier chaque traceback avant correction), plus une attente liée aux formations.
+- `test_participations_temporaires` : 43 tests, 1 FAIL et 1 ERROR ; prévision des survivants avec `KeyError: 'survivants'` et score Muraille `[3, 2]` au lieu de `[4, 0]`.
+- `test_ordres_effets_v2` : dépassement de la limite de 17 s lors de son lancement isolé ; **pas de verdict par module**.
+
+Interprétation : plusieurs modules ordres/permissions sont au vert, mais des régressions ou contrats de tests divergents subsistent autour de Grande Muraille, des wrappers et des données de prévision. Ne pas les attribuer systématiquement aux IDs ni modifier arbitrairement le gameplay. **Statut : non validé ; suite exhaustive et tests Linux restant à faire par Codex.**
