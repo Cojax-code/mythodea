@@ -697,7 +697,9 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
             rng_muraille.setstate(random.getstate())
             engagements = enchainer_avants_muraille(
                 preparation['participants'], adversaire, aleatoire=rng_muraille,
-                qg_nommade=qg_exclu, camp=camp_muraille)
+                qg_nommade=qg_exclu, camp=camp_muraille,
+                dominant_allie=(general_camp_1 if camp_muraille == camp_1
+                                else general_camp_2))
             muraille_chocs = []
             for identite, choc in engagements:
                 if choc is None:
@@ -1290,7 +1292,8 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None,
 
 def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
                              engager=None, qg_nommade=None, reserve_strategique=None,
-                             transmission_active=None, camp=None):
+                             transmission_active=None, camp=None,
+                             dominant_allie=None):
     """Sélection successive des Avant de Muraille, sans classement figé.
 
     Après chaque engagement, relit les blocs restants via prochain_avant_muraille.
@@ -1338,26 +1341,30 @@ def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
             break
         if transmission_active is not None and not transmission_active():
             break
-        decision = prochain_avant_muraille(
-            disponibles, general_adverse, aleatoire=aleatoire,
-            qg_nommade=qg_nommade, reserve_strategique=reserve_strategique)
-        identite = decision['choisi']
-        if identite is None:
-            break
-        choisi = next(g for g in disponibles if ordres_pipeline.identite(g) == identite)
-        # Une candidature correspond à tout l'Avant collectif de son type.
-        # Capturer les types AVANT les pertes : un général détruit peut perdre
-        # son dossier pendant le choc et ne doit pas réapparaître au relais.
-        types_avant = {}
-        for g in disponibles:
-            chemin = g.get('chemin')
-            if chemin is not None:
-                infos = generaux.lire_blocs_general(
-                    chemin, lecture_seule=True)['avant']
-                types_avant[ordres_pipeline.identite(g)] = infos['type']
-        type_engage = types_avant.get(identite)
-        choc = engager(choisi)
-        engagements.append((identite, choc))
+        from contextlib import nullcontext
+        contexte = (
+            ordres_pipeline.effets_muraille(dominant_allie, general_adverse,
+                                            disponibles)
+            if dominant_allie is not None else nullcontext())
+        with contexte:
+            decision = prochain_avant_muraille(
+                disponibles, general_adverse, aleatoire=aleatoire,
+                qg_nommade=qg_nommade, reserve_strategique=reserve_strategique)
+            identite = decision['choisi']
+            if identite is None:
+                break
+            choisi = next(g for g in disponibles if ordres_pipeline.identite(g) == identite)
+            # Capturer les types avant les pertes et la disparition des dossiers.
+            types_avant = {}
+            for g in disponibles:
+                chemin = g.get('chemin')
+                if chemin is not None:
+                    infos = generaux.lire_blocs_general(
+                        chemin, lecture_seule=True)['avant']
+                    types_avant[ordres_pipeline.identite(g)] = infos['type']
+            type_engage = types_avant.get(identite)
+            choc = engager(choisi)
+            engagements.append((identite, choc))
         # Le moral sauve des vies, mais pas les combattants de ce choc.
         # Une élimination avant moral détermine la fin et le relais ;
         # final_1/final_2 restent des effectifs physiquement vivants.
