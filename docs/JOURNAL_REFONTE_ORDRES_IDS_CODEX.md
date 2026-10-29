@@ -226,3 +226,12 @@ Lecture de `combats.enchainer_avants_muraille()` et `engager_avant_muraille()` :
 **Tests** : commit `ea28008` (`.dev/tests/test_ordres_calculs_v2.py`). Deux scénarios ajoutés : deux généraux piquiers partagent un engagement puis les archers prennent le relais ; victoire du premier bloc arrête la séquence. Vérification sur copie isolée avec le même correctif et deux tests équivalents : **42/42 OK** (40 anciens tests calculs + 2 tests de relais). Les tests nouvellement publiés sur GitHub et la suite exhaustive doivent encore être exécutés par Codex sur l'état final.
 
 **Attention Codex :** vérifier sur combats réels que `final_2` reflète les survivants du bloc adverse après toutes les pertes, et que des soldats sauvés par le moral ne provoquent pas un second engagement non voulu ; revoir également le cas de plusieurs types et des exclusions QG/réserve, la disparition d'un général et la reproductibilité RNG. Valider les limitations de la gestion du général représentant et les autres interactions Muraille documentées plus haut.
+
+## Audit du choc collectif : exclusions des roles (29 octobre 2026)
+
+**Bug corrige** : la selection de `prochain_avant_muraille` excluait les identites de `qg_nommade` et de `reserve_strategique`, mais l'engagement automatique dans `enchainer_avants_muraille` passait tous les generaux initiaux a `engager_avant_muraille`. Les soldats exclus pouvaient alors etre integres au combat collectif s'ils avaient le type engage.
+
+- `7631356` — `python/combats.py` : l'engagement par defaut applique `ordres_calculs_v2.participants_muraille()` avant de transmettre les membres au combat reel ; les donneurs exclus ne contribuent plus au bloc collectif.
+- `94bd064` — `.dev/tests/test_ordres_calculs_v2.py` : test de regression avec un general admissible, un QG nomade et une reserve ; controle des membres effectivement remis a `engager_avant_muraille`.
+
+**Validation attendue de Codex** : executer le nouveau test et l'ensemble des tests de calcul, puis un choc collectif reel avec des blocs de meme type chez QG et reserve pour confirmer que leurs unites ne frappent pas et ne subissent aucune perte. Examiner la selection du general representant et la ponderation x2, ainsi que les cas de blessures, disparition du QG et arret du choc. **Aucun resultat de test n'est revendique pour ces nouveaux commits dans cette entree.**
