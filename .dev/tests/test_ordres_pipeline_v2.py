@@ -67,7 +67,7 @@ class PipelineOrdresTest(unittest.TestCase):
         c = dict(joueur='j1', nom='general3', emplacement='3')
         d = dict(joueur='j1', nom='general4', emplacement='4')
         forces = {'camp': {'1': a, '2': b, '3': c, '4': d}}
-        formations = {'camp': {'ordres': {'muraille_humaine', 'qg_nommade'},
+        formations = {'camp': {'ordres': {1019, 1016},
                                'qg': ('j1', 'general1')}}
         with patch('generaux.general_a_des_unites', return_value=True), patch.object(
                 ordres_pipeline.progression, 'general_recoit_ordre',
