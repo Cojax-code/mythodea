@@ -478,7 +478,8 @@ class TestOrdresCalculsV2(unittest.TestCase):
         import combats
         vivant = {'id': 1, 'chemin': Path('/game/general_vivant')}
         mort = {'id': 2, 'chemin': Path('/game/general_mort')}
-        with patch.object(Path, 'is_dir', side_effect=lambda p: p.name == 'general_vivant'), patch.object(
+        with patch.object(Path, 'is_dir', autospec=True,
+                          side_effect=lambda p: p.name == 'general_vivant'), patch.object(
                 combats.ordres_pipeline, 'identite',
                 side_effect=lambda g: ('j1', f"g{g['id']}")), patch.object(
                 combats, 'prochain_avant_muraille',
