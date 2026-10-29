@@ -250,20 +250,23 @@ class ParticipationsTemporaires(unittest.TestCase):
             self.combats.prochain_avant_muraille([a], c, aleatoire=random.Random(27))
         self.assertEqual(self.photo(), avant)
 
-    def test_muraille_chaque_moral_origine_et_blessures_changent_le_classement(self):
+    def test_muraille_meme_type_forme_un_bloc_et_recalcule_apres_blessures(self):
         a = self.troupe('j1', 'piquier', 4, numero=3, place='3')
         b = self.troupe('j1', 'piquier', 4, numero=2, place='2')
         ennemi = self.troupe('j2', 'piquier', 4)
         aides.EffetsOrdres.ordres(self, a, moral=100)
         aides.EffetsOrdres.ordres(self, b, moral=0)
         aides.EffetsOrdres.ordres(self, ennemi, moral=0)
-        resultat = self.combats.prochain_avant_muraille([a, b], ennemi, aleatoire=random.Random(1))
-        self.assertEqual(resultat['choisi'], ('j1', 'general3'))
-        self.assertEqual([p['score'] for p in resultat['previsions']], [4, 0])
-        self.combats.supprimer_unites(self.infos(a), 0, a)  # Tous sauvés, désormais blessés.
-        resultat = self.combats.prochain_avant_muraille([a, b], ennemi, aleatoire=random.Random(1))
-        self.assertEqual([p['score'] for p in resultat['previsions']], [0, 0])
-        self.assertEqual(resultat['choisi'], ('j1', 'general2'))
+        avant = self.combats.prochain_avant_muraille([a, b], ennemi, aleatoire=random.Random(1))
+        inverse = self.combats.prochain_avant_muraille([b, a], ennemi, aleatoire=random.Random(1))
+        self.assertEqual(avant, inverse)
+        self.assertEqual(len(avant['previsions']), 1)  # Un seul bloc collectif piquier.
+        self.assertEqual(avant['choisi'], ('j1', 'general2'))  # Représentant : position 2.
+        self.combats.supprimer_unites(self.infos(a), 0, a)  # Sauvés, désormais blessés.
+        apres = self.combats.prochain_avant_muraille([a, b], ennemi, aleatoire=random.Random(1))
+        self.assertEqual(len(apres['previsions']), 1)
+        self.assertNotEqual(avant['previsions'][0]['score'], apres['previsions'][0]['score'])
+        self.assertEqual(apres['choisi'], ('j1', 'general2'))
 
     def test_muraille_lecture_seule_ne_nettoie_pas_et_ne_recree_pas_de_bloc(self):
         a = self.troupe('j1', 'piquier', 4)
