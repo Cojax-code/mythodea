@@ -98,3 +98,17 @@ Commit `4acc229` — `python/ordres_pipeline.py`.
 - [ ] Conserver temporairement l'interface nom/ID de `commandement.py` tant que les consommateurs et tests ne sont pas migrés.
 
 Statut : code et notes enregistres ; tests non executes.
+
+## Inventaire des dependances aux noms — 29 octobre 2026
+
+Commit `02c3dcd` : dans `python/ordres_pipeline.py`, `ordres_du_general()` transmet desormais l'ID de l'ordre a `progression.ordre_autorise()` plutot que son nom. Cette fonction accepte deja les IDs, notamment pour les restrictions Zombie.
+
+Inventaire actuel : les noms restent necessaires dans `commandement.compatibilite_formations()` et `sequence_formation()` pour des tests et interfaces existants, dans `progression.py` pour les politiques qui prennent des noms, ainsi que pour les rapports. Les jetons de `ordre.txt` sont conserves. La suppression globale de cette compatibilite n'est donc pas realisee.
+
+Tests pour Codex :
+- [ ] Verifier le filtrage `ordres_du_general()` pour profils Zombie et non-Zombie, ordres valides et interdits.
+- [ ] Rechercher les appels de fonctions acceptant des noms avant toute suppression de compatibilite.
+- [ ] Verifier les attentes des tests de formations et du pipeline qui utilisent encore les noms.
+- [ ] Tester les annulations de formations et la Grande Muraille apres cette migration.
+
+Statut : code et journal enregistres ; aucun test execute par ChatGPT.
