@@ -143,3 +143,22 @@ Points a verifier par Codex :
 - [ ] Verification croisee des formations, combats et tests de regression du moteur.
 
 Statut : commit enregistre, aucun test execute ici.
+
+## Lot transversal : combat, unites et Bouclier vivant
+
+Commits : `cdd6d01` (`python/bouclier_vivant.py`), `b98137f` (`python/soldats.py`), `237a60b` (`python/unites.py`).
+
+- Bouclier vivant consulte Confinement via ID `1013`, et non le nom.
+- La permission de reception Gros Poisson est consultee via ID `1017` dans soldats.py.
+- Les effets Orc un jour orc toujours (`1008`) et Propagafion (`1012`) sont consultes via IDs dans unites.py.
+- Aucun changement de regle intentionnel ; formats historiques et noms des rapports conserves.
+
+Verifications pour Codex :
+- [ ] Confinement contre Bouclier vivant et absence de Confinement : effets inchanges.
+- [ ] Gros Poisson : reception autorisee/interdite selon le profil, sans changement de cible ni repartition des pertes.
+- [ ] Orc un jour orc toujours : bonus et conditions de declenchement inchanges.
+- [ ] Propagafion : declenchement et restrictions Zombie inchanges.
+- [ ] Tester la suite de combat et les ordres avec la migration de contexte des effets vers les IDs.
+- [ ] Rapports, reproducibilite et tests complets selon AGENTS.md.
+
+Code et notes enregistres ; aucun test execute dans cette session.
