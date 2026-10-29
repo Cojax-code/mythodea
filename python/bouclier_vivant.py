@@ -142,7 +142,7 @@ def convertir_spore(general_zombie, adversaire, bloc_adverse, evenement, rng=Non
     if bloc_adverse not in config.ordre_blocs:
         raise ValueError("Bloc adverse inconnu.")
     import ordres_pipeline
-    if ordres_pipeline.effet(adversaire, 'confinement'):
+    if ordres_pipeline.effet(adversaire, 1013):
         return None
     donnees = unites.charger_capacites()
     preuves = donnees.setdefault('spores', {})
