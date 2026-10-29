@@ -40,3 +40,21 @@ Utiliser les identifiants permanents de `catalogues.ORDRES` dans les calculs et 
 ## Consigne pour la reprise
 
 Lire ce journal **et les diffs des commits**, puis comparer au code courant avant toute nouvelle refonte. Ce document décrit ce qui a effectivement été édité ; il ne garantit pas l'absence de régression.
+
+## Grande Muraille : suivi des changements du 28 octobre 2026
+
+Ces points sont a verifier par Codex ; aucun resultat de tests n'est confirme dans ce journal.
+
+- QG territorial et fin des nouvelles selections apres destruction du QG.
+- Tirage collectif sans remise, avec ponderation x2 pour le general engage.
+- Victimes retirees uniquement du type de bloc engage et attribuees a leur general d'origine.
+- Exemple : si 18 piquiers combattent et 6 archers restent inactifs, les archers ne perdent aucun soldat.
+- Multiplicateurs et bonus Herisson calcules pour chaque general, avec fractions exactes.
+- Moral propre a chaque general, sans double application des pertes.
+- Enchainement des chocs, exclusion des generaux disparus et aucun second choc Avant.
+- Rapports coherents, orientation des camps, effectifs et victimes, previsions sans mutation et RNG inchange.
+- Confrontation de deux Murailles et regles de PC.
+
+Commits reperes : 607cd78, f44df7a, 11598aa, 8080e1c, 792a9cf, c45da43, 6b7b636, 7d55e46, c940c99, 6cc282a, f6a52c8, 0692c2e, cd1f69f, 04be4c5, 4f618d1, a49c9de, 15f3e85.
+
+Codex doit verifier les tests deja ecrits, executer les tests cibles et la suite complete prevue par AGENTS.md, puis documenter les resultats reels.
