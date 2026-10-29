@@ -332,18 +332,15 @@ def cibles_gros_poisson(beneficiaire, donneur):
 def filtrer_gros_poisson(beneficiaire, donneur):
     if donneur and 1017 in donneur['identifiants']:
         if not cibles_gros_poisson(beneficiaire, donneur):
-            return retirer_ordres_annules(donneur, {'gros_poisson'})
+            return retirer_ordres_annules(donneur, {1017})
     return donneur
 
 
 def retirer_ordres_annules(donneur, annules):
-    """Filtre par IDs, en acceptant les anciens noms dans les appels existants."""
+    """Filtre les annulations internes directement par identifiants."""
     if donneur is None:
         return None
-    annules = set(annules)
-    ids_annules = {i for i, fiche in catalogues.ORDRES.items()
-                  if i in annules or fiche['nom'] in annules}
-    ids = [i for i in donneur['identifiants'] if i not in ids_annules]
+    ids = [i for i in donneur['identifiants'] if i not in annules]
     if not ids:
         return None
     jetons = {catalogues.ORDRES[i]['jeton'] for i in ids}
