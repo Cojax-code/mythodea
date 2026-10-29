@@ -349,7 +349,7 @@ def resoudre_attaque_frontale(
         )
 
         formations = ordres_pipeline.formations_retenues(generaux_territoire)
-        if any(g is not None and not progression.general_recoit_ordre(g, 'attaque_frontale')
+        if any(g is not None and not progression.general_recoit_ordre(g, 1002)
                for g in (general_camp_1, general_camp_2)):
             continue  # Le Zombie garde sa participation au combat rangé normal.
         if (ordres_pipeline.qg_hors_formation(general_camp_1, formations.get(camp_1))
@@ -1035,7 +1035,7 @@ def previsions_avant_muraille(contributions, infos_adverses, *, bloc_adverse,
     Aucun appel depuis le combat réel tant que le contrat reste incomplet.
     """
     contributions = tuple(c for c in contributions
-                          if progression.general_recoit_ordre(c[0], 'muraille_humaine'))
+                          if progression.general_recoit_ordre(c[0], 1019))
     ordres_calculs_v2.participants_muraille(
         ordres_pipeline.identite(general) for general, _, _ in contributions)
     # combat_bloc accepte déjà la fatigue collective ou individuelle.
@@ -1072,7 +1072,7 @@ def simuler_avants_muraille(contributions, infos_adverses, *, general_adverse,
     """
     from copy import deepcopy
     contributions = tuple(c for c in contributions
-                          if progression.general_recoit_ordre(c[0], 'muraille_humaine'))
+                          if progression.general_recoit_ordre(c[0], 1019))
     for general in (general_adverse, *(g for g, _, _ in contributions)):
         composition = generaux.lire_composition_general(general['chemin'])
         if any(bloc.get('Trop_gros_zombie', 0) for bloc in composition.values()):
@@ -1132,7 +1132,7 @@ def prochain_avant_muraille(generaux_allies, general_adverse, *, aleatoire,
     """
     from copy import deepcopy
     generaux_allies = tuple(g for g in generaux_allies
-                           if progression.general_recoit_ordre(g, 'muraille_humaine'))
+                           if progression.general_recoit_ordre(g, 1019))
     admis = ordres_calculs_v2.participants_muraille(
         (ordres_pipeline.identite(g) for g in generaux_allies), qg_nommade, reserve_strategique)
     contributions, positions = [], {}
