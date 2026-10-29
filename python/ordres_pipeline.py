@@ -465,8 +465,7 @@ def formations_retenues(forces):
         return {}
     points = [points_globaux_officiels(d) if d else 0 for d in donneurs]
     resultat = confronter_intentions(*donneurs, 'globale', *points)
-    return {camp: dict(ordres={catalogues.ORDRES[i]['nom']
-                              for i in resultat[f'camp_{n}']},
+    return {camp: dict(ordres=set(resultat[f'camp_{n}']),
                        qg=identite(d['general']))
             for n, (camp, d) in enumerate(zip(camps, donneurs), 1) if d}
 
@@ -498,20 +497,20 @@ def participants_muraille_territoire(forces, formations, camp, *,
     """
     import generaux
     formation = formations.get(camp)
-    if not formation or 'muraille_humaine' not in formation['ordres']:
+    if not formation or 1019 not in formation['ordres']:
         return ()
     candidats = tuple(g for g in forces.get(camp, {}).values()
                       if g and generaux.general_a_des_unites(g)
                       and progression.general_recoit_ordre(g, 'muraille_humaine'))
     qg_exclu = (formation['qg']
-                 if 'qg_nommade' in formation['ordres'] else None)
+                 if 1016 in formation['ordres'] else None)
     admissibles = ordres_calculs_v2.participants_muraille(
         (identite(g) for g in candidats), qg_exclu, reserve_strategique)
     return tuple(g for g in candidats if identite(g) in admissibles)
 
 
 def qg_hors_formation(general, formation):
-    return bool(general and formation and 'qg_nommade' in formation['ordres']
+    return bool(general and formation and 1016 in formation['ordres']
                 and progression.general_recoit_ordre(general, 'qg_nommade')
                 and identite(general) == formation['qg'])
 
