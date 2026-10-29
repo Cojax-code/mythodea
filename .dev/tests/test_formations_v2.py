@@ -137,7 +137,7 @@ class FormationsEnBataille(unittest.TestCase):
         with self.bataille():
             formations = ordres_pipeline.formations_retenues(self.forces())
             self.assertNotIn('j1', formations)
-            self.assertEqual(formations['j2']['ordres'], {'qg_nommade'})
+            self.assertEqual(formations['j2']['ordres'], {1016})
             self.assertFalse(ordres_pipeline.frontal_autorise('j1'))
 
     def test_pc_egalite_et_contre_ordre(self):
@@ -187,9 +187,9 @@ class FormationsEnBataille(unittest.TestCase):
             (bot / 'ordre.txt').write_text('')
         trace = []
         original = self.combats.combat_entre_generaux
-        def observer(a, b):
+        def observer(a, b, **options):
             trace.append((a['emplacement'], b['emplacement']))
-            return original(a, b)
+            return original(a, b, **options)
         with patch.object(self.combats, 'combat_entre_generaux', side_effect=observer):
             self.combats.resoudre_affrontement_actif(
                 self.config.game_path / 'est_3', 'OFF/OFF', self.profil)
@@ -221,8 +221,8 @@ class FormationsEnBataille(unittest.TestCase):
         self.opposition(pc_1, pc_2)
         trace = []
         original = self.combats.combat_entre_generaux
-        def observer(a, b):
-            r = original(a, b)
+        def observer(a, b, **options):
+            r = original(a, b, **options)
             trace.append((a['emplacement'], b['emplacement'], r))
             return r
         with self.bataille() as contexte:
@@ -292,10 +292,10 @@ class FormationsEnBataille(unittest.TestCase):
         avant = self.preparer_tour()
         original = self.combats.combat_entre_generaux
         trace = []
-        def observer(a, b):
+        def observer(a, b, **options):
             self.assertEqual({p: p.read_bytes() for p in avant}, avant)
             trace.append(a['emplacement'])
-            return original(a, b)
+            return original(a, b, **options)
         with patch.object(self.combats, 'combat_entre_generaux', side_effect=observer), \
                 patch.object(self.survie, 'creer_vague_est', return_value=[]):
             self.survie.resoudre_tour_survie(self.profil, random.Random(17))
@@ -309,8 +309,8 @@ class FormationsEnBataille(unittest.TestCase):
         avant = self.preparer_tour()
         soldats_avant = copy.deepcopy(self.soldats.charger())
         original = self.combats.combat_entre_generaux
-        def interrompre(a, b):
-            original(a, b)
+        def interrompre(a, b, **options):
+            original(a, b, **options)
             raise RuntimeError('interruption formation')
         with patch.object(self.combats, 'combat_entre_generaux', side_effect=interrompre), \
                 patch.object(self.survie, 'creer_vague_est', return_value=[]):
