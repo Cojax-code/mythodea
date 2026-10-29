@@ -178,3 +178,17 @@ Codex doit verifier :
 Estimation indicative : environ 80-85 % de la migration de la logique du moteur vers les IDs, **pas une mesure de couverture**. La validation finale est reservee a Codex. L'interface de compatibilite des fonctions publiques dans commandement.py et progression.py subsiste volontairement.
 
 Statut : commits enregistres, aucun test execute ici.
+
+## Lot suivant : harmonisation finale des controles Zombie et formations
+
+Commits `8bda055` (`python/progression.py`) et `10eb53f` (`python/ordres_pipeline.py`).
+
+- `progression.py` centralise dans `_ordre_zombie(ordre)` la reconnaissance des deux ordres Zombies, tant par IDs que par noms encore admis aux frontieres. Les fonctions distinctes d'emission (`ordre_autorise`) et de reception (`reception_ordre_autorisee`) partagent desormais ce controle sans changer leurs politiques respectives.
+- Dans `generaux_en_formation`, la variable de boucle est nommee `identifiant` et non `nom` : les elements de `formation['ordres']` sont deja des IDs, transmis inchanges a `general_recoit_ordre`.
+
+Tests a effectuer par Codex :
+- [ ] Comparer les decisions d'emission et de reception Zombie/non-Zombie pour IDs, anciens noms, ordres inconnus et entrees absentes.
+- [ ] Verifier l'ordre des generaux et la reception des formations Muraille, QG nomade, On_melange et cas Zombie.
+- [ ] Passer les tests cibles puis les regressions de Grande Muraille et la suite complete ; reporter les resultats reels.
+
+Statut : commits et notes enregistres ; aucun test execute ici. Ne pas supprimer la compatibilite des interfaces nominales avant inventaire complet des tests et appelants.
