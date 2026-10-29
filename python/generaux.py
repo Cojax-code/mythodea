@@ -415,9 +415,9 @@ def general_possede_ordre(
 
     if general.get('chemin'):
         import catalogues
-        nom = next((o['nom'] for o in catalogues.ORDRES.values()
-                    if o['jeton'] == identifiant_ordre), None)
-        if not progression.ordre_autorise(progression.caracteristiques_general(general), nom):
+        ordre_id = next((i for i, o in catalogues.ORDRES.items()
+                         if o['jeton'] == identifiant_ordre), None)
+        if not progression.ordre_autorise(progression.caracteristiques_general(general), ordre_id):
             return False
 
     for ordre in general.get("ordres", []):
