@@ -664,7 +664,9 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
         murailles = {}
         for camp, adversaire in ((camp_1, general_camp_2),
                                  (camp_2, general_camp_1)):
-            if 1019 in formations.get(camp, {}).get('ordres', ()):
+            # Prototype 1019 conservé mais inaccessible tant que désactivé.
+            if (catalogues.ORDRES[1019]['disponible'] and
+                    1019 in formations.get(camp, {}).get('ordres', ())):
                 simulateur = random.Random()
                 simulateur.setstate(random.getstate())
                 murailles[camp] = preparer_muraille_territoire(
