@@ -321,7 +321,7 @@ def cibles_gros_poisson(beneficiaire, donneur):
         if identite(a) == identite(b):
             continue  # Sans effet, y compris dans la confrontation d'ordres.
         profils = [progression.caracteristiques_general(g) for g in (a, b)]
-        if any(not fiche or not progression.reception_ordre_autorisee(fiche, 'gros_poisson')
+        if any(not fiche or not progression.reception_ordre_autorisee(fiche, 1017)
                for fiche in profils):
             continue
         if not any(identite(b) == identite(preteur) for _, preteur in couples):
@@ -623,8 +623,7 @@ def duel(general_1, general_2):
             fiche = progression.caracteristiques_general(general)
             if fiche and donneurs[n]:
                 interdits = {i for i in donneurs[n]['identifiants']
-                             if not progression.reception_ordre_autorisee(
-                                 fiche, catalogues.ORDRES[i]['nom'])}
+                             if not progression.reception_ordre_autorisee(fiche, i)}
                 donneurs[n] = retirer_ordres_annules(donneurs[n], interdits)
         if not any(donneurs):
             continue
