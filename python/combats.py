@@ -1214,6 +1214,11 @@ def engager_avant_muraille(general_allie, general_adverse, *, participants=None,
     membres = tuple(g for g in membres
                     if participants.blocs(g)['avant']['type'] == type_engage
                     and participants.blocs(g)['avant']['nombre'] > 0)
+    # Même ordre canonique que les prévisions : les tirages de victimes
+    # ne dépendent pas de l'ordre d'entrée des généraux.
+    membres = tuple(sorted(membres, key=lambda g: (
+        int(g.get('emplacement', '999999')),
+        ordres_pipeline.identite(g))))
     blocs = {ordres_pipeline.identite(g): participants.blocs(g)['avant'] for g in membres}
     if any(b.get('boucliers') or b.get('soutiens') or
            (b['nombre'] and any(unites.etiquette(b['type'], e)
