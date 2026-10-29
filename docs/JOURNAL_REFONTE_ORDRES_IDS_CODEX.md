@@ -58,3 +58,26 @@ Ces points sont a verifier par Codex ; aucun resultat de tests n'est confirme da
 Commits reperes : 607cd78, f44df7a, 11598aa, 8080e1c, 792a9cf, c45da43, 6b7b636, 7d55e46, c940c99, 6cc282a, f6a52c8, 0692c2e, cd1f69f, 04be4c5, 4f618d1, a49c9de, 15f3e85.
 
 Codex doit verifier les tests deja ecrits, executer les tests cibles et la suite complete prevue par AGENTS.md, puis documenter les resultats reels.
+
+## Reprise du 29 octobre : annulations des formations
+
+Commit : 9ebccd3.
+
+Fichier modifie : python/ordres_pipeline.py.
+
+- preparer_compatibilites construit une collection d'identifiants d'ordres ; Attaque frontale y entre par l'ID 1002 et le jeton du catalogue.
+- Les incompatibilites continuent a passer par commandement.compatibilite_formations, qui sait deja recevoir des IDs.
+- Le contexte interne des annulations conserve des IDs ; confronter_frontal_melange y ajoute directement les identifiants annules.
+- frontal_autorise verifie l'ID 1002.
+- Le rapport convertit les IDs des deux formations en noms du catalogue pour rester lisible.
+
+Verifications reservees a Codex :
+
+- [ ] Conflits de formations au sein d'un camp : deux ordres incompatibles sont annules, pas leurs voisins.
+- [ ] Confrontation Attaque frontale / On_melange avec PC differents ou egaux et annulations successives.
+- [ ] Aucun ordre annule n'est reactive apres disparition d'un donneur.
+- [ ] Rapports de conflits : noms des ordres, et non IDs, toujours affiches.
+- [ ] Rechercher les autres lecteurs de contexte['annules'] qui attendent potentiellement des noms.
+- [ ] Verifier avec les cas Grande Muraille puis executer les tests conformement a AGENTS.md.
+
+Statut : modification enregistree, aucun test execute dans cette session.
