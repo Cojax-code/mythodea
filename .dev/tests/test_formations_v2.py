@@ -116,15 +116,15 @@ class FormationsEnBataille(unittest.TestCase):
             self.assertFalse(ordres_pipeline.frontal_autorise('allies'))
             self.assertEqual(self.ordre_effectif('allies'), ['1', '2'])
             with ordres_pipeline.duel(a, b):
-                self.assertTrue(ordres_pipeline.effet(a, 'herisson'))
-                self.assertTrue(ordres_pipeline.effet(a, 'qg_nommade'))
-                self.assertFalse(ordres_pipeline.effet(a, 'on_melange'))
+                self.assertTrue(ordres_pipeline.effet(a, 1006))
+                self.assertTrue(ordres_pipeline.effet(a, 1016))
+                self.assertFalse(ordres_pipeline.effet(a, 1015))
             # Les annulations ne disparaissent pas quand le porteur de 1-2 disparaît.
             self.combats.supprimer_unites(self.infos(a), 0, a)
             self.assertFalse(ordres_pipeline.frontal_autorise('allies'))
             with ordres_pipeline.bataille(self.config.game_path / 'est_3', self.profil):
                 self.assertEqual(ordres_pipeline._bataille.get()['annules']['allies'],
-                                 {'on_melange', 'attaque_frontale'})
+                                 {1015, 1002})
         texte = (self.config.rapports_territoires_dir / 'est_3.txt').read_text()
         self.assertEqual(texte.count('annulés mutuellement'), 1)
         self.assertIn('attaque_frontale et on_melange', texte)
@@ -227,7 +227,7 @@ class FormationsEnBataille(unittest.TestCase):
             return r
         with self.bataille() as contexte:
             self.assertEqual(ordres_pipeline.frontal_autorise('j1'), frontal)
-            self.assertEqual('on_melange' not in contexte['annules']['j2'], melange)
+            self.assertEqual(1015 not in contexte['annules']['j2'], melange)
             with patch.object(self.combats, 'combat_entre_generaux', side_effect=observer):
                 self.combats.resoudre_affrontement_actif(self.config.game_path / 'est_3',
                     'OFF/DEF', contexte['configuration'])
@@ -263,9 +263,9 @@ class FormationsEnBataille(unittest.TestCase):
             a, b = forces['j1']['1'], forces['j2']['4']
             self.ordres(a, [1006])
             with ordres_pipeline.duel(a, b):
-                self.assertTrue(ordres_pipeline.effet(a, 'herisson'))
-                self.assertTrue(ordres_pipeline.effet(b, 'on_melange'))
-                self.assertTrue(ordres_pipeline.effet(b, 'qg_nommade'))
+                self.assertTrue(ordres_pipeline.effet(a, 1006))
+                self.assertTrue(ordres_pipeline.effet(b, 1015))
+                self.assertTrue(ordres_pipeline.effet(b, 1016))
 
     def test_frontal_non_transmis_par_qg_ne_contourne_pas_confrontation(self):
         q1, q2 = self.opposition(90, 30)
