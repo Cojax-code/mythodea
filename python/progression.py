@@ -100,10 +100,8 @@ def est_zombie(fiche):
 
 def ordre_autorise(fiche, nom):
     """Restriction Zombie pour ID ou nom historique (sans valider l'acquisition)."""
-    if type(nom) is int:
-        est_ordre_zombie = nom in ORDRES_ZOMBIES_IDS
-    else:
-        est_ordre_zombie = nom in ORDRES_ZOMBIES
+    est_ordre_zombie = (nom in ORDRES_ZOMBIES_IDS if type(nom) is int
+                        else nom in ORDRES_ZOMBIES)
     return est_zombie(fiche) == est_ordre_zombie
 
 
