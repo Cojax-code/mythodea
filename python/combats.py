@@ -1326,9 +1326,32 @@ def enchainer_avants_muraille(generaux_allies, general_adverse, *, aleatoire,
         if identite is None:
             break
         choisi = next(g for g in disponibles if ordres_pipeline.identite(g) == identite)
-        engagements.append((identite, engager(choisi)))
-        disponibles = tuple(g for g in disponibles
-                            if ordres_pipeline.identite(g) != identite)
+        # Une candidature correspond à tout l'Avant collectif de son type.
+        # Capturer les types AVANT les pertes : un général détruit peut perdre
+        # son dossier pendant le choc et ne doit pas réapparaître au relais.
+        types_avant = {}
+        for g in disponibles:
+            chemin = g.get('chemin')
+            if chemin is not None:
+                infos = generaux.lire_blocs_general(
+                    chemin, lecture_seule=True)['avant']
+                types_avant[ordres_pipeline.identite(g)] = infos['type']
+        type_engage = types_avant.get(identite)
+        choc = engager(choisi)
+        engagements.append((identite, choc))
+        # L'Avant adverse est vaincu : aucun autre bloc Muraille à engager.
+        if isinstance(choc, dict) and choc.get('final_2') == 0:
+            break
+        # Tous les contributeurs du type engagé ont déjà combattu.
+        # Un bloc d'un AUTRE type peut prendre le relais s'il reste un Avant adverse.
+        disponibles = tuple(
+            g for g in disponibles
+            if ordres_pipeline.identite(g) != identite
+            and (type_engage is None
+                 or types_avant.get(ordres_pipeline.identite(g)) != type_engage))
+        chemin_adverse = general_adverse.get('chemin') if isinstance(general_adverse, dict) else None
+        if chemin_adverse is not None and not chemin_adverse.is_dir():
+            break
     return tuple(engagements)
 
 
