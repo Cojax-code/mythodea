@@ -152,3 +152,13 @@ Méthode : extraction de `Mythodea_code.zip`, superposition des six fichiers iss
 - `test_ordres_effets_v2` : dépassement de la limite de 17 s lors de son lancement isolé ; **pas de verdict par module**.
 
 Interprétation : plusieurs modules ordres/permissions sont au vert, mais des régressions ou contrats de tests divergents subsistent autour de Grande Muraille, des wrappers et des données de prévision. Ne pas les attribuer systématiquement aux IDs ni modifier arbitrairement le gameplay. **Statut : non validé ; suite exhaustive et tests Linux restant à faire par Codex.**
+
+## Correction des tests sans modification gameplay — 29 octobre 2026
+
+Commit `106ecf2` — `.dev/tests/test_formations_v2.py` seulement.
+
+- Quatre wrappers de `combat_entre_generaux` acceptent et retransmettent `**options` pour préserver les nouveaux arguments de Grande Muraille lors des mocks.
+- L'assertion sur `formations['j2']['ordres']` attend désormais `{1016}` au lieu de `{'qg_nommade'}`, car ce contexte interne contient des IDs.
+- Vérification sur copie isolée de `Mythodea_code.zip` avec les six tests IDs corrigés : `PYTHONPATH=python:.dev/tests python3 -B -m unittest -q test_formations_v2` : **23 tests, OK**, ~9,8 secondes.
+- Avant correction : 23 tests, 1 FAIL + 8 ERROR. Les autres fichiers de la suite et les bugs Muraille non liés à ces deux causes restent à vérifier.
+- **Aucun module du moteur ou règle de gameplay modifié.** Ne pas assimiler ces 23 réussites à la validation totale de Mythodea.
