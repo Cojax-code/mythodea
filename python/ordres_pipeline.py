@@ -517,8 +517,8 @@ def generaux_en_formation(actifs, formation):
     # Les Zombies occupent leurs rangs de la séquence normale. Seuls les autres
     # généraux sont réordonnés entre les places restantes, sans les compacter.
     normaux = sorted(actifs, key=lambda g: int(g['emplacement']))
-    eligibles = [g for g in normaux if all(progression.general_recoit_ordre(g, nom)
-                                         for nom in formation['ordres'])]
+    eligibles = [g for g in normaux if all(progression.general_recoit_ordre(g, identifiant)
+                                         for identifiant in formation['ordres'])]
     positions = {g['emplacement']: g for g in eligibles}
     qg = next((p for p, g in positions.items() if identite(g) == formation['qg']), None)
     sequence = commandement.sequence_formation(positions, formation['ordres'], qg)
