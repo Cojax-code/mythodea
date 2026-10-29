@@ -42,6 +42,18 @@ class TestOrdresCalculsV2(unittest.TestCase):
                 self.assertNotIn(1006, pipeline._duel.get()[('j1', 'general1')]['effets'])
         self.assertIsNone(pipeline._duel.get())
 
+    def test_muraille_rapport_inverse_combattants_et_survivants(self):
+        import combats
+        bilan = dict(bloc_1='avant', bloc_2='avant',
+                     initial_1=18, initial_2=9,
+                     final_1=3, final_2=2,
+                     combattants_1=0, combattants_2=1)
+        inverse = combats.orienter_choc_muraille(bilan, inverser=True)
+        self.assertEqual((inverse['final_1'], inverse['final_2']), (2, 3))
+        self.assertEqual((inverse['combattants_1'], inverse['combattants_2']), (1, 0))
+        self.assertEqual((bilan['combattants_1'], bilan['combattants_2']), (0, 1))
+        self.assertEqual(combats.orienter_choc_muraille(bilan), bilan)
+
     def test_prevision_muraille_fatigue_individuelle(self):
         from unittest.mock import patch
         import combats
