@@ -112,3 +112,21 @@ Tests pour Codex :
 - [ ] Tester les annulations de formations et la Grande Muraille apres cette migration.
 
 Statut : code et journal enregistres ; aucun test execute par ChatGPT.
+
+## Lot groupe : politique de progression par IDs
+
+Commits `6aacb00` (`python/progression.py`) et `fa1e757` (`python/commandement.py`).
+
+- `nature_autorise_ordre()` peut recevoir directement l'identifiant canonique de l'ordre. La prise en charge ancienne du nom reste disponible lorsque l'ID n'est pas fourni.
+- `_ordres_eligibles()` dans `commandement.py` lui transmet desormais l'identifiant pour eviter une conversion par nom.
+- `evolutions_eligibles()` controle les ordres candidats via `evolution['cible']` ou leur ID, et non le nom de la fiche.
+- Aucun changement de gameplay voulu. Les restrictions des Zombies, des profils hybrides et les evolutions demeurent les memes.
+
+A controler par Codex :
+- [ ] Autorisations des ordres Zombie / non-Zombie et profils hybrides, avec et sans ID explicite.
+- [ ] Evolutions eligibles : categorie ordre, cible presente/absente, progression acquise, acquisition et natures autorisees.
+- [ ] Confrontation globale et duel, et ordre des candidatures.
+- [ ] Cas d'entrees de catalogue artificielles dans les tests : aucun ordre autorise par erreur.
+- [ ] Suite de tests ordres, formations et progression, puis regression complete selon AGENTS.md.
+
+Statut : changements enregistres, tests non executes ici.
