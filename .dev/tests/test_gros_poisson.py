@@ -126,7 +126,7 @@ class GrosPoisson(unittest.TestCase):
                 if not qg:
                     (p['chemin'] / 'qg.txt').unlink()
                 with self.bataille(), ordres_pipeline.duel(a, b) as decisions:
-                    self.assertFalse(ordres_pipeline.effet(a, 'gros_poisson'))
+                    self.assertFalse(ordres_pipeline.effet(a, 1017))
 
     def test_types_distincts_sans_homologue_motif_et_aucune_perte_preteur(self):
         a, p, b = self.scenario()
