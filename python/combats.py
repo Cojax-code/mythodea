@@ -204,7 +204,7 @@ def _combat_entre_generaux(general_1, general_2, *, participants=None,
         generaux_du_duel = {g['joueur']: g for g in (general_1, general_2)}
         actions.sort(key=lambda action: not (
             armee[action[0]][action[1]]['type'] == 'chevalier_clinquant'
-            and ordres_pipeline.effet(generaux_du_duel[action[0]], 'etincellant')))
+            and ordres_pipeline.effet(generaux_du_duel[action[0]], 1014)))
         rapports.afficher_et_ecrire(
             "\nOrdre global de manœuvre : "
             + ", ".join(f"{joueur} {bloc}" for joueur, bloc in actions)
@@ -872,10 +872,10 @@ def cible_facile(type_unite):
 def multiplicateur(type_attaquant, type_defenseur, general_attaquant=None, general_defenseur=None):
     valeur = unites.avantage(type_attaquant, type_defenseur, general_attaquant, general_defenseur)
     if (type_attaquant == 'piquier' and unites.etiquette(type_defenseur, 'cavalerie')
-            and ordres_pipeline.effet(general_attaquant, 'herisson')):
+            and ordres_pipeline.effet(general_attaquant, 1006)):
         valeur = max(valeur, 3)
     if (type_defenseur == 'piquier' and unites.etiquette(type_attaquant, 'distance')
-            and ordres_pipeline.effet(general_defenseur, 'herisson')):
+            and ordres_pipeline.effet(general_defenseur, 1006)):
         valeur = max(valeur, 3)
     return valeur
 
