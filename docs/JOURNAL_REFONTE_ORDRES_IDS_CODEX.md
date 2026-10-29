@@ -77,7 +77,19 @@ Codex doit :
 4. Corriger uniquement les régressions confirmées ; **ne pas modifier le gameplay sans accord explicite**.
 5. Renseigner dans ce journal la date, le commit validé, les commandes, le nombre de tests réussis/échoués, les corrections, les cas non couverts et les blocages.
 
-## 5. Résultats Codex — à compléter après exécution
+## 5. Pré-vérification isolée ChatGPT — 29 octobre 2026
+
+**Limite cruciale :** le clonage GitHub vers le conteneur Python a échoué (résolution DNS inaccessible). Les fichiers du dépôt **n'ont pas été importés ni exécutés dans leur environnement réel**. La pré-vérification a porté sur une reproduction isolée du diagnostic de `commandement.compatibilite_formations`, avec la matrice d'IDs et les noms lus dans le catalogue. Ce résultat **ne remplace pas** les tests réels de Codex.
+
+- **7 vérifications Python isolées réussies sur 7** : paires interdites et compatibles, paire ouverte, équivalence nom/ID, doublon nom+ID, ordre Pour l'honneur et stabilité face à l'ordre d'entrée.
+- **0 échec, 0 erreur** dans cette reproduction.
+- Contrôle statique du catalogue : `1008`, `1012`, `1013`, `1017`, `1018`, `1022` ont été retrouvés avec leurs noms attendus.
+- **Compilation du dépôt et suite officielle : non exécutées.**
+- Aucune correction Python apportée lors de cette pré-vérification.
+
+Attention : les tests du dépôt peuvent encore attendre des noms dans les contextes internes `annules` et `effets` ; cela doit être déterminé par les tests réels, sans assimiler automatiquement une assertion ancienne à une régression.
+
+## 6. Résultats Codex — à compléter après exécution
 
 - **Commit / date de validation :** à renseigner
 - **Compilation :** non vérifiée
