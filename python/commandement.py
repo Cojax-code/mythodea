@@ -47,10 +47,10 @@ def compatibilite_formations(ordres):
     l'appelant, pour préserver les lecteurs historiques.
     """
     uniques = set(ordres)
-    inconnus = [ordre for ordre in uniques if _identifiant_ordre(ordre) is None]
-    if inconnus:
-        raise ValueError('Ordre inconnu dans la compatibilité.')
-    couples = sorted(uniques, key=lambda ordre: (_identifiant_ordre(ordre), str(ordre)))
+    # Conserver l'ordre alphabétique historique pour les noms, afin que
+    # les diagnostics existants restent stables. Les IDs sont triés en entier.
+    couples = sorted(uniques, key=lambda ordre: (
+        0 if isinstance(ordre, str) else 1, ordre))
     interdites, ouvertes = [], []
     for a, b in combinations(couples, 2):
         ids = frozenset((_identifiant_ordre(a), _identifiant_ordre(b)))
