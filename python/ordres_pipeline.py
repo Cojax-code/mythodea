@@ -448,9 +448,9 @@ def formations_retenues(forces):
         general = next((g for g in forces[camp].values()
                         if g and g.get('total_unites', 0)), None)
         donneurs.append(intention(general, 'globale') if general else None)
-    formations_territoriales = {'on_melange', 'qg_nommade', 'muraille_humaine'}
+    formations_territoriales = frozenset((1015, 1016, 1019))
     if not any(
-            d and any(catalogues.ORDRES[i]['nom'] in formations_territoriales
+            d and any(i in formations_territoriales
                       and catalogues.ORDRES[i]['disponible']
                       for i in d['identifiants'])
             for d in donneurs):
@@ -586,7 +586,7 @@ def intention_personnelle(general, categorie, inclure_frontal=False):
     demandes = [i for i in demandes if (i != 1002 or inclure_frontal)
                 and i in fiche['evolutions_acquises']]
     if _retraite.get() is None:
-        demandes = [i for i in demandes if catalogues.ORDRES[i]['nom'] != 'choca_fuite']
+        demandes = [i for i in demandes if i != 1011]
     if not demandes:
         return None
     jetons = {catalogues.ORDRES[i]['jeton'] for i in demandes}
@@ -627,7 +627,7 @@ def duel(general_1, general_2):
                 continue
             retenus = resultat[f'camp_{numero}']
             contexte[identite(general)]['effets'].update(catalogues.ORDRES[i]['nom'] for i in retenus)
-            if any(catalogues.ORDRES[i]['nom'] == 'cruelle' for i in retenus):
+            if 1010 in retenus:
                 sources_cruelles[identite(general)] = donneur['general']
             if 1017 in retenus:
                 contexte[identite(general)]['gros_poisson'] = cibles_gros_poisson(general, donneur)
