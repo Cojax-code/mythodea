@@ -5,7 +5,7 @@ from pathlib import Path
 import random
 import stat
 import uuid
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from contextvars import ContextVar
 from fractions import Fraction
 from dataclasses import dataclass
@@ -403,19 +403,22 @@ class VueChocDerniereCharge:
         if getattr(self, '_consomme', False):
             raise RuntimeError('Dernière charge : réutilisation du choc interdite.')
         self._consomme = True
-        self._active = True
-        try:
-            yield self
-        finally:
-            # Survivants ou victimes, aucun relevé n'atteint la manœuvre.
-            # Ne jamais effacer les soldats natifs masqués.
+        parent = (self.delegate.choc()
+                  if isinstance(self.delegate, VueChocDerniereCharge)
+                  else nullcontext())
+        with parent:
+            self._active = True
             try:
-                for entree in self.archives:
-                    chemin = entree['chemin']
-                    if chemin.is_dir() and chemin.parent.name == entree['uuid']:
-                        shutil.rmtree(chemin)
+                yield self
             finally:
-                self._active = False
+                # Chaque vue détruit uniquement ses relevés, avant manœuvre.
+                try:
+                    for entree in self.archives:
+                        chemin = entree['chemin']
+                        if chemin.is_dir() and chemin.parent.name == entree['uuid']:
+                            shutil.rmtree(chemin)
+                finally:
+                    self._active = False
 
     def blocs(self, general):
         import generaux
@@ -462,7 +465,8 @@ class VueChocDerniereCharge:
         if (general is None or
                 (general['joueur'], general['nom']) !=
                 (self.beneficiaire['joueur'], self.beneficiaire['nom'])):
-            return None
+            autre = getattr(self.delegate, 'pertes_releves', None)
+            return autre(general, infos, survivants, aleatoire) if autre else None
         chemins = {a['chemin'] for a in self.archives}
         unites = tuple(infos['unites'])
         if not unites or not set(unites) <= chemins:
