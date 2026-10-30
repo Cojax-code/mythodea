@@ -578,3 +578,19 @@ Contrôle statique ciblé de la branche :
 - Les fonctions expérimentales restent dans le code pour reprise ultérieure ; aucun effacement ni activation. Ne pas modifier l'interface du prototype ni assimiler audit statique à des tests.
 
 **À Codex lors de la validation :** test de non-régression avec 1019/1026 désactivés ; aucune création du transit `.systeme/derniere_charge_transit` pendant un combat normal, aucun déclenchement Muraille, aucune variation des pertes/UUID, autres ordres actifs inchangés. Aucun test de gameplay exécuté pendant cet audit.
+
+## Audit statique des ordres actifs — point 2 (30 octobre 2026)
+
+Périmètre relu : `catalogues.ORDRES`, `ordres_pipeline.ordres_du_general`, `intention` / `intention_personnelle`, `preparer_compatibilites`, `formations_retenues`, `commandement.compatibilite_formations`, `generaux.lire_ordres_general` et `lire_ordres_qg`. Audit ciblé **non équivalent à une validation de chaque effet de combat**.
+
+**Défauts certains corrigés :**
+- Commit `33244a9` : `qg.txt` n'acceptait pas le jeton à quatre éléments `2-6-A-B` de **Gros Poisson (1017)**, alors que ce général doit écrire ses ordres dans `qg.txt` et non `ordre.txt`. Le parseur admet désormais précisément `2-6-A-B`, vérifie que les deux positions sont strictement positives, et continue de rejeter les autres ordres à quatre éléments.
+- Commit `fcb3001` : `lire_ordres_qg` lisait le fichier entier sans limite ni contrôle de fichier ordinaire, et sautait toujours la première ligne brute plutôt que la première ligne non vide (celle du bloc QG). Lecture désormais bornée à 65 536 octets avec contrôles de type et de liens, et extraction après la première ligne non vide.
+
+**Résultats structurels :**
+- Les jetons `1-...`, `2-...`, `3-...` restent distincts des IDs internes 1001–1026 ; `ordres_du_general` filtre les `disponible=False` et les spécifications des 1017/1025/1026.
+- `commandement.compatibilite_formations` distingue paires incompatibles des paires explicitement compatibles ; en particulier 1015+1025 et 1002+1025 sont incompatibles, 1016+1025 compatible.
+- `preparer_compatibilites` prépare les annulations de formations avant la confrontation adverse ; `intention` transmet depuis le QG en restant soumis aux restrictions et annulations.
+- **À examiner avant la fin du point 2** : la couverture des effets actifs dans les différentes voies OFF/OFF, OFF/DEF et frontal ; cohérence du filtrage des ordres personnels en cas de QG détruit ; la robustesse des spécifications et les scénarios de paires adverses simultanées. Le code n'a pas été exécuté et les tests restent réservés à Codex.
+
+Les deux ordres 1019 et 1026 restent désactivés.
