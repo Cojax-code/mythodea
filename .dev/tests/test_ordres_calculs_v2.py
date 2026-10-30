@@ -167,6 +167,21 @@ class TestOrdresCalculsV2(unittest.TestCase):
             calculs.renforts_ralliement({'archer': 0}, ('archer',)),
             {'archer': 0})
 
+    def test_chat_man_ne_retient_pas_le_seul_bloc_vivant(self):
+        import combats
+        blocs = {'avant': {'nombre': 3, 'type': 'orc_chaman'},
+                 'arriere': {'nombre': 0, 'type': 'vide'}}
+        self.assertFalse(combats.autres_blocs_vivants(blocs, 'avant'))
+        blocs['arriere']['nombre'] = 2
+        self.assertTrue(combats.autres_blocs_vivants(blocs, 'avant'))
+
+    def test_chat_man_ordre_disponible(self):
+        import catalogues
+        ordre = catalogues.ORDRES[1024]
+        self.assertTrue(ordre['disponible'])
+        self.assertTrue(ordre['contre'])
+        self.assertEqual(ordre['categorie'], 'duel')
+
     def test_prevision_muraille_fatigue_individuelle(self):
         from unittest.mock import patch
         import combats
