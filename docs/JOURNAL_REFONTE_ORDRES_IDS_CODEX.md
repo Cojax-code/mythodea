@@ -594,3 +594,13 @@ Périmètre relu : `catalogues.ORDRES`, `ordres_pipeline.ordres_du_general`, `in
 - **À examiner avant la fin du point 2** : la couverture des effets actifs dans les différentes voies OFF/OFF, OFF/DEF et frontal ; cohérence du filtrage des ordres personnels en cas de QG détruit ; la robustesse des spécifications et les scénarios de paires adverses simultanées. Le code n'a pas été exécuté et les tests restent réservés à Codex.
 
 Les deux ordres 1019 et 1026 restent désactivés.
+
+### Point 2 — Seconde passe des parcours OFF/OFF / OFF/DEF / frontal (30 octobre 2026)
+
+Audit statique complémentaire de `combats.resoudre_combat_v15`, `resoudre_combat_off_def`, `resoudre_combat_range`, `resoudre_attaque_frontale`, `combat_entre_generaux` et `ordres_pipeline.intention`, `duel`, `honneur_protege` :
+- OFF/OFF et OFF/DEF passent par le même pilote `resoudre_combat_range`; OFF/DEF établit explicitement `defense_off_def(defenseur)` et `honneur_protege` exige à la fois le défenseur, le choc initial et 1022 effectif : l'ordre ne doit donc pas fonctionner hors de cette phase.
+- L'engagement frontal `1-2` utilise un parcours d'emplacements distinct avant la phase rangée. Il appelle `combat_entre_generaux`, donc les décisions de duel/individuelles y passent aussi. Son déclenchement dépend de la déclaration de frontal calculée en amont ; les généraux hors formation QG nomade sont explicitement exclus. La capture de Dernière charge n'est ouverte que pour 1026 disponible=False, donc pas d'interaction expérimentale actuellement.
+- `combat_entre_generaux` ouvre le contexte des décisions en duel, et `ordres_pipeline.intention` cherche l'ordre personnel avant de déléguer au QG pour les catégories concernées.
+- Risques à confirmer par Codex : portée des ordres personnels du QG transmissibles à d'autres généraux, cohérence des priorités frontal/rangé pour 1021 et 1025, et différences entre demandes et effets réellement retenus lorsque les deux camps ont des ordres de duel.
+
+Aucune correction supplémentaire certaine de gameplay dans cette passe. Audit documentaire seulement ; ne pas présenter le contrôle statique comme une validation d'exécution. Les corrections déjà apportées à `qg.txt` (Gros Poisson et lecture bornée) restent en place. Les ordres 1019/1026 restent suspendus.
