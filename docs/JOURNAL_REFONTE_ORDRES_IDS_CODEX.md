@@ -386,3 +386,15 @@ Calculs déjà présents dans `ordres_calculs_v2.py` : `probabilite_charge_suici
 - `.dev/tests/test_ordres_calculs_v2.py` commit `81083f9` : disponibilité et mémorisation unique, en plus des tests de compatibilité et séquence du commit `3ed6ea1`.
 
 **Validation Codex à la fin de tous les ordres :** conflit On mélange, compatibilité QG nomade, PC du contre-ordre, sélection du premier général par camp, général détruit au premier duel, succession de plusieurs affrontements, maintien des positions d'origine et absence de mouvement vers le repli. Vérifier en particulier si l'activation nécessite une confrontation en début de bataille plutôt que de dépendre du recalcul territorial à chaque round. Aucun test Raspberry Pi exécuté.
+
+## Pour l'honneur 1022 — activation cadrée par la fiche originale (30 octobre 2026)
+
+**Source de la règle :** document utilisateur `mythodea-ordres.json` : ordre global avant le combat territorial ; **uniquement le camp DEF en OFF/DEF**, supprime pendant le choc initial les **faiblesses des unités de tous les généraux du clan défenseur**, sans neutraliser leurs forces naturelles. Aucun cumul avec les autres ordres sauf combinaison explicitement autorisée (la matrice `compatibilite_formations` marque actuellement les paires impliquant 1022 incompatibles).
+
+- `ordres_pipeline.py` `08d7faa` : contexte temporaire identifiant le défenseur OFF/DEF et la phase choc initial ; `honneur_protege(general)` vérifie le camp défensif et la réception effective de 1022 dans les décisions du duel officiel.
+- `unites.py` `9d6533c` : dans `avantage`, ignore seulement les faiblesses de l'unité défensive protégée ; ne retire pas les forces explicites de l'attaquant, ni les autres règles d'avantage.
+- `combats.py` `6fc5367` : entoure le choc initial de son contexte ; `resoudre_combat_off_def` fournit le camp défenseur pendant toute la résolution territoriale. La manœuvre reste non protégée.
+- `catalogues.py` `ac6712c` : ordre 1022 activé avec acquisition requise.
+- `.dev/tests/test_ordres_calculs_v2.py` `9bf140a`, `675a002` : tests unitaires de neutralisation d'une faiblesse, maintien d'une force naturelle, disponibilité et incompatibilités de formations.
+
+**Vérifications Codex à la campagne finale :** cas OFF/DEF et OFF/OFF, sens d'attaque inversé, plusieurs généraux du camp DEF, QG actif et QG détruit, ordre annulé par opposition de PC globaux, exclusion du malus pendant les manœuvres, interaction avec les autres ordres via la matrice, absence d'impact sur les zombies interdits de réception. Tests publiés non exécutés sur le Raspberry Pi. Ne pas réactiver Muraille 1019.
