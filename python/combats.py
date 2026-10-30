@@ -32,7 +32,8 @@ def camps_du_combat(configuration):
 
 def combat_entre_generaux(general_1, general_2, *, participants=None,
                           avant_exclus_manoeuvre=False,
-                          avant_deja_resolu=False):
+                          avant_deja_resolu=False, capture_derniere_charge=None,
+                          precedents_vaincus=None):
     if (general_1['joueur'] == general_2['joueur'] or
             general_1.get('camp', general_1['joueur']) == general_2.get('camp', general_2['joueur'])):
         raise ValueError("Un duel doit opposer deux généraux de camps différents.")
@@ -43,6 +44,27 @@ def combat_entre_generaux(general_1, general_2, *, participants=None,
         charges_actives = (ordres_pipeline.effet(general_1, 1020),
                            ordres_pipeline.effet(general_2, 1020))
         with ordres_pipeline.participations_duel(general_1, general_2, participants, decisions) as vue:
+            choc_releves = None
+            if capture_derniere_charge is not None and precedents_vaincus:
+                admissibles = []
+                for beneficiaire in (general_1, general_2):
+                    precedent = precedents_vaincus.get(beneficiaire['joueur'])
+                    flanc = ordres_pipeline.flanc_derniere_charge_retenu(beneficiaire)
+                    if precedent is None or flanc is None:
+                        continue
+                    archives = soldats.selectionner_archives_derniere_charge(
+                        capture_derniere_charge, precedent, flanc)
+                    if archives:
+                        admissibles.append(soldats.VueChocDerniereCharge(
+                            precedent, beneficiaire,
+                            'gauche' if flanc == 'G' else 'droite',
+                            archives, delegate=vue))
+                # Deux charges simultanées demandent une vue composée,
+                # non encore définie : refuser plutôt que perdre un ordre.
+                if len(admissibles) > 1:
+                    raise NotImplementedError(
+                        'Dernière charge simultanée des deux camps non raccordée.')
+                choc_releves = admissibles[0] if admissibles else None
             with unites.duel(general_1, general_2):
                 for general in (general_1, general_2):
                     if vue.present(general):
@@ -54,7 +76,8 @@ def combat_entre_generaux(general_1, general_2, *, participants=None,
                 resultat = _combat_entre_generaux(
                     general_1, general_2, participants=vue,
                     avant_exclus_manoeuvre=avant_exclus_manoeuvre,
-                    avant_deja_resolu=avant_deja_resolu)
+                    avant_deja_resolu=avant_deja_resolu,
+                    choc_derniere_charge=choc_releves)
                 if rafales:
                     resultat['initial_1'], resultat['initial_2'] = initiales
                     resultat['rafales'] = rafales
