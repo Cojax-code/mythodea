@@ -69,6 +69,14 @@ class TestOrdresCalculsV2(unittest.TestCase):
         self.assertEqual(calculs.conversions_spore(
             1, bonus_spora_adicte=True, confinement=True), 0)
 
+    def test_charge_suicidaire_disponible_avec_acquisition(self):
+        import catalogues
+        ordre = catalogues.ORDRES[1020]
+        self.assertTrue(ordre['disponible'])
+        self.assertTrue(ordre['progression'])
+        self.assertTrue(ordre['acquisition_requise'])
+        self.assertEqual(ordre['categorie'], 'individuelle')
+
     def test_charge_suicidaire_pourcentage_par_quatre_pertes(self):
         self.assertEqual(calculs.probabilite_charge_suicidaire(0), 0)
         self.assertEqual(calculs.probabilite_charge_suicidaire(3), 0)
