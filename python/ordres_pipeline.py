@@ -300,6 +300,12 @@ def tenter_ralliement(unite, donnees, aleatoire):
     courant = _bataille.get()
     if courant is None or not courant.get('ralliement'):
         return False
+    # Vérifier immédiatement la destruction du bloc QG : un ordre retenu
+    # au début du duel ne doit pas créer de nouveau ralliement après sa perte.
+    verifier_qg()
+    quartier = courant['quartiers'].get(courant['ralliement']['camp'])
+    if quartier is None or quartier.detruit:
+        return False
     cible = courant['ralliement']['qg']
     if not cible['chemin'].is_dir():
         return False
@@ -343,6 +349,9 @@ def finaliser_ralliement():
     courant['ralliement_attente'] = []
     if not attente:
         return
+    # Une destruction survenue pendant le duel doit précéder la restitution
+    # des soldats en attente ; le QG ne peut pas être ressuscité par cet ordre.
+    verifier_qg()
     courant['ralliement_effectue'] = True
     donnees = soldats.charger()
     for source, identifiant, bloc, qg, nom_original in attente:
