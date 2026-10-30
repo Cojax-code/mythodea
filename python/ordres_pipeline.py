@@ -827,6 +827,27 @@ def duel(general_1, general_2):
 
 
 
+
+def flanc_derniere_charge_retenu(general):
+    """Flanc déclaré uniquement si le duel a *réellement* retenu 1026.
+
+    Ni la présence de 2-8-G/D dans un fichier, ni une capture de morts
+    n'accordent la capacité si les PC ou un contre-ordre l'ont annulée.
+    """
+    import generaux
+    if not catalogues.ORDRES[1026]['disponible'] or not effet(general, 1026):
+        return None
+    qg = qg_du_general(general)
+    est_qg = qg is not None and identite(qg) == identite(general)
+    source = (generaux.lire_ordres_qg(general['chemin']) if est_qg
+              else generaux.lire_ordres_general(general['chemin']))
+    demandes = {ordre['specification'] for ordre in source
+                if ordre['identifiant'] == '2-8'
+                and ordre.get('specification') in ('G', 'D')}
+    # Une déclaration contradictoire n'a pas de cible implicite.
+    return next(iter(demandes)) if len(demandes) == 1 else None
+
+
 @contextmanager
 def effets_muraille(dominant, adversaire, contributeurs):
     """Contexte du choc collectif : commandement dominant et effets propres.
