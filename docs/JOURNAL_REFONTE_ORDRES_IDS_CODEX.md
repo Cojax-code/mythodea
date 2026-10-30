@@ -626,3 +626,9 @@ Lecture ciblée des fonctions `intention`, `intention_personnelle`, `duel`, `con
 ### Décision de gameplay — incompatibilité 1002 / 1021 (30 octobre 2026)
 
 Le concepteur confirme : **Retrait tactique (1021) est un ordre global**, incompatible avec **Attaque frontale (1002)**. Commit `ab117a2` : ajout du couple `(1002, 1021)` à `FORMATIONS_INCOMPATIBLES_IDS` dans `python/commandement.py`. Le moteur annule les deux ordres de cette combinaison au niveau du camp, selon la politique existante des formations incompatibles ; il ne lève plus l'erreur de paire non définie. Aucun autre effet ou priorité de duel modifié. Codex : valider combinaison, annulations mutuelles, rapports, et non-régression des autres paires. Tests non exécutés ici.
+
+### Audit des annulations et formations — Retrait tactique isolé (30 octobre 2026)
+
+**Correction moteur `c1ca9c5` :** `ordres_pipeline.formations_retenues` cherchait exclusivement les IDs `1015,1016,1025` pour décider s'il fallait confronter et construire les formations territoriales. **1021 (Retrait tactique) était omis**, de sorte qu'une formation ne demandant que cet ordre retournait `{}` et que `marquer_retrait_tactique` ne pouvait jamais le déclencher. Le filtre inclut maintenant `1021`, sans changer son comportement après le premier duel rangé. Les annulations internes demeurent appliquées par `intention` avant la confrontation ; Frontale `1002` et Retrait `1021` restent mutuellement incompatibles selon la décision du concepteur. 1019/1026 suspendus.
+
+**Tests à confier à Codex :** (1) 1021 seul avec QG et conditions officielles réunit `formations_retenues` et réordonne après le premier duel rangé ; (2) 1021 annulé par 1002 ou 1015 ne s'active jamais ; (3) 1021 avec 1016 compatible ; (4) 1021 contre ordre global adverse avec PC égaux ou supérieurs ; (5) OFF/OFF et OFF/DEF, plus QG détruit. Tests non exécutés ici.
