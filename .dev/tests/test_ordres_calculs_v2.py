@@ -108,6 +108,27 @@ class TestOrdresCalculsV2(unittest.TestCase):
         self.assertIn((1021, 1015), diagnostic['incompatibles'] +
                       [tuple(reversed(p)) for p in diagnostic['incompatibles']])
 
+    def test_retrait_tactique_disponible_sans_deplacement(self):
+        import catalogues
+        self.assertTrue(catalogues.ORDRES[1021]['disponible'])
+        self.assertTrue(catalogues.ORDRES[1021]['contre'])
+        self.assertTrue(catalogues.ORDRES[1021]['acquisition_requise'])
+
+    def test_retrait_tactique_memorise_une_seule_fois(self):
+        import ordres_pipeline as pipeline
+        general = {'joueur': 'j1', 'nom': 'general1'}
+        autre = {'joueur': 'j1', 'nom': 'general2'}
+        contexte = {'retraits_tactiques': {}}
+        jeton = pipeline._bataille.set(contexte)
+        try:
+            formation = {'ordres': {1021}}
+            self.assertTrue(pipeline.marquer_retrait_tactique('camp1', general, formation))
+            self.assertFalse(pipeline.marquer_retrait_tactique('camp1', autre, formation))
+            self.assertEqual(contexte['retraits_tactiques']['camp1'],
+                             ('j1', 'general1'))
+        finally:
+            pipeline._bataille.reset(jeton)
+
     def test_prevision_muraille_fatigue_individuelle(self):
         from unittest.mock import patch
         import combats
