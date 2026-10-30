@@ -532,3 +532,12 @@ Commits `90b3a76`, `05fc19f`, `60d807f`, `281c7b5` :
 - La suppression anticipée du bénéficiaire est inhibée durant la phase où son flanc natif est masqué ; le traitement officiel du général et le nettoyage de l'archive restent à coordonner après le choc.
 
 **Toujours non opérationnel** : le pilote territorial n'ouvre pas de capture à la bonne durée, ne désigne pas encore la paire précédent vaincu → suivant, et ne transmet pas la vue spécialisée après validation des PC de 1026. L'API de choc est prête mais **aucun appelant ne passe encore `choc_derniere_charge`**. Attention aux effets post-combat `unites.apres_confrontation`, aux états de registre des archives et aux possibles conflits avec Ralliement/Gros Poisson avant activation. `catalogues.ORDRES[1026].disponible=False`. Tests non exécutés, à confier à Codex.
+
+### Dernière charge 1026 — verrou officiel du duel et destruction avant manœuvre
+
+Commits `2c67f8c`, `a361b38`, `fbc1bcc` :
+- Le contexte `VueChocDerniereCharge.choc()` supprime maintenant **tous** les dossiers de relevés restant après le choc (y compris les survivants), via `finally`, avant la manœuvre ; il refuse une seconde activation. Les soldats natifs n'y sont jamais ciblés.
+- `ordres_pipeline.flanc_derniere_charge_retenu` exige l'effet officiel `1026` après confrontation PC/contre-ordre et une déclaration unique du flanc G/D, y compris pour le propriétaire du QG ; aucune activation par simple présence d'un jeton.
+- `combats.combat_entre_generaux` accepte une capture existante et les vaincus précédents par camp, choisit les archives du flanc demandé, construit une vue spéciale compatible avec son `participants` et la transmet à `_combat_entre_generaux` pour le choc seulement. Deux activations simultanées sont pour l'instant explicitement refusées, afin de ne pas effectuer un seul choc erroné.
+
+**IMPORTANT : la boucle territoriale ne transmet toujours ni capture ni vaincu précédent**. La fonction `combat_entre_generaux` a des paramètres facultatifs, donc l'exécution ordinaire ne change pas. La détection du précédent général vaincu et la durée de la capture inter-round restent à raccorder ; prévoir deux Dernières charges simultanées, compatibilités Ralliement / capacités post-choc, interruptions et sécurisation des archives. **1026 reste disponible=False**, tests non exécutés.
