@@ -614,3 +614,11 @@ Lecture ciblée des fonctions `intention`, `intention_personnelle`, `duel`, `con
 - La combinaison des formations `1002` (frontal) et `1021` (retrait tactique) n'est ni dans les incompatibilités ni parmi les compatibilités déclarées. `preparer_compatibilites` refuse les paires non définies ; choix de gameplay requis avant de les faire coexister.
 - Commit `ab09276` : correction du cas `ordres_du_general(general, categorie=None)` qui masquait les ordres à spécification `1025` (et, en préparation de sa réactivation future, `1026`) uniquement parce que la catégorie n'avait pas été filtrée. Le contrôle du format et la disponibilité restent obligatoires. **Aucun effet n'est activé par une simple consultation.**
 - `1019` et `1026` demeurent indisponibles. Aucun test exécuté : Codex doit vérifier les usages de l'API sans catégorie ainsi que le mode OFF/DEF et la transmission du QG.
+
+### Audit complémentaire — matrice des formations et lecture robuste du QG (30 octobre 2026)
+
+- Matrice `commandement.FORMATIONS_IDS` relue. Pour les formations actives `1002, 1015, 1016, 1021, 1025`, la paire `1002 + 1021` (Attaque frontale + Retrait tactique) demeure **non définie**. `preparer_compatibilites` lève explicitement `ValueError` lorsqu'elle se présente : comportement de refus sûr, mais choix de gameplay encore à arbitrer. **Ne pas l'ajouter** à compatible/incompatible sans décision du concepteur. Les autres paires actives sont classées.
+- Les règles de calcul du duel `commandement.confronter_donneurs` conservent l'annulation des ordres à PC égal et la confrontation symétrique des deux camps. Ce constat est statique, pas une validation des scénarios de bataille.
+- Commit `6e2138f` : `generaux.lire_declaration_qg` gère désormais aussi `UnicodeError` (par exemple un `qg.txt` non UTF-8). Auparavant `decode('utf-8')` pouvait remonter une exception et interrompre la lecture d'une déclaration invalide. Le fichier est maintenant rejeté proprement, sans désignation QG artificielle.
+- Contrôles à prévoir pour Codex : `qg.txt` illisible/non UTF-8 ; interaction frontale/retrait (seulement après arbitrage de règle) ; confirmation des paires compatibles et incompatibles avec QG nomade et Réserve stratégique.
+- Grande Muraille 1019 et Dernière charge 1026 toujours suspendues. Pas de tests exécutés.
