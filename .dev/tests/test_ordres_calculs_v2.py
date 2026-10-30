@@ -129,6 +129,33 @@ class TestOrdresCalculsV2(unittest.TestCase):
         finally:
             pipeline._bataille.reset(jeton)
 
+    def test_pour_l_honneur_annule_faiblesse_pas_force(self):
+        from unittest.mock import patch
+        import unites
+        fictives = {
+            'attaquant': dict(forces=(), faiblesses=(), multiplicateur=2),
+            'defenseur': dict(forces=(), faiblesses=('attaquant',), multiplicateur=2),
+        }
+        with patch.object(unites, 'definition', side_effect=fictives.__getitem__), patch(
+                'ordres_pipeline.honneur_protege', return_value=False):
+            self.assertEqual(unites.avantage('attaquant', 'defenseur'), 2)
+        with patch.object(unites, 'definition', side_effect=fictives.__getitem__), patch(
+                'ordres_pipeline.honneur_protege', return_value=True):
+            self.assertEqual(unites.avantage('attaquant', 'defenseur'), 1)
+        fictives['attaquant']['forces'] = ('defenseur',)
+        with patch.object(unites, 'definition', side_effect=fictives.__getitem__), patch(
+                'ordres_pipeline.honneur_protege', return_value=True):
+            self.assertEqual(unites.avantage('attaquant', 'defenseur'), 2)
+
+    def test_pour_l_honneur_disponible_et_non_cumulable(self):
+        import catalogues
+        import commandement
+        self.assertTrue(catalogues.ORDRES[1022]['disponible'])
+        for autre in (1015, 1016, 1021, 1025):
+            self.assertIn(frozenset((1022, autre)), {
+                frozenset(p) for p in
+                commandement.compatibilite_formations((1022, autre))['incompatibles']})
+
     def test_prevision_muraille_fatigue_individuelle(self):
         from unittest.mock import patch
         import combats
