@@ -522,3 +522,13 @@ Commit `793fc2e` : les morts temporairement archivés conservent leur **nom mét
 Commits `5d92ecf`, `00273c7`, `d026fd6` : `soldats.pertes_releves_derniere_charge` traite uniquement les archives déjà marquées détruites dans le registre officiel ; vérifie UUID, chemin d'archive, unicité et effectif, retire les victimes du choc sans moral, sauvetage ni nouvel enregistrement. `VueChocDerniereCharge.pertes_releves` n'active cette logique que pour le commandant bénéficiaire et une sélection constituée exclusivement des chemins archivés. `combats.supprimer_unites` délègue aux pertes spécialisées si la vue le permet, sinon conserve le chemin historique inchangé.
 
 **Encore NON raccordé** : le moteur territorial ne fournit toujours pas cette vue au choc, ne conserve pas encore une capture d'un round au suivant et ne vérifie pas que l'ordre 1026 est effectivement retenu par les PC avant utilisation. En outre il reste à assurer l'appel exact de la vue dans `phase_engagement_initial`, la visibilité pour les post-capacités et surtout la destruction systématique des survivants relevés **avant** la manœuvre. Le statut `disponible=False` est maintenu. Aucun test exécuté, Codex conserve la validation intégrée.
+
+### Dernière charge 1026 — intégration de la frontière du choc (30 octobre 2026)
+
+Commits `90b3a76`, `05fc19f`, `60d807f`, `281c7b5` :
+- `combats.confrontation_directe` lit systématiquement `participants.blocs`, même si la vue n'utilise pas `groupe` (précondition de la substitution des flancs).
+- `VueChocDerniereCharge.total/present` comptent les relevés pendant le choc et délèguent au comptage natif hors du contexte.
+- `_combat_entre_generaux(..., choc_derniere_charge=...)` accepte désormais une vue spécialisée déjà associée au duel courant, et ferme le contexte de substitution **à la fin du choc initial** grâce à un `with`. Aucun relevé n'est présenté à la manœuvre, y compris en cas de sortie exceptionnelle.
+- La suppression anticipée du bénéficiaire est inhibée durant la phase où son flanc natif est masqué ; le traitement officiel du général et le nettoyage de l'archive restent à coordonner après le choc.
+
+**Toujours non opérationnel** : le pilote territorial n'ouvre pas de capture à la bonne durée, ne désigne pas encore la paire précédent vaincu → suivant, et ne transmet pas la vue spécialisée après validation des PC de 1026. L'API de choc est prête mais **aucun appelant ne passe encore `choc_derniere_charge`**. Attention aux effets post-combat `unites.apres_confrontation`, aux états de registre des archives et aux possibles conflits avec Ralliement/Gros Poisson avant activation. `catalogues.ORDRES[1026].disponible=False`. Tests non exécutés, à confier à Codex.
