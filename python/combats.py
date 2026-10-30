@@ -1602,6 +1602,20 @@ def confrontation_directe(
     }
 
 
+
+def autres_blocs_vivants(blocs, exclu):
+    """Chat Man : le bloc chaman ne combat qu'une fois seul bloc survivant."""
+    return any(b != exclu and infos['nombre'] > 0
+               for b, infos in blocs.items())
+
+
+def bloc_chaman_retenu(armee, general, bloc):
+    return (ordres_pipeline.effet(general, 1024)
+            and armee[general['joueur']][bloc]['type'] == 'orc_chaman'
+            and autres_blocs_vivants(armee[general['joueur']], bloc))
+
+
+
 def phase_engagement_initial(general_1, general_2, *, participants=None,
                              avant_deja_resolu=False):
     participants = participants if participants is not None else soldats.VueParticipants()
@@ -1640,6 +1654,15 @@ def phase_engagement_initial(general_1, general_2, *, participants=None,
         infos_2 = armee_depart[joueur_2][bloc]
 
         if infos_1["nombre"] > 0 and infos_2["nombre"] > 0:
+            # Chat Man reporte le combat direct du bloc chaman :
+            # son vis-à-vis adverse agit lors de la manœuvre.
+            if ((ordres_pipeline.effet(general_1, 1024)
+                 and infos_1['type'] == 'orc_chaman'
+                 and autres_blocs_vivants(armee_depart[joueur_1], bloc))
+                or (ordres_pipeline.effet(general_2, 1024)
+                    and infos_2['type'] == 'orc_chaman'
+                    and autres_blocs_vivants(armee_depart[joueur_2], bloc))):
+                continue
             combats_prevus.append(bloc)
 
     if len(combats_prevus) == 0:
