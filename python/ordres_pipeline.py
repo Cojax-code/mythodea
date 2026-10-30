@@ -722,10 +722,13 @@ def intention_personnelle(general, categorie, inclure_frontal=False):
     fiche = progression.caracteristiques_general(general)
     if not fiche or not general['chemin'].is_dir():
         return None
-    # Les globaux appartiennent exclusivement au QG ; les autres généraux
-    # conservent ordre.txt pour leurs ordres de duel / individuels.
-    source = (generaux.lire_ordres_qg(general['chemin'])
-              if categorie == 'globale'
+    # Le général du QG utilise qg.txt pour tous ses ordres ;
+    # les autres généraux utilisent ordre.txt pour duel / individuel.
+    qg = qg_du_general(general)
+    est_qg = qg is not None and identite(qg) == identite(general)
+    if categorie == 'globale' and not est_qg:
+        return None
+    source = (generaux.lire_ordres_qg(general['chemin']) if est_qg
               else generaux.lire_ordres_general(general['chemin']))
     officiel = {**general, 'caracteristiques': fiche, 'ordres': source}
     demandes = ordres_du_general(officiel, categorie)
