@@ -1082,6 +1082,43 @@ def supprimer_general_si_vide(general):
     return True
 
 
+
+def detruire_general_et_armee(general):
+    """Élimine définitivement un général et ses soldats (Charge suicidaire).
+
+    Ne passe pas par supprimer_general_si_vide : ce cas concerne précisément
+    un général qui peut posséder encore des unités. Garder les UUID historiques.
+    À appeler après fermeture des participations temporaires du duel.
+    """
+    if general is None or not general['chemin'].is_dir():
+        return False
+    import soldats
+    donnees = soldats.charger()
+    for bloc in config.ordre_blocs:
+        dossier = general['chemin'] / bloc
+        if not dossier.is_dir():
+            continue
+        for unite in dossier.iterdir():
+            if not unite.is_dir():
+                continue
+            identifiant = soldats.retrouver(
+                unite, donnees, config.dans_generation_privee())
+            if identifiant is not None and identifiant in donnees:
+                donnees[identifiant]['detruit'] = True
+    soldats.sauvegarder(donnees)
+    soldats.mort_general(general)
+    shutil.rmtree(general['chemin'])
+    positions = etat.charger_positions_generaux()
+    positions.pop(f"{general['joueur']}:{general['nom']}", None)
+    etat.sauvegarder_positions_generaux(positions)
+    import ordres_pipeline
+    ordres_pipeline.verifier_qg()
+    rapports.afficher_et_ecrire(
+        f"Charge suicidaire : {general['joueur']} "
+        f"{rapports.nom_affichage_general(general)} et toute son armée éliminés.")
+    return True
+
+
 def verifier_limite_unites_general(chemin_general):
     # Vérifie qu'un général ne dépasse pas la limite d'unités autorisée.
     #
