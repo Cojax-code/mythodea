@@ -215,6 +215,17 @@ class TestOrdresCalculsV2(unittest.TestCase):
         self.assertEqual(
             calculs.preparer_derniere_charge(False, 'D', ['uuid-a']), ())
 
+    def test_derniere_charge_plan_limite_au_choc(self):
+        plan = calculs.plan_choc_derniere_charge(
+            True, 'G', ['uuid1', 'uuid2', 'uuid1'],
+            bloc_original=['archer-1', 'archer-2'])
+        self.assertEqual(plan['bloc'], 'gauche')
+        self.assertEqual(plan['releves'], ('uuid1', 'uuid2'))
+        self.assertEqual(plan['natifs_masques'], ('archer-1', 'archer-2'))
+        self.assertTrue(plan['fatigue'])
+        self.assertEqual(plan['phase'], 'choc_initial')
+        self.assertTrue(plan['usage_unique'])
+
     def test_prevision_muraille_fatigue_individuelle(self):
         from unittest.mock import patch
         import combats
