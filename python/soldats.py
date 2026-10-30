@@ -324,6 +324,55 @@ class GroupeTemporaire:
         participants.update(p.chemin for p in presents)
 
 
+
+class VueChocDerniereCharge:
+    """Vue de choc isolée ; le flanc natif réapparaît dès sa fermeture.
+
+    Les morts archivés sont les seuls substituts admissibles. Ils ne
+    deviennent pas vivants dans le registre et ne rejoignent aucun général.
+    Cette vue n'est utilisable que par le moteur de choc initial, jamais
+    comme participation permanente ou pour la manœuvre.
+    """
+    def __init__(self, origine, beneficiaire, bloc, archives, delegate=None):
+        import config
+        if bloc not in ('gauche', 'droite'):
+            raise ValueError('Dernière charge limitée à un flanc.')
+        self.origine = origine
+        self.beneficiaire = beneficiaire
+        self.bloc = bloc
+        self.archives = tuple(archives)
+        self.delegate = delegate if delegate is not None else VueParticipants()
+        self._active = False
+
+    @contextmanager
+    def choc(self):
+        if self._active:
+            raise RuntimeError('Dernière charge ne peut être engagée deux fois.')
+        self._active = True
+        try:
+            yield self
+        finally:
+            self._active = False
+
+    def blocs(self, general):
+        import generaux
+        blocs = self.delegate.blocs(general)
+        if self._active and (general['joueur'], general['nom']) == (
+                self.beneficiaire['joueur'], self.beneficiaire['nom']):
+            chemins = [a['chemin'] for a in self.archives if a['chemin'].is_dir()]
+            if chemins:
+                blocs[self.bloc] = generaux.infos_bloc_valide(chemins)
+        return blocs
+
+    def fatigue(self, general, infos):
+        if (self._active and (general['joueur'], general['nom']) ==
+                (self.beneficiaire['joueur'], self.beneficiaire['nom'])
+                and set(infos['unites']) <= {a['chemin'] for a in self.archives}
+                and infos['unites']):
+            return True
+        return self.delegate.fatigue(general, infos)
+
+
 class VueParticipants:
     """Lecture du duel, passée explicitement aux phases, sans nouvel état métier.
 
