@@ -1559,6 +1559,14 @@ def moral_des_pertes(infos, general=None, *, participants=None):
 
 def supprimer_unites(infos, survivants, general=None, *, participants=None,
                     unites_prioritaires=(), aleatoire=None):
+    # Dernière charge : les morts déjà archivés ne passent surtout pas par
+    # soldats.pertes (sauvetage, nouveau registre et mort officielle).
+    if participants is not None:
+        speciales = getattr(participants, 'pertes_releves', None)
+        if speciales is not None:
+            resultat = speciales(general, infos, survivants, aleatoire)
+            if resultat is not None:
+                return resultat
     if participants is not None and participants.groupe:
         participants.groupe.bilan()
     pertes = soldats.pertes(infos, survivants,
