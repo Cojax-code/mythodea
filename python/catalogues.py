@@ -130,7 +130,7 @@ ORDRES = {
     1023: dict(jeton='1-12', nom='ralliement', categorie='globale',
                disponible=True, contre=False, progression=True, acquisition_requise=True),
     1024: dict(jeton='2-7', nom='chat_man', categorie='duel',
-               disponible=False, contre=True, progression=False),
+               disponible=True, contre=True, progression=True, acquisition_requise=True),
     1025: dict(jeton='1-13', nom='reserve_strategique', categorie='globale',
                disponible=False, contre=False, progression=False),
     1026: dict(jeton='2-8', nom='derniere_charge', categorie='duel',
