@@ -1,5 +1,6 @@
 """Calcul des combats, choc initial, manœuvres et combat rangé."""
 import random
+from contextlib import nullcontext
 from fractions import Fraction
 
 import catalogues
@@ -102,7 +103,8 @@ def retirer_avants_de_manoeuvre(armee):
 
 def _combat_entre_generaux(general_1, general_2, *, participants=None,
                             avant_exclus_manoeuvre=False,
-                            avant_deja_resolu=False):
+                            avant_deja_resolu=False,
+                            choc_derniere_charge=None):
     # Affrontement complet entre deux généraux.
     # Muraille peut retirer les Avant de la manœuvre sans détruire leurs soldats.
     #
@@ -162,10 +164,17 @@ def _combat_entre_generaux(general_1, general_2, *, participants=None,
                 "chocs": details_bouclier, "manoeuvres": [],
             }
 
-    with ordres_pipeline.choc_initial():
+    # L'archive des relevés n'est visible que pendant cette phase.
+    # La fermeture restaure les natifs avant fuite, fin anticipée ou manœuvre.
+    if choc_derniere_charge is not None and (
+            choc_derniere_charge.delegate is not participants):
+        raise ValueError('Dernière charge : vue déléguée du mauvais duel.')
+    contexte_releves = (choc_derniere_charge.choc()
+                        if choc_derniere_charge is not None else nullcontext())
+    with ordres_pipeline.choc_initial(), contexte_releves:
         initiative_avant, details_choc = phase_engagement_initial(
-            general_1,
-            general_2, participants=participants,
+            general_1, general_2,
+            participants=choc_derniere_charge or participants,
             avant_deja_resolu=avant_deja_resolu
         )
     details_choc = details_bouclier + details_choc
