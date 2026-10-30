@@ -187,6 +187,32 @@ def derniere_charge_possible(general_precedent_vaincu, flanc, *, effectif_eligib
         return general_precedent_vaincu and effectif_eligible > 0
     return general_precedent_vaincu
 
+
+def preparer_derniere_charge(general_precedent_vaincu, flanc_demande,
+                            pertes_flanc, *, identifiants_deja_utilises=()):
+    """Sélection logique, sans résurrection ni mutation du registre de soldats.
+
+    pertes_flanc : UUID des soldats réellement morts (après sauvetages)
+    sur le flanc choisi du général précédent. Un UUID ne peut être réutilisé.
+    Le moteur doit ensuite préserver physiquement ces soldats avant destruction.
+    """
+    if not derniere_charge_possible(general_precedent_vaincu, flanc_demande):
+        return ()
+    if not isinstance(pertes_flanc, (tuple, list)):
+        raise ValueError("Les pertes éligibles doivent être une séquence.")
+    utilises = set(identifiants_deja_utilises)
+    selection = []
+    for identifiant in pertes_flanc:
+        if not isinstance(identifiant, str) or not identifiant:
+            raise ValueError("UUID de soldat invalide pour Dernière charge.")
+        if identifiant in utilises:
+            continue
+        selection.append(identifiant)
+        utilises.add(identifiant)
+    return tuple(selection)
+
+
+
 def tentatives_rafale(nombre_archers_arriere):
     """Une tentative de perte directe pour quatre archers à l'Arrière.
 
