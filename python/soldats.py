@@ -471,8 +471,15 @@ class VueChocDerniereCharge:
             return autre(general, infos, survivants, aleatoire) if autre else None
         chemins = {a['chemin'] for a in self.archives}
         unites = tuple(infos['unites'])
-        if not unites or not set(unites) <= chemins:
+        if not unites:
             return None
+        # Ne jamais laisser des relevés mixtes ou altérés tomber dans
+        # soldats.pertes(), qui pourrait les réenregistrer comme vivants.
+        if set(unites) & chemins and not set(unites) <= chemins:
+            raise RuntimeError('Dernière charge : bloc mêlant relevés et natifs.')
+        if not set(unites) <= chemins:
+            autre = getattr(self.delegate, 'pertes_releves', None)
+            return autre(general, infos, survivants, aleatoire) if autre else None
         return pertes_releves_derniere_charge(
             infos, survivants, self.archives, aleatoire)
 
