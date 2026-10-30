@@ -339,8 +339,11 @@ def lire_ordres_general(chemin_general):
 
             continue
 
-        # Tous les éléments doivent être numériques.
-        if not all(
+        # Dernière charge utilise un flanc G/D, pas un emplacement numérique.
+        flanc_derniere_charge = (
+            len(morceaux) == 3 and morceaux[:2] == ['2', '8']
+            and morceaux[2] in ('G', 'D', 'g', 'd'))
+        if not flanc_derniere_charge and not all(
             morceau.isascii() and morceau.isdecimal()
             for morceau in morceaux
         ):
@@ -361,7 +364,8 @@ def lire_ordres_general(chemin_general):
                     continue
                 specification = (int(morceaux[2]), int(morceaux[3]))
             else:
-                specification = int(morceaux[2]) if len(morceaux) == 3 else None
+                specification = (morceaux[2].upper() if flanc_derniere_charge
+                                 else int(morceaux[2]) if len(morceaux) == 3 else None)
         except ValueError:
             rapports.afficher_et_ecrire(f'Ordre ignoré pour {chemin_general.name} : [nombre invalide]')
             continue
