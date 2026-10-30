@@ -855,10 +855,17 @@ def pertes(infos, survivants, moral=0, aleatoire=None, *,
             publier(unite, identifiant, valeur)
         else:
             supprimes.append(f"{unite.name} ({infos['type']})")
-            shutil.rmtree(unite)
-            if valeur is not None:
-                valeur['detruit'] = True
-    infos['unites'] = [u for u in infos['unites'] if u.exists()]
+            import ordres_pipeline
+            if not ordres_pipeline.tenter_ralliement(unite, donnees, aleatoire):
+                shutil.rmtree(unite)
+                if valeur is not None:
+                    valeur['detruit'] = True
+    import ordres_pipeline
+    courant = ordres_pipeline._bataille.get()
+    en_attente = ({entree[0] for entree in courant['ralliement_attente']}
+                  if courant is not None else set())
+    infos['unites'] = [u for u in infos['unites']
+                       if u.exists() and u not in en_attente]
     infos['nombre'] = len(infos['unites'])
     if infos['nombre'] == 0 and not any(u.exists() for u in infos.get('boucliers', ())):
         for unite in infos.get('soutiens', ()):
