@@ -275,7 +275,7 @@ def lire_declaration_qg(chemin_general):
             return None
         composition = lire_composition_general(chemin_general)
         return bloc if sum(composition[bloc].values()) > 0 else None
-    except (OSError, ValueError, RuntimeError):
+    except (OSError, ValueError, RuntimeError, UnicodeError):
         return None
 
 
