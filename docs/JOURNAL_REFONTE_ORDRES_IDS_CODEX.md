@@ -351,3 +351,9 @@ La sequence `combat_entre_generaux` est `duel -> participations_duel -> unites.d
 - `.dev/tests/test_ordres_calculs_v2.py`, commit `3c9c922` : test de disponibilité, bonus +1 et neutralisation par Confinement.
 - **À valider par Codex à la fin des ordres** : conflit Spora Adicte/Confinement par PC globaux, déclenchement seulement pour un général qui reçoit effectivement l'ordre, victime unique restante, zéro victime restante, conversion double avec identité et preuve distinctes, réexécution/reprise interrompue sans doublon, cohérence du rapport et des registres. Aucun test Raspberry Pi exécuté au cours de cette intégration.
 - Grande Muraille 1019 demeure abandonnée, archivée et désactivée ; les anciennes notes de Muraille ne sont pas une liste de tâches active.
+
+## Charge suicidaire 1020 — préparation, pas d'activation (30 octobre 2026)
+
+Calculs déjà présents dans `ordres_calculs_v2.py` : `probabilite_charge_suicidaire(pertes_du_duel)` (1 % par 4 unités perdues dans le duel), `tirages_charges_suicidaires` (tirages indépendants, sans mutation). Tests de bornes et de deux tirages ajoutés (`194c831`). Le catalogue reste `disponible=False`, `progression=False`.
+
+**Blocage d'intégration à traiter avant l'activation** : la formule dit « mort adverse », mais le moteur ordinaire ne fournit pas une primitive spécialisée pour tuer un général encore doté de soldats. `generaux.supprimer_general_si_vide` ne gère que les généraux sans unités ; la détourner serait incorrect. Il faut retrouver la règle officielle définissant l'effet de la mort du général sur les soldats restants, son emplacement, les retraites et le vainqueur, puis réutiliser un mécanisme officiel de suppression (ou créer ce mécanisme à part avec tests). Ne pas détruire arbitrairement le dossier du général ni déclarer l'ordre opérationnel avant ce raccordement. Campagne Raspberry Pi et revue Codex à la fin de tous les ordres.
