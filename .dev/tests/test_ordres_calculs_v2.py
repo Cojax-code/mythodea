@@ -191,6 +191,21 @@ class TestOrdresCalculsV2(unittest.TestCase):
             adverse, reserve, qg_nommade=reserve))
         self.assertIsNone(calculs.interception_reserve(None, reserve))
 
+    def test_reserve_strategique_interception_apres_defaite_alliee(self):
+        resultat = dict(camp_1='campA', camp_2='campB',
+                        joueur_1='j1', general_1='general1', final_1=0,
+                        joueur_2='j2', general_2='general2', final_2=7)
+        self.assertEqual(calculs.vainqueur_pour_reserve(resultat, 'campA'),
+                         ('j2', 'general2'))
+        self.assertEqual(calculs.designer_interception_reserve(
+            resultat, 'campA', ('j1', 'general3'), unites_reserve=5),
+            ('j1', 'general3'))
+        self.assertIsNone(calculs.designer_interception_reserve(
+            resultat, 'campA', ('j1', 'general3'), unites_reserve=0))
+        self.assertIsNone(calculs.vainqueur_pour_reserve(resultat, 'campB'))
+        resultat['final_1'] = 1
+        self.assertIsNone(calculs.vainqueur_pour_reserve(resultat, 'campA'))
+
     def test_prevision_muraille_fatigue_individuelle(self):
         from unittest.mock import patch
         import combats
