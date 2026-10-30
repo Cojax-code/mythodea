@@ -419,6 +419,15 @@ class VueChocDerniereCharge:
             return self.total(general) > 0
         return self.delegate.present(general)
 
+    def supprimer_general_si_vide(self, general):
+        # Ne pas supprimer le bénéficiaire au milieu du choc uniquement
+        # parce que son flanc natif est masqué par des morts relevés.
+        if (self._active and
+                (general['joueur'], general['nom']) ==
+                (self.beneficiaire['joueur'], self.beneficiaire['nom'])):
+            return None
+        return self.delegate.supprimer_general_si_vide(general)
+
     @property
     def groupe(self):
         return self.delegate.groupe
