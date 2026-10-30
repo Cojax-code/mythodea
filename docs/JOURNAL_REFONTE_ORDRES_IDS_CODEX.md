@@ -622,3 +622,7 @@ Lecture ciblée des fonctions `intention`, `intention_personnelle`, `duel`, `con
 - Commit `6e2138f` : `generaux.lire_declaration_qg` gère désormais aussi `UnicodeError` (par exemple un `qg.txt` non UTF-8). Auparavant `decode('utf-8')` pouvait remonter une exception et interrompre la lecture d'une déclaration invalide. Le fichier est maintenant rejeté proprement, sans désignation QG artificielle.
 - Contrôles à prévoir pour Codex : `qg.txt` illisible/non UTF-8 ; interaction frontale/retrait (seulement après arbitrage de règle) ; confirmation des paires compatibles et incompatibles avec QG nomade et Réserve stratégique.
 - Grande Muraille 1019 et Dernière charge 1026 toujours suspendues. Pas de tests exécutés.
+
+### Décision de gameplay — incompatibilité 1002 / 1021 (30 octobre 2026)
+
+Le concepteur confirme : **Retrait tactique (1021) est un ordre global**, incompatible avec **Attaque frontale (1002)**. Commit `ab117a2` : ajout du couple `(1002, 1021)` à `FORMATIONS_INCOMPATIBLES_IDS` dans `python/commandement.py`. Le moteur annule les deux ordres de cette combinaison au niveau du camp, selon la politique existante des formations incompatibles ; il ne lève plus l'erreur de paire non définie. Aucun autre effet ou priorité de duel modifié. Codex : valider combinaison, annulations mutuelles, rapports, et non-régression des autres paires. Tests non exécutés ici.
