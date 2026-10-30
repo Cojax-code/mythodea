@@ -408,6 +408,17 @@ class VueChocDerniereCharge:
                 blocs[self.bloc] = generaux.infos_bloc_valide(chemins)
         return blocs
 
+    def total(self, general):
+        import generaux
+        if self._active:
+            return generaux.total_unites_general(self.blocs(general))
+        return self.delegate.total(general)
+
+    def present(self, general):
+        if self._active:
+            return self.total(general) > 0
+        return self.delegate.present(general)
+
     @property
     def groupe(self):
         return self.delegate.groupe
