@@ -534,15 +534,30 @@ def resoudre_affrontement_actif(
     if configuration is None:
         configuration = config.configuration_mode("classique")
     with ordres_pipeline.bataille(territory, configuration) as contexte:
-        try:
-            return _resoudre_affrontement_actif(territory, mode_combat, configuration)
-        finally:
-            choix = contexte.get('ralliement')
-            if choix and contexte.get('ralliement_effectue'):
-                generaux.reguler_surnombre_ralliement(choix['qg'])
+        # Le transit n'est ouvert que si la mécanique est disponible.
+        # Il englobe tous les rounds et se ferme même sur retour anticipé.
+        capture_contexte = nullcontext(None)
+        if catalogues.ORDRES[1026]['disponible']:
+            forces_depart = generaux.lire_forces_territoire(territory, configuration)
+            participants_depart = tuple(
+                g for positions in forces_depart.values()
+                for g in positions.values() if g and g['chemin'].is_dir())
+            if participants_depart:
+                capture_contexte = soldats.capturer_morts_derniere_charge(
+                    participants_depart, identifiant_bataille=territory)
+        with capture_contexte as capture:
+            try:
+                return _resoudre_affrontement_actif(
+                    territory, mode_combat, configuration,
+                    capture_derniere_charge=capture)
+            finally:
+                choix = contexte.get('ralliement')
+                if choix and contexte.get('ralliement_effectue'):
+                    generaux.reguler_surnombre_ralliement(choix['qg'])
 
 
-def _resoudre_affrontement_actif(territory, mode_combat, configuration):
+def _resoudre_affrontement_actif(territory, mode_combat, configuration,
+                                *, capture_derniere_charge=None):
     camp_1, camp_2 = camps_du_combat(configuration)
 
     # Moteur commun de résolution.
@@ -636,6 +651,7 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
     round_combat = 0
     tableau_combat_range_ouvert = False
     engagements_combat_range = []
+    precedents_vaincus = {}
     # Une interception en attente est résolue au prochain round ; le général
     # de réserve reste hors de la séquence normale tant qu'un allié peut agir.
     interception = None
@@ -849,10 +865,20 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
             resultat_combat_range = combat_entre_generaux(
                 general_camp_1, general_camp_2,
                 avant_exclus_manoeuvre=bool(muraille_chocs),
-                avant_deja_resolu=bool(muraille_chocs))
+                avant_deja_resolu=bool(muraille_chocs),
+                capture_derniere_charge=capture_derniere_charge,
+                precedents_vaincus=precedents_vaincus)
         if muraille_chocs:
             resultat_combat_range['chocs'] = (
                 muraille_chocs + resultat_combat_range['chocs'])
+
+        # Seul le vaincu du round immédiatement précédent peut fournir les
+        # soldats de Dernière charge. On ne conserve aucune défaite ancienne.
+        precedents_vaincus = {}
+        if capture_derniere_charge is not None:
+            for numero, general in enumerate((general_camp_1, general_camp_2), 1):
+                if resultat_combat_range.get(f'final_{numero}') == 0:
+                    precedents_vaincus[general['joueur']] = general
 
         # L'interception ne change ni l'emplacement, ni la fatigue, ni
         # la participation déjà comptée des combattants.
