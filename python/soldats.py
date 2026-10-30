@@ -15,6 +15,60 @@ _participants = ContextVar('soldats_bataille_complete', default=None)
 _generaux_engages = ContextVar('generaux_bataille_complete', default=None)
 _bataille = ContextVar('identite_bataille_complete', default=None)
 _prets = ContextVar('soldats_participation_temporaire', default=frozenset())
+_derniere_charge_capture = ContextVar('derniere_charge_capture', default=None)
+
+@contextmanager
+def capturer_morts_derniere_charge(general, *, identifiant_bataille):
+    """Capture privée et bornée d'un duel, avec destruction garantie des morts.
+
+    Le moteur de combat peut consulter le résultat pendant ce contexte, mais
+    ne doit pas transmettre les captures à un duel non autorisé. Aucun soldat
+    vivant ou sauvé n'entre dans l'archive.
+    """
+    import shutil
+    import config
+    if _derniere_charge_capture.get() is not None:
+        raise RuntimeError('Capture Dernière charge imbriquée interdite.')
+    racine = config.racine_metier() / '.systeme' / 'derniere_charge_transit'
+    dossier = racine / uuid.uuid4().hex
+    dossier.mkdir(parents=True, mode=0o700, exist_ok=False)
+    os.chmod(dossier, 0o700)
+    capture = dict(general=(general['joueur'], general['nom']),
+                   bataille=identifiant_bataille, dossier=dossier,
+                   morts={'gauche': [], 'droite': []})
+    jeton = _derniere_charge_capture.set(capture)
+    try:
+        yield capture
+    finally:
+        _derniere_charge_capture.reset(jeton)
+        shutil.rmtree(dossier, ignore_errors=False)
+
+
+def archiver_mort_derniere_charge(unite, identifiant, donnees):
+    """Déplace un mort authentifié de gauche/droite ; False sinon.
+
+    Le registre conserve l'identité mais marque le soldat détruit : l'archive
+    n'est jamais une unité vivante du jeu, ni une source de résurrection libre.
+    """
+    import shutil
+    capture = _derniere_charge_capture.get()
+    if capture is None or identifiant is None or identifiant not in donnees:
+        return False
+    bloc = unite.parent.name
+    if bloc not in capture['morts']:
+        return False
+    if (unite.parent.parent.name != capture['general'][1]
+            or donnees[identifiant].get('detruit')):
+        return False
+    destination = capture['dossier'] / identifiant
+    if destination.exists():
+        raise RuntimeError('Dernière charge : doublon de capture UUID.')
+    shutil.move(str(unite), str(destination))
+    donnees[identifiant]['detruit'] = True
+    capture['morts'][bloc].append(dict(uuid=identifiant, chemin=destination,
+                                       origine=unite, type=donnees[identifiant]['type']))
+    return True
+
 
 
 @dataclass(frozen=True)
@@ -857,9 +911,10 @@ def pertes(infos, survivants, moral=0, aleatoire=None, *,
             supprimes.append(f"{unite.name} ({infos['type']})")
             import ordres_pipeline
             if not ordres_pipeline.tenter_ralliement(unite, donnees, aleatoire):
-                shutil.rmtree(unite)
-                if valeur is not None:
-                    valeur['detruit'] = True
+                if not archiver_mort_derniere_charge(unite, identifiant, donnees):
+                    shutil.rmtree(unite)
+                    if valeur is not None:
+                        valeur['detruit'] = True
     import ordres_pipeline
     courant = ordres_pipeline._bataille.get()
     en_attente = ({entree[0] for entree in courant['ralliement_attente']}
