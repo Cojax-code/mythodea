@@ -38,6 +38,7 @@ def combat_entre_generaux(general_1, general_2, *, participants=None,
     participants = participants if participants is not None else soldats.VueParticipants()
     participants.verifier_duel(general_1, general_2)
     with ordres_pipeline.duel(general_1, general_2) as decisions:
+        ordres_pipeline.activer_ralliement_duel((general_1, general_2))
         charges_actives = (ordres_pipeline.effet(general_1, 1020),
                            ordres_pipeline.effet(general_2, 1020))
         with ordres_pipeline.participations_duel(general_1, general_2, participants, decisions) as vue:
@@ -56,6 +57,7 @@ def combat_entre_generaux(general_1, general_2, *, participants=None,
                 if rafales:
                     resultat['initial_1'], resultat['initial_2'] = initiales
                     resultat['rafales'] = rafales
+            ordres_pipeline.finaliser_ralliement()
             for numero, general in enumerate((general_1, general_2), 1):
                 vue.supprimer_general_si_vide(general)
                 resultat[f'final_{numero}'] = vue.total(general)
@@ -485,8 +487,13 @@ def resoudre_affrontement_actif(
 ):
     if configuration is None:
         configuration = config.configuration_mode("classique")
-    with ordres_pipeline.bataille(territory, configuration):
-        return _resoudre_affrontement_actif(territory, mode_combat, configuration)
+    with ordres_pipeline.bataille(territory, configuration) as contexte:
+        try:
+            return _resoudre_affrontement_actif(territory, mode_combat, configuration)
+        finally:
+            choix = contexte.get('ralliement')
+            if choix and contexte.get('ralliement_effectue'):
+                generaux.reguler_surnombre_ralliement(choix['qg'])
 
 
 def _resoudre_affrontement_actif(territory, mode_combat, configuration):
