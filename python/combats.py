@@ -224,9 +224,20 @@ def _combat_entre_generaux(general_1, general_2, *, participants=None,
         # Tri stable : l'ordre existant départage les autres actions. Chaque
         # bloc conserve son unique action du tour, sans attaque supplémentaire.
         generaux_du_duel = {g['joueur']: g for g in (general_1, general_2)}
-        actions.sort(key=lambda action: not (
-            armee[action[0]][action[1]]['type'] == 'chevalier_clinquant'
-            and ordres_pipeline.effet(generaux_du_duel[action[0]], 1014)))
+        actions = [action for action in actions
+                   if not bloc_chaman_retenu(
+                       armee, generaux_du_duel[action[0]], action[1])]
+        # Le bloc qui faisait face au chaman réservé prend l'initiative ;
+        # il sélectionne ensuite sa cible par les règles ordinaires.
+        actions.sort(key=lambda action: (
+            not (ordres_pipeline.effet(
+                    generaux_du_duel[adversaire_du_duel(armee, action[0])], 1024)
+                 and armee[adversaire_du_duel(armee, action[0])][action[1]]['type']
+                     == 'orc_chaman'
+                 and autres_blocs_vivants(
+                     armee[adversaire_du_duel(armee, action[0])], action[1])),
+            not (armee[action[0]][action[1]]['type'] == 'chevalier_clinquant'
+                 and ordres_pipeline.effet(generaux_du_duel[action[0]], 1014))))
         rapports.afficher_et_ecrire(
             "\nOrdre global de manœuvre : "
             + ", ".join(f"{joueur} {bloc}" for joueur, bloc in actions)
@@ -251,6 +262,9 @@ def _combat_entre_generaux(general_1, general_2, *, participants=None,
             # Les pertes d'une action précédente peuvent avoir détruit ce bloc.
             infos_attaquant = armee[joueur_attaquant][bloc_attaquant]
             if infos_attaquant["nombre"] <= 0:
+                continue
+            if bloc_chaman_retenu(
+                    armee, generaux_du_duel[joueur_attaquant], bloc_attaquant):
                 continue
 
             cible = choisir_cible(
