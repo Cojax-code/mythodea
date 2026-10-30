@@ -240,7 +240,7 @@ def bataille(territoire, configuration):
             rapports.ecrire_rapport_territoire(territoire,
                 f"QG {camp} : {qg['joueur']} {qg['nom']}, bloc {qg['qg']}.")
     courant = dict(territoire=territoire, configuration=configuration, quartiers=quartiers,
-                   annules={}, retraits_tactiques={})
+                   annules={}, retraits_tactiques={}, ralliement=None, ralliement_attente=[])
     jeton = _bataille.set(courant)
     try:
         preparer_compatibilites(forces, courant)
@@ -248,6 +248,88 @@ def bataille(territoire, configuration):
         yield courant
     finally:
         _bataille.reset(jeton)
+
+
+
+def preparer_ralliement(defenseur):
+    """Sélectionne le seul QG défenseur admissible au début d'OFF/DEF."""
+    courant = _bataille.get()
+    if courant is None:
+        return
+    courant['ralliement'] = None
+    quartier = courant['quartiers'].get(defenseur)
+    if quartier is None or quartier.general is None or quartier.detruit:
+        return
+    qg = quartier.general
+    donneur = intention_personnelle(qg, 'globale')
+    donneur = retirer_ordres_annules(
+        donneur, courant['annules'].get(defenseur, ()))
+    if donneur is None or 1023 not in donneur['identifiants']:
+        return
+    if not catalogues.ORDRES[1023]['disponible']:
+        return
+    # Ne pas esquiver la confrontation de PC : les décisions officielles du
+    # duel contrôlent ensuite l'activation effective de cet ordre.
+    courant['ralliement'] = dict(qg=qg, camp=defenseur)
+
+
+def tenter_ralliement(unite, donnees, aleatoire):
+    """Réserve un mort, après l'échec de son sauvetage, sans le supprimer."""
+    courant = _bataille.get()
+    if courant is None or not courant.get('ralliement'):
+        return False
+    cible = courant['ralliement']['qg']
+    if not cible['chemin'].is_dir():
+        return False
+    if not effet(cible, 1023):
+        return False
+    import generaux
+    import soldats
+    type_unite = generaux.identifier_unite(unite)
+    blocs = generaux.lire_composition_general(cible['chemin'])
+    bloc = next((b for b, types in blocs.items()
+                 if types.get(type_unite, 0) > 0), None)
+    if bloc is None or aleatoire.randrange(100) >= 20:
+        return False
+    identifiant = soldats.retrouver(
+        unite, donnees, config.dans_generation_privee())
+    if identifiant is None:
+        return False
+    courant['ralliement_attente'].append((unite, identifiant, bloc, cible))
+    return True
+
+
+def finaliser_ralliement():
+    """Transfère les réservations après le duel : jamais de retour dans le même duel."""
+    courant = _bataille.get()
+    if courant is None:
+        return
+    import generaux
+    import soldats
+    import shutil
+    attente = courant['ralliement_attente']
+    courant['ralliement_attente'] = []
+    if not attente:
+        return
+    donnees = soldats.charger()
+    for source, identifiant, bloc, qg in attente:
+        if not source.is_dir():
+            continue
+        if not qg['chemin'].is_dir():
+            # Le QG n'existe plus : le mort doit rester mort.
+            donnees[identifiant]['detruit'] = True
+            shutil.rmtree(source)
+            continue
+        destination = qg['chemin'] / bloc / ('rallie_' + identifiant)
+        if destination.exists():
+            raise RuntimeError('Ralliement : identité déjà présente au QG.')
+        shutil.move(str(source), str(destination))
+        infos = destination.stat()
+        valeur = donnees[identifiant]
+        valeur.update(chemin=soldats.cle(destination),
+                      device=infos.st_dev, inode=infos.st_ino)
+        soldats.publier(destination, identifiant, valeur)
+    soldats.sauvegarder(donnees)
 
 
 def verifier_qg():
