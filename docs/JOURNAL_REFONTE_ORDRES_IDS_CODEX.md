@@ -557,3 +557,9 @@ Commits `bb8a421`, `ff10ec6`, `1b0deb8`, `f7f54a2` :
 Commit `c8f6a5f` : `VueChocDerniereCharge.blocs` conserve un bloc vide (`type=vide, nombre=0, unites=[]`) pour le flanc temporairement substitué lorsque **tous** les relevés sont détruits avant la fin du choc. Auparavant `if chemins:` faisait réapparaître les soldats natifs immédiatement, lesquels pouvaient alors entrer dans les confrontations directes restantes du même choc. Les soldats natifs ne réapparaissent désormais qu'à la sortie du contexte `choc()`.
 
 **Cas de non-régression à confier à Codex :** un choc multi-blocs où tous les relevés du flanc G/D tombent avant la fin du choc ; aucun natif du flanc masqué ne combat à ce choc ; le flanc natif réapparaît en manœuvre ; en double Dernière charge, chaque camp conserve son masquage ; un soldat relevé tombé ne revit jamais dans le registre. Toujours `1026.disponible=False` et pas de campagne d'intégration exécutée ici.
+
+### Dernière charge 1026 — protection contre les pertes mixtes (30 octobre 2026)
+
+Commit `a1cceaa` : `VueChocDerniereCharge.pertes_releves` refuse explicitement les blocs contenant à la fois des chemins de morts relevés et des soldats étrangers à sa sélection. Sans ce contrôle, le traitement ordinaire `soldats.pertes` aurait pu recevoir des soldats archivés déjà marqués détruits, puis leur attribuer une nouvelle identité ou leur faire subir un sauvetage illégitime. Une vue chaînée délègue aux autres vues lorsqu'un bloc n'appartient pas à sa sélection : les deux Dernières charges simultanées sont ainsi mieux isolées.
+
+À vérifier par Codex : aucune unité native n'est perdue lorsque le flanc temporaire est vide ; aucune archive n'est envoyée vers `soldats.pertes` ; mutation imprévue d'une unité par les capacités `unites.apres_confrontation`, conversion Spore, moral, Ralliement et double charge. L'ordre `1026` reste désactivé. Tests non exécutés ici.
