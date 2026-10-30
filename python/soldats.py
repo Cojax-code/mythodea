@@ -29,14 +29,14 @@ def capturer_morts_derniere_charge(general, *, identifiant_bataille):
     import config
     if _derniere_charge_capture.get() is not None:
         raise RuntimeError('Capture Dernière charge imbriquée interdite.')
-    racine = config.racine_metier() / '.systeme' / 'derniere_charge_transit'
-    dossier = racine / uuid.uuid4().hex
-    dossier.mkdir(parents=True, mode=0o700, exist_ok=False)
-    os.chmod(dossier, 0o700)
     generaux = (general,) if isinstance(general, dict) else tuple(general)
     identites = {(g['joueur'], g['nom']) for g in generaux}
     if len(identites) != len(generaux) or not identites:
         raise ValueError('Dernière charge : généraux à capturer distincts et présents.')
+    racine = config.racine_metier() / '.systeme' / 'derniere_charge_transit'
+    dossier = racine / uuid.uuid4().hex
+    dossier.mkdir(parents=True, mode=0o700, exist_ok=False)
+    os.chmod(dossier, 0o700)
     capture = dict(generaux=identites,
                    chemins={(g['joueur'], g['nom']): g['chemin'] for g in generaux},
                    bataille=identifiant_bataille,
@@ -80,6 +80,29 @@ def archiver_mort_derniere_charge(unite, identifiant, donnees):
     capture['morts'][identite][bloc].append(dict(uuid=identifiant, chemin=destination,
                                        origine=unite, type=donnees[identifiant]['type']))
     return True
+
+
+
+def selectionner_archives_derniere_charge(capture, general_vaincu, flanc):
+    """Réserve une seule fois les morts d'un flanc, sans restaurer leur vie.
+
+    La sélection est bornée au duel et à l'identité officielle du vaincu.
+    Le choc doit encore être orchestré avant toute activation du catalogue.
+    """
+    identite = general_vaincu['joueur'], general_vaincu['nom']
+    if flanc not in ('G', 'D'):
+        raise ValueError('Dernière charge : flanc G ou D requis.')
+    bloc = 'gauche' if flanc == 'G' else 'droite'
+    if identite not in capture['morts']:
+        return ()
+    cle = identite, bloc
+    utilisees = capture.setdefault('selections', set())
+    if cle in utilisees:
+        return ()
+    utilisees.add(cle)
+    return tuple(entree for entree in capture['morts'][identite][bloc]
+                 if entree['chemin'].is_dir())
+
 
 
 
