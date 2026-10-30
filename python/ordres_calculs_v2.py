@@ -141,6 +141,37 @@ def interception_reserve(vainqueur_adverse, reserve, *, qg_nommade=None):
 
 
 
+
+def vainqueur_pour_reserve(resultat, camp_de_reserve):
+    """Identifie un adversaire survivant après la défaite du général allié.
+
+    Retourne l'identité stable du vainqueur, ou None. Les deux survivants
+    interdisent une interception : le duel n'a pas éliminé l'allié.
+    """
+    camps = (resultat.get('camp_1'), resultat.get('camp_2'))
+    finals = (resultat.get('final_1'), resultat.get('final_2'))
+    identites = ((resultat.get('joueur_1'), resultat.get('general_1')),
+                 (resultat.get('joueur_2'), resultat.get('general_2')))
+    if camps.count(camp_de_reserve) != 1:
+        return None
+    n = camps.index(camp_de_reserve)
+    adverse = 1 - n
+    if (type(finals[n]) is not int or type(finals[adverse]) is not int
+            or finals[n] != 0 or finals[adverse] <= 0):
+        return None
+    return identites[adverse]
+
+
+def designer_interception_reserve(resultat, camp, reserve, *, qg_nommade=None,
+                                 unites_reserve=0):
+    """Décide sans mutation si la réserve désignée doit intercepter."""
+    vainqueur = vainqueur_pour_reserve(resultat, camp)
+    if not reserve_peut_intercepter(vainqueur is not None, unites_reserve):
+        return None
+    return interception_reserve(vainqueur, reserve, qg_nommade=qg_nommade)
+
+
+
 def derniere_charge_possible(general_precedent_vaincu, flanc, *, effectif_eligible=None):
     """L'activation impose la défaite du précédent et un flanc unique G/D.
 
