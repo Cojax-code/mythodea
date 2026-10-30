@@ -133,8 +133,8 @@ class TestOrdresCalculsV2(unittest.TestCase):
         from unittest.mock import patch
         import unites
         fictives = {
-            'attaquant': dict(forces=(), faiblesses=(), multiplicateur=2),
-            'defenseur': dict(forces=(), faiblesses=('attaquant',), multiplicateur=2),
+            'attaquant': dict(forces=(), faiblesses=(), multiplicateur=2, etiquettes=()),
+            'defenseur': dict(forces=(), faiblesses=('attaquant',), multiplicateur=2, etiquettes=()),
         }
         with patch.object(unites, 'definition', side_effect=fictives.__getitem__), patch(
                 'ordres_pipeline.honneur_protege', return_value=False):
