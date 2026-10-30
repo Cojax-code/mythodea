@@ -59,12 +59,13 @@ def combat_entre_generaux(general_1, general_2, *, participants=None,
                             precedent, beneficiaire,
                             'gauche' if flanc == 'G' else 'droite',
                             archives, delegate=vue))
-                # Deux charges simultanées demandent une vue composée,
-                # non encore définie : refuser plutôt que perdre un ordre.
-                if len(admissibles) > 1:
-                    raise NotImplementedError(
-                        'Dernière charge simultanée des deux camps non raccordée.')
-                choc_releves = admissibles[0] if admissibles else None
+                # Chaque vue se superpose à la précédente ; la phase et
+                # les pertes propres à chacun des deux camps restent isolées.
+                for preparation in admissibles:
+                    choc_releves = soldats.VueChocDerniereCharge(
+                        preparation.origine, preparation.beneficiaire,
+                        preparation.bloc, preparation.archives,
+                        delegate=choc_releves or vue)
             with unites.duel(general_1, general_2):
                 for general in (general_1, general_2):
                     if vue.present(general):
@@ -189,8 +190,10 @@ def _combat_entre_generaux(general_1, general_2, *, participants=None,
 
     # L'archive des relevés n'est visible que pendant cette phase.
     # La fermeture restaure les natifs avant fuite, fin anticipée ou manœuvre.
-    if choc_derniere_charge is not None and (
-            choc_derniere_charge.delegate is not participants):
+    base_choc = choc_derniere_charge
+    while isinstance(base_choc, soldats.VueChocDerniereCharge):
+        base_choc = base_choc.delegate
+    if choc_derniere_charge is not None and base_choc is not participants:
         raise ValueError('Dernière charge : vue déléguée du mauvais duel.')
     contexte_releves = (choc_derniere_charge.choc()
                         if choc_derniere_charge is not None else nullcontext())
