@@ -61,6 +61,14 @@ class TestOrdresCalculsV2(unittest.TestCase):
         self.assertEqual(ordre['categorie'], 'globale')
         self.assertFalse(ordre['disponible'])
 
+    def test_spora_adicte_conversion_et_confinement(self):
+        import catalogues
+        self.assertTrue(catalogues.ORDRES[1018]['disponible'])
+        self.assertEqual(calculs.conversions_spore(1), 1)
+        self.assertEqual(calculs.conversions_spore(1, bonus_spora_adicte=True), 2)
+        self.assertEqual(calculs.conversions_spore(
+            1, bonus_spora_adicte=True, confinement=True), 0)
+
     def test_prevision_muraille_fatigue_individuelle(self):
         from unittest.mock import patch
         import combats
