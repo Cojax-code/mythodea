@@ -33,7 +33,11 @@ def avantage(attaquant, defenseur, general_attaquant=None, general_defenseur=Non
     if (attaquant == 'orc_chaman' and defenseur == 'sauvageon'
             and etiquette(defenseur, 'orc', general_defenseur)):
         valeur = max(valeur, 3)
-    faiblesses = d['faiblesses']
+    # Pour l'honneur ôte seulement les faiblesses du défenseur au choc
+    # initial. Les forces naturelles de l'attaquant restent intactes.
+    import ordres_pipeline
+    faiblesses = (() if ordres_pipeline.honneur_protege(general_defenseur)
+                  else d['faiblesses'])
     faible = (attaquant in faiblesses or 'tout' in faiblesses or
               ('distance' in faiblesses and etiquette(attaquant, 'distance')) or
               ('non_orc' in faiblesses and not etiquette(attaquant, 'orc', general_attaquant)))
