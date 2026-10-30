@@ -114,9 +114,9 @@ ORDRES = {
     # Ni apprentissage ni exécution avant clôture des cas de combat ouverts.
     1017: dict(jeton='2-6', nom='gros_poisson', categorie='duel',
                disponible=True, contre=False, progression=True, acquisition_requise=True),
-    # Apprentissage Zombie autorisé ; ciblage et effet encore non exécutables.
+    # Spore : une conversion supplémentaire par activation, sauf Confinement.
     1018: dict(jeton='1-8', nom='spora_adicte', categorie='globale',
-               disponible=False, contre=False, progression=True, acquisition_requise=True),
+               disponible=True, contre=False, progression=True, acquisition_requise=True),
     # Muraille humaine : identifiant réservé, effet collectif non encore activé.
     1019: dict(jeton='1-9', nom='muraille_humaine', categorie='globale',
                disponible=False, contre=False, progression=True, acquisition_requise=True),
