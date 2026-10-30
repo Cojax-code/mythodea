@@ -665,8 +665,11 @@ def generaux_en_formation(actifs, formation):
     # Les Zombies occupent leurs rangs de la séquence normale. Seuls les autres
     # généraux sont réordonnés entre les places restantes, sans les compacter.
     normaux = sorted(actifs, key=lambda g: int(g['emplacement']))
-    eligibles = [g for g in normaux if all(progression.general_recoit_ordre(g, identifiant)
-                                         for identifiant in formation['ordres'])]
+    # Réserve stratégique est un choix du QG, pas un ordre que chaque
+    # général de l'armée doit avoir appris pour rester dans la rotation.
+    eligibles = [g for g in normaux if all(
+        progression.general_recoit_ordre(g, identifiant)
+        for identifiant in formation['ordres'] if identifiant != 1025)]
     positions = {g['emplacement']: g for g in eligibles}
     qg = next((p for p, g in positions.items() if identite(g) == formation['qg']), None)
     courant = _bataille.get()
