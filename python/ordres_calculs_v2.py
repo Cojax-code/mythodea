@@ -126,6 +126,21 @@ def reserve_peut_intercepter(victoire_adverse, unites_reserve, deja_elimine=Fals
     return victoire_adverse and unites_reserve > 0 and not deja_elimine
 
 
+
+def interception_reserve(vainqueur_adverse, reserve, *, qg_nommade=None):
+    """Décision pure : intercepter un vainqueur sans consommer la rotation.
+
+    Les généraux sont des identités (joueur, nom) distinctes. Aucune sélection
+    de la réserve, perte, fatigue ni mutation de formation n'est effectuée ici.
+    """
+    if reserve is None or vainqueur_adverse is None:
+        return None
+    if reserve == qg_nommade or reserve == vainqueur_adverse:
+        return None
+    return reserve
+
+
+
 def derniere_charge_possible(general_precedent_vaincu, flanc, *, effectif_eligible=None):
     """L'activation impose la défaite du précédent et un flanc unique G/D.
 
