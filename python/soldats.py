@@ -71,10 +71,19 @@ def archiver_mort_derniere_charge(unite, identifiant, donnees):
     identite = correspondances[0]
     if donnees[identifiant].get('detruit') or identifiant in capture['utilises']:
         return False
-    destination = capture['dossier'] / identifiant
-    if destination.exists():
+    # Garder le nom métier (infanterieN/cavalerieN) : les lecteurs
+    # du moteur déduisent le type de la dernière composante du chemin.
+    # Le dossier UUID isole les noms identiques de soldats différents.
+    conteneur = capture['dossier'] / identifiant
+    destination = conteneur / unite.name
+    if conteneur.exists() or conteneur.is_symlink():
         raise RuntimeError('Dernière charge : doublon de capture UUID.')
-    shutil.move(str(unite), str(destination))
+    conteneur.mkdir(mode=0o700)
+    try:
+        shutil.move(str(unite), str(destination))
+    except BaseException:
+        conteneur.rmdir()
+        raise
     donnees[identifiant]['detruit'] = True
     capture['utilises'].add(identifiant)
     capture['morts'][identite][bloc].append(dict(uuid=identifiant, chemin=destination,
