@@ -262,10 +262,15 @@ def lire_declaration_qg(chemin_general):
         if not stat.S_ISREG(infos.st_mode) or infos.st_nlink != 1:
             return None
         with chemin.open('rb') as fichier:
-            contenu = fichier.read(65)
-        if len(contenu) > 64:
+            contenu = fichier.read(65537)
+        if len(contenu) > 65536:
             return None
-        bloc = contenu.decode('utf-8').strip()
+        lignes = [ligne.strip() for ligne in contenu.decode('utf-8').splitlines()
+                  if ligne.strip()]
+        if not lignes:
+            return None
+        # Premier champ : bloc physique du QG ; lignes suivantes : globaux.
+        bloc = lignes[0]
         if bloc not in config.ordre_blocs:
             return None
         composition = lire_composition_general(chemin_general)
@@ -395,6 +400,48 @@ def lire_ordres_general(chemin_general):
         )
 
     return ordres
+
+
+
+def lire_ordres_qg(chemin_general):
+    """Ordres globaux exclusivement issus du qg.txt du général en chef.
+
+    Première ligne : bloc du QG ; suivantes : jetons globaux, avec troisième
+    plage éventuelle pour désigner un emplacement.
+    """
+    if lire_declaration_qg(chemin_general) is None:
+        return []
+    chemin = chemin_general / 'qg.txt'
+    try:
+        lignes = chemin.read_text(encoding='utf-8').splitlines()[1:]
+    except (OSError, UnicodeError):
+        return []
+    import catalogues
+    catalogue = {fiche['jeton']: (identifiant, fiche)
+                 for identifiant, fiche in catalogues.ORDRES.items()
+                 if fiche['categorie'] == 'globale'}
+    resultat = []
+    for ligne in lignes:
+        morceau = ligne.strip().split('-')
+        if len(morceau) not in (2, 3) or not all(
+                valeur.isascii() and valeur.isdecimal() for valeur in morceau):
+            continue
+        jeton = '-'.join(morceau[:2])
+        if jeton not in catalogue:
+            continue
+        identifiant, fiche = catalogue[jeton]
+        specification = int(morceau[2]) if len(morceau) == 3 else None
+        if identifiant == 1025:
+            if specification is None or not 1 <= specification <= 20:
+                continue
+        elif specification is not None:
+            continue
+        resultat.append(dict(identifiant=jeton, texte=ligne.strip(),
+                            type=int(morceau[0]), numero=int(morceau[1]),
+                            specification=specification, nom=fiche['nom'],
+                            categorie='globale'))
+    return resultat
+
 
 
 def general_possede_ordre(
