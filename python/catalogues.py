@@ -126,7 +126,7 @@ ORDRES = {
     1021: dict(jeton='1-10', nom='retrait_tactique', categorie='globale',
                disponible=True, contre=True, progression=True, acquisition_requise=True),
     1022: dict(jeton='1-11', nom='pour_l_honneur', categorie='globale',
-               disponible=False, contre=False, progression=False),
+               disponible=True, contre=False, progression=True, acquisition_requise=True),
     1023: dict(jeton='1-12', nom='ralliement', categorie='globale',
                disponible=False, contre=False, progression=False),
     1024: dict(jeton='2-7', nom='chat_man', categorie='duel',
