@@ -213,6 +213,28 @@ def preparer_derniere_charge(general_precedent_vaincu, flanc_demande,
 
 
 
+
+def plan_choc_derniere_charge(general_precedent_vaincu, flanc, soldats_morts,
+                             *, bloc_original=(), deja_utilises=()):
+    """Plan immuable de substitution d'un flanc pour un unique choc initial.
+
+    Aucun soldat natif n'est supprimé ; la restitution des natifs avant la
+    manœuvre et la destruction des relevés doivent être garanties par l'appelant.
+    Les chemins des soldats morts ne doivent jamais être utilisés sans un
+    archivage privé authentifié préalable.
+    """
+    if flanc not in ('G', 'D'):
+        raise ValueError('Dernière charge : choisir G ou D.')
+    identifiants = preparer_derniere_charge(
+        general_precedent_vaincu, flanc, soldats_morts,
+        identifiants_deja_utilises=deja_utilises)
+    return dict(bloc='gauche' if flanc == 'G' else 'droite',
+                releves=identifiants,
+                natifs_masques=tuple(bloc_original),
+                fatigue=True, phase='choc_initial', usage_unique=True)
+
+
+
 def tentatives_rafale(nombre_archers_arriere):
     """Une tentative de perte directe pour quatre archers à l'Arrière.
 
