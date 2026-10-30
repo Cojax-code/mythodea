@@ -58,7 +58,7 @@ def archiver_mort_derniere_charge(unite, identifiant, donnees):
     """
     import shutil
     capture = _derniere_charge_capture.get()
-    if capture is None or identifiant is None or identifiant not in donnees:
+    if capture is None:
         return False
     bloc = unite.parent.name
     general_nom = unite.parent.parent.name
@@ -69,6 +69,13 @@ def archiver_mort_derniere_charge(unite, identifiant, donnees):
     if bloc not in ('gauche', 'droite') or len(correspondances) != 1:
         return False
     identite = correspondances[0]
+    # Des soldats historiques peuvent encore n'avoir aucun UUID :
+    # les enregistrer officiellement avant le transfert, jamais après.
+    if identifiant is None:
+        import generaux
+        identifiant = enregistrer(unite, donnees, generaux.identifier_unite(unite))
+    if identifiant not in donnees:
+        raise RuntimeError('Dernière charge : UUID sans fiche officielle.')
     if donnees[identifiant].get('detruit') or identifiant in capture['utilises']:
         return False
     # Garder le nom métier (infanterieN/cavalerieN) : les lecteurs
