@@ -245,6 +245,8 @@ def bataille(territoire, configuration):
     try:
         preparer_compatibilites(forces, courant)
         confronter_frontal_melange(forces, courant)
+        if _defenseur_off_def.get() is not None:
+            preparer_ralliement(_defenseur_off_def.get())
         yield courant
     finally:
         _bataille.reset(jeton)
@@ -335,7 +337,7 @@ def finaliser_ralliement():
             donnees[identifiant]['detruit'] = True
             shutil.rmtree(source)
             continue
-        destination = qg['chemin'] / bloc / ('rallie_' + identifiant)
+        destination = qg['chemin'] / bloc / (source.name + '_rallie_' + identifiant)
         if destination.exists():
             raise RuntimeError('Ralliement : identité déjà présente au QG.')
         shutil.move(str(source), str(destination))
