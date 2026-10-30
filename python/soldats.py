@@ -57,6 +57,12 @@ def archiver_mort_derniere_charge(unite, identifiant, donnees):
     n'est jamais une unité vivante du jeu, ni une source de résurrection libre.
     """
     import shutil
+    import catalogues
+    # Défense en profondeur : même si un appelant ouvre manuellement un
+    # contexte de capture, aucun décès ordinaire n'est intercepté lorsque
+    # Dernière charge est suspendue au catalogue.
+    if not catalogues.ORDRES[1026]['disponible']:
+        return False
     capture = _derniere_charge_capture.get()
     if capture is None:
         return False
