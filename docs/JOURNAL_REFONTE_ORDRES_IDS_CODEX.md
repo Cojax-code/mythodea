@@ -551,3 +551,9 @@ Commits `bb8a421`, `ff10ec6`, `1b0deb8`, `f7f54a2` :
 - La chaîne des vues est contrôlée jusqu'au délégué ordinaire avant d'entrer dans le choc.
 
 **Ne pas activer 1026 immédiatement :** le catalogue reste `disponible=False`. L'ensemble est encore à valider en intégration : combats frontaux avant combat rangé (généraux précédents perdus sans capture), états d'identité après transfert, compatibilité Ralliement et post-capacités, portée de l'identité `joueur` vs `camp` dans des configurations alliées, manœuvre si le flanc masqué devient décisif, soldats historiques sans UUID, ordre de rotation et exception de capture en cas de duel interrompu. Les tests n'ont pas été exécutés ici ; Codex reste chargé de la campagne complète.
+
+### Dernière charge 1026 — invariant du flanc masqué après élimination des relevés
+
+Commit `c8f6a5f` : `VueChocDerniereCharge.blocs` conserve un bloc vide (`type=vide, nombre=0, unites=[]`) pour le flanc temporairement substitué lorsque **tous** les relevés sont détruits avant la fin du choc. Auparavant `if chemins:` faisait réapparaître les soldats natifs immédiatement, lesquels pouvaient alors entrer dans les confrontations directes restantes du même choc. Les soldats natifs ne réapparaissent désormais qu'à la sortie du contexte `choc()`.
+
+**Cas de non-régression à confier à Codex :** un choc multi-blocs où tous les relevés du flanc G/D tombent avant la fin du choc ; aucun natif du flanc masqué ne combat à ce choc ; le flanc natif réapparaît en manœuvre ; en double Dernière charge, chaque camp conserve son masquage ; un soldat relevé tombé ne revit jamais dans le registre. Toujours `1026.disponible=False` et pas de campagne d'intégration exécutée ici.
