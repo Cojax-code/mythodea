@@ -71,6 +71,9 @@ def ordres_du_general(general, categorie=None, catalogue=None):
             if (categorie != 'globale' or type(specification) is not int
                     or not 1 <= specification <= 20):
                 continue
+        elif identifiant == 1026:
+            if categorie != 'duel' or specification not in ('G', 'D'):
+                continue
         elif specification is not None:
             continue
         if identifiant not in resultat:
