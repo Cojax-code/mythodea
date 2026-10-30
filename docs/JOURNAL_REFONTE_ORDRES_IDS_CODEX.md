@@ -640,3 +640,11 @@ Commit `56b3a18` : dans `ordres_pipeline.formations_retenues`, les IDs retenus p
 Contrôle statique : la réserve doit être vivante, différente du donneur QG, puis est exclue de la rotation normale tant qu'un autre général est disponible ; une interception en attente désigne la réserve et le vainqueur adverse au prochain round et contrôle leur présence effective. La tentative initiale de déceler un QG nomade désigné comme réserve était un faux positif : `identite(candidat) != identite(donneur['general'])` l'interdisait déjà. Aucune correction effectuée sur cette condition.
 
 À Codex : tester coexistence 1025 + 1023 / 1013, exclusion sans double participation, interception après défaite alliée, conservation du vainqueur adverse, QG détruit, et absence de changement de comportement des ordres globaux non liés à la formation. Aucun test exécuté ici. 1019 et 1026 toujours suspendus.
+
+### Ralliement 1023 / Réserve stratégique 1025 / QG détruit — audit du 30 octobre 2026
+
+Commit `ddcf520` : vérification explicite de `verifier_qg()` dans `tenter_ralliement` avant de réserver tout nouveau mort, puis au début de `finaliser_ralliement` avant de rapatrier les soldats en attente. La simple présence du dossier QG ne prouve pas que son bloc QG existe encore : cela évite de réintroduire des soldats lorsque le QG a été détruit au cours d'un duel. Le drapeau `quartier.detruit` demeure irréversible pour la bataille. Les soldat déjà en transit suivent le traitement existant de mort définitive si la vérification découvre la destruction du QG.
+
+Réserve 1025 : l'interception est décidée après le résultat du duel et les candidats sont relus au round suivant ; la désignation de la réserve exclut déjà le général QG lui-même. Ce contrôle n'a pas nécessité de modification.
+
+**Contrôles Codex :** Ralliement actif avec QG détruit pendant le choc, QG détruit avant finalisation, QG dont seul le bloc déclaré est vide mais d'autres blocs subsistent, absence de soldat ressuscité, registre officiel et transit propres ; Réserve 1025 + 1023 avec ordres retenus simultanément, puis QG détruit, et OFF/DEF ; vérifier les chemins où le dossier QG a lui-même disparu. Pas de tests exécutés pendant cet audit. 1019 et 1026 restent désactivés.
