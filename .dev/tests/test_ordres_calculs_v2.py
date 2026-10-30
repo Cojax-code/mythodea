@@ -182,6 +182,15 @@ class TestOrdresCalculsV2(unittest.TestCase):
         self.assertTrue(ordre['contre'])
         self.assertEqual(ordre['categorie'], 'duel')
 
+    def test_reserve_strategique_intercepte_sans_consummer_qg(self):
+        reserve = ('j1', 'general3')
+        adverse = ('j2', 'general1')
+        self.assertEqual(calculs.interception_reserve(adverse, reserve), reserve)
+        self.assertEqual(calculs.interception_reserve(adverse, reserve), reserve)
+        self.assertIsNone(calculs.interception_reserve(
+            adverse, reserve, qg_nommade=reserve))
+        self.assertIsNone(calculs.interception_reserve(None, reserve))
+
     def test_prevision_muraille_fatigue_individuelle(self):
         from unittest.mock import patch
         import combats
