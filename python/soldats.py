@@ -965,6 +965,43 @@ def prevoir_pertes(infos, survivants, moral, aleatoire, *,
                 survivants=infos['nombre'] - len(morts))
 
 
+
+def pertes_releves_derniere_charge(infos, survivants, archives, aleatoire=None):
+    """Pertes de soldats *déjà morts* engagés pour un unique choc.
+
+    Pas de moral, pas de sauvetage, pas de nouvel UUID, pas de seconde
+    destruction officielle. Les survivants demeurent archivés jusqu'à la
+    fermeture du choc ; ils ne rejoignent jamais une armée vivante.
+    """
+    import shutil
+    chemins = {entree['chemin']: entree for entree in archives}
+    presents = tuple(infos['unites'])
+    if (type(survivants) is not int or not 0 <= survivants <= len(presents)
+            or len(presents) != infos['nombre']
+            or len(presents) != len(set(presents))
+            or any(chemin not in chemins for chemin in presents)):
+        raise ValueError('Dernière charge : bloc relevé incohérent.')
+    donnees = charger()
+    for chemin in presents:
+        entree = chemins[chemin]
+        uuid_soldat = entree['uuid']
+        officiel = donnees.get(uuid_soldat)
+        if (officiel is None or officiel.get('detruit') is not True
+                or not chemin.is_dir() or chemin.parent.name != uuid_soldat
+                or entree['origine'] == chemin):
+            raise RuntimeError('Dernière charge : archive non authentifiée.')
+    aleatoire = random if aleatoire is None else aleatoire
+    victimes = aleatoire.sample(list(presents), len(presents) - survivants)
+    resultat = []
+    for victime in victimes:
+        resultat.append(f"{victime.name} ({infos['type']})")
+        shutil.rmtree(victime)
+    infos['unites'] = [chemin for chemin in presents if chemin.is_dir()]
+    infos['nombre'] = len(infos['unites'])
+    return resultat
+
+
+
 def pertes(infos, survivants, moral=0, aleatoire=None, *,
            unites_prioritaires=(), victimes_choisies=None):
     """Sélection collective puis sauvetages distincts, sans réattribuer un échec."""
