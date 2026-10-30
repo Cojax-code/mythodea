@@ -67,6 +67,10 @@ def ordres_du_general(general, categorie=None, catalogue=None):
             if (not isinstance(specification, tuple) or len(specification) != 2
                     or any(type(p) is not int or p <= 0 for p in specification)):
                 continue
+        elif identifiant == 1025:
+            if (categorie != 'globale' or type(specification) is not int
+                    or not 1 <= specification <= 20):
+                continue
         elif specification is not None:
             continue
         if identifiant not in resultat:
@@ -718,8 +722,12 @@ def intention_personnelle(general, categorie, inclure_frontal=False):
     fiche = progression.caracteristiques_general(general)
     if not fiche or not general['chemin'].is_dir():
         return None
-    officiel = {**general, 'caracteristiques': fiche,
-                'ordres': generaux.lire_ordres_general(general['chemin'])}
+    # Les globaux appartiennent exclusivement au QG ; les autres généraux
+    # conservent ordre.txt pour leurs ordres de duel / individuels.
+    source = (generaux.lire_ordres_qg(general['chemin'])
+              if categorie == 'globale'
+              else generaux.lire_ordres_general(general['chemin']))
+    officiel = {**general, 'caracteristiques': fiche, 'ordres': source}
     demandes = ordres_du_general(officiel, categorie)
     demandes = [i for i in demandes if (i != 1002 or inclure_frontal)
                 and i in fiche['evolutions_acquises']]
