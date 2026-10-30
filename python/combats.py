@@ -1626,8 +1626,10 @@ def confrontation_directe(
     nom_2 = f"{joueur_2} {rapports.nom_affichage_general(general_2)}"
 
     participants = participants if participants is not None else soldats.VueParticipants()
-    infos_1 = participants.blocs(general_1)[bloc] if participants.groupe else armee[joueur_1][bloc]
-    infos_2 = participants.blocs(general_2)[bloc] if participants.groupe else armee[joueur_2][bloc]
+    # Toujours respecter la vue explicite. Dernière charge substitue un
+    # flanc sans employer le groupe de prêts de Gros Poisson.
+    infos_1 = participants.blocs(general_1)[bloc]
+    infos_2 = participants.blocs(general_2)[bloc]
 
     if infos_1["nombre"] == 0 or infos_2["nombre"] == 0:
         return None
