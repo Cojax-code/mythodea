@@ -122,7 +122,7 @@ ORDRES = {
                disponible=False, contre=False, progression=True, acquisition_requise=True),
     # Réservations V2 de conception : pas d'apprentissage ni d'exécution avant intégration.
     1020: dict(jeton='3-5', nom='charge_suicidaire', categorie='individuelle',
-               disponible=False, contre=False, progression=False),
+               disponible=True, contre=False, progression=True, acquisition_requise=True),
     1021: dict(jeton='1-10', nom='retrait_tactique', categorie='globale',
                disponible=False, contre=True, progression=False),
     1022: dict(jeton='1-11', nom='pour_l_honneur', categorie='globale',
