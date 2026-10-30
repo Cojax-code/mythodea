@@ -427,7 +427,7 @@ def lire_ordres_qg(chemin_general):
     resultat = []
     for ligne in lignes:
         morceau = ligne.strip().split('-')
-        if len(morceau) not in (2, 3):
+        if len(morceau) not in (2, 3, 4):
             continue
         flanc = (morceau[:2] == ['2', '8'] and len(morceau) == 3
                  and morceau[2] in ('G', 'D', 'g', 'd'))
@@ -438,9 +438,18 @@ def lire_ordres_qg(chemin_general):
         if jeton not in catalogue:
             continue
         identifiant, fiche = catalogue[jeton]
-        specification = (morceau[2].upper() if flanc else
-                         int(morceau[2]) if len(morceau) == 3 else None)
-        if identifiant == 1025:
+        if len(morceau) == 4:
+            if identifiant != 1017:
+                continue
+            specification = (int(morceau[2]), int(morceau[3]))
+        else:
+            specification = (morceau[2].upper() if flanc else
+                             int(morceau[2]) if len(morceau) == 3 else None)
+        if identifiant == 1017:
+            if (not isinstance(specification, tuple)
+                    or any(position <= 0 for position in specification)):
+                continue
+        elif identifiant == 1025:
             if specification is None or not 1 <= specification <= 20:
                 continue
         elif identifiant == 1026:
