@@ -436,3 +436,12 @@ La fiche utilisateur `mythodea-ordres.json` établit : contre-ordre de duel ; le
 - `catalogues.py` `5161a36` : 1024 activé, contre-ordre de duel avec acquisition.
 - `.dev/tests/test_ordres_calculs_v2.py` `2b50b0f` : tests ciblés de détection d'autres blocs vivants et activation du catalogue.
 - **Vérification Codex finale** : ordre effectivement gagné via PC de duel, perte d'un bloc allié en cours de choc initial, action non rejouée deux fois par tour, initiative adverse face à chevalier Étincellant, sélection de cibles efficaces, bloc chaman seul dès le début, bloc chaman devenant dernier pendant la manœuvre, disparition de QG, cas mixtes / prêts Gros Poisson, interactions avec Choca-fuite. Aucun test d'intégration sur Raspberry Pi exécuté ; si un cas de timing exige une correction, conserver l'intention de la fiche originale. Ne pas réactiver Grande Muraille 1019.
+
+## Réserve stratégique 1025 — règles retrouvées et préparation (30 octobre 2026)
+
+Règles déjà approuvées : ordre global, réservé au combat rangé ; un général désigné comme réserve **intercepte chaque général ennemi venant de vaincre un allié**, puis reprend sa position de réserve après son duel. Il peut intervenir à répétition tant qu'il possède des unités ; aucune fatigue supplémentaire due à l'ordre. S'il n'a jamais été nécessaire, il intervient normalement à la fin. Incompatible avec On mélange et Attaque frontale ; compatible avec Retrait tactique et QG nomade (le QG demeure dernier et hors mécanisme), et avec Muraille 1019 seulement théoriquement, celle-ci restant désactivée.
+
+- Fonctions existantes : `ordres_calculs_v2.reserve_peut_intercepter` filtre victoire et effectifs ; `commandement.compatibilite_formations` porte les paires de compatibilité.
+- Commits `c017816` et `8f69a2f` : nouvelle primitive `interception_reserve` sans mutation et test de répétition/exclusion QG, **non exécuté**.
+- **IMPORTANT : 1025 reste désactivé**. L'orchestration complète exige de résoudre la désignation du général de réserve depuis la déclaration d'ordre et d'insérer un duel d'interception sans consommer le rang normal ni réengager deux fois le même vainqueur. Il ne faut pas désigner arbitrairement le dernier général : cela changerait une règle. Le pilote territorial doit suivre la victoire du duel et relire les positions après interception, préserver QG nomade et les autres ordres. Ne pas remplacer cela par une simple priorité statique.
+- Grande Muraille 1019 reste archivées et désactivée. Réserver les tests intégrés et le Raspberry Pi à Codex à la fin des ordres.
