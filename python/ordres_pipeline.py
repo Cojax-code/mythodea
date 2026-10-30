@@ -15,6 +15,8 @@ from fractions import Fraction
 _duel = ContextVar('ordres_duel', default=None)
 _bataille = ContextVar('ordres_bataille', default=None)
 _retraite = ContextVar('retraite_apres_choc', default=None)
+_defenseur_off_def = ContextVar('defenseur_off_def', default=None)
+_choc_initial = ContextVar('ordres_choc_initial', default=False)
 
 _CATEGORIES = {"globale", "duel", "individuelle"}
 
@@ -791,6 +793,34 @@ def participations_duel(general_1, general_2, participants, decisions):
         yield vue
     for g in origines.values():
         generaux.supprimer_general_si_vide(g)
+
+
+@contextmanager
+def defense_off_def(camp):
+    jeton = _defenseur_off_def.set(camp)
+    try:
+        yield
+    finally:
+        _defenseur_off_def.reset(jeton)
+
+
+@contextmanager
+def choc_initial():
+    jeton = _choc_initial.set(True)
+    try:
+        yield
+    finally:
+        _choc_initial.reset(jeton)
+
+
+def honneur_protege(general):
+    """Protection des faiblesses uniquement en choc initial OFF/DEF."""
+    if general is None or not _choc_initial.get():
+        return False
+    courant = _bataille.get()
+    camp = (courant['configuration']['acteurs'][general['joueur']]['camp']
+            if courant is not None else general.get('camp', general['joueur']))
+    return camp == _defenseur_off_def.get() and effet(general, 1022)
 
 
 def effet(general, identifiant):
