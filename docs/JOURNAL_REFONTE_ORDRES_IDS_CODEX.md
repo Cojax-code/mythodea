@@ -375,3 +375,14 @@ Calculs déjà présents dans `ordres_calculs_v2.py` : `probabilite_charge_suici
 **État moteur** : `commandement.sequence_formation(...,position_retrait=...)` sait effectuer le placement logique, mais `ordres_pipeline.generaux_en_formation` ne lui transmet pas de `position_retrait`. Aucun branchement officiel et validé du déplacement territorial n'a été identifié dans cette intervention. `1021` reste volontairement `disponible=False` et `progression=False` pour éviter un ordre partiellement actif. Tests ciblés de compatibilité et séquence ajoutés dans `.dev/tests/test_ordres_calculs_v2.py` (`3ed6ea1`), **non exécutés**.
 
 **Avant activation** : raccorder l'identification du général concerné, l'issue et la fin de manche, le mouvement réel vers le territoire de repli selon les règles validées, puis l'actualisation des forces / positions / rapports, et les interactions de succession des combats. Ne pas inventer une destination alternative ni les conditions d'un repli impossible. Codex exécutera les tests en fin de campagne, après achèvement des ordres.
+
+## Retrait tactique 1021 — correction de la règle et raccordement (30 octobre 2026)
+
+**CORRECTION PRIORITAIRE des notes précédentes :** Retrait tactique ne déplace PAS le général vers le territoire spécial `repli`, n'applique AUCUNE sanction ni attente. La règle confirmée dans la conception antérieure est une **rotation logique : après son premier affrontement, le premier général engagé passe à la dernière position de la séquence de combat de son camp**. Le classement existant `commandement.sequence_formation` place ce général juste avant le QG lorsque QG nomade est actif. Toute note précédente demandant de développer un déplacement territorial pour 1021 est **obsolète et erronée**.
+
+- `python/ordres_pipeline.py` commit `2ba1e8e` : contexte de bataille `retraits_tactiques`, `marquer_retrait_tactique`, transmission de `position_retrait` à `sequence_formation`, sans mutation de dossiers ou de positions persistantes.
+- `python/combats.py` commit `1979edc` : mémorisation après le combat rangé de chaque camp, une fois seulement, si le général survit. Les rounds suivants relisent la formation. La voie frontale n'est pas modifiée.
+- `python/catalogues.py` commit `5f23802` : 1021 activé, contre-ordre global, acquisition requise.
+- `.dev/tests/test_ordres_calculs_v2.py` commit `81083f9` : disponibilité et mémorisation unique, en plus des tests de compatibilité et séquence du commit `3ed6ea1`.
+
+**Validation Codex à la fin de tous les ordres :** conflit On mélange, compatibilité QG nomade, PC du contre-ordre, sélection du premier général par camp, général détruit au premier duel, succession de plusieurs affrontements, maintien des positions d'origine et absence de mouvement vers le repli. Vérifier en particulier si l'activation nécessite une confrontation en début de bataille plutôt que de dépendre du recalcul territorial à chaque round. Aucun test Raspberry Pi exécuté.
