@@ -426,3 +426,13 @@ Raccordements : `ordres_pipeline.py` (`0a50fea`, `96e32d2`, `9816885`) prépare 
 ### Complément Ralliement : exclusion physique pendant le duel
 
 Le premier branchement conservait les morts dans leur bloc jusqu'à finalisation : cette possibilité de participation involontaire a été corrigée. `ordres_pipeline.tenter_ralliement` déplace immédiatement chaque soldat sélectionné dans le transit privé `.systeme/ralliement_transit/<UUID>` (commit `7189128`), distinct des blocs de combat ; `finaliser_ralliement` le déplace au QG après fermeture de `unites.duel`, en conservant le nom de type original (commit `d6540ce`). Le transit est purement technique, **pas une réserve d'ordre**, et ne modifie pas la propriété finale. Une disparition du QG empêche ce transfert (commit `3f2888b`). Codex devra vérifier l'absence de résidus dans le transit après erreur, la sécurité de la génération privée, la restauration/reprise sans doublon, le respect du bloc homogène et la cohérence des marqueurs d'expérience lors des déplacements inter-systèmes de fichiers. Aucun test d'exécution effectué lors de ce raccordement.
+
+## Chat Man 1024 — intégration ciblée (30 octobre 2026)
+
+La fiche utilisateur `mythodea-ordres.json` établit : contre-ordre de duel ; les blocs d'orc-chamans ne combattent que lorsqu'ils sont le dernier bloc vivant du général. Le bloc adverse correspondant qui devait les affronter obtient l'initiative à son tour de manœuvre et attaque une cible selon les avantages ordinaires.
+
+- `combats.py` `b28ca30` : exclusion du choc direct initial pour les chamans protégés encore accompagnés de blocs vivants ; fonctions `autres_blocs_vivants` et `bloc_chaman_retenu`.
+- `combats.py` `af38a88` : omet l'action de manœuvre d'un bloc chaman retenu et donne priorité de manœuvre au bloc adverse correspondant ; le choix de cible utilise `choisir_cible` existant.
+- `catalogues.py` `5161a36` : 1024 activé, contre-ordre de duel avec acquisition.
+- `.dev/tests/test_ordres_calculs_v2.py` `2b50b0f` : tests ciblés de détection d'autres blocs vivants et activation du catalogue.
+- **Vérification Codex finale** : ordre effectivement gagné via PC de duel, perte d'un bloc allié en cours de choc initial, action non rejouée deux fois par tour, initiative adverse face à chevalier Étincellant, sélection de cibles efficaces, bloc chaman seul dès le début, bloc chaman devenant dernier pendant la manœuvre, disparition de QG, cas mixtes / prêts Gros Poisson, interactions avec Choca-fuite. Aucun test d'intégration sur Raspberry Pi exécuté ; si un cas de timing exige une correction, conserver l'intention de la fiche originale. Ne pas réactiver Grande Muraille 1019.
