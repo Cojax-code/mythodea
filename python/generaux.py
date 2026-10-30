@@ -417,8 +417,22 @@ def lire_ordres_qg(chemin_general):
         return []
     chemin = chemin_general / 'qg.txt'
     try:
-        lignes = chemin.read_text(encoding='utf-8').splitlines()[1:]
-    except (OSError, UnicodeError):
+        # Même limite de lecture et même contrôle de fichier régulier que
+        # pour ordre.txt ; éviter qu'un qg.txt illimité soit relu en entier.
+        import stat
+        from cycle_linux import sans_liens
+        sans_liens(chemin)
+        infos = chemin.lstat()
+        if not stat.S_ISREG(infos.st_mode) or infos.st_nlink != 1:
+            return []
+        with chemin.open('rb') as fichier:
+            contenu = fichier.read(65537)
+        if len(contenu) > 65536:
+            return []
+        toutes = contenu.decode('utf-8').splitlines()
+        debut = next((n for n, ligne in enumerate(toutes) if ligne.strip()), None)
+        lignes = toutes[debut + 1:] if debut is not None else []
+    except (OSError, UnicodeError, ValueError, RuntimeError):
         return []
     import catalogues
     catalogue = {fiche['jeton']: (identifiant, fiche)
