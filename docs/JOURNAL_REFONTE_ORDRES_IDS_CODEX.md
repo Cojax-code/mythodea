@@ -541,3 +541,13 @@ Commits `2c67f8c`, `a361b38`, `fbc1bcc` :
 - `combats.combat_entre_generaux` accepte une capture existante et les vaincus précédents par camp, choisit les archives du flanc demandé, construit une vue spéciale compatible avec son `participants` et la transmet à `_combat_entre_generaux` pour le choc seulement. Deux activations simultanées sont pour l'instant explicitement refusées, afin de ne pas effectuer un seul choc erroné.
 
 **IMPORTANT : la boucle territoriale ne transmet toujours ni capture ni vaincu précédent**. La fonction `combat_entre_generaux` a des paramètres facultatifs, donc l'exécution ordinaire ne change pas. La détection du précédent général vaincu et la durée de la capture inter-round restent à raccorder ; prévoir deux Dernières charges simultanées, compatibilités Ralliement / capacités post-choc, interruptions et sécurisation des archives. **1026 reste disponible=False**, tests non exécutés.
+
+### Dernière charge 1026 — transmission inter-rounds et double activation (30 octobre 2026)
+
+Commits `bb8a421`, `ff10ec6`, `1b0deb8`, `f7f54a2` :
+- `resoudre_affrontement_actif` ouvre un contexte de capture pour l'ensemble du combat territorial **uniquement si 1026 est disponible**. Il transmet ce contexte jusqu'à `combat_entre_generaux` et le ferme systématiquement, y compris sur retour anticipé. Le moteur conserve uniquement les généraux à effectif final nul du round précédent ; les précédents plus anciens sont remplacés au round suivant.
+- `archiver_mort_derniere_charge` enregistre officiellement un UUID manquant avant d'archiver un soldat réellement tué, puis le marque détruit ; il n'est pas réanimé.
+- Les vues `VueChocDerniereCharge` sont maintenant **chaînables** : si les deux camps ont un précédent vaincu et 1026 est retenu, chaque général bénéficie de sa propre substitution, et les pertes spécialisées sont dispatchées au bon niveau. La fermeture imbriquée supprime toutes les archives consommées et restaure les natifs.
+- La chaîne des vues est contrôlée jusqu'au délégué ordinaire avant d'entrer dans le choc.
+
+**Ne pas activer 1026 immédiatement :** le catalogue reste `disponible=False`. L'ensemble est encore à valider en intégration : combats frontaux avant combat rangé (généraux précédents perdus sans capture), états d'identité après transfert, compatibilité Ralliement et post-capacités, portée de l'identité `joueur` vs `camp` dans des configurations alliées, manœuvre si le flanc masqué devient décisif, soldats historiques sans UUID, ordre de rotation et exception de capture en cas de duel interrompu. Les tests n'ont pas été exécutés ici ; Codex reste chargé de la campagne complète.
