@@ -563,3 +563,18 @@ Commit `c8f6a5f` : `VueChocDerniereCharge.blocs` conserve un bloc vide (`type=vi
 Commit `a1cceaa` : `VueChocDerniereCharge.pertes_releves` refuse explicitement les blocs contenant à la fois des chemins de morts relevés et des soldats étrangers à sa sélection. Sans ce contrôle, le traitement ordinaire `soldats.pertes` aurait pu recevoir des soldats archivés déjà marqués détruits, puis leur attribuer une nouvelle identité ou leur faire subir un sauvetage illégitime. Une vue chaînée délègue aux autres vues lorsqu'un bloc n'appartient pas à sa sélection : les deux Dernières charges simultanées sont ainsi mieux isolées.
 
 À vérifier par Codex : aucune unité native n'est perdue lorsque le flanc temporaire est vide ; aucune archive n'est envoyée vers `soldats.pertes` ; mutation imprévue d'une unité par les capacités `unites.apres_confrontation`, conversion Spore, moral, Ralliement et double charge. L'ordre `1026` reste désactivé. Tests non exécutés ici.
+
+## Audit suspension 1019 / 1026 — 30 octobre 2026
+
+**Décision :** Grande Muraille 1019 et Dernière charge 1026 sont reportées. Conserver prototypes et documentation, ne jamais les activer par défaut.
+
+Contrôle statique ciblé de la branche :
+- `catalogues.ORDRES[1019].disponible=False` et `catalogues.ORDRES[1026].disponible=False` confirmés.
+- `ordres_pipeline.ordres_du_general` écarte les ordres indisponibles, donc ils ne sont pas retenus dans la confrontation normale.
+- `ordres_pipeline.formations_retenues` ne contient pas 1019 parmi les formations territoriales (`1015,1016,1025`) ; la branche Grande Muraille du moteur est en outre conditionnée par `catalogues.ORDRES[1019]['disponible']`.
+- `combats.resoudre_affrontement_actif` ouvre le contexte `capturer_morts_derniere_charge` uniquement si `catalogues.ORDRES[1026]['disponible']`. Sinon la capture vaut `None`, donc aucune vue de morts relevés n'est créée.
+- `ordres_pipeline.flanc_derniere_charge_retenu` vérifie explicitement 1026 disponible et effet officiellement retenu.
+- **Défense supplémentaire ajoutée**, commit `a828ec3` : `soldats.archiver_mort_derniere_charge` refuse aussi tout détournement des pertes ordinaires lorsque 1026 est suspendu, même si un appelant ouvrait manuellement un contexte de capture. Ainsi la branche normale `soldats.pertes` garde son fonctionnement historique.
+- Les fonctions expérimentales restent dans le code pour reprise ultérieure ; aucun effacement ni activation. Ne pas modifier l'interface du prototype ni assimiler audit statique à des tests.
+
+**À Codex lors de la validation :** test de non-régression avec 1019/1026 désactivés ; aucune création du transit `.systeme/derniere_charge_transit` pendant un combat normal, aucun déclenchement Muraille, aucune variation des pertes/UUID, autres ordres actifs inchangés. Aucun test de gameplay exécuté pendant cet audit.
