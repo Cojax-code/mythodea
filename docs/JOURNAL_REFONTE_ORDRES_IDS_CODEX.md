@@ -343,3 +343,11 @@ La sequence `combat_entre_generaux` est `duel -> participations_duel -> unites.d
 - Les anciens tests du prototype peuvent rester dans `.dev/tests` comme tests de composants isolés ; ils ne valent pas validation d'une fonctionnalité active. Aucun test Raspberry Pi demandé avant la fin de tous les ordres.
 
 **Portée :** suppression des chemins d'activation normale, conservation du code expérimental pour éviter une suppression massive risquée. Aucun changement aux règles des autres ordres ni aux PC dynamiques.
+
+## Spora Adicte 1018 — raccordement ciblé (30 octobre 2026)
+
+- `python/bouclier_vivant.py`, commit `575a57a` : au déclenchement de Spore, applique `ordres_calculs_v2.conversions_spore(1, bonus_spora_adicte=effet(general_zombie,1018), confinement=effet(adversaire,1013))`. Chaque conversion passe par `convertir_spore`, sans duplication de l'algorithme de mutation, avec une preuve d'événement distincte pour la conversion supplémentaire. Les rapports indiquent le nombre réel de conversions, même sans cible supplémentaire.
+- `python/catalogues.py`, commit `157d0ed` : 1018 `disponible=True`, catégorie globale et acquisition requise inchangées.
+- `.dev/tests/test_ordres_calculs_v2.py`, commit `3c9c922` : test de disponibilité, bonus +1 et neutralisation par Confinement.
+- **À valider par Codex à la fin des ordres** : conflit Spora Adicte/Confinement par PC globaux, déclenchement seulement pour un général qui reçoit effectivement l'ordre, victime unique restante, zéro victime restante, conversion double avec identité et preuve distinctes, réexécution/reprise interrompue sans doublon, cohérence du rapport et des registres. Aucun test Raspberry Pi exécuté au cours de cette intégration.
+- Grande Muraille 1019 demeure abandonnée, archivée et désactivée ; les anciennes notes de Muraille ne sont pas une liste de tâches active.
