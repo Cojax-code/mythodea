@@ -584,7 +584,8 @@ def formations_retenues(forces):
     for n, (camp, donneur) in enumerate(zip(camps, donneurs), 1):
         if not donneur:
             continue
-        ids = set(resultat[f'camp_{n}'])
+        # Les autres ordres globaux ne font pas partie de la rotation.
+        ids = set(resultat[f'camp_{n}']) & formations_territoriales
         reserve = None
         if 1025 in ids:
             choix = next((ordre['specification']
