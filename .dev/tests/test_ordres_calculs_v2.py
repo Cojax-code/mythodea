@@ -69,6 +69,24 @@ class TestOrdresCalculsV2(unittest.TestCase):
         self.assertEqual(calculs.conversions_spore(
             1, bonus_spora_adicte=True, confinement=True), 0)
 
+    def test_charge_suicidaire_pourcentage_par_quatre_pertes(self):
+        self.assertEqual(calculs.probabilite_charge_suicidaire(0), 0)
+        self.assertEqual(calculs.probabilite_charge_suicidaire(3), 0)
+        self.assertEqual(calculs.probabilite_charge_suicidaire(4), 1)
+        self.assertEqual(calculs.probabilite_charge_suicidaire(11), 2)
+
+    def test_charge_suicidaire_tirages_independants(self):
+        from unittest.mock import Mock
+        hasard = Mock()
+        hasard.randrange.side_effect = [0, 1]
+        self.assertEqual(calculs.tirages_charges_suicidaires(
+            4, 4, True, True, hasard), (True, False))
+        self.assertEqual(hasard.randrange.call_count, 2)
+        hasard.reset_mock()
+        self.assertEqual(calculs.tirages_charges_suicidaires(
+            4, 4, False, False, hasard), (False, False))
+        hasard.randrange.assert_not_called()
+
     def test_prevision_muraille_fatigue_individuelle(self):
         from unittest.mock import patch
         import combats
