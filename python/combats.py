@@ -604,6 +604,9 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
     round_combat = 0
     tableau_combat_range_ouvert = False
     engagements_combat_range = []
+    # Une interception en attente est résolue au prochain round ; le général
+    # de réserve reste hors de la séquence normale tant qu'un allié peut agir.
+    interception = None
 
     while round_combat < 20:
         round_combat += 1
@@ -694,10 +697,33 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
             return
 
         formations = ordres_pipeline.formations_retenues(generaux_territoire)
-        general_camp_1 = ordres_pipeline.generaux_en_formation(
-            actifs_camp_1, formations.get(camp_1))[0]
-        general_camp_2 = ordres_pipeline.generaux_en_formation(
-            actifs_camp_2, formations.get(camp_2))[0]
+        candidats = {}
+        for camp, actifs in ((camp_1, actifs_camp_1), (camp_2, actifs_camp_2)):
+            formation = formations.get(camp)
+            ordonnes = ordres_pipeline.generaux_en_formation(actifs, formation)
+            reserve = formation.get('reserve') if formation else None
+            if reserve and len(ordonnes) > 1:
+                autres = [g for g in ordonnes if ordres_pipeline.identite(g) != reserve]
+                if autres:
+                    ordonnes = autres
+            candidats[camp] = ordonnes[0]
+
+        # Après la victoire contre un allié, l'adversaire affronte
+        # immédiatement la réserve désignée au round suivant.
+        if interception:
+            camp_reserve, reserve_id, vainqueur_id = interception
+            camp_adverse = camp_2 if camp_reserve == camp_1 else camp_1
+            actifs_reserve = actifs_camp_1 if camp_reserve == camp_1 else actifs_camp_2
+            actifs_adverses = actifs_camp_2 if camp_reserve == camp_1 else actifs_camp_1
+            reserve = next((g for g in actifs_reserve
+                            if ordres_pipeline.identite(g) == reserve_id), None)
+            vainqueur = next((g for g in actifs_adverses
+                              if ordres_pipeline.identite(g) == vainqueur_id), None)
+            if reserve and vainqueur:
+                candidats[camp_reserve] = reserve
+                candidats[camp_adverse] = vainqueur
+            interception = None
+        general_camp_1, general_camp_2 = candidats[camp_1], candidats[camp_2]
 
         # Préparer les formations collectives au point d'entrée territorial.
         # Tant que leur résolution multi-généraux n'est pas raccordée, refuser
@@ -795,6 +821,34 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
         if muraille_chocs:
             resultat_combat_range['chocs'] = (
                 muraille_chocs + resultat_combat_range['chocs'])
+
+        # L'interception ne change ni l'emplacement, ni la fatigue, ni
+        # la participation déjà comptée des combattants.
+        if not interception:
+            for camp, formation in formations.items():
+                reserve_id = formation.get('reserve')
+                if 1025 not in formation['ordres'] or reserve_id is None:
+                    continue
+                forces_actuelles = generaux.lire_forces_territoire(territory, configuration)
+                candidat = next((g for g in forces_actuelles[camp].values()
+                                 if g and ordres_pipeline.identite(g) == reserve_id),
+                                None)
+                places = (generaux.total_general_depuis_chemin(candidat['chemin'])
+                          if candidat is not None and candidat['chemin'].is_dir() else 0)
+                qg_nommade = (formation['qg'] if 1016 in formation['ordres']
+                              else None)
+                reserve_choisie = ordres_calculs_v2.designer_interception_reserve(
+                    resultat_combat_range, camp, reserve_id,
+                    qg_nommade=qg_nommade, unites_reserve=places)
+                if reserve_choisie:
+                    adversaire = ordres_calculs_v2.vainqueur_pour_reserve(
+                        resultat_combat_range, camp)
+                    if adversaire and adversaire != reserve_choisie:
+                        interception = (camp, reserve_choisie, adversaire)
+                        rapports.afficher_et_ecrire(
+                            f"Réserve stratégique {camp} : interception du vainqueur "
+                            f"{adversaire[0]} {adversaire[1]} au prochain round.")
+                    break
 
         # Retrait tactique ne déplace aucun dossier : après son premier duel,
         # le général engagé passe en fin de rotation de son camp.
