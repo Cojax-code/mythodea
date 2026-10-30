@@ -568,7 +568,7 @@ def formations_retenues(forces):
                         if g and g.get('total_unites', 0)), None)
         donneurs.append(intention(general, 'globale') if general else None)
     # 1019 est archivé : ne jamais le considérer comme formation active.
-    formations_territoriales = frozenset((1015, 1016))
+    formations_territoriales = frozenset((1015, 1016, 1025))
     if not any(
             d and any(i in formations_territoriales
                       and catalogues.ORDRES[i]['disponible']
@@ -577,9 +577,26 @@ def formations_retenues(forces):
         return {}
     points = [points_globaux_officiels(d) if d else 0 for d in donneurs]
     resultat = confronter_intentions(*donneurs, 'globale', *points)
-    return {camp: dict(ordres=set(resultat[f'camp_{n}']),
-                       qg=identite(d['general']))
-            for n, (camp, d) in enumerate(zip(camps, donneurs), 1) if d}
+    retenues = {}
+    for n, (camp, donneur) in enumerate(zip(camps, donneurs), 1):
+        if not donneur:
+            continue
+        ids = set(resultat[f'camp_{n}'])
+        reserve = None
+        if 1025 in ids:
+            choix = next((ordre['specification']
+                          for ordre in donneur['general']['ordres']
+                          if ordre['identifiant'] == catalogues.ORDRES[1025]['jeton']
+                          and type(ordre['specification']) is int), None)
+            candidat = forces[camp].get(str(choix)) if choix is not None else None
+            if (candidat is not None and candidat.get('total_unites', 0) > 0
+                    and identite(candidat) != identite(donneur['general'])):
+                reserve = identite(candidat)
+            else:
+                ids.discard(1025)
+        retenues[camp] = dict(ordres=ids, qg=identite(donneur['general']),
+                              reserve=reserve)
+    return retenues
 
 
 
