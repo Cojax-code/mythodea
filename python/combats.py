@@ -160,11 +160,12 @@ def _combat_entre_generaux(general_1, general_2, *, participants=None,
                 "chocs": details_bouclier, "manoeuvres": [],
             }
 
-    initiative_avant, details_choc = phase_engagement_initial(
-        general_1,
-        general_2, participants=participants,
-        avant_deja_resolu=avant_deja_resolu
-    )
+    with ordres_pipeline.choc_initial():
+        initiative_avant, details_choc = phase_engagement_initial(
+            general_1,
+            general_2, participants=participants,
+            avant_deja_resolu=avant_deja_resolu
+        )
     details_choc = details_bouclier + details_choc
 
     details_manoeuvre = []
@@ -882,7 +883,8 @@ def resoudre_combat_off_def(territory, defenseur, configuration=None):
         f"Défenseur : {defenseur} | Attaquant : {attaquant}"
     )
 
-    resoudre_combat_range(territory, "OFF/DEF", configuration)
+    with ordres_pipeline.defense_off_def(defenseur):
+        resoudre_combat_range(territory, "OFF/DEF", configuration)
 
 
 def cible_facile(type_unite):
