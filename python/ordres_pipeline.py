@@ -311,7 +311,16 @@ def tenter_ralliement(unite, donnees, aleatoire):
         unite, donnees, config.dans_generation_privee())
     if identifiant is None:
         return False
-    courant['ralliement_attente'].append((unite, identifiant, bloc, cible))
+    # Écarter physiquement le mort du combat courant ; sans cela une nouvelle
+    # lecture des blocs le ferait combattre une seconde fois.
+    import shutil
+    transit = config.racine_metier() / '.systeme' / 'ralliement_transit'
+    transit.mkdir(parents=True, exist_ok=True)
+    destination = transit / identifiant
+    if destination.exists():
+        raise RuntimeError('Ralliement : doublon de soldat en transit.')
+    shutil.move(str(unite), str(destination))
+    courant['ralliement_attente'].append((destination, identifiant, bloc, cible))
     return True
 
 
