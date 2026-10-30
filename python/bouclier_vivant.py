@@ -317,16 +317,30 @@ def resoudre_priorite(general_zombie, adversaire, *, participants=None):
             contexte['confrontation'] += 1
             evenement = (f"spore:{contexte['id']}:{contexte['confrontation']}:"
                          f"{general_zombie['joueur']}:{general_zombie['nom']}")
-            contamine = convertir_spore(general_zombie, adversaire, bloc, evenement, participants=participants)
+            import ordres_pipeline
+            import ordres_calculs_v2
+            conversions = ordres_calculs_v2.conversions_spore(
+                1, bonus_spora_adicte=ordres_pipeline.effet(general_zombie, 1018),
+                confinement=ordres_pipeline.effet(adversaire, 1013))
+            contamines = []
+            for numero in range(conversions):
+                # Une preuve distincte par victime : une interruption ne doit
+                # jamais rejouer une transformation déjà publiée.
+                cle = evenement if numero == 0 else f'{evenement}:bonus:{numero}'
+                victime = convertir_spore(
+                    general_zombie, adversaire, bloc, cle, participants=participants)
+                if victime is None:
+                    break
+                contamines.append(victime)
             rapports.afficher_et_ecrire(
                 f'Bouclier vivant contre {bloc} : {avant} contre {force} ; '
                 f'{"résiste (" + str(resistance) + ")" if survit else "détruit"} ; '
-                f'Spore : {"1 conversion" if contamine else "aucune cible"}')
+                f'Spore : {len(contamines)} conversion(s)')
             details.append(dict(moment='Bouclier vivant', bloc_1='bouclier',
                                 type_1=TYPE_BOUCLIER, initial_1=1,
                                 final_1=int(survit), bloc_2=bloc,
                                 type_2=infos['type'], initial_2=infos['nombre'],
-                                final_2=max(0, infos['nombre'] - int(bool(contamine)))))
+                                final_2=max(0, infos['nombre'] - len(contamines))))
             if not survit:
                 retirer_bouclier(general_zombie)
                 if _zombies_vivants(general_zombie) == 0:
