@@ -206,6 +206,15 @@ class TestOrdresCalculsV2(unittest.TestCase):
         resultat['final_1'] = 1
         self.assertIsNone(calculs.vainqueur_pour_reserve(resultat, 'campA'))
 
+    def test_derniere_charge_selection_sans_reutilisation(self):
+        self.assertEqual(
+            calculs.preparer_derniere_charge(True, 'G',
+                                             ['uuid-a', 'uuid-b', 'uuid-a'],
+                                             identifiants_deja_utilises=['uuid-b']),
+            ('uuid-a',))
+        self.assertEqual(
+            calculs.preparer_derniere_charge(False, 'D', ['uuid-a']), ())
+
     def test_prevision_muraille_fatigue_individuelle(self):
         from unittest.mock import patch
         import combats
