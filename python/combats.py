@@ -38,6 +38,8 @@ def combat_entre_generaux(general_1, general_2, *, participants=None,
     participants = participants if participants is not None else soldats.VueParticipants()
     participants.verifier_duel(general_1, general_2)
     with ordres_pipeline.duel(general_1, general_2) as decisions:
+        charges_actives = (ordres_pipeline.effet(general_1, 1020),
+                           ordres_pipeline.effet(general_2, 1020))
         with ordres_pipeline.participations_duel(general_1, general_2, participants, decisions) as vue:
             with unites.duel(general_1, general_2):
                 for general in (general_1, general_2):
@@ -57,6 +59,23 @@ def combat_entre_generaux(general_1, general_2, *, participants=None,
             for numero, general in enumerate((general_1, general_2), 1):
                 vue.supprimer_general_si_vide(general)
                 resultat[f'final_{numero}'] = vue.total(general)
+    # Les prêts de Gros Poisson sont restitués avant une éventuelle mort
+    # définitive. Deux charges sont tirées indépendamment sur le même bilan.
+    pertes = tuple(max(0, initiales[n] - resultat[f'final_{n + 1}'])
+                   for n in range(2))
+    reussites = ordres_calculs_v2.tirages_charges_suicidaires(
+        *pertes, *charges_actives, random)
+    victimes = (general_2, general_1)
+    for reussite, cible in zip(reussites, victimes):
+        if reussite:
+            generaux.detruire_general_et_armee(cible)
+    if any(reussites):
+        resultat['charge_suicidaire'] = dict(
+            activations=charges_actives, reussites=reussites, pertes=pertes)
+        for numero, general in enumerate((general_1, general_2), 1):
+            resultat[f'final_{numero}'] = (
+                generaux.total_general_depuis_chemin(general['chemin'])
+                if general['chemin'].is_dir() else 0)
     if decisions:
         resultat['ordres_v2'] = decisions
     return resultat
