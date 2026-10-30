@@ -774,6 +774,14 @@ def _resoudre_affrontement_actif(territory, mode_combat, configuration):
             resultat_combat_range['chocs'] = (
                 muraille_chocs + resultat_combat_range['chocs'])
 
+        # Retrait tactique ne déplace aucun dossier : après son premier duel,
+        # le général engagé passe en fin de rotation de son camp.
+        for camp, general in ((camp_1, general_camp_1),
+                              (camp_2, general_camp_2)):
+            if general['chemin'].is_dir():
+                ordres_pipeline.marquer_retrait_tactique(
+                    camp, general, formations.get(camp))
+
         if round_combat == 1:
             rapports.ecrire_rapport_territoire(
                 territory,
