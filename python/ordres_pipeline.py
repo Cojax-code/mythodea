@@ -320,7 +320,7 @@ def tenter_ralliement(unite, donnees, aleatoire):
     if destination.exists():
         raise RuntimeError('Ralliement : doublon de soldat en transit.')
     shutil.move(str(unite), str(destination))
-    courant['ralliement_attente'].append((destination, identifiant, bloc, cible))
+    courant['ralliement_attente'].append((destination, identifiant, bloc, cible, unite.name))
     return True
 
 
@@ -338,7 +338,7 @@ def finaliser_ralliement():
         return
     courant['ralliement_effectue'] = True
     donnees = soldats.charger()
-    for source, identifiant, bloc, qg in attente:
+    for source, identifiant, bloc, qg, nom_original in attente:
         if not source.is_dir():
             continue
         if not qg['chemin'].is_dir():
@@ -346,7 +346,7 @@ def finaliser_ralliement():
             donnees[identifiant]['detruit'] = True
             shutil.rmtree(source)
             continue
-        destination = qg['chemin'] / bloc / (source.name + '_rallie_' + identifiant)
+        destination = qg['chemin'] / bloc / (nom_original + '_rallie_' + identifiant)
         if destination.exists():
             raise RuntimeError('Ralliement : identité déjà présente au QG.')
         shutil.move(str(source), str(destination))
