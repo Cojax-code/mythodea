@@ -445,3 +445,9 @@ Règles déjà approuvées : ordre global, réservé au combat rangé ; un gén�
 - Commits `c017816` et `8f69a2f` : nouvelle primitive `interception_reserve` sans mutation et test de répétition/exclusion QG, **non exécuté**.
 - **IMPORTANT : 1025 reste désactivé**. L'orchestration complète exige de résoudre la désignation du général de réserve depuis la déclaration d'ordre et d'insérer un duel d'interception sans consommer le rang normal ni réengager deux fois le même vainqueur. Il ne faut pas désigner arbitrairement le dernier général : cela changerait une règle. Le pilote territorial doit suivre la victoire du duel et relire les positions après interception, préserver QG nomade et les autres ordres. Ne pas remplacer cela par une simple priorité statique.
 - Grande Muraille 1019 reste archivées et désactivée. Réserver les tests intégrés et le Raspberry Pi à Codex à la fin des ordres.
+
+### Réserve stratégique 1025 — identification du vainqueur et choix de réserve
+
+Commits `c1606bd`, `4038cb2` : `ordres_calculs_v2.vainqueur_pour_reserve` identifie le général adverse survivant lorsque le général allié est éliminé ; `designer_interception_reserve` confirme qu'une réserve **déjà désignée** possède encore des unités avant de recommander son interception, sans modifier la rotation ni le système de duel. Tests ciblés ajoutés, non exécutés.
+
+**Blocage restant** : les spécifications précédentes fixent l'interception répétée et ses incompatibilités, mais ne définissent pas l'interface de **désignation du général de réserve**. Ne pas choisir arbitrairement une position, ni activer le catalogue tant que la désignation et le raccordement à la boucle des combats rangés ne sont pas complets. Les fonctions de décision ne suffisent pas à rendre l'ordre opérationnel. Grande Muraille 1019 reste désactivée.
