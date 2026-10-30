@@ -604,3 +604,13 @@ Audit statique complémentaire de `combats.resoudre_combat_v15`, `resoudre_comba
 - Risques à confirmer par Codex : portée des ordres personnels du QG transmissibles à d'autres généraux, cohérence des priorités frontal/rangé pour 1021 et 1025, et différences entre demandes et effets réellement retenus lorsque les deux camps ont des ordres de duel.
 
 Aucune correction supplémentaire certaine de gameplay dans cette passe. Audit documentaire seulement ; ne pas présenter le contrôle statique comme une validation d'exécution. Les corrections déjà apportées à `qg.txt` (Gros Poisson et lecture bornée) restent en place. Les ordres 1019/1026 restent suspendus.
+
+### Point 2 — transmission QG, frontal et confrontation des duels (30 octobre 2026)
+
+Lecture ciblée des fonctions `intention`, `intention_personnelle`, `duel`, `confronter_intentions`, `resoudre_attaque_frontale`, `resoudre_affrontement_actif`, `marquer_retrait_tactique`.
+
+- Les ordres de duel sont d'abord demandés personnellement par le général, puis transmis par le QG si aucun ordre personnel n'est applicable. L'ordre individuel ne passe jamais par la transmission QG. Le duel filtre les demandes selon les droits du *bénéficiaire* **avant** la confrontation des PC. La comparaison des camps utilise les mêmes décisions pour les deux participants.
+- L'attaque frontale engage les paires d'emplacements via `combat_entre_generaux` mais `marquer_retrait_tactique` n'est appelée qu'après les rounds de combat rangé. Toute règle disant « après le premier duel, même frontal » demanderait un raccord explicite ; ne pas modifier sans arbitrage de règle.
+- La combinaison des formations `1002` (frontal) et `1021` (retrait tactique) n'est ni dans les incompatibilités ni parmi les compatibilités déclarées. `preparer_compatibilites` refuse les paires non définies ; choix de gameplay requis avant de les faire coexister.
+- Commit `ab09276` : correction du cas `ordres_du_general(general, categorie=None)` qui masquait les ordres à spécification `1025` (et, en préparation de sa réactivation future, `1026`) uniquement parce que la catégorie n'avait pas été filtrée. Le contrôle du format et la disponibilité restent obligatoires. **Aucun effet n'est activé par une simple consultation.**
+- `1019` et `1026` demeurent indisponibles. Aucun test exécuté : Codex doit vérifier les usages de l'API sans catégorie ainsi que le mode OFF/DEF et la transmission du QG.
