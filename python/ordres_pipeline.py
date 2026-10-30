@@ -341,8 +341,9 @@ def finaliser_ralliement():
     for source, identifiant, bloc, qg, nom_original in attente:
         if not source.is_dir():
             continue
-        if not qg['chemin'].is_dir():
-            # Le QG n'existe plus : le mort doit rester mort.
+        quartier = courant['quartiers'].get(courant['ralliement']['camp'])
+        if (not qg['chemin'].is_dir() or quartier is None or quartier.detruit):
+            # Le QG est détruit : le mort doit rester mort.
             donnees[identifiant]['detruit'] = True
             shutil.rmtree(source)
             continue
