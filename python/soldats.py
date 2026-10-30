@@ -426,8 +426,10 @@ class VueChocDerniereCharge:
         if self._active and (general['joueur'], general['nom']) == (
                 self.beneficiaire['joueur'], self.beneficiaire['nom']):
             chemins = [a['chemin'] for a in self.archives if a['chemin'].is_dir()]
-            if chemins:
-                blocs[self.bloc] = generaux.infos_bloc_valide(chemins)
+            # Même si tous les relevés meurent pendant le choc, les natifs
+            # restent masqués jusqu'à la fermeture de la phase.
+            blocs[self.bloc] = (generaux.infos_bloc_valide(chemins) if chemins
+                                else dict(type='vide', nombre=0, unites=[]))
         return blocs
 
     def total(self, general):
