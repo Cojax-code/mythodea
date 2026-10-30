@@ -33,9 +33,15 @@ def capturer_morts_derniere_charge(general, *, identifiant_bataille):
     dossier = racine / uuid.uuid4().hex
     dossier.mkdir(parents=True, mode=0o700, exist_ok=False)
     os.chmod(dossier, 0o700)
-    capture = dict(general=(general['joueur'], general['nom']),
-                   bataille=identifiant_bataille, dossier=dossier,
-                   morts={'gauche': [], 'droite': []})
+    generaux = (general,) if isinstance(general, dict) else tuple(general)
+    identites = {(g['joueur'], g['nom']) for g in generaux}
+    if len(identites) != len(generaux) or not identites:
+        raise ValueError('Dernière charge : généraux à capturer distincts et présents.')
+    capture = dict(generaux=identites,
+                   chemins={(g['joueur'], g['nom']): g['chemin'] for g in generaux},
+                   bataille=identifiant_bataille,
+                   dossier=dossier, morts={identite: {'gauche': [], 'droite': []}
+                                          for identite in identites}, utilises=set())
     jeton = _derniere_charge_capture.set(capture)
     try:
         yield capture
@@ -55,17 +61,23 @@ def archiver_mort_derniere_charge(unite, identifiant, donnees):
     if capture is None or identifiant is None or identifiant not in donnees:
         return False
     bloc = unite.parent.name
-    if bloc not in capture['morts']:
+    general_nom = unite.parent.parent.name
+    correspondances = [identite for identite in capture['generaux']
+                        if identite[1] == general_nom
+                        and (unite.parent.parent == capture.get(
+                            'chemins', {}).get(identite, unite.parent.parent))]
+    if bloc not in ('gauche', 'droite') or len(correspondances) != 1:
         return False
-    if (unite.parent.parent.name != capture['general'][1]
-            or donnees[identifiant].get('detruit')):
+    identite = correspondances[0]
+    if donnees[identifiant].get('detruit') or identifiant in capture['utilises']:
         return False
     destination = capture['dossier'] / identifiant
     if destination.exists():
         raise RuntimeError('Dernière charge : doublon de capture UUID.')
     shutil.move(str(unite), str(destination))
     donnees[identifiant]['detruit'] = True
-    capture['morts'][bloc].append(dict(uuid=identifiant, chemin=destination,
+    capture['utilises'].add(identifiant)
+    capture['morts'][identite][bloc].append(dict(uuid=identifiant, chemin=destination,
                                        origine=unite, type=donnees[identifiant]['type']))
     return True
 
