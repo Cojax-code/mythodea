@@ -240,7 +240,7 @@ def bataille(territoire, configuration):
             rapports.ecrire_rapport_territoire(territoire,
                 f"QG {camp} : {qg['joueur']} {qg['nom']}, bloc {qg['qg']}.")
     courant = dict(territoire=territoire, configuration=configuration, quartiers=quartiers,
-                   annules={}, retraits_tactiques={}, ralliement=None, ralliement_attente=[])
+                   annules={}, retraits_tactiques={}, ralliement=None, ralliement_attente=[], ralliement_active=False, ralliement_effectue=False)
     jeton = _bataille.set(courant)
     try:
         preparer_compatibilites(forces, courant)
@@ -273,6 +273,19 @@ def preparer_ralliement(defenseur):
     courant['ralliement'] = dict(qg=qg, camp=defenseur)
 
 
+
+def activer_ralliement_duel(generaux):
+    courant = _bataille.get()
+    if courant is None:
+        return
+    choix = courant.get('ralliement')
+    courant['ralliement_active'] = bool(
+        choix and any(
+            courant['configuration']['acteurs'][g['joueur']]['camp'] == choix['camp']
+            and effet(g, 1023) for g in generaux))
+
+
+
 def tenter_ralliement(unite, donnees, aleatoire):
     """Réserve un mort, après l'échec de son sauvetage, sans le supprimer."""
     courant = _bataille.get()
@@ -281,10 +294,11 @@ def tenter_ralliement(unite, donnees, aleatoire):
     cible = courant['ralliement']['qg']
     if not cible['chemin'].is_dir():
         return False
-    if not effet(cible, 1023):
+    if not courant.get('ralliement_active'):
         return False
     import generaux
     import soldats
+    import config
     type_unite = generaux.identifier_unite(unite)
     blocs = generaux.lire_composition_general(cible['chemin'])
     bloc = next((b for b, types in blocs.items()
@@ -311,6 +325,7 @@ def finaliser_ralliement():
     courant['ralliement_attente'] = []
     if not attente:
         return
+    courant['ralliement_effectue'] = True
     donnees = soldats.charger()
     for source, identifiant, bloc, qg in attente:
         if not source.is_dir():
