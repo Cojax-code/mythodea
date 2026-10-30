@@ -1190,6 +1190,59 @@ def verifier_limite_unites_general(chemin_general):
             surplus -= places
 
 
+
+def reguler_surnombre_ralliement(general, aleatoire=None):
+    """Régule les soldats du QG après Ralliement, sans perdre leur historique.
+
+    Priorité aux soldats sans bataille survivante ; tirage aléatoire à
+    priorité égale. Cette régulation est distincte de la limite historique.
+    """
+    import soldats
+    import unites
+    if aleatoire is None:
+        aleatoire = random
+    chemin = general['chemin']
+    if not chemin.is_dir():
+        return ()
+    fiche = progression.caracteristiques_general(general)
+    limite = progression.capacite_maximale(fiche)
+    registre = soldats.charger()
+    candidats = []
+    occupation = 0
+    for bloc in config.ordre_blocs:
+        for unite in (chemin / bloc).iterdir():
+            type_unite = identifier_unite(unite)
+            if type_unite == 'inconnu':
+                continue
+            places = unites.definition(type_unite)['places']
+            occupation += places
+            identifiant = soldats.retrouver(
+                unite, registre, config.dans_generation_privee())
+            # Le registre constitue la source officielle d'expérience.
+            if identifiant is None or identifiant not in registre:
+                raise RuntimeError('Ralliement : soldat sans identité officielle.')
+            experience = registre[identifiant]['batailles']
+            candidats.append((experience, aleatoire.random(), unite, identifiant, places))
+    if occupation <= limite:
+        return ()
+    # Aucun tri sur les blocs : les soldats inexpérimentés passent d'abord,
+    # puis le hasard départage les candidats de même expérience.
+    candidats.sort(key=lambda item: (item[0] != 0, item[1]))
+    retires = []
+    for _experience, _tirage, unite, identifiant, places in candidats:
+        if occupation <= limite:
+            break
+        shutil.rmtree(unite)
+        registre[identifiant]['detruit'] = True
+        retires.append(identifiant)
+        occupation -= places
+    soldats.sauvegarder(registre)
+    rapports.afficher_et_ecrire(
+        f"Ralliement : {len(retires)} soldat(s) retiré(s) pour respecter "
+        f"la capacité du général {general['nom']} ({occupation}/{limite} places).")
+    return tuple(retires)
+
+
 def identifier_unite(unite):
     if not unite.is_dir():
         return "inconnu"
