@@ -95,6 +95,19 @@ class TestOrdresCalculsV2(unittest.TestCase):
             4, 4, False, False, hasard), (False, False))
         hasard.randrange.assert_not_called()
 
+    def test_retrait_tactique_passe_avant_qg_nommade(self):
+        import commandement
+        ordre = commandement.sequence_formation(
+            ('1', '2', '3', '4'), (1021, 1016),
+            position_qg='2', position_retrait='3')
+        self.assertEqual(ordre, ['1', '4', '3', '2'])
+
+    def test_retrait_tactique_incompatible_avec_on_melange(self):
+        import commandement
+        diagnostic = commandement.compatibilite_formations((1021, 1015))
+        self.assertIn((1021, 1015), diagnostic['incompatibles'] +
+                      [tuple(reversed(p)) for p in diagnostic['incompatibles']])
+
     def test_prevision_muraille_fatigue_individuelle(self):
         from unittest.mock import patch
         import combats
