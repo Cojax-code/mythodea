@@ -404,7 +404,7 @@ def lire_ordres_general(chemin_general):
 
 
 def lire_ordres_qg(chemin_general):
-    """Ordres globaux exclusivement issus du qg.txt du général en chef.
+    """Ordres émis par le général en chef dans son propre qg.txt.
 
     Première ligne : bloc du QG ; suivantes : jetons globaux, avec troisième
     plage éventuelle pour désigner un emplacement.
@@ -419,7 +419,7 @@ def lire_ordres_qg(chemin_general):
     import catalogues
     catalogue = {fiche['jeton']: (identifiant, fiche)
                  for identifiant, fiche in catalogues.ORDRES.items()
-                 if fiche['categorie'] == 'globale'}
+                 }
     resultat = []
     for ligne in lignes:
         morceau = ligne.strip().split('-')
@@ -439,7 +439,7 @@ def lire_ordres_qg(chemin_general):
         resultat.append(dict(identifiant=jeton, texte=ligne.strip(),
                             type=int(morceau[0]), numero=int(morceau[1]),
                             specification=specification, nom=fiche['nom'],
-                            categorie='globale'))
+                            categorie=fiche['categorie']))
     return resultat
 
 
