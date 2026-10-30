@@ -390,13 +390,25 @@ class VueChocDerniereCharge:
 
     @contextmanager
     def choc(self):
+        import shutil
         if self._active:
             raise RuntimeError('Dernière charge ne peut être engagée deux fois.')
+        if getattr(self, '_consomme', False):
+            raise RuntimeError('Dernière charge : réutilisation du choc interdite.')
+        self._consomme = True
         self._active = True
         try:
             yield self
         finally:
-            self._active = False
+            # Survivants ou victimes, aucun relevé n'atteint la manœuvre.
+            # Ne jamais effacer les soldats natifs masqués.
+            try:
+                for entree in self.archives:
+                    chemin = entree['chemin']
+                    if chemin.is_dir() and chemin.parent.name == entree['uuid']:
+                        shutil.rmtree(chemin)
+            finally:
+                self._active = False
 
     def blocs(self, general):
         import generaux
