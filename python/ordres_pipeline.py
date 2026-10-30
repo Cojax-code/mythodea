@@ -238,7 +238,7 @@ def bataille(territoire, configuration):
             rapports.ecrire_rapport_territoire(territoire,
                 f"QG {camp} : {qg['joueur']} {qg['nom']}, bloc {qg['qg']}.")
     courant = dict(territoire=territoire, configuration=configuration, quartiers=quartiers,
-                   annules={})
+                   annules={}, retraits_tactiques={})
     jeton = _bataille.set(courant)
     try:
         preparer_compatibilites(forces, courant)
@@ -512,6 +512,21 @@ def qg_hors_formation(general, formation):
                 and identite(general) == formation['qg'])
 
 
+
+def marquer_retrait_tactique(camp, general, formation):
+    """Après son premier duel, place le général engagé en fin de rotation.
+
+    Le déplacement est purement logique et ne touche jamais aux dossiers,
+    unités, positions territoriales ni sanctions de repli.
+    """
+    courant = _bataille.get()
+    if (courant is None or not formation or 1021 not in formation['ordres']
+            or camp in courant['retraits_tactiques']):
+        return False
+    courant['retraits_tactiques'][camp] = identite(general)
+    return True
+
+
 def generaux_en_formation(actifs, formation):
     if not formation:
         return actifs
@@ -522,7 +537,15 @@ def generaux_en_formation(actifs, formation):
                                          for identifiant in formation['ordres'])]
     positions = {g['emplacement']: g for g in eligibles}
     qg = next((p for p, g in positions.items() if identite(g) == formation['qg']), None)
-    sequence = commandement.sequence_formation(positions, formation['ordres'], qg)
+    courant = _bataille.get()
+    camp = next((courant['configuration']['acteurs'][g['joueur']]['camp']
+                 for g in eligibles), None) if courant is not None else None
+    retrait = (courant.get('retraits_tactiques', {}).get(camp)
+               if courant is not None and 1021 in formation['ordres'] else None)
+    position_retrait = next(
+        (p for p, g in positions.items() if identite(g) == retrait), None)
+    sequence = commandement.sequence_formation(
+        positions, formation['ordres'], qg, position_retrait)
     reorganises = iter(positions[p] for p in sequence)
     return [next(reorganises) if g['emplacement'] in positions else g for g in normaux]
 
