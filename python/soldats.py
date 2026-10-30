@@ -408,6 +408,29 @@ class VueChocDerniereCharge:
                 blocs[self.bloc] = generaux.infos_bloc_valide(chemins)
         return blocs
 
+    @property
+    def groupe(self):
+        return self.delegate.groupe
+
+    def __getattr__(self, nom):
+        # Méthodes ordinaires de la vue ; seule la substitution du flanc et
+        # ses pertes spécifiques sont surchargées.
+        return getattr(self.delegate, nom)
+
+    def pertes_releves(self, general, infos, survivants, aleatoire=None):
+        if not self._active:
+            return None
+        if (general is None or
+                (general['joueur'], general['nom']) !=
+                (self.beneficiaire['joueur'], self.beneficiaire['nom'])):
+            return None
+        chemins = {a['chemin'] for a in self.archives}
+        unites = tuple(infos['unites'])
+        if not unites or not set(unites) <= chemins:
+            return None
+        return pertes_releves_derniere_charge(
+            infos, survivants, self.archives, aleatoire)
+
     def fatigue(self, general, infos):
         if (self._active and (general['joueur'], general['nom']) ==
                 (self.beneficiaire['joueur'], self.beneficiaire['nom'])
