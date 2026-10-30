@@ -156,6 +156,17 @@ class TestOrdresCalculsV2(unittest.TestCase):
                 frozenset(p) for p in
                 commandement.compatibilite_formations((1022, autre))['incompatibles']})
 
+    def test_ralliement_arrondi_par_type_et_compatibilite(self):
+        pertes = {'archer': 9, 'piquier': 11, 'cavalier': 20}
+        retenus = calculs.renforts_ralliement(pertes, ('archer', 'piquier'))
+        self.assertEqual(retenus, {'archer': 1, 'piquier': 2})
+        self.assertNotIn('cavalier', retenus)
+
+    def test_ralliement_zero_perte_ne_recrute_personne(self):
+        self.assertEqual(
+            calculs.renforts_ralliement({'archer': 0}, ('archer',)),
+            {'archer': 0})
+
     def test_prevision_muraille_fatigue_individuelle(self):
         from unittest.mock import patch
         import combats
