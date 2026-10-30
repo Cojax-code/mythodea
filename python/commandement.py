@@ -9,7 +9,7 @@ from itertools import combinations
 FORMATIONS_IDS = frozenset((1002, 1015, 1016, 1019, 1021, 1025))
 FORMATIONS_INCOMPATIBLES_IDS = frozenset(frozenset(p) for p in (
     (1015, 1002), (1015, 1025), (1015, 1021),
-    (1002, 1025), (1002, 1019), (1019, 1021),
+    (1002, 1025), (1002, 1019), (1002, 1021), (1019, 1021),
 ))
 FORMATIONS_COMPATIBLES_IDS = frozenset(frozenset(p) for p in (
     (1019, 1015), (1019, 1025), (1019, 1016),
