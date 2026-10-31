@@ -116,3 +116,40 @@ def bonus_etiquettes(pc, coefficients):
     if pc < 0:
         raise ValueError('PC négatifs interdits.')
     return sum((Fraction(pc) * Fraction(c) for c in coefficients), Fraction(0))
+
+def coefficient_niveau_general(niveau):
+    """0..4 => 1/2 ; 5..9 => 1 ; 10..14 => 3/2, etc."""
+    from fractions import Fraction
+    if type(niveau) is not int or niveau < 0:
+        raise ValueError('Niveau invalide.')
+    return Fraction(niveau // 5 + 1, 2)
+
+
+def effets_etiquettes_general(fiche, etiquettes_cibles, *, portee='duel'):
+    """Bonus/malus bruts par type, calculables sans modifier les unités.
+
+    Les effets globaux sont calculés séparément une fois par bataille
+    territoriale. Les effets de duel sont recalculés à chaque confrontation.
+    La portée propre à chaque apprentissage pourra être documentée dans
+    son registre ; sans portée explicite, on utilise 'duel'.
+    """
+    from fractions import Fraction
+    if portee not in ('duel', 'global'):
+        raise ValueError('Portée inconnue.')
+    pc = fiche.get('points_commandement', 0)
+    coeff = coefficient_niveau_general(fiche.get('niveau', 0))
+    total = {}
+    for nom, niveau in fiche.get('etiquettes', {}).items():
+        regle = catalogues.ETIQUETTES_COMBAT.get(nom)
+        if not regle or type(niveau) is not int or niveau <= 0:
+            continue
+        # Les niveaux d'apprentissage multiplient le coefficient de tranche.
+        # Une portée future peut être déclarée par le registre de l'effet.
+        if regle.get('portee', 'duel') != portee:
+            continue
+        cible = regle['cible']
+        if cible is not None and cible not in etiquettes_cibles:
+            continue
+        cle = (regle['effet'], cible)
+        total[cle] = total.get(cle, Fraction(0)) + Fraction(pc) * coeff * niveau
+    return total
