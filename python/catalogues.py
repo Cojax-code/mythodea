@@ -76,11 +76,9 @@ for identifiant, unite in UNITES.items():
     unite.setdefault('tours_soins', 1)
     unite.setdefault('places', 1)
 
-# Les jetons historiques ordre.txt restent valides et ne sont pas ces IDs.
-ORDRES = {
-    1002: dict(jeton='1-2', nom='attaque_frontale', categorie='globale',
-               disponible=True, contre=False, progression=True),
-}
+# Les anciens ordres tactiques sont abandonnés.
+# Les configurations de terrain sont indépendantes des généraux.
+ORDRES = {}
 
 # 101..199 : apprentissages d'unités ; 201..299 : catégories de caractéristiques.
 # 1001..1999 : ordres. Un ID d'unité et un ID d'évolution ne sont pas interchangeables.
