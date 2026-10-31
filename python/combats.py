@@ -1,5 +1,7 @@
 """Calcul des combats, choc initial, manœuvres et combat rangé."""
 import random
+from contextvars import ContextVar
+from contextlib import contextmanager
 
 import catalogues
 import bouclier_vivant
@@ -10,6 +12,33 @@ import rapports
 import progression
 import soldats
 import unites
+
+# Effets calculés une fois par duel, jamais persistés dans les fiches.
+_MALUS_MORAL_DUEL = ContextVar('mythodea_malus_moral_duel', default={})
+
+
+def malus_cruelle(fiche, general):
+    """Pourcentage de moral adverse retiré par l'étiquette du général."""
+    if not fiche:
+        return 0
+    import commandement
+    # Cet effet vise le commandant adverse, non un type d'unité.
+    effets = commandement.effets_etiquettes_general(fiche, set())
+    return effets.get(('malus_moral_adverse', None), 0)
+
+
+@contextmanager
+def effets_moral_duel(general_1, general_2):
+    fiche_1 = progression.caracteristiques_general(general_1)
+    fiche_2 = progression.caracteristiques_general(general_2)
+    cle_1 = (general_1['joueur'], general_1['nom'])
+    cle_2 = (general_2['joueur'], general_2['nom'])
+    jeton = _MALUS_MORAL_DUEL.set({cle_1: malus_cruelle(fiche_2, general_1),
+                                   cle_2: malus_cruelle(fiche_1, general_2)})
+    try:
+        yield
+    finally:
+        _MALUS_MORAL_DUEL.reset(jeton)
 
 
 def adversaire_du_duel(armee, joueur):
@@ -27,7 +56,7 @@ def camps_du_combat(configuration):
 
 
 def combat_entre_generaux(general_1, general_2):
-    with unites.duel(general_1, general_2):
+    with unites.duel(general_1, general_2), effets_moral_duel(general_1, general_2):
         resultat = _combat_entre_generaux(general_1, general_2)
     for numero, general in enumerate((general_1, general_2), 1):
         generaux.supprimer_general_si_vide(general)
@@ -814,6 +843,9 @@ def supprimer_unites(infos, survivants, general=None):
         composition = generaux.lire_composition_general(general['chemin'])
         bloc = infos['unites'][0].parent.name if infos['unites'] else None
         moral = unites.moral_bloc(caracteristiques, composition, bloc)
+        identite = (general['joueur'], general['nom'])
+        pourcentage = _MALUS_MORAL_DUEL.get().get(identite, 0)
+        moral = max(0, moral * max(0, 100 - pourcentage) / 100)
     return soldats.pertes(infos, survivants, moral, random)
 
 
