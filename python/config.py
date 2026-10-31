@@ -271,6 +271,9 @@ def configuration_mode(mode):
         "game_public_path": game_public_path,
         "territoires": territoires_mode,
         "carte_territoires": carte,
+        # Configuration des engagements par territoire, indépendante des ordres.
+        # Exemple : {"terrain1": {"attaque_frontale": True}}
+        "configurations_terrain": {},
         "bases_joueurs": bases,
         "repli_path": repli_path,
         "zones_speciales": ["home", "repli"],
