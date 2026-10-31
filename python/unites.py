@@ -59,15 +59,6 @@ def blessures_max(type_unite, batailles):
     return base + (2 if batailles >= 10 else 1 if batailles >= 5 else 0)
 
 
-def ordres_classiques(type_unite):
-    return not etiquette(type_unite, 'sans_cerveau')
-
-
-def ordres_messagers(nombre, generaux_sous_ordres, qg_vivant):
-    """Point d'extension : aucun nouvel ordre n'est exécuté par ce calcul."""
-    return min(nombre, generaux_sous_ordres) if qg_vivant else 0
-
-
 def permissions_messager(chemin):
     """Chaque fichier réserve ses droits à la seule classe demandée."""
     import stat
