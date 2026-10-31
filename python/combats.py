@@ -661,6 +661,28 @@ def valeur_base_bloc(infos, bloc=None):
     return valeur
 
 
+def _bonus_valeur_duel(fiche, type_unite):
+    """Bonus de valeur du général, en pourcentage exact de sa valeur de base."""
+    from fractions import Fraction
+    if not fiche or type_unite == 'vide':
+        return Fraction(0)
+    import commandement
+    cibles = set(unites.definition(type_unite)['etiquettes'])
+    effets = commandement.effets_etiquettes_general(fiche, cibles)
+    return sum((valeur for (effet, _), valeur in effets.items()
+                if effet == 'valeur'), Fraction(0))
+
+
+def _malus_chaman_duel(fiche_adverse, type_unite):
+    """Malus de valeur sur les Orcs, produit par l'étiquette chaman ennemie."""
+    from fractions import Fraction
+    if not fiche_adverse or not unites.etiquette(type_unite, 'orc'):
+        return Fraction(0)
+    import commandement
+    effets = commandement.effets_etiquettes_general(fiche_adverse, {'orc'})
+    return effets.get(('malus_valeur_adverse', 'orc'), Fraction(0))
+
+
 def combat_bloc(
     infos_1,
     infos_2,
@@ -668,6 +690,8 @@ def combat_bloc(
     fatigue_2=False,
     bloc_1=None,
     bloc_2=None,
+    fiche_1=None,
+    fiche_2=None,
 ):
     # Calcule le résultat d'un combat entre deux blocs.
     #
@@ -702,6 +726,18 @@ def combat_bloc(
         type_2,
         type_1
     )
+
+    # Étiquettes du duel : addition des bonus/malus en pourcentages,
+    # sans écriture dans les PC et sans cumul multiplicatif des étiquettes.
+    # 100 % est la valeur de référence. Le plancher zéro évite toute valeur
+    # de résistance négative ou une division par zéro.
+    from fractions import Fraction
+    valeur_1 *= max(Fraction(1, 100),
+                    1 + (_bonus_valeur_duel(fiche_1, type_1)
+                         - _malus_chaman_duel(fiche_2, type_1)) / 100)
+    valeur_2 *= max(Fraction(1, 100),
+                    1 + (_bonus_valeur_duel(fiche_2, type_2)
+                         - _malus_chaman_duel(fiche_1, type_2)) / 100)
 
     # ------------------------------------------
     # Fatigue
@@ -829,6 +865,8 @@ def confrontation_directe(
         fatigue_1,
         fatigue_2,
         bloc, bloc,
+        progression.caracteristiques_general(general_1),
+        progression.caracteristiques_general(general_2),
     )
     soldats.affrontement(general_1, general_2)
 
@@ -1002,6 +1040,8 @@ def attaque_ciblee(
         fatigue_attaquant,
         fatigue_defenseur,
         bloc_attaquant, bloc_cible,
+        progression.caracteristiques_general(general_attaquant),
+        progression.caracteristiques_general(general_defenseur),
     )
     if initial_attaquant > 0 and initial_defenseur > 0:
         soldats.affrontement(general_attaquant, general_defenseur)
