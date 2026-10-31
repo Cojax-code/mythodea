@@ -665,3 +665,12 @@ Périmètre : `combats.multiplicateur`, `moral_des_pertes`, `supprimer_unites`, 
 - **Choca-fuite :** la demande 1011 est écartée lorsque le moteur n'a pas installé de callback de retraite. `fuir_apres_choc` n'agit qu'après `choc_initial` et vérifie que le général et ses soldats restent présents avant de solliciter le rappel de retraite. Les effets sont décidés au duel.
 - **Gros Poisson :** les prêts de soldats restent des vues d'UUID vivants, avec contrôles d'origines, de propriétaires et de types homologues ; les pertes demeurent réelles. **Correctifs `c106df7` puis `1400940` :** la suppression éventuelle des généraux prêteurs devenus vides est désormais exécutée en `finally`, APRÈS la fermeture de `soldats.participation_temporaire`, y compris si le duel échoue. Aucune restitution artificielle des morts.
 - À Codex : provoquer une exception pendant la participation Gros Poisson et vérifier fermeture/registre/permissions sans généraux fantômes ; effets Cruelle appliqués une fois aux bénéficiaires autorisés ; Choca-fuite sans callback ; délégation des ordres du QG. Tests non exécutés pendant cet audit. 1019/1026 restent suspendus.
+
+### Audit des rapports de bataille — Charge suicidaire 1020 (31 octobre 2026)
+
+Commits `2ff7e50` (`python/rapports.py`) et `6a949f4` (`python/combats.py`) :
+- Le résultat de Charge suicidaire (activations des deux camps, succès et nombre de pertes retenues) est désormais décrit dans le rapport détaillé de l'engagement, pour chaque général ayant effectivement activé 1020.
+- Avant correction, `resultat['charge_suicidaire']` n'était conservé **que lorsqu'au moins une tentative réussissait**. Désormais, une activation sans succès est également représentée. Le recalcul des effectifs après destruction reste conditionné à au moins une réussite ; aucun changement au tirage de probabilité.
+- La règle de confrontation des PC demeure : une même demande d'ordre ordinaire ne peut être retenue simultanément dans les deux camps. La structure du résultat conserve néanmoins des deux booléens pour compatibilité du moteur.
+
+À Codex : tentative échouée mais activée visible dans le rapport, réussite avec destruction visible et bilan final cohérent, absence de ligne lorsque 1020 non retenu, traitement des deux indices j1/j2, formats rapport long/court/public et non-régression des autres effets. Aucun test exécuté ici.
