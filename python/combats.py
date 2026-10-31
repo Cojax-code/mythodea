@@ -96,9 +96,10 @@ def combat_entre_generaux(general_1, general_2, *, participants=None,
     for reussite, cible in zip(reussites, victimes):
         if reussite:
             generaux.detruire_general_et_armee(cible)
-    if any(reussites):
+    if any(charges_actives):
         resultat['charge_suicidaire'] = dict(
             activations=charges_actives, reussites=reussites, pertes=pertes)
+    if any(reussites):
         for numero, general in enumerate((general_1, general_2), 1):
             resultat[f'final_{numero}'] = (
                 generaux.total_general_depuis_chemin(general['chemin'])
