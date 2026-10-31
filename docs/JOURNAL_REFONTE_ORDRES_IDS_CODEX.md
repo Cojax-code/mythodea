@@ -648,3 +648,13 @@ Commit `ddcf520` : vérification explicite de `verifier_qg()` dans `tenter_ralli
 Réserve 1025 : l'interception est décidée après le résultat du duel et les candidats sont relus au round suivant ; la désignation de la réserve exclut déjà le général QG lui-même. Ce contrôle n'a pas nécessité de modification.
 
 **Contrôles Codex :** Ralliement actif avec QG détruit pendant le choc, QG détruit avant finalisation, QG dont seul le bloc déclaré est vide mais d'autres blocs subsistent, absence de soldat ressuscité, registre officiel et transit propres ; Réserve 1025 + 1023 avec ordres retenus simultanément, puis QG détruit, et OFF/DEF ; vérifier les chemins où le dossier QG a lui-même disparu. Pas de tests exécutés pendant cet audit. 1019 et 1026 restent désactivés.
+
+### Audit statique — ordres individuels 1006, 1007 et 1009 (31 octobre 2026)
+
+Périmètre : `combats.multiplicateur`, `moral_des_pertes`, `supprimer_unites`, `resoudre_blocs`, `combat_entre_generaux`, `ordres_pipeline.moral`, `rafales`, `ordres_calculs_v2.tentatives_rafale`, `soldats.pertes`.
+
+- **Hérisson 1006 :** effet vérifié côté général propriétaire du piquier, avec les étiquettes cavalerie/distance, via `multiplicateur`. En usage ordinaire aucun mélange de propriétaires ; en vue temporaire Gros Poisson, la composition et le calcul de contribution doivent être vérifiés en intégration.
+- **Discours de la mort 1007 :** bonus de moral appliqué par `ordres_pipeline.moral` si l'effet est officiellement retenu et si le type peut recevoir des ordres classiques ; le facteur Cruelle est ensuite combiné et le moral est borné à 0–100. La résolution des pertes et sauvetages utilise ensuite `soldats.pertes`.
+- **Rafale 1009 :** tirs préliminaires déterminés par `nombre_archers_arriere // 4` ; les deux camps planifient leurs tirs avant l'application des pertes ; les cibles étiquetées lourdes sont exclues ; les pertes sont appliquées par `supprimer_unites` et passent par les contrôles habituels du registre et du QG. La présentation `pertes` correspond au nombre de disparitions du bloc, y compris éventuels transferts par Ralliement.
+- **Risques de non-régression à Codex :** Rafale des deux camps simultanément, élimination complète d'un général avant choc, présence de soutiens et boucliers, blessure sauvée par moral, QG détruit par Rafale, propriété des soldats sous Gros Poisson, cohérence du facteur Hérisson avec unités modifiées par Forge, combinaison Discours+Cruelle. Vérifier en particulier le contrat de l'ordre 1006 pour l'avantage contre archers sans changer arbitrairement la formule.
+- **Conclusion de cette passe :** aucune anomalie certaine justifiant une modification moteur. Pas de tests exécutés. Les ordres 1019/1026 restent désactivés.
