@@ -674,3 +674,13 @@ Commits `2ff7e50` (`python/rapports.py`) et `6a949f4` (`python/combats.py`) :
 - La règle de confrontation des PC demeure : une même demande d'ordre ordinaire ne peut être retenue simultanément dans les deux camps. La structure du résultat conserve néanmoins des deux booléens pour compatibilité du moteur.
 
 À Codex : tentative échouée mais activée visible dans le rapport, réussite avec destruction visible et bilan final cohérent, absence de ligne lorsque 1020 non retenu, traitement des deux indices j1/j2, formats rapport long/court/public et non-régression des autres effets. Aucun test exécuté ici.
+
+## Relecture transversale finale — 31 octobre 2026
+
+Périmètre vérifié statiquement : lecture des jetons vs IDs, filtrage de disponibilité, décisions du duel (`ordres_v2`), Rafale, Choca-fuite, Charge suicidaire, rapport des phases et résultats de combat. Les appels `ordres_pipeline.effet` repérés dans le moteur passent des IDs numériques. Les formats publics restent des jetons `ordre.txt`/`qg.txt` et des noms de rapports.
+
+**Correction `fe52c33` :** l'événement `charge_suicidaire`, calculé après le duel complet, était affiché AVANT l'entête « CHOC INITIAL ». Sa ligne de compte rendu est maintenant située après la section « MANŒUVRE », juste avant le résultat final. Aucune formule ni mutation de soldat modifiée.
+
+**Statut :** revue statique des points identifiés achevée, pas de garantie d'absence de défaut dans tous les chemins. Ordres 1019/1026 toujours désactivés. L'incompatibilité 1002/1021 est fixée. Les corrections récentes aux lectures de `qg.txt`, aux formations, au Ralliement, aux participations Gros Poisson et aux rapports nécessitent une validation coordonnée.
+
+**Passation Codex :** exécuter la suite complète, les tests de régression et de permissions sous Linux/Raspberry, avec priorité à : demandes conjointes d'ordres, annulations de formation, gagnant unique pour le même ordre aux PC différents et annulation à égalité, Gros Poisson avec exception et remise en état, destruction du QG pendant Ralliement, Réserve stratégique après victoire adverse, Rafale avec avant morts, Charge suicidaire réussie/échouée et chronologie du rapport, OFF/OFF et OFF/DEF. Ne pas modifier les règles de gameplay pour faire passer artificiellement les tests. Signaler les écarts de règles avant de les trancher. Aucun test exécuté par ChatGPT pendant cette dernière passe.
