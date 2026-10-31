@@ -56,13 +56,6 @@ def creer_general(chemin_general, nom_general):
             caracteristiques = progression.enregistrer_creation(joueur, nom_general, caracteristiques)
         progression.publier_fiche(chemin_general, caracteristiques)
 
-    ordre = chemin_general / "ordre.txt"
-
-    if not ordre.exists():
-        ordre.write_text(
-            "1-2\n",
-            encoding="utf-8"
-        )
 
 
 def donner_permissions_general(chemin_general, joueur):
@@ -170,9 +163,6 @@ def est_general_valide(chemin_general):
     if not (chemin_general / "fiche.txt").is_file():
         return False
 
-    # L'ordre est important pour les futures décisions tactiques.
-    if not (chemin_general / "ordre.txt").is_file():
-        return False
 
     return True
 
@@ -245,154 +235,6 @@ def scanner_ordres_surnombre(configuration):
         position, chemin = trouver_position_general(joueur, nom, configuration)
         if chemin is not None:
             assurer_ordre_surnombre(chemin, joueur, position, configuration)
-
-
-def lire_ordres_general(chemin_general):
-    # Lit et valide les ordres présents dans ordre.txt.
-    #
-    # Formats acceptés :
-    #
-    # type-numero
-    #
-    # type-numero-specification
-    #
-    # Exemples :
-    #
-    # 1-1
-    # 1-2
-    # 2-1
-    # 2-2
-    # 3-1
-    # 2-2-1
-    #
-    # Un ordre mal écrit ou inconnu est ignoré.
-
-    ordre_path = chemin_general / "ordre.txt"
-    ordres = []
-
-    if not ordre_path.exists():
-        return ordres
-
-    import stat
-    from cycle_linux import sans_liens
-    try:
-        sans_liens(ordre_path)
-        infos = ordre_path.lstat()
-        if not stat.S_ISREG(infos.st_mode) or infos.st_nlink != 1:
-            raise ValueError('Fichier non ordinaire.')
-        with ordre_path.open('rb') as fichier:
-            contenu = fichier.read(65537)
-        if len(contenu) > 65536:
-            raise ValueError('Fichier trop volumineux.')
-        lignes = contenu.decode('utf-8').splitlines()
-    except (OSError, ValueError, RuntimeError):
-        rapports.afficher_et_ecrire(f'Ordres ignorés pour {chemin_general.name} : [fichier invalide]')
-        return ordres
-
-    for ligne in lignes:
-        ligne = ligne.strip()
-
-        if ligne == "":
-            continue
-
-        morceaux = ligne.split("-")
-
-        # Un ordre contient deux ou trois nombres.
-        if len(morceaux) not in [2, 3]:
-            rapports.afficher_et_ecrire(
-                f"Ordre ignoré pour "
-                f"{chemin_general.name} : "
-                f"[format invalide]"
-            )
-
-            continue
-
-        # Tous les éléments doivent être numériques.
-        if not all(
-            morceau.isascii() and morceau.isdecimal()
-            for morceau in morceaux
-        ):
-            rapports.afficher_et_ecrire(
-                f"Ordre ignoré pour "
-                f"{chemin_general.name} : "
-                f"[valeur non numérique]"
-            )
-
-            continue
-
-        try:
-            type_ordre = int(morceaux[0])
-            numero_ordre = int(morceaux[1])
-            specification = int(morceaux[2]) if len(morceaux) == 3 else None
-        except ValueError:
-            rapports.afficher_et_ecrire(f'Ordre ignoré pour {chemin_general.name} : [nombre invalide]')
-            continue
-
-        identifiant = (
-            f"{type_ordre}-"
-            f"{numero_ordre}"
-        )
-
-        # L'ordre doit exister dans la légende.
-        if identifiant not in config.legende_ordres:
-            rapports.afficher_et_ecrire(
-                f"Ordre ignoré pour "
-                f"{chemin_general.name} : "
-                f"[ordre inconnu]"
-            )
-
-            continue
-
-        fiche_ordre = config.legende_ordres[
-            identifiant
-        ]
-
-        ordres.append(
-            {
-                "identifiant": identifiant,
-                "texte": ligne,
-                "type": type_ordre,
-                "numero": numero_ordre,
-                "specification": specification,
-                "nom": fiche_ordre["nom"],
-                "categorie": fiche_ordre[
-                    "categorie"
-                ],
-            }
-        )
-
-    return ordres
-
-
-def general_possede_ordre(
-    general,
-    identifiant_ordre
-):
-    # Vérifie si un général possède un ordre précis.
-    #
-    # Exemple :
-    #
-    # general_possede_ordre(general, "2-2")
-    #
-    # retourne True si le général possède
-    # l'ordre pluie de flèches.
-
-    if general is None:
-        return False
-
-    if general.get('chemin'):
-        import morgue
-        if morgue.est_zombie(general):
-            return False
-
-    for ordre in general.get("ordres", []):
-        if (
-            ordre["identifiant"]
-            == identifiant_ordre
-        ):
-            return True
-
-    return False
 
 
 def zones_generaux_territoire(territory, joueur, configuration=None):
@@ -623,9 +465,6 @@ def lire_generaux_territoire(territory, configuration=None):
                 "camp": configuration["acteurs"][joueur]["camp"],
                 "emplacement": emplacement,
                 "fiche": lire_fiche_general(
-                    chemin_general
-                ),
-                "ordres": lire_ordres_general(
                     chemin_general
                 ),
                 "blocs": blocs_general,
@@ -931,36 +770,6 @@ def generaux_actifs_joueur(generaux_territoire, joueur):
             actifs.append(general)
 
     return actifs
-
-
-def joueur_possede_ordre_armee(
-    generaux_territoire,
-    joueur,
-    identifiant_ordre
-):
-    # Une force de camp réutilise cette même recherche d'ordre parmi ses généraux.
-    # Vérifie si au moins un général actif du joueur
-    # possède l'ordre d'armée demandé.
-
-    for emplacement in config.emplacements:
-        general = (
-            generaux_territoire[
-                joueur
-            ][
-                emplacement
-            ]
-        )
-
-        if not general_a_des_unites(general):
-            continue
-
-        if general_possede_ordre(
-            general,
-            identifiant_ordre
-        ):
-            return True
-
-    return False
 
 
 def supprimer_general_si_vide(general):
