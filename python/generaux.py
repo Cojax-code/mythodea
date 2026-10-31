@@ -430,7 +430,7 @@ def lire_generaux_territoire(territory, configuration=None):
             chemin_general = generaux_trouves[0]
 
             # Répare la structure interne du général
-            # si un bloc, fiche.txt ou ordre.txt manque.
+            # si un bloc ou fiche.txt manque.
             creer_general(
                 chemin_general,
                 chemin_general.name
