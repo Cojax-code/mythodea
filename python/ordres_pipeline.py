@@ -964,9 +964,13 @@ def participations_duel(general_1, general_2, participants, decisions):
                 nombre = sum(n for bloc in vue.composition(source).values() for t, n in bloc.items()
                              if unites.etiquette(t, 'cruelle'))
                 donnees['facteur_cruelle'] = ordres_calculs_v2.facteur_cruelle(nombre)
-        yield vue
-    for g in origines.values():
-        generaux.supprimer_general_si_vide(g)
+        try:
+            yield vue
+        finally:
+            # Ne pas laisser un prêteur vide après une interruption du duel.
+            # Le groupe temporaire reste responsable de son bilan/fermeture.
+            for g in origines.values():
+                generaux.supprimer_general_si_vide(g)
 
 
 @contextmanager
