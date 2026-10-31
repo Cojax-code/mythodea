@@ -55,7 +55,7 @@ UNITES.update({
     10: dict(nom='messager_du_QG', prefixe='messager_du_QG',
              recette=('sceau du roi', 'enveloppe', 'monocle'), valeur_combat=0,
              etiquettes=('soutien', 'humain', 'non_combattant', 'a_pied'),
-             forces=(), faiblesses=(), effets=('ordres_qg',), natures=('stratege',),
+             forces=(), faiblesses=(), effets=('bonus_pc_qg',), natures=('stratege',),
              blessures=0, soins=None),
     11: dict(nom='zombie', prefixe='zombi', recette=(), valeur_combat=5,
              etiquettes=('mort_vivant', 'sans_cerveau', 'propagation', 'mauvais_nageur', 'infatigable'),
@@ -76,9 +76,6 @@ for identifiant, unite in UNITES.items():
     unite.setdefault('tours_soins', 1)
     unite.setdefault('places', 1)
 
-# Les anciens ordres tactiques sont abandonnés.
-# Les configurations de terrain sont indépendantes des généraux.
-ORDRES = {}
 
 # 101..199 : apprentissages d'unités ; 201..299 : catégories de caractéristiques.
 # 1001..1999 : ordres. Un ID d'unité et un ID d'évolution ne sont pas interchangeables.
@@ -91,10 +88,6 @@ EVOLUTIONS = {
        for i in range(5, 11)},
     201: dict(categorie='commandement', cible=None, disponible=True, natures=('stratege',)),
     202: dict(categorie='moral', cible=None, disponible=True, natures=('instinctif',)),
-    **{identifiant: dict(categorie='ordre', cible=identifiant,
-                         disponible=ordre['progression'],
-                         natures=('stratege',) if ordre['categorie'] == 'globale' else None)
-       for identifiant, ordre in ORDRES.items()},
 }
 
 UNITE_PAR_NOM = {definition['nom']: identifiant for identifiant, definition in UNITES.items()}
