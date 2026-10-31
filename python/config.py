@@ -137,39 +137,6 @@ unites_equipements = {
 orientations = ["stratege", "combattant"]
 orientation_rare = "hybride"
 
-# ==================================================
-# ORDRES DES GÉNÉRAUX
-# ==================================================
-#
-# Format dans ordre.txt :
-#
-# type-numero
-#
-# ou, si l'ordre demande une précision :
-#
-# type-numero-specification
-#
-# Exemples :
-#
-# 1-1
-# 2-2
-# 2-2-1
-#
-# Un ordre inconnu, mal écrit ou non applicable
-# est simplement ignoré.
-
-legende_ordres = {
-    ordre['jeton']: {
-        'type': int(ordre['jeton'].split('-')[0]),
-        'numero': int(ordre['jeton'].split('-')[1]),
-        'nom': ordre['nom'],
-        'categorie': {'globale': 'armee', 'duel': 'formation',
-                      'individuelle': 'intrinseque'}[ordre['categorie']],
-    }
-    for ordre in catalogues.ORDRES.values()
-}
-
-
 rapport_dir = game_path / "rapport"
 
 rapport_court_path = (
