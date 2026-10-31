@@ -935,43 +935,41 @@ def participations_duel(general_1, general_2, participants, decisions):
     for g in origines.values():
         contributions.extend((g, b, generaux.chemins_bloc(infos))
                              for b, infos in generaux.lire_blocs_general(g['chemin'], lecture_seule=True).items())
-    with soldats.participation_temporaire(contributions) as groupe:
-        par_commandant_bloc = {}
-        for beneficiaire, preteur in prets:
-            # Le groupe commun peut contenir les prêts des deux camps ; chaque
-            # sélection reste strictement limitée au couple autorisé.
-            choix = groupe.selections_gros_poisson(beneficiaire, preteur, configuration,
-                                                   autres_couples=True)
-            par_bloc = {}
-            for (bloc, _), ids in choix['selections'].items():
-                par_bloc.setdefault(bloc, []).extend(ids)
-            for bloc, ids in par_bloc.items():
-                cle = identite(beneficiaire), bloc
-                selection = par_commandant_bloc.setdefault(cle, (beneficiaire, {}))[1]
-                selection.update(dict.fromkeys(ids))
-            if choix['motif']:
-                for decision in decisions:
-                    if (decision['joueur'], decision['general']) == identite(beneficiaire) and 1017 in decision['retenus']:
-                        decision['motif'] = (decision.get('motif', '') +
-                            f" Prêteur {preteur['joueur']} {preteur['nom']} : {choix['motif']}").strip()
-        affectations = [(g, bloc, tuple(ids)) for (_, bloc), (g, ids) in par_commandant_bloc.items()]
-        vue = soldats.VueParticipants(groupe, affectations, conserver_non_affectes=True)
-        vue.verifier_duel(general_1, general_2)
-        import unites
-        for donnees in courant.values():
-            source = donnees.get('source_cruelle')
-            if source:
-                nombre = sum(n for bloc in vue.composition(source).values() for t, n in bloc.items()
-                             if unites.etiquette(t, 'cruelle'))
-                donnees['facteur_cruelle'] = ordres_calculs_v2.facteur_cruelle(nombre)
-        try:
+    try:
+        with soldats.participation_temporaire(contributions) as groupe:
+            par_commandant_bloc = {}
+            for beneficiaire, preteur in prets:
+                # Le groupe commun peut contenir les prêts des deux camps ; chaque
+                # sélection reste strictement limitée au couple autorisé.
+                choix = groupe.selections_gros_poisson(beneficiaire, preteur, configuration,
+                                                       autres_couples=True)
+                par_bloc = {}
+                for (bloc, _), ids in choix['selections'].items():
+                    par_bloc.setdefault(bloc, []).extend(ids)
+                for bloc, ids in par_bloc.items():
+                    cle = identite(beneficiaire), bloc
+                    selection = par_commandant_bloc.setdefault(cle, (beneficiaire, {}))[1]
+                    selection.update(dict.fromkeys(ids))
+                if choix['motif']:
+                    for decision in decisions:
+                        if (decision['joueur'], decision['general']) == identite(beneficiaire) and 1017 in decision['retenus']:
+                            decision['motif'] = (decision.get('motif', '') +
+                                f" Prêteur {preteur['joueur']} {preteur['nom']} : {choix['motif']}").strip()
+            affectations = [(g, bloc, tuple(ids)) for (_, bloc), (g, ids) in par_commandant_bloc.items()]
+            vue = soldats.VueParticipants(groupe, affectations, conserver_non_affectes=True)
+            vue.verifier_duel(general_1, general_2)
+            import unites
+            for donnees in courant.values():
+                source = donnees.get('source_cruelle')
+                if source:
+                    nombre = sum(n for bloc in vue.composition(source).values() for t, n in bloc.items()
+                                 if unites.etiquette(t, 'cruelle'))
+                    donnees['facteur_cruelle'] = ordres_calculs_v2.facteur_cruelle(nombre)
             yield vue
-        finally:
-            # Ne pas laisser un prêteur vide après une interruption du duel.
-            # Le groupe temporaire reste responsable de son bilan/fermeture.
-            for g in origines.values():
-                generaux.supprimer_general_si_vide(g)
 
+    finally:
+        for g in origines.values():
+            generaux.supprimer_general_si_vide(g)
 
 @contextmanager
 def defense_off_def(camp):
