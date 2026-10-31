@@ -95,6 +95,10 @@ ETIQUETTES_COMBAT = {
     'cruelle': dict(effet='malus_moral_adverse', cible=None),
 }
 
+# Identifiants scolaires stables pour les trois emplacements mémoire.
+# Les étiquettes permanentes de palier ne peuvent pas être écrites.
+ETIQUETTES_ECOLE = {2001 + i: nom for i, nom in enumerate(ETIQUETTES_COMBAT)}
+
 # 101..199 : apprentissages d'unités ; 201..299 : catégories de caractéristiques.
 # 1001..1999 : ordres. Un ID d'unité et un ID d'évolution ne sont pas interchangeables.
 EVOLUTIONS = {
