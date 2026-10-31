@@ -87,8 +87,8 @@ def demande_ecriture(texte):
             not champs[1].isascii() or not champs[1].isdecimal()):
         raise ValueError('Écriture attendue : emplacement 001..003 et ID universel.')
     identifiant = int(champs[1])
-    if identifiant not in catalogues.EVOLUTIONS:
-        raise ValueError('Évolution inconnue.')
+    if identifiant not in catalogues.EVOLUTIONS and identifiant not in catalogues.ETIQUETTES_ECOLE:
+        raise ValueError('Évolution ou étiquette scolaire inconnue.')
     return champs[0], identifiant
 
 
@@ -137,7 +137,13 @@ def commencer_sejour(tour, general, lieu, camp, preuve_presence,
             raise ValueError('Caractéristiques officielles du général absentes.')
         if ecrire.strip():
             emplacement, evolution = demande_ecriture(ecrire)
-            if evolution not in caracteristiques['evolutions_acquises']:
+            if evolution in catalogues.ETIQUETTES_ECOLE:
+                # Un manuel d'étiquette peut être rédigé par un officier présent
+                # à l'École ; la lecture reste nécessaire pour l'apprendre.
+                nom_etiquette = catalogues.ETIQUETTES_ECOLE[evolution]
+                if nom_etiquette in caracteristiques.get('etiquettes_permanentes', []):
+                    raise ValueError('Une étiquette permanente ne peut être inscrite à l’École.')
+            elif evolution not in caracteristiques['evolutions_acquises']:
                 raise ValueError('Le général ne possède pas cette évolution.')
             action = 'ecriture'
         elif lire.strip():
@@ -178,7 +184,11 @@ def valider_sejour(tour, general, lieu, camp, preuve_presence, tour_termine=Fals
         if concurrents:
             raise ValueError('Écritures concurrentes : règle de départage à définir.')
         officiel = progression.caracteristiques_general(general)
-        if sejour['evolution'] not in officiel['evolutions_acquises']:
+        if sejour['evolution'] in catalogues.ETIQUETTES_ECOLE:
+            nom_etiquette = catalogues.ETIQUETTES_ECOLE[sejour['evolution']]
+            if nom_etiquette in officiel.get('etiquettes_permanentes', []):
+                raise ValueError('Écriture d’une étiquette permanente interdite.')
+        elif sejour['evolution'] not in officiel['evolutions_acquises']:
             raise ValueError('Autorisation d’écriture perdue.')
         manuel[sejour['emplacement']] = sejour['evolution']
     elif sejour['action'] == 'lecture':
@@ -188,11 +198,19 @@ def valider_sejour(tour, general, lieu, camp, preuve_presence, tour_termine=Fals
         officielles = progression.charger()
         fiche = officielles[identite]
         if cle not in fiche.get('apprentissages_valides', []):
-            if fiche.get('evolution_apprise') is not None:
-                raise ValueError('Un apprentissage est déjà en attente ; remplacement non défini.')
-            if identifiant not in progression.evolutions_eligibles(fiche):
-                raise ValueError('Mémoire vide, incompatible ou indisponible.')
-            fiche['evolution_apprise'] = identifiant
+            if identifiant in catalogues.ETIQUETTES_ECOLE:
+                # Leçon terminée : apprentissage ou amélioration, sans roulette.
+                # La progression est refusée si les emplacements ou niveaux
+                # autorisés sont déjà atteints.
+                nom_etiquette = catalogues.ETIQUETTES_ECOLE[identifiant]
+                fiche = progression.apprendre_etiquette(fiche, nom_etiquette)
+                officielles[identite] = fiche
+            else:
+                if fiche.get('evolution_apprise') is not None:
+                    raise ValueError('Un apprentissage est déjà en attente ; remplacement non défini.')
+                if identifiant not in progression.evolutions_eligibles(fiche):
+                    raise ValueError('Mémoire vide, incompatible ou indisponible.')
+                fiche['evolution_apprise'] = identifiant
             fiche.setdefault('apprentissages_valides', []).append(cle)
             progression.sauvegarder(officielles)
         progression.publier_fiche(general['chemin'], fiche)
