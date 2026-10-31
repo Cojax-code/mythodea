@@ -105,8 +105,8 @@ def apprendre_etiquette(fiche, identifiant):
     le cycle de validation de l'École reste une étape distincte.
     """
     resultat = deepcopy(fiche)
-    if not isinstance(identifiant, str) or not identifiant:
-        raise ValueError('Identifiant d’étiquette non vide requis.')
+    if identifiant not in catalogues.ETIQUETTES_COMBAT:
+        raise ValueError('Étiquette inconnue du catalogue scolaire.')
     if identifiant in resultat.get('etiquettes_permanentes', []):
         raise ValueError('Étiquette permanente : modification interdite à l’École.')
     niveaux = resultat.setdefault('etiquettes', {})
@@ -116,7 +116,7 @@ def apprendre_etiquette(fiche, identifiant):
             raise ValueError('Niveau maximal de cette étiquette déjà atteint.')
         niveaux[identifiant] = actuel + 1
     else:
-        if len(niveaux) >= emplacements_etiquettes(resultat['niveau']):
+        if len(niveaux) - len(resultat.get('etiquettes_permanentes', [])) >= emplacements_etiquettes(resultat['niveau']):
             raise ValueError('Aucun emplacement d’étiquette disponible.')
         niveaux[identifiant] = 1
     return resultat
