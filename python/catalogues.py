@@ -78,16 +78,8 @@ for identifiant, unite in UNITES.items():
 
 # Les jetons historiques ordre.txt restent valides et ne sont pas ces IDs.
 ORDRES = {
-    1001: dict(jeton='1-1', nom='retraite_apres_premiere_manche', categorie='globale',
-               disponible=False, contre=False, progression=False),
     1002: dict(jeton='1-2', nom='attaque_frontale', categorie='globale',
                disponible=True, contre=False, progression=True),
-    1003: dict(jeton='2-1', nom='attaque_chirurgicale', categorie='duel',
-               disponible=False, contre=False, progression=False),
-    1004: dict(jeton='2-2', nom='pluie_de_fleches', categorie='duel',
-               disponible=False, contre=False, progression=False),
-    1005: dict(jeton='3-1', nom='fuir_avant_la_mort', categorie='individuelle',
-               disponible=False, contre=False, progression=False),
 }
 
 # 101..199 : apprentissages d'unités ; 201..299 : catégories de caractéristiques.
