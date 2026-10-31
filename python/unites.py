@@ -349,11 +349,9 @@ def apres_confrontation(general_1, general_2, bloc_1, bloc_2, infos_1, infos_2, 
 def moral_bloc(fiche, composition, bloc):
     """Conserve les fractions jusqu'au calcul collectif des sauvetages."""
     from fractions import Fraction
-    valeur = caracteristiques_armee(fiche, composition)['moral']
-    if any(etiquette(t, 'cruelle') for t in composition.get(bloc, {})):
-        chamans = sum(effectifs.get('orc_chaman', 0) for b, effectifs in composition.items() if b != bloc)
-        valeur = min(100, Fraction(valeur * (100 + 2 * chamans), 100))
-    return valeur
+    # L'ancienne synergie cruelle/chaman (+2 % de moral par chaman)
+    # est abandonnée. Le malus cruelle adverse est appliqué en contexte de duel.
+    return caracteristiques_armee(fiche, composition)['moral']
 
 
 def soigner_victoire_territoriale(configuration, territoire, evenement):
