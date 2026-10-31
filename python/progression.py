@@ -12,14 +12,14 @@ TRAITS = {
 }
 RECOMPENSES = {
     'stratege': {
-        'charismatique': {'commandement': 60, 'etiquette': 30, 'unite': 10},
-        'leader': {'commandement': 20, 'etiquette': 70, 'unite': 10},
-        'inventeur': {'commandement': 20, 'etiquette': 20, 'unite': 60},
+        'charismatique': {'commandement': 60, 'unite': 10},
+        'leader': {'commandement': 20, 'unite': 10},
+        'inventeur': {'commandement': 20, 'unite': 60},
     },
     'instinctif': {
-        'charismatique': {'moral': 60, 'etiquette': 15, 'unite': 25},
-        'leader': {'moral': 20, 'etiquette': 60, 'unite': 20},
-        'inventeur': {'moral': 20, 'etiquette': 10, 'unite': 70},
+        'charismatique': {'moral': 60, 'unite': 25},
+        'leader': {'moral': 20, 'unite': 20},
+        'inventeur': {'moral': 20, 'unite': 70},
     },
 }
 
@@ -60,6 +60,21 @@ def gain_commandement(niveau, aleatoire=None):
     return tranche + aleatoire.randint(1, tranche)
 
 
+def gain_pc_naturel(aleatoire):
+    return aleatoire.randint(2, 4)
+
+
+def gain_moral_naturel(niveau):
+    # +1 aux niveaux pairs (2, 4, 6...), sans tirage supplémentaire.
+    return 1 if niveau % 2 == 0 else 0
+
+
+def recompense_statistique(orientation, aleatoire):
+    if orientation == 'stratege':
+        return 'maitrise_commandement', aleatoire.randint(5, 10)
+    return 'force_caractere', aleatoire.randint(2, 4)
+
+
 def nouvelles_caracteristiques(aleatoire=None):
     aleatoire = random if aleatoire is None else aleatoire
     nature = tirer_pondere(NATURES, aleatoire)
@@ -68,7 +83,7 @@ def nouvelles_caracteristiques(aleatoire=None):
     return dict(niveau=0, nature=nature, orientation_principale=orientation, trait_inne=trait,
                 points_commandement=gain_commandement(0, aleatoire) if orientation == 'stratege' else 0,
                 moral=0, evolutions_acquises=[], evolution_apprise=None,
-                progression_combat=0, progression_formation=0, etiquettes={})
+                progression_combat=0, progression_formation=0, etiquettes={}, etiquettes_permanentes=[])
 
 
 def emplacements_etiquettes(niveau):
@@ -92,6 +107,8 @@ def apprendre_etiquette(fiche, identifiant):
     resultat = deepcopy(fiche)
     if not isinstance(identifiant, str) or not identifiant:
         raise ValueError('Identifiant d’étiquette non vide requis.')
+    if identifiant in resultat.get('etiquettes_permanentes', []):
+        raise ValueError('Étiquette permanente : modification interdite à l’École.')
     niveaux = resultat.setdefault('etiquettes', {})
     actuel = niveaux.get(identifiant, 0)
     if actuel:
@@ -135,50 +152,63 @@ def evolutions_eligibles(fiche, catalogue=None, apprentissage=True):
 
 
 def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None):
-    """Un appel administratif/moteur = un niveau, sans condition implicite.
+    """Progression naturelle à chaque niveau ; roulette sauf tous les cinq niveaux.
 
-    Le choix entre plusieurs évolutions d'une catégorie reste injecté : aucun
-    poids interne au futur catalogue d'unités ou d'étiquettes n'est encore défini.
-    Retourne une copie ; le demandeur persiste le résultat après validation.
+    Aux paliers de cinq, obtention d'une étiquette permanente (non modifiable
+    à l'École). Les évolutions d'unités restent autorisées aux autres niveaux.
     """
     aleatoire = random if aleatoire is None else aleatoire
     resultat = deepcopy(fiche)
+    resultat['niveau'] += 1
+    niveau = resultat['niveau']
     if resultat.get('etat_zombie'):
-        resultat['niveau'] += 1
         resultat['niveaux_zombie'] = resultat.get('niveaux_zombie', 0) + 1
         return resultat, None
-    eligibles = evolutions_eligibles(resultat, catalogue)
-    identifiant = resultat.get('evolution_apprise')
-    if identifiant is not None and identifiant not in eligibles:
-        raise ValueError('Évolution mémorisée incompatible ou indisponible ; progression conservée.')
-    if identifiant is None:
-        eligibles = evolutions_eligibles(resultat, catalogue, apprentissage=False)
-        poids = RECOMPENSES[orientation_principale(resultat)][resultat['trait_inne']]
-        poids = {categorie: p for categorie, p in poids.items()
-                 if any(e['categorie'] == categorie for e in eligibles.values())}
-        if poids:
-            categorie = tirer_pondere(poids, aleatoire)
-            candidats = [i for i, e in eligibles.items() if e['categorie'] == categorie]
-            if len(candidats) == 1:
-                identifiant = candidats[0]
-            elif choisir_evolution is not None:
-                identifiant = choisir_evolution(tuple(candidats), aleatoire)
-                if identifiant not in candidats:
-                    raise ValueError('Évolution sélectionnée hors catalogue éligible.')
-            elif categorie == 'unite':
-                identifiant = candidats[aleatoire.randint(0, len(candidats) - 1)]
-            else:
-                raise ValueError('Règle de choix dans la catégorie à configurer.')
-    resultat['niveau'] += 1
-    if identifiant is not None:
-        categorie = eligibles[identifiant]['categorie']
+
+    orientation = orientation_principale(resultat)
+    if orientation == 'stratege':
+        resultat['points_commandement'] += gain_pc_naturel(aleatoire)
+    else:
+        resultat['moral'] = min(100, resultat['moral'] + gain_moral_naturel(niveau))
+
+    if niveau % 5 == 0:
+        permanentes = resultat.setdefault('etiquettes_permanentes', [])
+        disponibles = [nom for nom in catalogues.ETIQUETTES_COMBAT
+                       if nom not in resultat.get('etiquettes', {})]
+        if disponibles:
+            choix = disponibles[aleatoire.randint(0, len(disponibles) - 1)]
+            resultat.setdefault('etiquettes', {})[choix] = 1
+            permanentes.append(choix)
+            return resultat, ('etiquette_permanente', choix)
+        return resultat, None
+
+    eligibles = evolutions_eligibles(resultat, catalogue, apprentissage=False)
+    # Les catégories de statistiques restent dans la roulette uniquement si
+    # leur récompense est utilisable ; une unité déjà acquise ne revient pas.
+    poids = RECOMPENSES[orientation][resultat['trait_inne']]
+    poids = {categorie: chance for categorie, chance in poids.items()
+             if any(e['categorie'] == categorie for e in eligibles.values())}
+    if not poids:
+        return resultat, None
+    categorie = tirer_pondere(poids, aleatoire)
+    candidats = [i for i, e in eligibles.items() if e['categorie'] == categorie]
+    if len(candidats) == 1:
+        identifiant = candidats[0]
+    elif choisir_evolution is not None:
+        identifiant = choisir_evolution(tuple(candidats), aleatoire)
+        if identifiant not in candidats:
+            raise ValueError('Évolution sélectionnée hors catalogue éligible.')
+    else:
+        identifiant = candidats[aleatoire.randint(0, len(candidats) - 1)]
+    if categorie in ('commandement', 'moral'):
+        nom, gain = recompense_statistique(orientation, aleatoire)
         if categorie == 'commandement':
-            resultat['points_commandement'] += gain_commandement(resultat['niveau'], aleatoire)
-        elif categorie == 'moral':
-            resultat['moral'] = min(100, resultat['moral'] + 1 + aleatoire.randint(0, resultat['niveau']))
-        if identifiant not in resultat['evolutions_acquises']:
-            resultat['evolutions_acquises'].append(identifiant)
-        resultat['evolution_apprise'] = None
+            resultat['points_commandement'] += gain
+        else:
+            resultat['moral'] = min(100, resultat['moral'] + gain)
+        return resultat, (nom, gain)
+    if identifiant not in resultat['evolutions_acquises']:
+        resultat['evolutions_acquises'].append(identifiant)
     return resultat, identifiant
 
 
