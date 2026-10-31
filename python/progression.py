@@ -12,14 +12,14 @@ TRAITS = {
 }
 RECOMPENSES = {
     'stratege': {
-        'charismatique': {'commandement': 60, 'ordre': 30, 'unite': 10},
-        'leader': {'commandement': 20, 'ordre': 70, 'unite': 10},
-        'inventeur': {'commandement': 20, 'ordre': 20, 'unite': 60},
+        'charismatique': {'commandement': 60, 'etiquette': 30, 'unite': 10},
+        'leader': {'commandement': 20, 'etiquette': 70, 'unite': 10},
+        'inventeur': {'commandement': 20, 'etiquette': 20, 'unite': 60},
     },
     'instinctif': {
-        'charismatique': {'moral': 60, 'ordre': 15, 'unite': 25},
-        'leader': {'moral': 20, 'ordre': 60, 'unite': 20},
-        'inventeur': {'moral': 20, 'ordre': 10, 'unite': 70},
+        'charismatique': {'moral': 60, 'etiquette': 15, 'unite': 25},
+        'leader': {'moral': 20, 'etiquette': 60, 'unite': 20},
+        'inventeur': {'moral': 20, 'etiquette': 10, 'unite': 70},
     },
 }
 
@@ -68,7 +68,41 @@ def nouvelles_caracteristiques(aleatoire=None):
     return dict(niveau=0, nature=nature, orientation_principale=orientation, trait_inne=trait,
                 points_commandement=gain_commandement(0, aleatoire) if orientation == 'stratege' else 0,
                 moral=0, evolutions_acquises=[], evolution_apprise=None,
-                progression_combat=0, progression_formation=0)
+                progression_combat=0, progression_formation=0, etiquettes={})
+
+
+def emplacements_etiquettes(niveau):
+    """Un emplacement initial, puis un supplémentaire tous les cinq niveaux."""
+    if type(niveau) is not int or niveau < 0:
+        raise ValueError('Niveau entier positif ou nul requis.')
+    return 1 + niveau // 5
+
+
+def niveau_max_etiquette(niveau):
+    """Niveau 1 initial ; niveau 2 dès le niveau 5, etc."""
+    return emplacements_etiquettes(niveau)
+
+
+def apprendre_etiquette(fiche, identifiant):
+    """Apprentissage après validation du séjour à l'École des officiers.
+
+    Renvoie une nouvelle fiche sans modifier l'original. L'intégration dans
+    le cycle de validation de l'École reste une étape distincte.
+    """
+    resultat = deepcopy(fiche)
+    if not isinstance(identifiant, str) or not identifiant:
+        raise ValueError('Identifiant d’étiquette non vide requis.')
+    niveaux = resultat.setdefault('etiquettes', {})
+    actuel = niveaux.get(identifiant, 0)
+    if actuel:
+        if actuel >= niveau_max_etiquette(resultat['niveau']):
+            raise ValueError('Niveau maximal de cette étiquette déjà atteint.')
+        niveaux[identifiant] = actuel + 1
+    else:
+        if len(niveaux) >= emplacements_etiquettes(resultat['niveau']):
+            raise ValueError('Aucun emplacement d’étiquette disponible.')
+        niveaux[identifiant] = 1
+    return resultat
 
 
 def capacite_maximale(fiche):
@@ -94,7 +128,7 @@ def evolutions_eligibles(fiche, catalogue=None, apprentissage=True):
         categorie = evolution['categorie']
         if categorie == 'moral' and fiche['moral'] >= 100:
             continue
-        if categorie in ('unite', 'ordre') and identifiant in fiche['evolutions_acquises']:
+        if categorie == 'unite' and identifiant in fiche['evolutions_acquises']:
             continue
         resultat[identifiant] = evolution
     return resultat
@@ -104,7 +138,7 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
     """Un appel administratif/moteur = un niveau, sans condition implicite.
 
     Le choix entre plusieurs évolutions d'une catégorie reste injecté : aucun
-    poids interne au futur catalogue d'unités ou d'ordres n'est encore défini.
+    poids interne au futur catalogue d'unités ou d'étiquettes n'est encore défini.
     Retourne une copie ; le demandeur persiste le résultat après validation.
     """
     aleatoire = random if aleatoire is None else aleatoire
