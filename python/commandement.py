@@ -1,4 +1,4 @@
-"""Calculs et sélection des donneurs d'ordres, sans inventer leurs effets."""
+"""Commandement et points temporaires des généraux et du QG."""
 import catalogues
 import progression
 
@@ -53,107 +53,36 @@ class QuartierGeneral:
         return None if self.detruit else self.general
 
 
-def donneur_duel(general, qg, ordres):
-    return general if ordres(general) else qg if qg is not None and ordres(qg) else None
+def bonus_pc_messager(qg, generaux_territoire, messager_present):
+    """10 % des PC des autres généraux alliés du même territoire.
 
-
-def comparer(points_1, points_2):
-    return (points_1 > points_2) - (points_1 < points_2)
-
-
-def _ordres_eligibles(identifiants, nature, categorie, catalogue, acquis):
-    """Préserve l'ordre d'un seul donneur : ne fusionne jamais deux généraux."""
-    if categorie not in ('globale', 'duel', 'individuelle'):
-        raise ValueError('Catégorie inconnue.')
-    if categorie == 'globale' and nature not in (
-            'stratege', 'stratege_hybride', 'instinctif_hybride'):
-        return []
-    resultat = []
-    for identifiant in dict.fromkeys(identifiants):
-        if categorie == 'globale' and nature == 'instinctif_hybride' and identifiant not in acquis:
-            continue
-        ordre = catalogue.get(identifiant)
-        if ordre and ordre['disponible'] and ordre['categorie'] == categorie:
-            resultat.append(identifiant)
-    return resultat
-
-
-def ordres_applicables(identifiants, nature, categorie, comparaison=None,
-                       catalogue=None, acquis=(), ordres_adverses=None):
-    """Sélection des ordres d'UN général, sans exécuter leurs effets.
-
-    ordres_adverses doit être la liste éligible du donneur adverse de la même
-    catégorie. None conserve une comparaison ancienne, sans inventer d'absence
-    d'ordres. Sans ordre adverse : les ordres ordinaires et les contre-ordres
-    sont candidats. En duel ordre/contre-ordre, les deux sont candidats.
-    Les ordres normaux et les contre-ordres d'un même donneur ne se cumulent pas :
-    le groupe incompatible est écarté, sans priorité arbitraire.
+    Un ou plusieurs Messagers donnent un seul bonus, arrondi à l'entier
+    inférieur. Le calcul ne modifie jamais la fiche permanente du QG.
+    Les fiches passées dans generaux_territoire doivent appartenir au même camp
+    et au même territoire que le QG, sans doublons.
     """
-    catalogue = catalogues.ORDRES if catalogue is None else catalogue
-    propres = _ordres_eligibles(identifiants, nature, categorie, catalogue, acquis)
-    if not propres:
-        return []
-    if ordres_adverses is None:
-        # Compatibilité avec les appels historiques : l'absence d'ordre adverse
-        # n'est jamais déduite d'une comparaison de PC.
-        adverses = None
-    else:
-        adverses = [catalogue[i] for i in ordres_adverses
-                    if i in catalogue and catalogue[i]['disponible']
-                    and catalogue[i]['categorie'] == categorie]
-    if any(catalogue[i]['contre'] for i in propres) and any(
-            not catalogue[i]['contre'] for i in propres):
-        return []
-    resultat = []
-    for identifiant in propres:
-        contre = catalogue[identifiant]['contre']
-        if adverses is not None and not adverses:
-            actif = True
-        elif adverses is not None and any(
-                autre['contre'] != contre for autre in adverses):
-            actif = True
-        elif contre:
-            actif = comparaison == -1
-        elif categorie == 'individuelle' and comparaison is None:
-            actif = True
-        else:
-            actif = comparaison == 1
-        if actif:
-            resultat.append(identifiant)
-    return resultat
+    if qg is None or not messager_present:
+        return 0
+    autres = (g for g in generaux_territoire if g is not qg
+              and g.get('identifiant') != qg.get('identifiant'))
+    return sum(max(0, g.get('points_commandement', 0)) for g in autres) // 10
 
 
-def confronter_donneurs(ordres_1, nature_1, acquis_1,
-                        ordres_2, nature_2, acquis_2, categorie,
-                        comparaison, catalogue=None):
-    """Confronte deux donneurs sans agréger d'ordres entre généraux.
+def pc_qg_globaux(qg, generaux_territoire, messager_present=False):
+    """PC globaux du QG, bonus du Messager compris, sans persistance."""
+    if qg is None:
+        return 0
+    return qg['points_commandement'] + bonus_pc_messager(
+        qg, generaux_territoire, messager_present)
 
-    Ordre contre ordre à PC égaux : annulation. Ordre contre contre-ordre :
-    les deux peuvent fonctionner. Les incompatibilités d'effets entre plusieurs
-    ordres normaux restent à contrôler lorsque leurs effets seront définis.
+
+def bonus_etiquettes(pc, coefficients):
+    """Somme des bonus en points de pourcentage ; pas de produit en cascade.
+
+    Exemple : PC 15 et coefficients (1, -0.5) => +7.5 % net.
+    Le moteur de combat appliquera ensuite ce pourcentage à la valeur visée.
     """
-    catalogue = catalogues.ORDRES if catalogue is None else catalogue
-    candidats_1 = _ordres_eligibles(ordres_1, nature_1, categorie, catalogue, acquis_1)
-    candidats_2 = _ordres_eligibles(ordres_2, nature_2, categorie, catalogue, acquis_2)
-    return (
-        ordres_applicables(candidats_1, nature_1, categorie, comparaison,
-                          catalogue, acquis_1, candidats_2),
-        ordres_applicables(candidats_2, nature_2, categorie, -comparaison,
-                          catalogue, acquis_2, candidats_1),
-    )
-
-
-def confronter_globaux(armee_1, qg_1, ordres_1, armee_2, qg_2, ordres_2, catalogue=None):
-    points_1 = global_armee(armee_1, qg_1)
-    points_2 = global_armee(armee_2, qg_2)
-    comparaison = comparer(points_1, points_2)
-    if not qg_1 and not qg_2:
-        return [], []
-    # Un seul QG donne les ordres globaux de chaque camp. Aucun amalgame
-    # avec les ordres des autres généraux de l'armée.
-    return confronter_donneurs(
-        ordres_1 if qg_1 else (), qg_1['nature'] if qg_1 else '',
-        qg_1.get('evolutions_acquises', ()) if qg_1 else (),
-        ordres_2 if qg_2 else (), qg_2['nature'] if qg_2 else '',
-        qg_2.get('evolutions_acquises', ()) if qg_2 else (),
-        'globale', comparaison, catalogue)
+    from fractions import Fraction
+    if pc < 0:
+        raise ValueError('PC négatifs interdits.')
+    return sum((Fraction(pc) * Fraction(c) for c in coefficients), Fraction(0))
