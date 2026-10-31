@@ -74,6 +74,38 @@ def pc_qg_globaux(qg, generaux_territoire, messager_present=False):
         qg, generaux_territoire, messager_present)
 
 
+def pc_qg_sur_territoire(qg, generaux_presents):
+    """Calcule les PC globaux à partir des généraux réellement présents.
+
+    Chaque général est un dictionnaire contenant joueur, nom, chemin et camp.
+    Les PC proviennent des fiches privées, jamais des valeurs déclarées par le joueur.
+    Le messager doit se trouver dans un bloc d'un général du même territoire
+    et du même camp que le QG. Son effet n'est pas cumulable.
+    """
+    if qg is None:
+        return 0
+    import generaux
+    identite = (qg['joueur'], qg['nom'])
+    camp = qg['camp']
+    fiches = []
+    qg_fiche = None
+    messager = False
+    for general in generaux_presents:
+        if general is None or general.get('camp') != camp:
+            continue
+        fiche = progression.caracteristiques_general(general)
+        if fiche is None:
+            continue
+        entree = dict(fiche, identifiant=(general['joueur'], general['nom']))
+        fiches.append(entree)
+        if entree['identifiant'] == identite:
+            qg_fiche = entree
+        composition = generaux.lire_composition_general(general['chemin'])
+        messager |= any(bloc.get('messager_du_QG', 0) > 0
+                        for bloc in composition.values())
+    return pc_qg_globaux(qg_fiche, fiches, messager)
+
+
 def bonus_etiquettes(pc, coefficients):
     """Somme des bonus en points de pourcentage ; pas de produit en cascade.
 
