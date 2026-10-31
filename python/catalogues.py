@@ -77,6 +77,24 @@ for identifiant, unite in UNITES.items():
     unite.setdefault('places', 1)
 
 
+# Cibles des effets des étiquettes apprises par les généraux.
+# Les autres étiquettes des unités restent descriptives ou conservent leurs
+# capacités propres ; elles ne reçoivent aucun bonus automatique.
+ETIQUETTES_COMBAT = {
+    'infanterie': dict(effet='valeur', cible='infanterie'),
+    'distance': dict(effet='valeur', cible='distance'),
+    'cavalerie': dict(effet='valeur', cible='cavalerie'),
+    'humain': dict(effet='valeur', cible='humain'),
+    'melee': dict(effet='valeur', cible='melee'),
+    'orc': dict(effet='valeur', cible='orc'),
+    'mort_vivant': dict(effet='valeur', cible='mort_vivant'),
+    'noble': dict(effet='valeur', cible='noble'),
+    'armure_legere': dict(effet='valeur', cible='armure_legere'),
+    'lourde': dict(effet='valeur', cible='lourde'),
+    'chaman': dict(effet='malus_valeur_adverse', cible='orc'),
+    'cruelle': dict(effet='malus_moral_adverse', cible=None),
+}
+
 # 101..199 : apprentissages d'unités ; 201..299 : catégories de caractéristiques.
 # 1001..1999 : ordres. Un ID d'unité et un ID d'évolution ne sont pas interchangeables.
 EVOLUTIONS = {
