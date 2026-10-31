@@ -21,13 +21,10 @@ def effectif_general(fiche, composition):
                     [t for bloc in composition.values() for t, nombre in bloc.items() if nombre])
 
 
-def global_armee(generaux, qg):
-    """Les caractéristiques reçues doivent provenir de l'état privé du moteur."""
-    strateges = [g for g in generaux if progression.orientation_principale(g) == 'stratege']
-    autres = sum(progression.orientation_principale(g) != 'stratege' for g in generaux)
-    points_qg = qg['points_commandement'] if qg is not None else 0
-    points_autres = sum(g['points_commandement'] for g in strateges if g is not qg)
-    return (2 * points_qg + points_autres) // (2 * max(1, autres))
+def global_armee(generaux, qg, messager_present=False):
+    """PC du QG pour ses effets globaux, sans l'ancienne division des ordres."""
+    return pc_qg_globaux(qg, generaux, messager_present)
+
 
 
 def selectionner_qg(candidats, points):
@@ -64,7 +61,8 @@ def bonus_pc_messager(qg, generaux_territoire, messager_present):
     if qg is None or not messager_present:
         return 0
     autres = (g for g in generaux_territoire if g is not qg
-              and g.get('identifiant') != qg.get('identifiant'))
+              and (qg.get('identifiant') is None or
+                   g.get('identifiant') != qg['identifiant']))
     return sum(max(0, g.get('points_commandement', 0)) for g in autres) // 10
 
 
