@@ -653,6 +653,17 @@ def ecrire_detail_engagement(territoire, etiquette, resultat):
         ecrire_rapport_long(f"Confrontation V2 : {decision}")
         if decision.get('motif'):
             ecrire_rapport_territoire(territoire, decision['motif'])
+    charge = resultat.get('charge_suicidaire')
+    if charge:
+        for numero, (active, reussite, pertes) in enumerate(zip(
+                charge['activations'], charge['reussites'], charge['pertes']), 1):
+            if active:
+                ecrire_rapport_territoire(
+                    territoire,
+                    f"Charge suicidaire — {joueurs[numero - 1]} : "
+                    f"{pertes} pertes prises en compte, "
+                    + ('général adverse détruit.' if reussite
+                       else 'tentative sans destruction adverse.'))
     ecrire_rapport_territoire(territoire, "CHOC INITIAL")
     for fuite in resultat.get('fuites', ()):
         ecrire_rapport_territoire(territoire,
