@@ -235,7 +235,7 @@ def resoudre_attaque_frontale(
         configuration = config.configuration_mode("classique")
     camp_1, camp_2 = camps_du_combat(configuration)
 
-    # Ordre 1-2 : attaque frontale.
+    # Configuration de terrain : attaque frontale.
     #
     # Les généraux placés dans les mêmes
     # emplacements s'affrontent d'abord :
@@ -249,7 +249,7 @@ def resoudre_attaque_frontale(
     # pris en charge par le combat rangé.
 
     rapports.afficher_et_ecrire(
-        "\n=== ORDRE 1-2 : ATTAQUE FRONTALE ==="
+        "\n=== CONFIGURATION DE TERRAIN : ATTAQUE FRONTALE ==="
     )
 
     engagement_effectue = False
@@ -371,7 +371,7 @@ def resoudre_affrontement_actif(
     # Moteur commun de résolution.
     #
     # Première étape éventuelle :
-    # - ordre 1-2 : affrontements par emplacement.
+    # - configuration de terrain : affrontements par emplacement.
     #
     # Deuxième étape :
     # - combat rangé entre les premiers
@@ -379,44 +379,13 @@ def resoudre_affrontement_actif(
     # - le survivant continue ;
     # - le combat s'arrête lorsqu'un camp disparaît.
 
-    generaux_depart = (
-        generaux.lire_forces_territoire(
-            territory, configuration
-        )
-    )
-
-    ordre_frontal_camp_1 = (
-        generaux.joueur_possede_ordre_armee(
-            generaux_depart,
-            camp_1,
-            "1-2"
-        )
-    )
-
-    ordre_frontal_camp_2 = (
-        generaux.joueur_possede_ordre_armee(
-            generaux_depart,
-            camp_2,
-            "1-2"
-        )
-    )
-
-    # Pour cette première version,
-    # un seul des deux camps suffit pour provoquer
-    # l'organisation frontale du combat.
-    if ordre_frontal_camp_1 or ordre_frontal_camp_2:
-
-        camps = []
-
-        if ordre_frontal_camp_1:
-            camps.append(camp_1)
-
-        if ordre_frontal_camp_2:
-            camps.append(camp_2)
-
+    # L'engagement frontal dépend désormais de la configuration du terrain,
+    # et non d'un ordre déclaré par un général.
+    terrains = configuration.get("configurations_terrain", {})
+    frontal = terrains.get(territory.name, {}).get("attaque_frontale", False)
+    if frontal:
         rapports.afficher_et_ecrire(
-            "Ordre frontal demandé par : "
-            + ", ".join(camps)
+            f"Engagement frontal configuré sur {territory.name}"
         )
 
         rapports.ecrire_rapport_territoire(
