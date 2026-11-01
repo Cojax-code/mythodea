@@ -146,42 +146,47 @@ def instantane_qg_territorial(qg, generaux_presents):
     }
 
 
-def repartir_malus_qg(instantane, generaux_adverses):
-    """Répartit un malus territorial une seule fois entre cibles éligibles.
+def repartir_effets_qg(instantane, generaux_allies):
+    """Transmet intégralement les effets globaux aux alliés, sauf au QG.
 
-    Retourne des effets par identité de général, sans modifier les fiches.
-    Les fractions exactes évitent pertes par arrondi et double comptage.
-    Le responsable de la bataille conserve ce résultat jusqu'à sa fin.
+    Il ne s'agit pas d'un partage : un bonus de 30 % vaut 30 % pour
+    chaque général éligible, indépendamment du nombre de bénéficiaires.
+    La combinaison avec les étiquettes personnelles se fait par addition
+    des pourcentages, puis une seule application à la valeur de l'unité.
+    Les effets de cible sont filtrés par unité lors du combat, non par général.
     """
-    from fractions import Fraction
-    import generaux
     if not instantane:
         return {}
-    cibles = {}
+    qg = tuple(instantane['qg'])
+    effets = instantane.get('effets_globaux', {})
+    resultat = {}
+    for general in generaux_allies:
+        if general is None or general.get('camp') != instantane['camp']:
+            continue
+        identite = (general['joueur'], general['nom'])
+        if identite == qg:
+            continue
+        resultat[identite] = dict(effets)
+    return resultat
+
+
+def repartir_malus_qg(instantane, generaux_adverses):
+    """Répartition des malus sur les ennemis, sans division par leur nombre.
+
+    Les malus ciblant un type d'unité seront filtrés au niveau du bloc.
+    Cette fonction prépare les effets : elle ne les applique pas en bataille.
+    """
+    if not instantane:
+        return {}
+    malus = {cle: valeur for cle, valeur in instantane.get('effets_globaux', {}).items()
+             if cle[0].startswith('malus_')}
+    resultat = {}
     for general in generaux_adverses:
         if general is None or general.get('camp') == instantane['camp']:
             continue
         identite = (general['joueur'], general['nom'])
-        if identite in cibles:
-            continue
-        composition = generaux.lire_composition_general(general['chemin'])
-        types = {type_unite for bloc in composition.values()
-                 for type_unite, effectif in bloc.items() if effectif > 0}
-        cibles[identite] = types
-    repartition = {identite: {} for identite in cibles}
-    for (effet, cible), valeur in instantane.get('effets_globaux', {}).items():
-        if not effet.startswith('malus_'):
-            continue
-        concernes = [identite for identite, types in cibles.items()
-                     if cible is None or any(
-                         cible in catalogues.UNITES[catalogues.UNITE_PAR_NOM[t]]['etiquettes']
-                         for t in types if t in catalogues.UNITE_PAR_NOM)]
-        if not concernes:
-            continue
-        part = Fraction(valeur, len(concernes))
-        for identite in concernes:
-            repartition[identite][(effet, cible)] = part
-    return repartition
+        resultat[identite] = dict(malus)
+    return resultat
 
 
 def bonus_etiquettes(pc, coefficients):
