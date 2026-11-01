@@ -55,6 +55,35 @@ _EFFETS_TERRITOIRE = ContextVar('mythodea_effets_territoire', default={})
 _DUEL_IDENTITES = ContextVar('mythodea_duel_identites', default=None)
 
 
+def _desactiver_qg_detruit(general):
+    """Retire définitivement le soutien si le général QG perd toutes ses unités."""
+    contexte = _EFFETS_TERRITOIRE.get()
+    if not contexte:
+        return
+    identite = (general['joueur'], general['nom'])
+    if identite not in contexte.get('qg', set()):
+        return
+    if generaux.total_general_depuis_chemin(general['chemin']) > 0:
+        return
+    camp = general['camp']
+    if camp in contexte.get('qg_detruits', set()):
+        return
+    contexte['qg_detruits'].add(camp)
+    for cible in list(contexte['allies']):
+        if cible in contexte['camps_allies'].get(camp, set()):
+            del contexte['allies'][cible]
+    for cible, origines in list(contexte['malus_par_origine'].items()):
+        origines.pop(camp, None)
+        effets = {}
+        for repartition in origines.values():
+            for cle, valeur in repartition.items():
+                effets[cle] = effets.get(cle, 0) + valeur
+        if effets:
+            contexte['malus'][cible] = effets
+        else:
+            contexte['malus'].pop(cible, None)
+
+
 def _effets_transmis(general, ennemi=False):
     contexte = _EFFETS_TERRITOIRE.get()
     if not general or not contexte:
@@ -86,6 +115,7 @@ def _contexte_qg_territorial(territoire, configuration):
     forces = generaux.lire_forces_territoire(territoire, configuration)
     tous = [general for places in forces.values() for general in places.values() if general]
     allies, malus, qg_identites = {}, {}, set()
+    camps_allies, malus_par_origine = {}, {}
     for camp, designation in noms_qg.items():
         # Accepter un nom unique ou plusieurs déclarations : plusieurs QG
         # distincts annulent tous les effets territoriaux de ce camp.
@@ -112,13 +142,20 @@ def _contexte_qg_territorial(territoire, configuration):
         instantane = commandement.instantane_qg_territorial(qg, tous)
         if instantane is None:
             raise ValueError('QG sans caractéristiques officielles.')
-        allies.update(commandement.repartir_effets_qg(instantane, tous))
+        effets_allies = commandement.repartir_effets_qg(instantane, tous)
+        allies.update(effets_allies)
+        camps_allies[camp] = set(effets_allies)
         # Cibles ennemies : un malus de QG ne se divise pas entre les cibles.
         for identite, effets in commandement.repartir_malus_qg(instantane, tous).items():
+            malus_par_origine.setdefault(identite, {})[camp] = dict(effets)
             courant = malus.setdefault(identite, {})
             for cle, valeur in effets.items():
                 courant[cle] = courant.get(cle, 0) + valeur
-    jeton = _EFFETS_TERRITOIRE.set({'allies': allies, 'malus': malus, 'qg': qg_identites})
+    jeton = _EFFETS_TERRITOIRE.set({
+        'allies': allies, 'malus': malus, 'qg': qg_identites,
+        'camps_allies': camps_allies, 'malus_par_origine': malus_par_origine,
+        'qg_detruits': set(),
+    })
     try:
         yield
     finally:
@@ -147,6 +184,7 @@ def combat_entre_generaux(general_1, general_2):
     finally:
         _DUEL_IDENTITES.reset(jeton)
     for numero, general in enumerate((general_1, general_2), 1):
+        _desactiver_qg_detruit(general)
         generaux.supprimer_general_si_vide(general)
         resultat[f'final_{numero}'] = generaux.total_general_depuis_chemin(general['chemin'])
     return resultat
