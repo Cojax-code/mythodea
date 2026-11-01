@@ -33,8 +33,11 @@ def effets_moral_duel(general_1, general_2):
     fiche_2 = progression.caracteristiques_general(general_2)
     cle_1 = (general_1['joueur'], general_1['nom'])
     cle_2 = (general_2['joueur'], general_2['nom'])
-    jeton = _MALUS_MORAL_DUEL.set({cle_1: malus_cruelle(fiche_2, general_1),
-                                   cle_2: malus_cruelle(fiche_1, general_2)})
+    globaux = _EFFETS_TERRITOIRE.get().get('malus', {})
+    jeton = _MALUS_MORAL_DUEL.set({
+        cle_1: malus_cruelle(fiche_2, general_1) + globaux.get(cle_1, {}).get(('malus_moral_adverse', None), 0),
+        cle_2: malus_cruelle(fiche_1, general_2) + globaux.get(cle_2, {}).get(('malus_moral_adverse', None), 0),
+    })
     try:
         yield
     finally:
@@ -758,7 +761,7 @@ def valeur_base_bloc(infos, bloc=None):
     return valeur
 
 
-def _bonus_valeur_duel(fiche, type_unite):
+def _bonus_valeur_duel(fiche, type_unite, position):
     """Bonus de valeur du général, en pourcentage exact de sa valeur de base."""
     from fractions import Fraction
     if not fiche or type_unite == 'vide':
@@ -766,18 +769,31 @@ def _bonus_valeur_duel(fiche, type_unite):
     import commandement
     cibles = set(unites.definition(type_unite)['etiquettes'])
     effets = commandement.effets_etiquettes_general(fiche, cibles)
-    return sum((valeur for (effet, _), valeur in effets.items()
-                if effet == 'valeur'), Fraction(0))
+    personnel = sum((valeur for (effet, _), valeur in effets.items()
+                      if effet == 'valeur'), Fraction(0))
+    identites = _DUEL_IDENTITES.get()
+    if identites:
+        soutien = _effets_transmis(identites[position])
+        etiquettes = set(unites.definition(type_unite)['etiquettes'])
+        personnel += sum((valeur for (effet, cible), valeur in soutien.items()
+                          if effet == 'valeur' and cible in etiquettes), Fraction(0))
+    return personnel
 
 
-def _malus_chaman_duel(fiche_adverse, type_unite):
+def _malus_chaman_duel(fiche_adverse, type_unite, position):
     """Malus de valeur sur les Orcs, produit par l'étiquette chaman ennemie."""
     from fractions import Fraction
     if not fiche_adverse or not unites.etiquette(type_unite, 'orc'):
         return Fraction(0)
     import commandement
     effets = commandement.effets_etiquettes_general(fiche_adverse, {'orc'})
-    return effets.get(('malus_valeur_adverse', 'orc'), Fraction(0))
+    personnel = effets.get(('malus_valeur_adverse', 'orc'), Fraction(0))
+    identites = _DUEL_IDENTITES.get()
+    if identites:
+        identite = (identites[position]['joueur'], identites[position]['nom'])
+        personnel += _EFFETS_TERRITOIRE.get().get('malus', {}).get(
+            identite, {}).get(('malus_valeur_adverse', 'orc'), 0)
+    return personnel
 
 
 def combat_bloc(
@@ -830,11 +846,11 @@ def combat_bloc(
     # de résistance négative ou une division par zéro.
     from fractions import Fraction
     valeur_1 *= max(Fraction(1, 100),
-                    1 + (_bonus_valeur_duel(fiche_1, type_1)
-                         - _malus_chaman_duel(fiche_2, type_1)) / 100)
+                    1 + (_bonus_valeur_duel(fiche_1, type_1, 0)
+                         - _malus_chaman_duel(fiche_2, type_1, 0)) / 100)
     valeur_2 *= max(Fraction(1, 100),
-                    1 + (_bonus_valeur_duel(fiche_2, type_2)
-                         - _malus_chaman_duel(fiche_1, type_2)) / 100)
+                    1 + (_bonus_valeur_duel(fiche_2, type_2, 1)
+                         - _malus_chaman_duel(fiche_1, type_2, 1)) / 100)
 
     # ------------------------------------------
     # Fatigue
