@@ -137,7 +137,10 @@ def effets_etiquettes_general(fiche, etiquettes_cibles, *, portee='duel'):
     if portee not in ('duel', 'global'):
         raise ValueError('Portée inconnue.')
     pc = fiche.get('points_commandement', 0)
-    coeff = coefficient_niveau_general(fiche.get('niveau', 0))
+    # Coefficient fixe : le niveau du général borne l'apprentissage,
+    # mais ne multiplie plus une deuxième fois les bonus.
+    from fractions import Fraction
+    coeff = Fraction(1, 2)
     total = {}
     for nom, niveau in fiche.get('etiquettes', {}).items():
         regle = catalogues.ETIQUETTES_COMBAT.get(nom)
