@@ -146,6 +146,44 @@ def instantane_qg_territorial(qg, generaux_presents):
     }
 
 
+def repartir_malus_qg(instantane, generaux_adverses):
+    """Répartit un malus territorial une seule fois entre cibles éligibles.
+
+    Retourne des effets par identité de général, sans modifier les fiches.
+    Les fractions exactes évitent pertes par arrondi et double comptage.
+    Le responsable de la bataille conserve ce résultat jusqu'à sa fin.
+    """
+    from fractions import Fraction
+    import generaux
+    if not instantane:
+        return {}
+    cibles = {}
+    for general in generaux_adverses:
+        if general is None or general.get('camp') == instantane['camp']:
+            continue
+        identite = (general['joueur'], general['nom'])
+        if identite in cibles:
+            continue
+        composition = generaux.lire_composition_general(general['chemin'])
+        types = {type_unite for bloc in composition.values()
+                 for type_unite, effectif in bloc.items() if effectif > 0}
+        cibles[identite] = types
+    repartition = {identite: {} for identite in cibles}
+    for (effet, cible), valeur in instantane.get('effets_globaux', {}).items():
+        if not effet.startswith('malus_'):
+            continue
+        concernes = [identite for identite, types in cibles.items()
+                     if cible is None or any(
+                         cible in catalogues.UNITES[catalogues.UNITE_PAR_NOM[t]]['etiquettes']
+                         for t in types if t in catalogues.UNITE_PAR_NOM)]
+        if not concernes:
+            continue
+        part = Fraction(valeur, len(concernes))
+        for identite in concernes:
+            repartition[identite][(effet, cible)] = part
+    return repartition
+
+
 def bonus_etiquettes(pc, coefficients):
     """Somme des bonus en points de pourcentage ; pas de produit en cascade.
 
