@@ -28,22 +28,30 @@ def malus_cruelle(fiche, general):
     return effets.get(('malus_moral_adverse', None), 0)
 
 
+def _malus_global_hors_qg_courant(cible, adversaire, cle):
+    """Malus déjà figés, hors contribution du QG qui combat en personne."""
+    contexte = _EFFETS_TERRITOIRE.get()
+    identite_cible = (cible['joueur'], cible['nom'])
+    identite_adverse = (adversaire['joueur'], adversaire['nom'])
+    origines = contexte.get('malus_par_origine', {}).get(identite_cible, {})
+    camp_a_exclure = adversaire['camp'] if identite_adverse in contexte.get('qg', set()) else None
+    return sum((effets.get(cle, 0) for camp, effets in origines.items()
+                if camp != camp_a_exclure), 0)
+
+
 @contextmanager
 def effets_moral_duel(general_1, general_2):
     fiche_1 = progression.caracteristiques_general(general_1)
     fiche_2 = progression.caracteristiques_general(general_2)
     cle_1 = (general_1['joueur'], general_1['nom'])
     cle_2 = (general_2['joueur'], general_2['nom'])
-    contexte = _EFFETS_TERRITOIRE.get()
-    globaux = contexte.get('malus', {})
-    qgs = contexte.get('qg', set())
-    # Les malus du QG sont déjà transmis globalement : ne pas les doubler
-    # lorsqu'il participe lui-même au duel.
     jeton = _MALUS_MORAL_DUEL.set({
-        cle_1: (0 if cle_2 in qgs else malus_cruelle(fiche_2, general_1))
-               + globaux.get(cle_1, {}).get(('malus_moral_adverse', None), 0),
-        cle_2: (0 if cle_1 in qgs else malus_cruelle(fiche_1, general_2))
-               + globaux.get(cle_2, {}).get(('malus_moral_adverse', None), 0),
+        cle_1: malus_cruelle(fiche_2, general_1)
+               + _malus_global_hors_qg_courant(
+                   general_1, general_2, ('malus_moral_adverse', None)),
+        cle_2: malus_cruelle(fiche_1, general_2)
+               + _malus_global_hors_qg_courant(
+                   general_2, general_1, ('malus_moral_adverse', None)),
     })
     try:
         yield
@@ -861,12 +869,9 @@ def _malus_chaman_duel(fiche_adverse, type_unite, position):
     personnel = effets.get(('malus_valeur_adverse', 'orc'), Fraction(0))
     identites = _DUEL_IDENTITES.get()
     if identites:
-        adversaire = identites[1 - position]
-        if (adversaire['joueur'], adversaire['nom']) in _EFFETS_TERRITOIRE.get().get('qg', set()):
-            personnel = Fraction(0)
-        identite = (identites[position]['joueur'], identites[position]['nom'])
-        personnel += _EFFETS_TERRITOIRE.get().get('malus', {}).get(
-            identite, {}).get(('malus_valeur_adverse', 'orc'), 0)
+        personnel += _malus_global_hors_qg_courant(
+            identites[position], identites[1-position],
+            ('malus_valeur_adverse', 'orc'))
     return personnel
 
 
