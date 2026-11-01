@@ -80,10 +80,15 @@ def nouvelles_caracteristiques(aleatoire=None):
     nature = tirer_pondere(NATURES, aleatoire)
     orientation = nature.removesuffix('_hybride')
     trait = tirer_pondere(TRAITS[orientation], aleatoire)
+    # Le stratège démarre avec sa première étiquette définitive.
+    initiale = (list(catalogues.ETIQUETTES_COMBAT)[aleatoire.randint(0, len(catalogues.ETIQUETTES_COMBAT) - 1)]
+                if orientation == 'stratege' else None)
     return dict(niveau=0, nature=nature, orientation_principale=orientation, trait_inne=trait,
                 points_commandement=gain_commandement(0, aleatoire) if orientation == 'stratege' else 0,
                 moral=0, evolutions_acquises=[], evolution_apprise=None,
-                progression_combat=0, progression_formation=0, etiquettes={}, etiquettes_permanentes=[])
+                progression_combat=0, progression_formation=0,
+                etiquettes={initiale: 1} if initiale else {},
+                etiquettes_permanentes=[initiale] if initiale else [])
 
 
 def emplacements_etiquettes(niveau):
@@ -116,6 +121,9 @@ def apprendre_etiquette(fiche, identifiant):
             raise ValueError('Niveau maximal de cette étiquette déjà atteint.')
         niveaux[identifiant] = actuel + 1
     else:
+        limite = 3 if orientation_principale(resultat) == 'stratege' else 1
+        if len(niveaux) >= limite:
+            raise ValueError('Nombre maximal d’étiquettes atteint pour cette nature.')
         if len(niveaux) - len(resultat.get('etiquettes_permanentes', [])) >= emplacements_etiquettes(resultat['niveau']):
             raise ValueError('Aucun emplacement d’étiquette disponible.')
         niveaux[identifiant] = 1
@@ -171,34 +179,27 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
     else:
         resultat['moral'] = min(100, resultat['moral'] + gain_moral_naturel(niveau))
 
-    if niveau % 5 == 0:
+    # Stratège : trois étiquettes au total (création, N5, N10).
+    # Instinctif : une seule étiquette, au N5.
+    # À partir du N15 pour les stratèges, et hors N5 pour les
+    # instinctifs, la roulette ordinaire s'applique également aux paliers.
+    palier_etiquette = ((orientation == 'stratege' and niveau in (5, 10))
+                         or (orientation == 'instinctif' and niveau == 5))
+    if palier_etiquette:
+        limite = 3 if orientation == 'stratege' else 1
         permanentes = resultat.setdefault('etiquettes_permanentes', [])
         disponibles = [nom for nom in catalogues.ETIQUETTES_COMBAT
                        if nom not in resultat.get('etiquettes', {})]
-        if disponibles:
+        if len(resultat.get('etiquettes', {})) < limite and disponibles:
             choix = disponibles[aleatoire.randint(0, len(disponibles) - 1)]
             resultat.setdefault('etiquettes', {})[choix] = 1
             permanentes.append(choix)
             return resultat, ('etiquette_permanente', choix)
-        # Catalogue d'étiquettes épuisé : attribuer une unité encore
-        # disponible ou des PC. Les PC restent la récompense sans plafond.
-        eligibles_palier = evolutions_eligibles(resultat, catalogue, apprentissage=False)
-        unites_palier = [identifiant for identifiant, evolution in eligibles_palier.items()
-                        if evolution['categorie'] == 'unite']
-        poids_trait = RECOMPENSES[orientation][resultat['trait_inne']]
-        poids = {'pc': poids_trait.get('commandement', poids_trait.get('moral', 1))}
-        if unites_palier:
-            poids['unite'] = poids_trait.get('unite', 1)
-        if tirer_pondere(poids, aleatoire) == 'unite':
-            choix = unites_palier[aleatoire.randint(0, len(unites_palier) - 1)]
-            resultat['evolutions_acquises'].append(choix)
-            return resultat, choix
-        gain = aleatoire.randint(5, 10)
-        resultat['points_commandement'] += gain
-        return resultat, ('maitrise_commandement', gain)
+        # Si toutes les étiquettes sont connues, roulette normale.
+
 
     # Une évolution mémorisée à l'École remplace la roulette du prochain
-    # niveau ordinaire ; elle reste en attente lors d'un palier de cinq.
+    # niveau où aucune étiquette permanente n'est attribuée.
     manuel = resultat.get('evolution_apprise')
     eligibles = evolutions_eligibles(
         resultat, catalogue, apprentissage=manuel is not None)
