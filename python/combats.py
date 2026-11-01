@@ -105,18 +105,24 @@ def _pourcentage_soutien(type_unite, effet, cible=None, *, adverse=False):
 
 @contextmanager
 def _contexte_qg_territorial(territoire, configuration):
-    """QG explicitement désignés par camp dans configurations_terrain[territoire]['qg'].
+    """Lit les déclarations de QG depuis les fiches officielles privées.
 
-    Aucun QG n'est inféré à partir de la seule présence d'un général.
+    Une configuration de terrain ne peut pas s'auto-attribuer un QG.
     """
     import commandement
     config_terrain = configuration.get('configurations_terrain', {}).get(territoire.name, {})
-    noms_qg = config_terrain.get('qg', {})
     forces = generaux.lire_forces_territoire(territoire, configuration)
     tous = [general for places in forces.values() for general in places.values() if general]
+    # La fiche privée du moteur est seule autorité pour déclarer un QG.
+    # La configuration de terrain ne peut pas en désigner un arbitrairement.
+    declarations = {}
+    for general in tous:
+        fiche = progression.caracteristiques_general(general)
+        if fiche and fiche.get('qg') is True:
+            declarations.setdefault(general['camp'], []).append(general['nom'])
     allies, malus, qg_identites = {}, {}, set()
     camps_allies, malus_par_origine = {}, {}
-    for camp, designation in noms_qg.items():
+    for camp, designation in declarations.items():
         # Accepter un nom unique ou plusieurs déclarations : plusieurs QG
         # distincts annulent tous les effets territoriaux de ce camp.
         if isinstance(designation, str):
@@ -128,7 +134,7 @@ def _contexte_qg_territorial(territoire, configuration):
         if not noms or any(not isinstance(nom, str) or not nom for nom in noms):
             raise ValueError('Désignation QG vide ou invalide.')
         noms_distincts = set(noms)
-        if len(noms_distincts) > 1:
+        if len(noms) > 1:
             rapports.afficher_et_ecrire(
                 f"{territoire.name} : plusieurs QG pour {camp} ; effets globaux annulés."
             )
