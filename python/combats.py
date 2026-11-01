@@ -70,6 +70,10 @@ def _desactiver_qg_detruit(general):
     if camp in contexte.get('qg_detruits', set()):
         return
     contexte['qg_detruits'].add(camp)
+    rapports.afficher_et_ecrire(
+        f"QG {general['joueur']}/{general['nom']} éliminé : "
+        f"soutien global du camp {camp} désactivé jusqu'à la fin de la bataille."
+    )
     for cible in list(contexte['allies']):
         if cible in contexte['camps_allies'].get(camp, set()):
             del contexte['allies'][cible]
@@ -126,8 +130,11 @@ def _contexte_qg_territorial(territoire, configuration):
         # Le joueur désigne son QG par un fichier vide (ou non) dans le
         # dossier du général. Deux graphies sont admises et comptent comme
         # une seule désignation lorsqu'elles concernent le même général.
-        if any(_fichier_qg_valide(general['chemin'] / nom)
-               for nom in ('QG.txt', 'qg.txt')):
+        # Contrôler systématiquement LES DEUX graphies : un fichier régulier
+        # ne doit jamais masquer un second chemin invalide (lien, dossier...).
+        fichiers = tuple(_fichier_qg_valide(general['chemin'] / nom)
+                        for nom in ('QG.txt', 'qg.txt'))
+        if any(fichiers):
             declarations.setdefault(general['camp'], []).append(general)
     allies, malus, qg_identites = {}, {}, set()
     camps_allies, malus_par_origine = {}, {}
