@@ -1,5 +1,6 @@
 """Calcul des combats, choc initial, manœuvres et combat rangé."""
 import random
+import stat
 from contextvars import ContextVar
 from contextlib import contextmanager
 
@@ -103,46 +104,39 @@ def _pourcentage_soutien(type_unite, effet, cible=None, *, adverse=False):
                 if nom_effet == effet and (nom_cible is None or nom_cible in etiquettes)), 0)
 
 
+def _fichier_qg_valide(chemin):
+    """Seul un fichier ordinaire non lié est une déclaration de QG."""
+    try:
+        infos = chemin.lstat()
+    except FileNotFoundError:
+        return False
+    if not stat.S_ISREG(infos.st_mode) or infos.st_nlink != 1:
+        raise ValueError(f'Déclaration QG non ordinaire ou liée interdite : {chemin}')
+    return True
+
+
 @contextmanager
 def _contexte_qg_territorial(territoire, configuration):
-    """Lit les déclarations de QG depuis les fiches officielles privées.
-
-    Une configuration de terrain ne peut pas s'auto-attribuer un QG.
-    """
+    """Fige les QG déclarés par QG.txt ou qg.txt au début du territoire."""
     import commandement
-    config_terrain = configuration.get('configurations_terrain', {}).get(territoire.name, {})
     forces = generaux.lire_forces_territoire(territoire, configuration)
     tous = [general for places in forces.values() for general in places.values() if general]
-    # La fiche privée du moteur est seule autorité pour déclarer un QG.
-    # La configuration de terrain ne peut pas en désigner un arbitrairement.
     declarations = {}
     for general in tous:
-        fiche = progression.caracteristiques_general(general)
-        if fiche and fiche.get('qg') is True:
-            declarations.setdefault(general['camp'], []).append(general['nom'])
+        # Le joueur désigne son QG par un fichier vide (ou non) dans le
+        # dossier du général. Deux graphies sont admises et comptent comme
+        # une seule désignation lorsqu'elles concernent le même général.
+        if any(_fichier_qg_valide(general['chemin'] / nom)
+               for nom in ('QG.txt', 'qg.txt')):
+            declarations.setdefault(general['camp'], []).append(general)
     allies, malus, qg_identites = {}, {}, set()
     camps_allies, malus_par_origine = {}, {}
-    for camp, designation in declarations.items():
-        # Accepter un nom unique ou plusieurs déclarations : plusieurs QG
-        # distincts annulent tous les effets territoriaux de ce camp.
-        if isinstance(designation, str):
-            noms = [designation]
-        elif isinstance(designation, (list, tuple)):
-            noms = designation
-        else:
-            raise ValueError('Désignation QG : nom ou liste de noms attendue.')
-        if not noms or any(not isinstance(nom, str) or not nom for nom in noms):
-            raise ValueError('Désignation QG vide ou invalide.')
-        noms_distincts = set(noms)
-        if len(noms) > 1:
+    for camp, candidats in declarations.items():
+        if len(candidats) > 1:
             rapports.afficher_et_ecrire(
                 f"{territoire.name} : plusieurs QG pour {camp} ; effets globaux annulés."
             )
             continue
-        nom = next(iter(noms_distincts))
-        candidats = [g for g in tous if g.get('camp') == camp and g['nom'] == nom]
-        if len(candidats) != 1:
-            raise ValueError(f'QG absent ou ambigu sur {territoire.name} pour {camp}: {nom}')
         qg = candidats[0]
         qg_identites.add((qg['joueur'], qg['nom']))
         instantane = commandement.instantane_qg_territorial(qg, tous)
@@ -151,7 +145,6 @@ def _contexte_qg_territorial(territoire, configuration):
         effets_allies = commandement.repartir_effets_qg(instantane, tous)
         allies.update(effets_allies)
         camps_allies[camp] = set(effets_allies)
-        # Cibles ennemies : un malus de QG ne se divise pas entre les cibles.
         for identite, effets in commandement.repartir_malus_qg(instantane, tous).items():
             malus_par_origine.setdefault(identite, {})[camp] = dict(effets)
             courant = malus.setdefault(identite, {})
