@@ -60,10 +60,17 @@ def bonus_pc_messager(qg, generaux_territoire, messager_present):
     """
     if qg is None or not messager_present:
         return 0
-    autres = (g for g in generaux_territoire if g is not qg
-              and (qg.get('identifiant') is None or
-                   g.get('identifiant') != qg['identifiant']))
-    return sum(max(0, g.get('points_commandement', 0)) for g in autres) // 10
+    identifiant_qg = qg.get('identifiant')
+    autres_uniques = {}
+    for general in generaux_territoire:
+        identifiant = general.get('identifiant')
+        if general is qg or (identifiant_qg is not None and identifiant == identifiant_qg):
+            continue
+        # Un général ne contribue qu'une fois au bonus du Messager.
+        if identifiant is None:
+            raise ValueError('Identifiant officiel requis pour les généraux alliés.')
+        autres_uniques[identifiant] = max(0, general.get('points_commandement', 0))
+    return sum(autres_uniques.values()) // 10
 
 
 def pc_qg_globaux(qg, generaux_territoire, messager_present=False):
