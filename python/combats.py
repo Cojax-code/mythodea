@@ -86,7 +86,24 @@ def _contexte_qg_territorial(territoire, configuration):
     forces = generaux.lire_forces_territoire(territoire, configuration)
     tous = [general for places in forces.values() for general in places.values() if general]
     allies, malus, qg_identites = {}, {}, set()
-    for camp, nom in noms_qg.items():
+    for camp, designation in noms_qg.items():
+        # Accepter un nom unique ou plusieurs déclarations : plusieurs QG
+        # distincts annulent tous les effets territoriaux de ce camp.
+        if isinstance(designation, str):
+            noms = [designation]
+        elif isinstance(designation, (list, tuple)):
+            noms = designation
+        else:
+            raise ValueError('Désignation QG : nom ou liste de noms attendue.')
+        if not noms or any(not isinstance(nom, str) or not nom for nom in noms):
+            raise ValueError('Désignation QG vide ou invalide.')
+        noms_distincts = set(noms)
+        if len(noms_distincts) > 1:
+            rapports.afficher_et_ecrire(
+                f"{territoire.name} : plusieurs QG pour {camp} ; effets globaux annulés."
+            )
+            continue
+        nom = next(iter(noms_distincts))
         candidats = [g for g in tous if g.get('camp') == camp and g['nom'] == nom]
         if len(candidats) != 1:
             raise ValueError(f'QG absent ou ambigu sur {territoire.name} pour {camp}: {nom}')
