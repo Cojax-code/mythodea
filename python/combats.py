@@ -41,6 +41,63 @@ def effets_moral_duel(general_1, general_2):
         _MALUS_MORAL_DUEL.reset(jeton)
 
 
+# Instantané figé pour l'ensemble de la bataille territoriale.
+_EFFETS_TERRITOIRE = ContextVar('mythodea_effets_territoire', default={})
+_DUEL_IDENTITES = ContextVar('mythodea_duel_identites', default=None)
+
+
+def _effets_transmis(general, ennemi=False):
+    contexte = _EFFETS_TERRITOIRE.get()
+    if not general or not contexte:
+        return {}
+    identite = (general['joueur'], general['nom'])
+    return contexte.get('malus' if ennemi else 'allies', {}).get(identite, {})
+
+
+def _pourcentage_soutien(type_unite, effet, cible=None, *, adverse=False):
+    identites = _DUEL_IDENTITES.get()
+    if not identites:
+        return 0
+    general = identites[1] if adverse else identites[0]
+    effets = _effets_transmis(general, ennemi=adverse)
+    etiquettes = set(unites.definition(type_unite)['etiquettes'])
+    return sum((valeur for (nom_effet, nom_cible), valeur in effets.items()
+                if nom_effet == effet and (nom_cible is None or nom_cible in etiquettes)), 0)
+
+
+@contextmanager
+def _contexte_qg_territorial(territoire, configuration):
+    """QG explicitement désignés par camp dans configurations_terrain[territoire]['qg'].
+
+    Aucun QG n'est inféré à partir de la seule présence d'un général.
+    """
+    import commandement
+    config_terrain = configuration.get('configurations_terrain', {}).get(territoire.name, {})
+    noms_qg = config_terrain.get('qg', {})
+    forces = generaux.lire_forces_territoire(territoire, configuration)
+    tous = [general for places in forces.values() for general in places.values() if general]
+    allies, malus = {}, {}
+    for camp, nom in noms_qg.items():
+        candidats = [g for g in tous if g.get('camp') == camp and g['nom'] == nom]
+        if len(candidats) != 1:
+            raise ValueError(f'QG absent ou ambigu sur {territoire.name} pour {camp}: {nom}')
+        qg = candidats[0]
+        instantane = commandement.instantane_qg_territorial(qg, tous)
+        if instantane is None:
+            raise ValueError('QG sans caractéristiques officielles.')
+        allies.update(commandement.repartir_effets_qg(instantane, tous))
+        # Cibles ennemies : un malus de QG ne se divise pas entre les cibles.
+        for identite, effets in commandement.repartir_malus_qg(instantane, tous).items():
+            courant = malus.setdefault(identite, {})
+            for cle, valeur in effets.items():
+                courant[cle] = courant.get(cle, 0) + valeur
+    jeton = _EFFETS_TERRITOIRE.set({'allies': allies, 'malus': malus})
+    try:
+        yield
+    finally:
+        _EFFETS_TERRITOIRE.reset(jeton)
+
+
 def adversaire_du_duel(armee, joueur):
     """Le duel fournit ses deux participants, indépendamment de leurs noms."""
     if len(armee) != 2 or joueur not in armee:
@@ -56,8 +113,12 @@ def camps_du_combat(configuration):
 
 
 def combat_entre_generaux(general_1, general_2):
-    with unites.duel(general_1, general_2), effets_moral_duel(general_1, general_2):
-        resultat = _combat_entre_generaux(general_1, general_2)
+    jeton = _DUEL_IDENTITES.set((general_1, general_2))
+    try:
+        with unites.duel(general_1, general_2), effets_moral_duel(general_1, general_2):
+            resultat = _combat_entre_generaux(general_1, general_2)
+    finally:
+        _DUEL_IDENTITES.reset(jeton)
     for numero, general in enumerate((general_1, general_2), 1):
         generaux.supprimer_general_si_vide(general)
         resultat[f'final_{numero}'] = generaux.total_general_depuis_chemin(general['chemin'])
@@ -388,7 +449,7 @@ def resoudre_combat_range(
     return promus
 
 
-def resoudre_affrontement_actif(
+def _resoudre_affrontement_actif_interne(
     territory,
     mode_combat,
     configuration=None
@@ -622,6 +683,13 @@ def resoudre_affrontement_actif(
         f"sur {territory.name}. "
         f"Controle actuel : {controle}"
     )
+
+
+def resoudre_affrontement_actif(territory, mode_combat, configuration=None):
+    if configuration is None:
+        configuration = config.configuration_mode('classique')
+    with _contexte_qg_territorial(territory, configuration):
+        return _resoudre_affrontement_actif_interne(territory, mode_combat, configuration)
 
 
 def resoudre_combat_v15(territory, configuration=None):
