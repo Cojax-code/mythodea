@@ -56,7 +56,7 @@ UNITES.update({
              recette=('sceau du roi', 'enveloppe', 'monocle'), valeur_combat=0,
              etiquettes=('soutien', 'humain', 'non_combattant', 'a_pied'),
              forces=(), faiblesses=(), effets=('bonus_pc_qg',), natures=('stratege',),
-             blessures=0, soins=None),
+             blessures=0, soins=None, places=5),
     11: dict(nom='zombie', prefixe='zombi', recette=(), valeur_combat=5,
              etiquettes=('mort_vivant', 'propagation', 'mauvais_nageur', 'infatigable'),
              forces=(), faiblesses=('tout',), effets=(), natures=None, blessures=0, soins=None),
