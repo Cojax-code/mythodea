@@ -70,6 +70,9 @@ def _desactiver_qg_detruit(general):
     if camp in contexte.get('qg_detruits', set()):
         return
     contexte['qg_detruits'].add(camp)
+    # Un QG éliminé n'est plus une source active d'effets globaux.
+    # La liste initiale ne sera jamais relue : aucune relève automatique.
+    contexte['qg'].discard(identite)
     rapports.afficher_et_ecrire(
         f"QG {general['joueur']}/{general['nom']} éliminé : "
         f"soutien global du camp {camp} désactivé jusqu'à la fin de la bataille."
