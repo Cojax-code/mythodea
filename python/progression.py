@@ -180,7 +180,18 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
             resultat.setdefault('etiquettes', {})[choix] = 1
             permanentes.append(choix)
             return resultat, ('etiquette_permanente', choix)
-        return resultat, None
+        # Catalogue d'étiquettes épuisé : attribuer une unité encore
+        # disponible ou des PC. Les PC restent la récompense sans plafond.
+        eligibles_palier = evolutions_eligibles(resultat, catalogue, apprentissage=False)
+        unites_palier = [identifiant for identifiant, evolution in eligibles_palier.items()
+                        if evolution['categorie'] == 'unite']
+        if unites_palier:
+            choix = unites_palier[aleatoire.randint(0, len(unites_palier) - 1)]
+            resultat['evolutions_acquises'].append(choix)
+            return resultat, choix
+        gain = aleatoire.randint(5, 10)
+        resultat['points_commandement'] += gain
+        return resultat, ('maitrise_commandement', gain)
 
     # Une évolution mémorisée à l'École remplace la roulette du prochain
     # niveau ordinaire ; elle reste en attente lors d'un palier de cinq.
