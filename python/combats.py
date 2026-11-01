@@ -33,10 +33,16 @@ def effets_moral_duel(general_1, general_2):
     fiche_2 = progression.caracteristiques_general(general_2)
     cle_1 = (general_1['joueur'], general_1['nom'])
     cle_2 = (general_2['joueur'], general_2['nom'])
-    globaux = _EFFETS_TERRITOIRE.get().get('malus', {})
+    contexte = _EFFETS_TERRITOIRE.get()
+    globaux = contexte.get('malus', {})
+    qgs = contexte.get('qg', set())
+    # Les malus du QG sont déjà transmis globalement : ne pas les doubler
+    # lorsqu'il participe lui-même au duel.
     jeton = _MALUS_MORAL_DUEL.set({
-        cle_1: malus_cruelle(fiche_2, general_1) + globaux.get(cle_1, {}).get(('malus_moral_adverse', None), 0),
-        cle_2: malus_cruelle(fiche_1, general_2) + globaux.get(cle_2, {}).get(('malus_moral_adverse', None), 0),
+        cle_1: (0 if cle_2 in qgs else malus_cruelle(fiche_2, general_1))
+               + globaux.get(cle_1, {}).get(('malus_moral_adverse', None), 0),
+        cle_2: (0 if cle_1 in qgs else malus_cruelle(fiche_1, general_2))
+               + globaux.get(cle_2, {}).get(('malus_moral_adverse', None), 0),
     })
     try:
         yield
@@ -79,12 +85,13 @@ def _contexte_qg_territorial(territoire, configuration):
     noms_qg = config_terrain.get('qg', {})
     forces = generaux.lire_forces_territoire(territoire, configuration)
     tous = [general for places in forces.values() for general in places.values() if general]
-    allies, malus = {}, {}
+    allies, malus, qg_identites = {}, {}, set()
     for camp, nom in noms_qg.items():
         candidats = [g for g in tous if g.get('camp') == camp and g['nom'] == nom]
         if len(candidats) != 1:
             raise ValueError(f'QG absent ou ambigu sur {territoire.name} pour {camp}: {nom}')
         qg = candidats[0]
+        qg_identites.add((qg['joueur'], qg['nom']))
         instantane = commandement.instantane_qg_territorial(qg, tous)
         if instantane is None:
             raise ValueError('QG sans caractéristiques officielles.')
@@ -94,7 +101,7 @@ def _contexte_qg_territorial(territoire, configuration):
             courant = malus.setdefault(identite, {})
             for cle, valeur in effets.items():
                 courant[cle] = courant.get(cle, 0) + valeur
-    jeton = _EFFETS_TERRITOIRE.set({'allies': allies, 'malus': malus})
+    jeton = _EFFETS_TERRITOIRE.set({'allies': allies, 'malus': malus, 'qg': qg_identites})
     try:
         yield
     finally:
@@ -790,6 +797,9 @@ def _malus_chaman_duel(fiche_adverse, type_unite, position):
     personnel = effets.get(('malus_valeur_adverse', 'orc'), Fraction(0))
     identites = _DUEL_IDENTITES.get()
     if identites:
+        adversaire = identites[1 - position]
+        if (adversaire['joueur'], adversaire['nom']) in _EFFETS_TERRITOIRE.get().get('qg', set()):
+            personnel = Fraction(0)
         identite = (identites[position]['joueur'], identites[position]['nom'])
         personnel += _EFFETS_TERRITOIRE.get().get('malus', {}).get(
             identite, {}).get(('malus_valeur_adverse', 'orc'), 0)
