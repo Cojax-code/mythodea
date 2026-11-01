@@ -113,6 +113,39 @@ def pc_qg_sur_territoire(qg, generaux_presents):
     return pc_qg_globaux(qg_fiche, fiches, messager)
 
 
+def instantane_qg_territorial(qg, generaux_presents):
+    """Fige les PC et effets globaux du QG avant les duels du territoire.
+
+    L'appelant fournit le QG officiel et uniquement les généraux présents
+    sur le même territoire. Aucune désignation implicite et aucune écriture
+    dans les caractéristiques permanentes ne sont effectuées.
+    """
+    if qg is None:
+        return None
+    identite_qg = (qg['joueur'], qg['nom'])
+    allies = [g for g in generaux_presents if g is not None
+              and g.get('camp') == qg['camp']]
+    if not any((g['joueur'], g['nom']) == identite_qg for g in allies):
+        return None
+    fiche_qg = progression.caracteristiques_general(qg)
+    if fiche_qg is None:
+        return None
+    pc_initial = fiche_qg['points_commandement']
+    pc_global = pc_qg_sur_territoire(qg, allies)
+    fiche_globale = dict(fiche_qg, points_commandement=pc_global)
+    effets = effets_etiquettes_general(
+        fiche_globale, set(catalogues.ETIQUETTES_COMBAT),
+        portee='global')
+    return {
+        'qg': identite_qg,
+        'camp': qg['camp'],
+        'pc_initial': pc_initial,
+        'bonus_messager': pc_global - pc_initial,
+        'pc_global': pc_global,
+        'effets_globaux': dict(effets),
+    }
+
+
 def bonus_etiquettes(pc, coefficients):
     """Somme des bonus en points de pourcentage ; pas de produit en cascade.
 
