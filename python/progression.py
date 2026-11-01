@@ -122,6 +122,8 @@ def apprendre_etiquette(fiche, identifiant):
         niveaux[identifiant] = actuel + 1
     else:
         limite = 3 if orientation_principale(resultat) == 'stratege' else 1
+        if orientation_principale(resultat) == 'instinctif' and resultat['niveau'] < 5:
+            raise ValueError('L’instinctif obtient sa première étiquette au niveau 5.')
         if len(niveaux) >= limite:
             raise ValueError('Nombre maximal d’étiquettes atteint pour cette nature.')
         if len(niveaux) - len(resultat.get('etiquettes_permanentes', [])) >= emplacements_etiquettes(resultat['niveau']):
@@ -214,7 +216,11 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
         poids = {categorie: chance for categorie, chance in poids.items()
                  if any(e['categorie'] == categorie for e in eligibles.values())}
         if not poids:
-            return resultat, None
+            # Quand le moral est plafonné et toutes les unités acquises,
+            # les PC restent la dernière récompense répétable.
+            gain = aleatoire.randint(5, 10)
+            resultat['points_commandement'] += gain
+            return resultat, ('maitrise_commandement', gain)
         categorie = tirer_pondere(poids, aleatoire)
         candidats = [i for i, e in eligibles.items() if e['categorie'] == categorie]
         if len(candidats) == 1:
