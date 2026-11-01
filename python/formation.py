@@ -128,14 +128,21 @@ def commencer_sejour(tour, general, lieu, camp, preuve_presence,
         action = 'formation'
     if lieu == 'ecole_officiers':
         caracteristiques = progression.caracteristiques_general(general)
-        if bool(ecrire.strip()) == bool(lire.strip()):
-            if not ecrire.strip() and caracteristiques and 106 in caracteristiques['evolutions_acquises']:
+        # Si les deux demandes sont présentes, seule la lecture est traitée.
+        # L'écriture reste ignorée pendant ce séjour (pas de deuxième action).
+        if not ecrire.strip() and not lire.strip():
+            if caracteristiques and 106 in caracteristiques['evolutions_acquises']:
                 action = 'chevalier'
             else:
-                raise ValueError('Une seule demande de lecture ou écriture est nécessaire.')
+                raise ValueError('Demande de lecture ou écriture nécessaire.')
         if caracteristiques is None:
             raise ValueError('Caractéristiques officielles du général absentes.')
-        if ecrire.strip():
+        if lire.strip():
+            emplacement = demande_lecture(lire)
+            if lire.split()[0].lower() == 'a':
+                evolution = int(lire.split()[2])
+            action = 'lecture'
+        elif ecrire.strip():
             emplacement, evolution = demande_ecriture(ecrire)
             if evolution in catalogues.ETIQUETTES_ECOLE:
                 # Un manuel d'étiquette peut être rédigé par un officier présent
@@ -146,11 +153,6 @@ def commencer_sejour(tour, general, lieu, camp, preuve_presence,
             elif evolution not in caracteristiques['evolutions_acquises']:
                 raise ValueError('Le général ne possède pas cette évolution.')
             action = 'ecriture'
-        elif lire.strip():
-            emplacement = demande_lecture(lire)
-            if lire.split()[0].lower() == 'a':
-                evolution = int(lire.split()[2])
-            action = 'lecture'
     donnees['sejours'][cle] = dict(tour=tour, identite=identite, lieu=lieu, camp=camp,
         preuve=list(preuve_presence), action=action, emplacement=emplacement,
         evolution=evolution, unites={i: list(preuve) for i, preuve in (unites or {}).items()},
