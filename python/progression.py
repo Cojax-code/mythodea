@@ -182,33 +182,44 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
             return resultat, ('etiquette_permanente', choix)
         return resultat, None
 
-    eligibles = evolutions_eligibles(resultat, catalogue, apprentissage=False)
-    # Les catégories de statistiques restent dans la roulette uniquement si
-    # leur récompense est utilisable ; une unité déjà acquise ne revient pas.
-    poids = RECOMPENSES[orientation][resultat['trait_inne']]
-    poids = {categorie: chance for categorie, chance in poids.items()
-             if any(e['categorie'] == categorie for e in eligibles.values())}
-    if not poids:
-        return resultat, None
-    categorie = tirer_pondere(poids, aleatoire)
-    candidats = [i for i, e in eligibles.items() if e['categorie'] == categorie]
-    if len(candidats) == 1:
-        identifiant = candidats[0]
-    elif choisir_evolution is not None:
-        identifiant = choisir_evolution(tuple(candidats), aleatoire)
-        if identifiant not in candidats:
-            raise ValueError('Évolution sélectionnée hors catalogue éligible.')
+    # Une évolution mémorisée à l'École remplace la roulette du prochain
+    # niveau ordinaire ; elle reste en attente lors d'un palier de cinq.
+    manuel = resultat.get('evolution_apprise')
+    eligibles = evolutions_eligibles(
+        resultat, catalogue, apprentissage=manuel is not None)
+    if manuel is not None:
+        if manuel not in eligibles:
+            raise ValueError('Évolution mémorisée désormais incompatible.')
+        identifiant = manuel
+        categorie = eligibles[manuel]['categorie']
     else:
-        identifiant = candidats[aleatoire.randint(0, len(candidats) - 1)]
+        # Les poids sont normalisés sur les récompenses encore accessibles.
+        poids = RECOMPENSES[orientation][resultat['trait_inne']]
+        poids = {categorie: chance for categorie, chance in poids.items()
+                 if any(e['categorie'] == categorie for e in eligibles.values())}
+        if not poids:
+            return resultat, None
+        categorie = tirer_pondere(poids, aleatoire)
+        candidats = [i for i, e in eligibles.items() if e['categorie'] == categorie]
+        if len(candidats) == 1:
+            identifiant = candidats[0]
+        elif choisir_evolution is not None:
+            identifiant = choisir_evolution(tuple(candidats), aleatoire)
+            if identifiant not in candidats:
+                raise ValueError('Évolution sélectionnée hors catalogue éligible.')
+        else:
+            identifiant = candidats[aleatoire.randint(0, len(candidats) - 1)]
     if categorie in ('commandement', 'moral'):
         nom, gain = recompense_statistique(orientation, aleatoire)
         if categorie == 'commandement':
             resultat['points_commandement'] += gain
         else:
             resultat['moral'] = min(100, resultat['moral'] + gain)
+        resultat['evolution_apprise'] = None
         return resultat, (nom, gain)
     if identifiant not in resultat['evolutions_acquises']:
         resultat['evolutions_acquises'].append(identifiant)
+    resultat['evolution_apprise'] = None
     return resultat, identifiant
 
 
