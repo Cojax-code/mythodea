@@ -185,7 +185,11 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
         eligibles_palier = evolutions_eligibles(resultat, catalogue, apprentissage=False)
         unites_palier = [identifiant for identifiant, evolution in eligibles_palier.items()
                         if evolution['categorie'] == 'unite']
+        poids_trait = RECOMPENSES[orientation][resultat['trait_inne']]
+        poids = {'pc': poids_trait.get('commandement', poids_trait.get('moral', 1))}
         if unites_palier:
+            poids['unite'] = poids_trait.get('unite', 1)
+        if tirer_pondere(poids, aleatoire) == 'unite':
             choix = unites_palier[aleatoire.randint(0, len(unites_palier) - 1)]
             resultat['evolutions_acquises'].append(choix)
             return resultat, choix
