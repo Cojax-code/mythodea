@@ -133,9 +133,11 @@ def instantane_qg_territorial(qg, generaux_presents):
     pc_initial = fiche_qg['points_commandement']
     pc_global = pc_qg_sur_territoire(qg, allies)
     fiche_globale = dict(fiche_qg, points_commandement=pc_global)
+    # Les étiquettes du QG servent simultanément de bonus personnel au QG
+    # et de soutien transmis aux alliés : pas de multiplication sur le QG.
     effets = effets_etiquettes_general(
         fiche_globale, set(catalogues.ETIQUETTES_COMBAT),
-        portee='global')
+        portee='duel')
     return {
         'qg': identite_qg,
         'camp': qg['camp'],
