@@ -297,8 +297,11 @@ def selection_etiquettes(fiche, chemin_general):
     etiquettes_actives.txt : noms d'étiquettes connus, séparés par lignes ou
     virgules. En son absence, les anciennes fiches restent compatibles.
     """
+    import os
     import stat
     selection = chemin_general / 'etiquettes_actives.txt'
+    if any(parent.is_symlink() for parent in selection.parents):
+        raise ValueError('Sélection sous un dossier lié interdite.')
     resultat = deepcopy(fiche)
     connues = resultat.get('etiquettes', {})
     orientation = orientation_principale(resultat)
@@ -312,11 +315,23 @@ def selection_etiquettes(fiche, chemin_general):
     except FileNotFoundError:
         actives = list(connues)[:maximum]
     else:
-        if any(parent.is_symlink() for parent in selection.parents):
-            raise ValueError('Sélection sous un dossier lié interdite.')
         if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
             raise ValueError('Sélection d’étiquettes liée ou non ordinaire interdite.')
-        contenu = selection.read_text(encoding='utf-8')
+        # Contrôler l'objet ouvert, pas seulement le chemin inspecté avant lui.
+        # NONBLOCK empêche un remplacement par FIFO de bloquer le moteur.
+        flags = os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0)
+        fd = os.open(selection, flags)
+        with os.fdopen(fd, 'r', encoding='utf-8') as fichier:
+            ouverte = os.fstat(fichier.fileno())
+            if (not stat.S_ISREG(ouverte.st_mode) or ouverte.st_nlink != 1
+                    or (ouverte.st_dev, ouverte.st_ino) != (info.st_dev, info.st_ino)):
+                raise ValueError('Sélection remplacée ou liée pendant la lecture.')
+            contenu = fichier.read()
+            finale = os.fstat(fichier.fileno())
+            if (finale.st_nlink != 1 or
+                    (finale.st_size, finale.st_mtime_ns, finale.st_ctime_ns) !=
+                    (ouverte.st_size, ouverte.st_mtime_ns, ouverte.st_ctime_ns)):
+                raise ValueError('Sélection modifiée pendant la lecture.')
         actives = [nom.strip() for nom in contenu.replace(',', '\n').splitlines()
                    if nom.strip()]
         if len(actives) != len(set(actives)):

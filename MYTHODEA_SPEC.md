@@ -1,7 +1,10 @@
-# Mythodea V1.5 — Spécification de référence
+# Mythodea v2.0 — Spécification de référence
 
 Ce document décrit **l'état actuel utile de Mythodea** : règles, formats persistants,
 architecture et invariants. Il ne sert pas de journal de modifications.
+
+Les règles détaillées de progression, d'étiquettes et de QG sont définies dans
+[REGLES_V2.md](REGLES_V2.md), commun aux modes classique et Survie.
 
 Pour toute modification du moteur :
 
@@ -92,7 +95,7 @@ Responsabilités :
 | `minuterie.py` | validation de la durée et attente jusqu'à une échéance, sans logique métier |
 | `catalogues.py` | identifiants permanents, types d'unités, recettes, ordres et évolutions |
 | `progression.py` | caractéristiques officielles, tirages pondérés et montée de niveau configurable |
-| `commandement.py` | calculs entiers, sélection des QG et donneurs d'ordres, sans effets tactiques supplémentaires |
+| `commandement.py` | effets fractionnaires des étiquettes, instantané QG/Messager et répartition du soutien territorial |
 | `soldats.py` | identité individuelle, blessures, sauvetages et batailles survécues |
 | `formation.py` | formation en réserve, hôpital, École et Forge, séjours, mémoires et transformations |
 | `cycle_linux.py` | gel Linux, capture privée, publication de générations et permissions des phases Survie |
@@ -331,16 +334,21 @@ general1/
 ├── droite/
 ├── gauche/
 ├── arriere/
-├── fiche.txt
-└── ordre.txt
+└── fiche.txt
 ```
 
 Limites actuelles :
 
 ```text
-20 unités maximum par général
+20 places de base par général
 5 créations normales maximum par joueur
 ```
+
+Les unités spéciales peuvent occuper plusieurs places. Les généraux zombies
+gagnent deux places par niveau après transformation (section 22).
+Les choix optionnels `etiquettes_actives.txt` et `QG.txt`/`qg.txt` sont décrits en
+section 22 ; `ordre_surnombre.txt` est propre au mode Survie. Un ancien
+`ordre.txt` peut subsister mais n'est plus un ordre actif.
 
 Noms valides :
 
@@ -866,8 +874,9 @@ Un type avantagé utilise actuellement un multiplicateur `x2`, sinon `x1`.
 ### Valeurs individuelles, puissances et pertes
 
 Chaque définition de `catalogues.UNITES` possède `valeur_combat`, un entier
-strictement positif. Les booléens, flottants, chaînes, valeurs nulles ou négatives
-sont refusés. Les quatre types actuels ont une valeur de 5 : archer, piquier,
+strictement positif, sauf les non-combattants comme le Messager, autorisés à zéro.
+Les booléens, flottants, chaînes et valeurs négatives sont refusés.
+Les quatre types historiques ont une valeur de 5 : archer, piquier,
 cavalier et cavalerie lourde. Ce champ est indépendant de `fabrication`, et
 n'est jamais lu dans les fichiers modifiables du général ou des soldats.
 
@@ -879,8 +888,8 @@ nulle et un affrontement avec un bloc vide ne produit aucune perte.
 La valeur effective individuelle est calculée ainsi :
 
 ```text
-vA = valeur_combat_A * formation_A * avantage_A * fatigue_A
-vB = valeur_combat_B * formation_B * avantage_B * fatigue_B
+vA = valeur_contextuelle_A * formation_A * avantage_A * fatigue_A * etiquettes_A
+vB = valeur_contextuelle_B * formation_B * avantage_B * fatigue_B * etiquettes_B
 puissance_A = effectif_A * vA
 puissance_B = effectif_B * vB
 pertes_A = min(effectif_A, puissance_B // vA)
@@ -888,6 +897,13 @@ pertes_B = min(effectif_B, puissance_A // vB)
 survivants_A = effectif_A - pertes_A
 survivants_B = effectif_B - pertes_B
 ```
+
+La valeur contextuelle inclut l'éventuelle valeur propre au bloc Avant du catalogue.
+Le facteur `etiquettes` additionne les pourcentages personnels et globaux compatibles,
+avec les malus adverses, selon `REGLES_V2.md`. Les calculs intermédiaires restent
+des `Fraction` ; aucun arrondi supplémentaire n'est appliqué. Le Messager ne cause
+aucune perte et le Bouclier vivant conserve sa résolution spéciale documentée dans
+`SURVIE_SPEC.md`.
 
 `formation` vaut 2 uniquement pour la cavalerie lourde dans Avant avec au moins
 15 survivants, sinon 1. `avantage` garde le triangle et les interactions lourdes
@@ -992,7 +1008,7 @@ Utilisé lorsqu'un territoire sans défenseur propriétaire établi devient cont
 Utilisé lorsqu'un joueur possédait déjà le territoire et que l'adversaire y entre.
 La distinction est conservée pour de futurs effets défensifs.
 
-### Ordre frontal `1-2`
+### Engagement frontal
 
 Lorsque l'attaque frontale est déclenchée, les emplacements correspondants
 s'affrontent d'abord :
@@ -1005,6 +1021,10 @@ s'affrontent d'abord :
 ```
 
 Les survivants passent ensuite au **COMBAT RANGÉ**.
+
+L'ancien ordre joueur `1-2` est retiré en v2.0. Le point d'entrée frontal conservé
+dans le moteur ne lit plus cet ordre. Aucun nouveau terrain ni effet de v2.1
+n'est défini ici.
 
 ### Combat rangé
 
@@ -1031,35 +1051,15 @@ Limite de sécurité actuelle :
 
 ## 14. Ordres des généraux
 
-Format de `ordre.txt` :
+Les anciens ordres joueur de `ordre.txt` sont retirés en v2.0 ; leurs IDs 1001 à
+1005 restent réservés et ne sont jamais réutilisés. Les anciens fichiers ne
+confèrent aucun effet ni récompense. Leur texte privé n'est pas publié.
+Une mémoire d'ordre retiré encore en attente nécessite une décision de migration,
+sans remplacement automatique par une autre récompense.
 
-```text
-type-numero
-```
-
-ou :
-
-```text
-type-numero-specification
-```
-
-Ordres enregistrés :
-
-| ID | Nom interne | Catégorie | État V1.5 |
-| --- | --- | --- | --- |
-| `1-1` | `retraite_apres_premiere_manche` | armée | réservé à une version ultérieure |
-| `1-2` | `attaque_frontale` | armée | implémenté |
-| `2-1` | `attaque_chirurgicale` | formation | réservé à une version ultérieure |
-| `2-2` | `pluie_de_fleches` | formation | réservé à une version ultérieure |
-| `3-1` | `fuir_avant_la_mort` | intrinsèque | réservé à une version ultérieure |
-
-Un ordre inconnu, mal écrit ou non applicable est ignoré.
-Son texte personnel n'est pas recopié dans les rapports, y compris dans les
-diagnostics d'erreur. Les effets observables d'un combat restent rapportés.
-
-La V1.5 n'a pas pour objectif de finaliser tout le système d'ordres. Les règles
-détaillées des ordres supplémentaires seront définies plus tard à partir de
-l'expérience de jeu et d'un document de design validé. Ne pas les inventer.
+`ordre_surnombre.txt` reste indépendant et conserve ses choix de retraite ou de
+poursuite définis dans `SURVIE_SPEC.md`. Les modes OFF/OFF et OFF/DEF restent
+disponibles avec le même moteur de combat. Aucun nouvel ordre n'est ajouté.
 
 ---
 
@@ -1548,15 +1548,12 @@ ne changent pas. Les étiquettes
 multiples ne créent pas de types supplémentaires. Les emplacements de futures
 règles de terrain, positionnement ou restrictions ne produisent aucun effet.
 
-Les évolutions 201 et 202 désignent respectivement une récompense de commandement
-et de moral, dont le gain dépend du niveau. Les IDs 1001 à 1005 correspondent aux
-jetons historiques `1-1`, `1-2`, `2-1`, `2-2`, `3-1` ; `ordre.txt` garde son format.
-Les catégories préparées sont globale (armée), duel (formation) et individuelle
-(intrinsèque). La technologie de Forge 104 est disponible comme évolution d'unité
-pour l'orientation instinctive ; elle autorise une transformation, sans créer de
-soldats. Les unités ordinaires gardent leurs accès existants. Les autres déblocages
-d'unités et d'ordres restent réservés, sauf l'attaque frontale existante 1002,
-également disponible comme évolution d'ordre. Aucun nouvel effet de combat n'est ajouté.
+Les évolutions 201 et 202 désignent respectivement le gain de +5 à +10 PC et de
++2 à +4 moral. Les unités déblocables portent les IDs 104 à 110 ; la technologie
+de Forge 104 autorise une transformation, sans création de soldat. Les IDs
+d'ordres 1001 à 1005 sont retirés et restent réservés. Les étiquettes scolaires
+portent les IDs 2001 à 2012. Le catalogue complet et les règles d'accès sont
+définis dans `catalogues.py` et `REGLES_V2.md`.
 
 ### Caractéristiques et niveaux des généraux
 
@@ -1579,29 +1576,24 @@ est une valeur vide. Les anciens champs sont conservés. L'autorité est
 `.systeme/progression.json`, indexée par `joueur:generalN`. Modifier la fiche
 possédée par le joueur ne change pas les caractéristiques officielles.
 
-| Nature / trait | Commandement ou moral | Ordre | Unité |
-| --- | --- | --- | --- |
-| Stratège charismatique | 60 % commandement | 30 % | 10 % |
-| Stratège leader | 20 % commandement | 70 % | 10 % |
-| Stratège inventeur | 20 % commandement | 20 % | 60 % |
-| Instinctif charismatique | 60 % moral | 15 % | 25 % |
-| Instinctif leader | 20 % moral | 60 % | 20 % |
-| Instinctif inventeur | 20 % moral | 10 % | 70 % |
+Un stratège commence avec 11 à 20 PC et une étiquette permanente de rang 1.
+Il gagne naturellement +2 à +4 PC par niveau. Un instinctif commence à 0 PC
+et gagne +1 moral aux niveaux pairs. Tous commencent à 0 moral, plafonné à 100.
+Les paliers d'étiquettes permanentes sont N5/N10 pour le stratège et N5 pour
+l'instinctif, dans les plafonds totaux respectifs de trois et une étiquette.
+Les hybrides suivent leur orientation principale.
 
-Les récompenses indisponibles, incompatibles ou entièrement acquises sont exclues.
-Les poids restants sont redistribués proportionnellement par un tirage entier.
-Avec le catalogue actuel, un stratège reçoit du commandement ou l'ordre 1002
-encore non acquis ; un instinctif peut
-recevoir du moral jusqu'au plafond ou la technologie 104 encore non acquise.
-Si aucun choix n'est possible, la montée
-n'accorde pas de récompense. Plusieurs évolutions dans une catégorie
-nécessitent une règle de choix fournie par l'appelant.
+Les autres niveaux utilisent la roulette sans ordres de `REGLES_V2.md` : les
+poids sont normalisés entre les catégories encore accessibles. Le moral plafonné
+et les unités déjà acquises sont exclus. Si ces catégories sont épuisées, le gain
+de +5 à +10 PC reste le dernier recours répétable.
 
-Un stratège commence avec 11 à 20 points. Une récompense au niveau `n` utilise
-`tranche = 10 * (n // 5 + 1)` puis ajoute `tranche + randint(1, tranche)`.
-Un instinctif commence avec un moral nul ; une récompense au niveau `n` ajoute
-`1 + randint(0, n)`, plafonné à 100. Ces gains dépendent de la récompense obtenue,
-jamais du seul passage de niveau.
+Après zombification, chaque niveau ajoute deux places à la capacité de base de
+20 et donne un tirage de 20 % pour apprendre `mort_vivant` au rang 1 tant qu'elle
+est inconnue. Aucun gain naturel ni récompense ordinaire n'est attribué. Les
+anciennes étiquettes sont conservées ; l'acquisition spéciale dispose d'un
+emplacement actif supplémentaire. `etat_zombie` et `niveaux_zombie` restent
+dans le profil officiel ; une sélection joueur ne modifie jamais la capacité.
 
 À l'École, les hybrides peuvent mémoriser une évolution disponible de l'autre
 orientation. Une mémoire 201 ou 202 donne le même gain au prochain niveau,
@@ -1625,7 +1617,8 @@ Les deux jauges indépendantes commencent à zéro :
 
 Le pilote traite les formations avant les combats, dans un ordre déterministe.
 Chaque niveau réutilise `monter_niveau` et les récompenses ci-dessus ; la mémoire
-apprise remplace le tirage du premier niveau concerné. Les tirages automatiques
+apprise remplace la prochaine roulette applicable et reste conservée aux paliers
+d'étiquettes permanentes. Les tirages automatiques
 utilisent un générateur indépendant de celui des combats.
 
 `valider_evenement` persiste ensemble jauges, niveau, récompense et reçu privé
@@ -1646,36 +1639,40 @@ de leur première validation, sans reconstituer d'expérience antérieure.
 Un ancien général sans profil officiel reste inchangé, avec un moral effectif
 nul ; sa montée de niveau exige une migration explicitement définie.
 
-### Commandement et QG : calculs prêts, raccordement tactique réservé
+### Étiquettes actives, commandement et QG
 
-Le commandement effectif vaut `points // max(1, nombre_types_generiques_distincts)`.
-Le global utilise le calcul entier exact
-`(2 * points_QG + somme_points_autres_strateges) // (2 * max(1, nombre_non_strateges))`.
-Les fonctions reçoivent les caractéristiques officielles. Le QG fourni au calcul
-est l'objet général sélectionné dans la liste de l'armée. Les points ne limitent
-pas le nombre d'ordres ; aucun bonus de messager n'est défini.
+Les rangs appris restent dans `progression.json`. `etiquettes_actives.txt`, dans
+le dossier du général, contient uniquement les noms exacts sélectionnés, séparés
+par lignes ou virgules. Un fichier vide désactive tout ; son absence active les
+étiquettes connues dans la limite applicable. Doublons, noms non appris et
+dépassements des limites trois/un selon l'orientation sont refusés.
 
-`QuartierGeneral` sélectionne une seule fois le stratège ou hybride éligible ayant le meilleur
-commandement pertinent, calcul fourni par le pilote. Une égalité au sommet ne
-sélectionne personne. Le QG n'ajoute aucune troupe. Si son bloc devient vide,
-il reste désactivé pour cette bataille sans relève automatique.
+`combats._contexte_qg_territorial()` ouvre un instantané de sélection via
+`progression.figer_selections_territoriales()` avant les duels. Il couvre choc,
+manœuvre, frontal, rangé et toute la cascade Survie. Un renfort fige son choix à
+son premier engagement ; une lecture de capacité ne le fige pas. La sortie,
+même sur exception, restaure le contexte précédent. La bataille suivante relit
+les choix. L'instantané est transitoire et n'introduit aucun format persistant.
 
-Les fonctions prévoient les ordres globaux du QG actif stratège ; les ordres de
-duel personnels puis ceux du QG à défaut ; les ordres individuels personnels sans
-comparaison normale. Un contre-ordre reste dans sa catégorie et n'est sélectionné
-qu'en situation de comparaison perdue. Aucun effet de contre-ordre n'est inventé.
-Une égalité concurrente n'identifie aucun gagnant ni perdant.
+`QG.txt` ou `qg.txt` désigne le QG, quelle que soit sa nature ; plusieurs QG du
+même camp annulent son soutien. Les PC globaux et les effets des seules étiquettes
+actives sont figés depuis les participants initiaux. Un Messager occupe cinq
+places, ne combat pas, et ajoute une seule fois `somme(PC des autres alliés) // 10`
+aux PC globaux. Réserves, homes, bâtiments et renforts non engagés sont exclus.
+Les renforts ultérieurs reçoivent le soutien existant sans nouveau calcul.
 
-Le stratège hybride garde l'accès natif aux trois catégories. L'instinctif hybride
-ne peut utiliser un ordre global que si son ID figure parmi ses évolutions
-effectivement acquises ; une mémoire encore en attente ne suffit pas. La formule
-globale continue de distinguer les orientations principales ; les points du QG,
-y compris instinctif hybride, sont comptés intégralement.
+Chaque effet vaut `PC × 1/2 × rang` en points de pourcentage. Les bonus et malus
+compatibles s'additionnent ; le niveau du général n'est pas un second multiplicateur.
+Le QG ne reçoit pas sa propre copie globale ; ses effets personnels utilisent
+ses PC personnels. Sa destruction retire définitivement son soutien pour cette
+bataille. Le sort du soutien d'un QG retiré vivant reste une décision ouverte.
+Les détails, notamment `chaman` et `cruelle`, sont dans `REGLES_V2.md`.
 
-Ces fonctions testées ne remplacent pas la résolution historique de `1-2`.
-La matérialisation des QG, le commandement pertinent selon leur contexte, les
-effets concurrents à égalité et la transition des ordres historiques doivent
-être définis avant ce raccordement.
+Les choix de combat exigent des fichiers ordinaires sans liens symboliques ou
+physiques. `cycle_linux.copier()` les contrôle avant copie, pour ne pas effacer
+la preuve du lien. La lecture de sélection contrôle aussi l'inode ouvert et sa
+stabilité ; sous Linux, l'ouverture refuse le suivi d'un lien et ne bloque pas
+sur un FIFO substitué. Le gel et l'isolement privé du cycle Survie restent applicables.
 
 ### Blessures et batailles complètes
 
@@ -1773,19 +1770,24 @@ soigner une nouvelle blessure.
 Les demandes personnelles sont `ecrire_ses_memoires.txt` (`e 001 201`) et
 `lire_les_memoires.txt` (`a 001 201`). Les actions acceptent les majuscules. La
 syntaxe historique `001 201` pour écrire et `001` pour lire reste acceptée.
-Une seule demande non vide est traitée par général. L'écriture nécessite une
-évolution acquise et remplace l'emplacement choisi. Le manuel partagé par camp
+Une lecture non vide prime sur l'écriture, même si cette lecture est invalide.
+L'écriture d'une évolution nécessite son acquisition et remplace l'emplacement
+choisi. Pour les étiquettes scolaires, le contrôle actuel interdit les permanentes
+mais n'exige pas la connaissance préalable ; cette condition reste une décision
+ouverte dans `REGLES_V2.md`. Le manuel partagé par camp
 a exactement `001`, `002`, `003`, avec `vide` pour un emplacement libre.
 
 Toutes les lectures valides du tour précèdent toutes les écritures. La lecture
 vérifie l'emplacement et l'ID demandé, puis mémorise l'ID réel, sans consommer le
 manuel. Une écriture ultérieure ne modifie pas cet apprentissage. L'ID remplace
-le tirage à la prochaine montée compatible ; s'il devient incompatible, la montée
+la roulette à la prochaine montée compatible ; s'il devient incompatible, la montée
 est refusée sans perte d'état. Deux écritures concurrentes au même emplacement
 sont refusées ensemble, sans choisir un gagnant implicite. Le remplacement d'un
 apprentissage encore en attente reste refusé tant que sa règle n'est pas définie.
 Le résultat individuel est écrit dans `formation_resultat.txt`, jamais dans le
-rapport public.
+rapport public. Une lecture d'étiquette l'apprend ou améliore directement son rang
+à la fin du séjour, selon les plafonds de `REGLES_V2.md`, sans remplacer une mémoire
+d'évolution en attente.
 
 `.systeme/formation.json` conserve les manuels par camp, séjours par
 `tour:joueur:generalN`, tours ouverts, relevés de clôture et validations consommées.

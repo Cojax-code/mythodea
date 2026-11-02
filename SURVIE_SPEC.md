@@ -421,7 +421,8 @@ Les détails exacts, récompenses et conditions de déclenchement restent à dé
 
 ## 8. Ordres
 
-La V2.0 ne suppose pas que tous les ordres imaginés soient déjà finalisés.
+Les anciens ordres de `ordre.txt` sont retirés en v2.0, conformément à
+`REGLES_V2.md`. `ordre_surnombre.txt` conserve ses choix de retraite et de poursuite.
 
 Les ordres supplémentaires seront introduits progressivement après observation du
 gameplay réel.
@@ -1690,9 +1691,13 @@ sans plafond supplémentaire. Les résultats individuels restent privés.
 
 Les profils, soldats et séjours suivent le protocole commun des générations ;
 le document partagé est régénéré depuis l'état officiel après publication.
-Les fonctions de commandement et de QG sont communes, mais leur raccordement
-aux effets des ordres attend les règles de matérialisation et de priorité encore
-ouvertes. Les bots conservent leur résolution tactique classique.
+Les étiquettes actives et le soutien du QG utilisent le moteur commun décrit dans
+`REGLES_V2.md`. La sélection est figée au début de toute la bataille territoriale,
+cascades comprises. Un renfort fige son choix au premier engagement et reçoit le
+soutien encore actif, sans recalcul des PC initiaux du QG ou du Messager.
+Les fichiers `etiquettes_actives.txt`, `QG.txt` et `qg.txt` doivent être ordinaires,
+sans lien symbolique ni physique ; la capture les contrôle avant copie.
+Les bots conservent leur résolution tactique commune, sans IA ni ordre spécial.
 
 
 ## Unités zombies — Bouclier vivant et progression (décision du 20 octobre 2026)
@@ -1701,9 +1706,13 @@ Lors de sa mort définitive, un général joueur dispose d'un unique tirage de
 5 % pour réapparaître comme général zombie à la Morgue. Cette transformation
 est permanente ; elle crée un cadavre officiel consommable une fois pour fabriquer
 un Trop gros zombie. La Morgue ouvre dès la première résurrection zombie.
-À la montée de niveau, un général zombie n'obtient aucun ordre ni autre récompense,
-mais sa capacité globale augmente définitivement de deux places par niveau gagné
-**après** la transformation. La capacité initiale demeure 20 places.
+À la montée de niveau, un général zombie n'obtient aucun gain naturel ni récompense
+ordinaire, mais sa capacité globale augmente définitivement de deux places par
+niveau gagné **après** la transformation. La capacité initiale demeure 20 places.
+Tant qu'il ne connaît pas `mort_vivant`, chaque niveau donne aussi un tirage
+indépendant de 20 % pour l'apprendre au rang 1. L'acquisition persiste sans nouveau
+tirage et conserve les étiquettes ordinaires. Elle dispose d'un emplacement actif
+supplémentaire spécial ; les règles de sélection de `REGLES_V2.md` s'appliquent.
 
 Une armée de général zombie ne peut posséder qu'un seul
 `Trop_gros_zombie`. Celui-ci occupe dix places, n'inflige pas de pertes

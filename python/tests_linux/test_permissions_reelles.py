@@ -233,6 +233,48 @@ class PermissionsReelles(unittest.TestCase):
         p.write_text('root travaille')
         self.assertEqual(p.read_text(), 'root travaille')
 
+    def test_selection_joueur_capture_et_publication_permissions_reelles(self):
+        import progression
+        choix = self.general / 'etiquettes_actives.txt'
+        code = ("from pathlib import Path; import sys; p=Path(sys.argv[1]); "
+                "p.write_text(''); p.chmod(0o600)")
+        self.assertEqual(self.en_joueur('j1', code, choix).returncode, 0)
+        self.assertNotEqual(self.en_joueur('j2', code, choix).returncode, 0)
+        profil_avant = progression.charger()['j1:general1']
+        survie.resoudre_tour_survie(self.c, gestion=self.g)
+        self.assertEqual(progression.charger()['j1:general1'], profil_avant)
+        self.assertEqual(choix.read_text(), '')
+        self.assertEqual(choix.stat().st_uid, pwd.getpwnam('j1').pw_uid)
+        self.assertEqual(choix.stat().st_mode & 0o777, 0o400)
+        self.assertNotEqual(self.en_joueur('j1', code, choix).returncode, 0)
+        self.g.permissions_actions()
+        self.assertEqual(choix.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(self.en_joueur('j1', code, choix).returncode, 0)
+
+    def test_selection_liee_ou_speciale_refusee_avant_capture(self):
+        choix = self.general / 'etiquettes_actives.txt'
+        source = self.general / 'notes_test.txt'
+        for genre in ('physique', 'symbolique', 'fifo', 'dossier'):
+            with self.subTest(genre=genre):
+                if genre == 'physique':
+                    os.link(source, choix)
+                elif genre == 'symbolique':
+                    choix.symlink_to(source)
+                elif genre == 'fifo':
+                    os.mkfifo(choix)
+                else:
+                    choix.mkdir()
+                try:
+                    with self.assertRaises(RuntimeError):
+                        self.g.capturer(0)
+                    self.assertFalse(self.g.backend.geles)
+                    self.assertEqual(source.read_text(), '1-2\n')
+                finally:
+                    if genre == 'dossier':
+                        choix.rmdir()
+                    else:
+                        choix.unlink()
+
     def test_fd_ouvert_avant_capture_independant_apres_publication(self):
         ordre = self.general / 'notes_test.txt'
         with ordre.open('r+b') as fd:

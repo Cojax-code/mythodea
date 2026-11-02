@@ -428,6 +428,10 @@ class DefisSurvie(unittest.TestCase):
         self.materialiser()
         chemin = self.recompense()
         adverse = self.general('bot', territoire='est_1', nombre=20)
+        # Ce scénario mesure la formation lourde selon la position des blocs,
+        # sans bonus aléatoire d'étiquette du général récompense.
+        for general in (chemin, adverse):
+            (general / 'etiquettes_actives.txt').write_text('', encoding='utf-8')
         g1 = {'joueur': 'j1', 'nom': chemin.name, 'chemin': chemin,
               'fiche': self.generaux.lire_fiche_general(chemin)}
         g2 = {'joueur': 'bot', 'nom': adverse.name, 'chemin': adverse,

@@ -13,6 +13,30 @@ sudo python3 -B -m unittest discover -s python/tests_linux -v
 python3 -B -m unittest discover -s .dev/tests -v
 ```
 
+Pour cibler les sélections actives, les QG/Messagers et la progression zombie :
+
+```bash
+python3 -B -m unittest discover -s .dev/tests -p 'test_etiquettes_actives.py' -v
+python3 -B -m unittest discover -s .dev/tests -p 'test_stabilisation_finale.py' -v
+```
+
+La suite Linux comprend la création de `etiquettes_actives.txt` par son propriétaire,
+le refus d'accès adverse, la capture/publication et les droits de consultation/actions.
+Elle vérifie aussi le rejet des symlinks, hardlinks, FIFO et dossiers avant capture.
+La suite de développement couvre les remplacements entre contrôle et ouverture.
+Le test de scanner ignoré lorsque la suite de développement tourne sans root peut
+être exécuté séparément sur le même environnement isolé :
+
+```bash
+sudo env PYTHONPATH=.dev/tests python3 -B -m unittest \
+  test_crypte_scanner.ScannerCrypte.test_17_script_administrateur_non_modifiable -v
+```
+
+Sur Raspberry Pi, exécuter ces commandes dans une installation de test dédiée
+sans comptes j1/j2 préexistants. Les essais SSH, montage `/game`, partition distincte
+et confinement réel des sessions décrits plus bas restent à effectuer sur la cible ;
+les résultats WSL ne les remplacent pas.
+
 La suite simulée `test_entrainement_rappel_survie.py` couvre l'attribution avant
 ACTIONS, l'idempotence, les compteurs après destruction, l'entraînement limité
 au home/réserve, les renommages et finalisations, le délai d'un tour, le rappel

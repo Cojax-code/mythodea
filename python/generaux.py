@@ -828,9 +828,10 @@ def verifier_limite_unites_general(chemin_general):
     import progression
     # Le nom du propriétaire se trouve dans le chemin, y compris à la Morgue.
     joueurs = [j for j in config.joueurs if j in chemin_general.parts]
-    fiche = (progression.caracteristiques_general(
-        {'joueur': joueurs[0], 'nom': chemin_general.name}) if len(joueurs) == 1
-        else None)
+    # La capacité dépend du profil privé, pas des choix de combat. Un simple
+    # inventaire ne doit pas figer la sélection d'un futur renfort.
+    fiche = (progression.charger().get(f'{joueurs[0]}:{chemin_general.name}')
+             if len(joueurs) == 1 else None)
     limite = progression.capacite_maximale(fiche)
     if total <= limite:
         return

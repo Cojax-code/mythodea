@@ -55,11 +55,11 @@ def copier(source, destination, verifier=lambda: None, exclure=(), exercices=())
     sans_liens(source)
     sans_liens(destination)
     infos = source.lstat()
-    if source.name in ('QG.txt', 'qg.txt') and (
+    if source.name in ('QG.txt', 'qg.txt', 'etiquettes_actives.txt') and (
             not stat.S_ISREG(infos.st_mode) or infos.st_nlink != 1):
         # Une copie physique ferait perdre la preuve du lien source avant
-        # le contrôle du QG dans la génération privée.
-        raise RuntimeError(f'Déclaration QG non ordinaire ou liée interdite : {source}')
+        # le contrôle des choix de combat dans la génération privée.
+        raise RuntimeError(f'Choix de combat non ordinaire ou lié interdit : {source}')
     if stat.S_ISDIR(infos.st_mode):
         destination.mkdir(mode=0o700)
         for enfant in sorted(source.iterdir()):

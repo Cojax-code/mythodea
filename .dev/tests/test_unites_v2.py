@@ -380,7 +380,10 @@ class UnitesV2(unittest.TestCase):
         g = self.creer(nombre=0)
         fiche = self.progression.caracteristiques_general(g)
         fiche['etat_zombie'] = True
-        apres, recompense = self.progression.monter_niveau(fiche, Mock())
+        # Le nouveau tirage zombie échoue ici ; les autres récompenses restent exclues.
+        rng_zombie = Mock(randint=Mock(return_value=21))
+        apres, recompense = self.progression.monter_niveau(fiche, rng_zombie)
+        rng_zombie.randint.assert_called_once_with(1, 100)
         self.assertIsNone(recompense)
         self.assertEqual(apres['niveau'], fiche['niveau'] + 1)
         self.assertEqual(apres['niveaux_zombie'], 1)

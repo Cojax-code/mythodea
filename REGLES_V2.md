@@ -68,7 +68,10 @@ Seules celles choisies contribuent au combat, y compris aux effets du QG.
 Une sélection vide désactive tous les effets d'étiquettes.
 Le stratège (et son hybride) peut activer au plus trois étiquettes,
 l'instinctif (et son hybride) une seule. Le moteur refuse les noms inconnus,
-les doublons, les dépassements de capacité et les fichiers liés.
+les doublons, les dépassements de capacité et les fichiers liés ou non ordinaires.
+La capture Survie vérifie ces fichiers avant copie, car une copie physique ferait
+perdre la preuve d'un lien physique. Les connaissances et leurs rangs restent
+exclusivement ceux du profil officiel privé.
 En l'absence de fichier de sélection, les étiquettes connues sont
 automatiquement activées dans la limite applicable, pour compatibilité.
 La sélection est figée au début de chaque bataille territoriale, comme le QG.
