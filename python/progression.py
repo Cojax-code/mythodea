@@ -169,6 +169,11 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
     niveau = resultat['niveau']
     if resultat.get('etat_zombie'):
         resultat['niveaux_zombie'] = resultat.get('niveaux_zombie', 0) + 1
+        # Tirage indépendant de 20 % à chaque niveau, jusqu'à acquisition.
+        if 'mort_vivant' not in resultat.get('etiquettes', {}):
+            if aleatoire.randint(1, 100) <= 20:
+                resultat.setdefault('etiquettes', {})['mort_vivant'] = 1
+                return resultat, ('etiquette_zombie', 'mort_vivant')
         return resultat, None
 
     orientation = orientation_principale(resultat)
@@ -266,9 +271,50 @@ def sauvegarder(donnees):
                       json.dumps(donnees, ensure_ascii=False) + '\n')
 
 
+def selection_etiquettes(fiche, chemin_general):
+    """Applique une sélection joueur sans jamais modifier les connaissances privées.
+
+    etiquettes_actives.txt : noms d'étiquettes connus, séparés par lignes ou
+    virgules. En son absence, les anciennes fiches restent compatibles.
+    """
+    import stat
+    selection = chemin_general / 'etiquettes_actives.txt'
+    resultat = deepcopy(fiche)
+    connues = resultat.get('etiquettes', {})
+    orientation = orientation_principale(resultat)
+    maximum = 3 if orientation == 'stratege' else 1
+    if resultat.get('etat_zombie'):
+        # L'étiquette de zombification est une acquisition spéciale,
+        # indépendante des emplacements ordinaires.
+        maximum += int('mort_vivant' in connues)
+    try:
+        info = selection.lstat()
+    except FileNotFoundError:
+        actives = list(connues)[:maximum]
+    else:
+        if any(parent.is_symlink() for parent in selection.parents):
+            raise ValueError('Sélection sous un dossier lié interdite.')
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            raise ValueError('Sélection d’étiquettes liée ou non ordinaire interdite.')
+        contenu = selection.read_text(encoding='utf-8')
+        actives = [nom.strip() for nom in contenu.replace(',', '\n').splitlines()
+                   if nom.strip()]
+        if len(actives) != len(set(actives)):
+            raise ValueError('Étiquette active sélectionnée plusieurs fois.')
+        if any(nom not in connues for nom in actives):
+            raise ValueError('Sélection contenant une étiquette non apprise.')
+        if len(actives) > maximum:
+            raise ValueError('Trop d’étiquettes actives pour cette nature.')
+    resultat['etiquettes_actives'] = actives
+    return resultat
+
+
 def caracteristiques_general(general):
-    """La fiche possédée par le joueur n'est jamais une autorité de gameplay."""
-    return deepcopy(charger().get(f"{general['joueur']}:{general['nom']}"))
+    """Les niveaux connus restent privés ; seul le choix d'activation est joueur."""
+    fiche = deepcopy(charger().get(f"{general['joueur']}:{general['nom']}"))
+    if fiche is None:
+        return None
+    return selection_etiquettes(fiche, general['chemin'])
 
 
 def enregistrer_creation(joueur, nom, caracteristiques):
