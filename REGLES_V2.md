@@ -71,6 +71,10 @@ l'instinctif (et son hybride) une seule. Le moteur refuse les noms inconnus,
 les doublons, les dépassements de capacité et les fichiers liés.
 En l'absence de fichier de sélection, les étiquettes connues sont
 automatiquement activées dans la limite applicable, pour compatibilité.
+La sélection est figée au début de chaque bataille territoriale, comme le QG.
+Toute modification du fichier pendant les affrontements reste sans effet sur
+cette bataille. Un renfort engagé plus tard fige sa sélection à son premier
+engagement, sans recalculer le soutien global initial.
 
 À chaque niveau gagné après zombification, le général zombie conserve son
 gain habituel de deux places et, tant qu'il ne connaît pas `mort_vivant`,
