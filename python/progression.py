@@ -2,6 +2,7 @@
 from copy import deepcopy
 import json
 import random
+from contextvars import ContextVar
 
 import catalogues
 
@@ -271,6 +272,25 @@ def sauvegarder(donnees):
                       json.dumps(donnees, ensure_ascii=False) + '\n')
 
 
+# Instantané des choix pour la durée du combat territorial.
+_SELECTIONS_TERRITORIALES = ContextVar('mythodea_selections_territoriales', default=None)
+
+
+def figer_selections_territoriales(generaux):
+    """Capture les sélections une seule fois, avant le premier affrontement."""
+    selections = {}
+    for general in generaux:
+        fiche = charger().get(f"{general['joueur']}:{general['nom']}")
+        if fiche is not None:
+            choix = selection_etiquettes(fiche, general['chemin'])
+            selections[(general['joueur'], general['nom'])] = tuple(choix['etiquettes_actives'])
+    return _SELECTIONS_TERRITORIALES.set(selections)
+
+
+def retablir_selections_territoriales(jeton):
+    _SELECTIONS_TERRITORIALES.reset(jeton)
+
+
 def selection_etiquettes(fiche, chemin_general):
     """Applique une sélection joueur sans jamais modifier les connaissances privées.
 
@@ -314,6 +334,15 @@ def caracteristiques_general(general):
     fiche = deepcopy(charger().get(f"{general['joueur']}:{general['nom']}"))
     if fiche is None:
         return None
+    selections = _SELECTIONS_TERRITORIALES.get()
+    identite = (general['joueur'], general['nom'])
+    if selections is not None:
+        if identite not in selections:
+            # Renfort arrivé après le début de la bataille : premier choix figé
+            # lors de son premier engagement, sans toucher au QG initial.
+            selections[identite] = tuple(selection_etiquettes(fiche, general['chemin'])['etiquettes_actives'])
+        fiche['etiquettes_actives'] = list(selections[identite])
+        return fiche
     return selection_etiquettes(fiche, general['chemin'])
 
 
