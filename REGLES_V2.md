@@ -60,6 +60,24 @@ spécifique de capacité, sans ces récompenses ordinaires.
 
 ## Étiquettes
 
+### Sélection active
+
+Dans son dossier, le joueur peut créer `etiquettes_actives.txt` et inscrire
+les noms des étiquettes apprises, une par ligne ou séparés par des virgules.
+Seules celles choisies contribuent au combat, y compris aux effets du QG.
+Une sélection vide désactive tous les effets d'étiquettes.
+Le stratège (et son hybride) peut activer au plus trois étiquettes,
+l'instinctif (et son hybride) une seule. Le moteur refuse les noms inconnus,
+les doublons, les dépassements de capacité et les fichiers liés.
+En l'absence de fichier de sélection, les étiquettes connues sont
+automatiquement activées dans la limite applicable, pour compatibilité.
+
+À chaque niveau gagné après zombification, le général zombie conserve son
+gain habituel de deux places et, tant qu'il ne connaît pas `mort_vivant`,
+dispose d'un tirage indépendant de 20 % pour l'apprendre au niveau 1.
+Cette étiquette spéciale offre un emplacement actif supplémentaire au zombie
+et ne retire pas ses étiquettes ordinaires.
+
 ```text
 bonus en points de pourcentage = PC × 1/2 × niveau de l'étiquette
 valeur finale = valeur contextuelle × (1 + somme des bonus et malus / 100)
