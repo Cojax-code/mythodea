@@ -203,11 +203,11 @@ def bonus_etiquettes(pc, coefficients):
     return sum((Fraction(pc) * Fraction(c) for c in coefficients), Fraction(0))
 
 def coefficient_niveau_general(niveau):
-    """0..4 => 1/2 ; 5..9 => 1 ; 10..14 => 3/2, etc."""
+    """Coefficient fixe de 0,5 ; le niveau borne seulement les apprentissages."""
     from fractions import Fraction
     if type(niveau) is not int or niveau < 0:
         raise ValueError('Niveau invalide.')
-    return Fraction(niveau // 5 + 1, 2)
+    return Fraction(1, 2)
 
 
 def effets_etiquettes_general(fiche, etiquettes_cibles, *, portee='duel'):
@@ -231,7 +231,7 @@ def effets_etiquettes_general(fiche, etiquettes_cibles, *, portee='duel'):
         regle = catalogues.ETIQUETTES_COMBAT.get(nom)
         if not regle or type(niveau) is not int or niveau <= 0:
             continue
-        # Les niveaux d'apprentissage multiplient le coefficient de tranche.
+        # Le rang de l'étiquette multiplie le coefficient fixe de 0,5.
         # Une portée future peut être déclarée par le registre de l'effet.
         if regle.get('portee', 'duel') != portee:
             continue
