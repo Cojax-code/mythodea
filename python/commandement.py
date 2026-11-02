@@ -225,7 +225,10 @@ def effets_etiquettes_general(fiche, etiquettes_cibles, *, portee='duel'):
     # mais ne multiplie plus une deuxième fois les bonus.
     coeff = Fraction(1, 2)
     total = {}
+    actives = set(fiche.get('etiquettes_actives', fiche.get('etiquettes', {})))
     for nom, niveau in fiche.get('etiquettes', {}).items():
+        if nom not in actives:
+            continue
         regle = catalogues.ETIQUETTES_COMBAT.get(nom)
         if not regle or type(niveau) is not int or niveau <= 0:
             continue
