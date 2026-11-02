@@ -92,6 +92,10 @@ class PermissionsReelles(unittest.TestCase):
         self.g = cycle_linux.Generations(self.c)
         self.g.preparer()
         survie.ouvrir_tour_survie(self.c)
+        # Fichier neutre du scénario : la V2 ne crée plus ordre.txt.
+        for joueur, home in self.c['homes'].items():
+            (home / 'general1/notes_test.txt').write_text('1-2\n')
+            generaux.donner_permissions_general(home / 'general1', joueur)
         self.general = self.c['homes']['j1'] / 'general1'
         (self.general / 'avant/infanterie1').mkdir()
         (self.general / 'avant/infanterie1/arc').touch()
@@ -106,9 +110,9 @@ class PermissionsReelles(unittest.TestCase):
             home = self.c['homes'][j]
             self.assertEqual(home.stat().st_uid, pwd.getpwnam(j).pw_uid)
             self.assertEqual(self.en_joueur(j, "from pathlib import Path; import sys; Path(sys.argv[1]).write_text('1-2')",
-                                           home / 'general1/ordre.txt').returncode, 0)
+                                           home / 'general1/notes_test.txt').returncode, 0)
         interdit = self.en_joueur('j1', "from pathlib import Path; import sys; Path(sys.argv[1]).read_text()",
-                                 self.c['homes']['j2'] / 'general1/ordre.txt')
+                                 self.c['homes']['j2'] / 'general1/notes_test.txt')
         self.assertNotEqual(interdit.returncode, 0)
         for territoire in self.c['territoires']:
             p = territoire / 'bot'
@@ -223,14 +227,14 @@ class PermissionsReelles(unittest.TestCase):
 
     def test_capture_reelle_uid_preserve_root_peut_modifier_joueur_non(self):
         prive, _ = self.g.capturer(0)
-        p = prive['game_path'].parent / 'homes/j1/general1/ordre.txt'
+        p = prive['game_path'].parent / 'homes/j1/general1/notes_test.txt'
         self.assertEqual(p.stat().st_uid, pwd.getpwnam('j1').pw_uid)
         self.assertNotEqual(self.en_joueur('j1', "import sys; open(sys.argv[1],'w').write('x')", p).returncode, 0)
         p.write_text('root travaille')
         self.assertEqual(p.read_text(), 'root travaille')
 
     def test_fd_ouvert_avant_capture_independant_apres_publication(self):
-        ordre = self.general / 'ordre.txt'
+        ordre = self.general / 'notes_test.txt'
         with ordre.open('r+b') as fd:
             original = survie._resoudre_tour_capture
             def tardif(c, aleatoire):
@@ -247,7 +251,7 @@ class PermissionsReelles(unittest.TestCase):
 
     def test_consultation_lecture_et_retour_droits_actions(self):
         survie.resoudre_tour_survie(self.c, gestion=self.g)
-        p = self.general / 'ordre.txt'
+        p = self.general / 'notes_test.txt'
         self.assertNotEqual(self.en_joueur('j1', "import sys; open(sys.argv[1],'w').write('x')", p).returncode, 0)
         self.assertEqual(self.en_joueur('j1', 'import sys; print(open(sys.argv[1]).read())', p).returncode, 0)
         self.g.permissions_actions()
@@ -288,7 +292,7 @@ class PermissionsReelles(unittest.TestCase):
             os.setgroups([])
             os.setgid(compte.pw_gid)
             os.setuid(compte.pw_uid)
-            with (self.general / 'ordre.txt').open('a') as f:
+            with (self.general / 'notes_test.txt').open('a') as f:
                 os.write(reponses_w, b'R')
                 while os.read(commandes_r, 1) == b'W':
                     f.write('x')
@@ -342,7 +346,7 @@ class PermissionsReelles(unittest.TestCase):
                 (groupe / 'cgroup.freeze').write_text('0')
 
     def test_liens_refuses_et_hardlink_source_copie_independamment(self):
-        source = self.general / 'ordre.txt'
+        source = self.general / 'notes_test.txt'
         lien = self.general / 'lien'
         lien.symlink_to(source)
         try:

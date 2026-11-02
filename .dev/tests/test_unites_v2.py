@@ -71,8 +71,7 @@ class UnitesV2(unittest.TestCase):
         a, b = dict(type='messager_du_QG', nombre=10), dict(type='archer', nombre=1)
         self.assertEqual(self.combats.combat_bloc(a, b), (0, 1))
         self.assertEqual(self.combats.combat_bloc(b, a), (1, 0))
-        self.assertEqual(self.unites.ordres_messagers(3, 2, True), 2)
-        self.assertEqual(self.unites.ordres_messagers(3, 2, False), 0)
+        self.assertFalse(hasattr(self.unites, 'ordres_messagers'))
 
     def test_zombie_blessures_anciennes_conservees_sans_nouveau_sauvetage(self):
         g = self.creer(nombre=0)
@@ -173,7 +172,7 @@ class UnitesV2(unittest.TestCase):
         self.assertTrue(self.progression.charger()['j1:general1']['mort'])
         self.assertTrue(self.morgue.est_zombie(g))
         g['ordres'] = [{'identifiant': '1-2'}]
-        self.assertFalse(self.generaux.general_possede_ordre(g, '1-2'))
+        self.assertFalse(hasattr(self.generaux, 'general_possede_ordre'))
         self.assertNotIn('j1:general1', self.etat.charger_positions_generaux())
 
     def rituel(self, g):
@@ -333,17 +332,17 @@ class UnitesV2(unittest.TestCase):
         self.assertEqual(self.infos(g)['nombre'], 0)
         self.assertEqual(self.generaux.total_general_depuis_chemin(g['chemin']), 0)
 
-    def test_chaman_moral_proportionnel_sans_mutation_et_fraction_exacte(self):
+    def test_ancienne_synergie_chaman_retiree_moral_orc_conserve(self):
         from fractions import Fraction
         fiche = dict(points_commandement=20, moral=50)
         composition = dict(avant={'sauvageon': 5}, droite={'orc_chaman': 1})
-        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'avant'), Fraction(2091, 50))
+        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'avant'), 41)
         composition['droite']['orc_chaman'] = 2
-        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'avant'), Fraction(1092, 25))
-        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'avant'), Fraction(1092, 25))
+        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'avant'), 42)
+        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'avant'), 42)
         self.assertEqual(fiche['moral'], 50)
         fiche['moral'] = 11
-        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'avant'), Fraction(78, 25))
+        self.assertEqual(self.unites.moral_bloc(fiche, composition, 'avant'), 3)
         self.assertEqual(self.unites.moral_bloc(fiche, composition, 'droite'), 3)
 
     def test_chaman_soins_territoire_allies_uniquement_et_rejeu(self):

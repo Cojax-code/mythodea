@@ -22,14 +22,14 @@ class AuditUnites(unittest.TestCase):
         for texte in ('²-2', '1-' + '9' * 5000, '1-2-²', '1-2\n\udcff'):
             with self.subTest(texte=texte[:20]):
                 ordre.write_bytes(texte.encode('utf-8', errors='surrogateescape'))
-                self.generaux.lire_ordres_general(g['chemin'])
+                self.generaux.lire_generaux_territoire(self.config.game_path / 'est_3', self.profil)
 
-    def test_cible_duel_est_une_position_pas_un_numero_general(self):
-        g = self.creer(numero=12, nombre=0)
-        (g['chemin'] / 'ordre.txt').write_text('2-1-3\n')
-        ordre = self.generaux.lire_ordres_general(g['chemin'])[0]
-        self.assertEqual(ordre['specification'], 3)
-        self.assertFalse(self.combats.catalogues.ORDRES[1003]['disponible'])
+    def test_ancien_ordre_nactive_aucune_tactique(self):
+        g = self.creer(numero=12, nombre=1)
+        (g['chemin'] / 'ordre.txt').write_text('2-1-3')
+        lecture = self.generaux.lire_generaux_territoire(self.config.game_path / 'est_3', self.profil)
+        self.assertNotIn('ordres', lecture['j1']['1'])
+        self.assertNotIn(1003, self.combats.catalogues.EVOLUTIONS)
 
     def test_orcs_zero_a_vingt_moral_borne_pc_constants(self):
         for moral in (0, 5, 50, 95, 100):

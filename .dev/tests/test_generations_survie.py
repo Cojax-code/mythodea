@@ -29,7 +29,8 @@ class GenerationsSurvie(unittest.TestCase):
     @unittest.skipIf(os.name == 'nt', 'Windows interdit de renommer cet inode ouvert ; exécuté sous Linux')
     def test_ancien_fd_ne_modifie_ni_capture_ni_publication(self):
         general = self.general(territoire='home')
-        ordre = general / 'ordre.txt'
+        ordre = general / 'notes_test.txt'
+        ordre.write_text('1-2\n')
         ancien = ordre.open('r+b')
         self.addCleanup(ancien.close)
         g = self.gestion()
@@ -39,7 +40,7 @@ class GenerationsSurvie(unittest.TestCase):
             ancien.seek(0)
             ancien.write(b'2-2\n')
             ancien.flush()
-            self.assertEqual((self.config.home_generation('j1') / 'general1/ordre.txt').read_text(), '1-2\n')
+            self.assertEqual((self.config.home_generation('j1') / 'general1/notes_test.txt').read_text(), '1-2\n')
             return original(prive, aleatoire)
         with patch.object(self.survie, '_resoudre_tour_capture', side_effect=resoudre):
             self.survie.resoudre_tour_survie(self.profil, random.Random(4), g)
@@ -73,25 +74,25 @@ class GenerationsSurvie(unittest.TestCase):
         self.assertIn((copie, infos.st_uid, infos.st_gid), [c.args for c in self.chown.call_args_list])
 
     def test_fichiers_reels_independants_et_pas_de_recursion_generations(self):
-        self.general()
+        (self.general() / 'notes_test.txt').write_text('1-2\n')
         g = self.gestion()
         g.capturer(1)
-        capture = g.generation / 'capture/game/est_3/j1/1/general1/ordre.txt'
-        travail = g.generation / 'travail/game/est_3/j1/1/general1/ordre.txt'
+        capture = g.generation / 'capture/game/est_3/j1/1/general1/notes_test.txt'
+        travail = g.generation / 'travail/game/est_3/j1/1/general1/notes_test.txt'
         travail.write_text('change')
         self.assertEqual(capture.read_text(), '1-2\n')
         self.assertFalse(list((g.generation / 'capture').rglob('generations')))
 
     def test_interruption_resolution_privee_ne_publie_ni_rejoue(self):
-        self.general()
+        (self.general() / 'notes_test.txt').write_text('1-2\n')
         g = self.gestion()
-        avant = (self.config.game_path / 'est_3/j1/1/general1/ordre.txt').read_bytes()
+        avant = (self.config.game_path / 'est_3/j1/1/general1/notes_test.txt').read_bytes()
         with patch.object(self.survie, 'creer_vague_est', side_effect=RuntimeError('panne')):
             with self.assertRaisesRegex(RuntimeError, 'panne'):
                 self.survie.resoudre_tour_survie(self.profil, gestion=g)
         self.assertFalse(self.gel.gele)
         self.assertEqual(self.etat.charger_cycle_survie(self.profil)['phase'], 'recuperation')
-        self.assertEqual((self.config.game_path / 'est_3/j1/1/general1/ordre.txt').read_bytes(), avant)
+        self.assertEqual((self.config.game_path / 'est_3/j1/1/general1/notes_test.txt').read_bytes(), avant)
         with patch.object(self.securite, 'verifier_tous_les_deplacements') as audit:
             with self.assertRaises(RuntimeError):
                 self.survie.resoudre_tour_survie(self.profil, gestion=g)

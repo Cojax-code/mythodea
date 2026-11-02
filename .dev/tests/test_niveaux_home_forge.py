@@ -51,7 +51,7 @@ class NiveauxHomeForge(unittest.TestCase):
                 self.assertEqual(self.fiche(general)['niveau'], tour // 2)
         fiche = self.fiche(general)
         self.assertEqual((fiche['progression_combat'], fiche['progression_formation']), (0, 2))
-        self.assertEqual(fiche['points_commandement'], avant + 11)
+        self.assertEqual(fiche['points_commandement'], avant + 7)
         self.assertIsNone(fiche['evolution_apprise'])
 
     def test_defaite_survecue_et_destruction_tardive(self):
@@ -159,8 +159,9 @@ class NiveauxHomeForge(unittest.TestCase):
         self.progression.valider_evenement(general, 'combat', 'survie:1:village')
         fiche = self.fiche(general)
         self.assertEqual((fiche['niveau'], fiche['progression_combat'], fiche['progression_formation']), (2, 0, 0))
-        self.assertEqual(fiche['progressions_validees']['formation:1:j1:general1']['recompense'], 202)
-        self.assertIn(fiche['progressions_validees']['combat:survie:1:village']['recompense'], (201, 1002, 105, 110))
+        self.assertEqual(fiche['progressions_validees']['formation:1:j1:general1']['recompense'][0], 'force_caractere')
+        recompense = fiche['progressions_validees']['combat:survie:1:village']['recompense']
+        self.assertIn(recompense[0] if isinstance(recompense, list) else recompense, ('maitrise_commandement', 105, 110))
         self.formation.resoudre_tour(self.profil, 1)
         self.progression.valider_evenement(general, 'combat', 'survie:1:village')
         self.assertEqual(self.fiche(general), fiche)
@@ -171,13 +172,16 @@ class NiveauxHomeForge(unittest.TestCase):
             self.preparer_points(general, progression_combat=1, evolution_apprise=garantie)
             trait = self.fiche(general)['trait_inne']
             self.progression.valider_evenement(general, 'combat', 'garanti')
-            self.assertIn(garantie, self.fiche(general)['evolutions_acquises'])
+            self.assertIsNone(self.fiche(general)['evolution_apprise'])
+            self.assertEqual(self.fiche(general)['progressions_validees']['combat:garanti']['recompense'][0],
+                             'force_caractere' if garantie == 202 else 'maitrise_commandement')
             for evenement in ('a', 'b'):
                 self.progression.valider_evenement(general, 'combat', evenement)
             fiche = self.fiche(general)
             recompense = fiche['progressions_validees']['combat:b']['recompense']
-            self.assertIn(recompense, (201, 1002, 105, 110) if numero == 1 else
-                          (202, 104, 105, 106, 107, 108, 109))
+            self.assertIn(recompense[0] if isinstance(recompense, list) else recompense,
+                          ('maitrise_commandement', 105, 110) if numero == 1 else
+                          ('force_caractere', 104, 105, 106, 107, 108, 109))
             self.assertEqual((fiche['nature'], fiche['trait_inne']), (nature, trait))
 
     def test_home_ancien_nouvelles_unites_toutes_activites_gratuites(self):
@@ -271,19 +275,19 @@ class NiveauxHomeForge(unittest.TestCase):
             self.survie.resoudre_tour_survie(self.profil, gestion=gestion)
         fiche = self.fiche(general)
         self.assertEqual((fiche['niveau'], fiche['progression_combat']), (1, 0))
-        self.assertEqual(fiche['progressions_validees']['combat:survie:1:est_3']['recompense'], 201)
+        self.assertEqual(fiche['progressions_validees']['combat:survie:1:est_3']['recompense'][0], 'maitrise_commandement')
         self.assertIn('niveau=1', (general['chemin'] / 'fiche.txt').read_text())
 
-    def test_aucune_recompense_disponible_ninvente_pas_de_gain(self):
+    def test_recompenses_epuisees_pc_dernier_recours(self):
         general = self.creer(nature='instinctif')
         acquis = [i for i, e in self.progression.evolutions_eligibles(
             self.fiche(general), apprentissage=False).items() if e['categorie'] in ('unite', 'ordre')]
         self.preparer_points(general, progression_combat=1, evolutions_acquises=acquis)
-        with patch.object(self.progression.aleatoire_progression, 'randint', side_effect=AssertionError('tirage')):
+        with patch.object(self.progression.aleatoire_progression, 'randint', return_value=5):
             self.progression.valider_evenement(general, 'combat', 'sans-recompense')
         fiche = self.fiche(general)
         self.assertEqual((fiche['niveau'], fiche['moral'], fiche['progression_combat']), (1, 100, 0))
-        self.assertIsNone(fiche['progressions_validees']['combat:sans-recompense']['recompense'])
+        self.assertEqual(fiche['progressions_validees']['combat:sans-recompense']['recompense'], ['maitrise_commandement', 5])
 
     def test_reprise_meme_bataille_ni_point_ni_experience_soldat_en_double(self):
         general = self.creer(nature='stratege')

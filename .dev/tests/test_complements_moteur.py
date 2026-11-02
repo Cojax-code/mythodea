@@ -35,7 +35,7 @@ class ComplementsMoteur(unittest.TestCase):
         self.modules()
         obtenus = dict.fromkeys(self.progression.NATURES, 0)
         for tirage in range(1, 101):
-            fiche = self.progression.nouvelles_caracteristiques(Mock(randint=Mock(side_effect=[tirage, 51, 1])))
+            fiche = self.progression.nouvelles_caracteristiques(Mock(randint=Mock(side_effect=[tirage, 51, 1, 1])))
             obtenus[fiche['nature']] += 1
             self.assertEqual(fiche['trait_inne'], 'leader')
             self.assertEqual(fiche['orientation_principale'], fiche['nature'].removesuffix('_hybride'))
@@ -45,24 +45,21 @@ class ComplementsMoteur(unittest.TestCase):
         self.modules()
         for nature, evolution in (('stratege_hybride', 202), ('instinctif_hybride', 201)):
             fiche = self.progression.nouvelles_caracteristiques()
-            fiche.update(nature=nature, niveau=4, moral=0, evolution_apprise=evolution)
+            fiche.update(nature=nature, niveau=1, moral=0, evolution_apprise=evolution)
             apres, identifiant = self.progression.monter_niveau(fiche, Mock(randint=lambda a, b: b))
             self.assertEqual((identifiant, apres['niveau'], apres['nature'], apres['trait_inne']),
-                             (evolution, 5, nature, fiche['trait_inne']))
-            self.assertEqual(apres['moral'], 6 if evolution == 202 else 0)
+                             (('force_caractere', 4) if evolution == 202 else ('maitrise_commandement', 10), 2, nature, fiche['trait_inne']))
+            self.assertEqual(apres['moral'], 4 if evolution == 202 else 1)
             self.assertEqual(apres['points_commandement'] - fiche['points_commandement'],
-                             40 if evolution == 201 else 0)
+                             10 if evolution == 201 else 4)
             # Les apprentissages croisés n'entrent jamais dans le tirage ordinaire.
             self.assertNotIn(evolution, self.progression.evolutions_eligibles(fiche, apprentissage=False))
 
-    def test_qg_hybride_et_ordres_seulement_si_acquis(self):
+    def test_qg_toute_nature_designee_sans_condition_de_pc(self):
         commandement = importlib.import_module('commandement')
-        qg = dict(nature='instinctif_hybride', points_commandement=20, qg='avant', effectif_bloc_qg=1)
-        self.assertIs(commandement.selectionner_qg([qg], lambda g: g['points_commandement']), qg)
-        self.assertEqual(commandement.ordres_applicables([1002], qg['nature'], 'globale', 1), [])
-        self.assertEqual(commandement.ordres_applicables([1002], qg['nature'], 'globale', 1, acquis=[1002]), [1002])
-        qg['nature'] = 'instinctif'
-        self.assertIsNone(commandement.selectionner_qg([qg], lambda g: 20))
+        for nature in ('stratege', 'instinctif', 'stratege_hybride', 'instinctif_hybride'):
+            qg = dict(nature=nature, points_commandement=0, qg=True, effectif_bloc_qg=1)
+            self.assertIs(commandement.selectionner_qg([qg], lambda g: 0), qg)
 
     def test_moral_stratege_hybride_reel(self):
         general = self.creer(nature='stratege_hybride')
@@ -207,7 +204,7 @@ class ComplementsMoteur(unittest.TestCase):
         self.formation.preparer_emplacements(self.profil)
         self.assertEqual(general['chemin'].stat().st_ino, inode)
         self.assertFalse(ancien.parent.exists())
-        self.assertTrue((general['chemin'] / 'ordre.txt').exists())
+        self.assertTrue((general['chemin'] / 'fiche.txt').exists())
 
     def test_migration_documents_restants_ne_reinitialisent_pas_sejour(self):
         general = self.creer(territoire='village', place='hopital/1')
@@ -267,21 +264,21 @@ class ComplementsMoteur(unittest.TestCase):
         profils['j1:general3']['evolutions_acquises'] = [202]
         self.progression.sauvegarder(profils)
         donnees = self.formation.charger()
-        donnees['manuels']['allies'] = {'001': 1002, '002': None, '003': None}
+        donnees['manuels']['allies'] = {'001': 110, '002': None, '003': None}
         self.formation.sauvegarder(donnees)
         self.formation.preparer(self.profil)
         for general in eleves:
-            (general['chemin'] / 'lire_les_memoires.txt').write_text('A 001 1002')
+            (general['chemin'] / 'lire_les_memoires.txt').write_text('A 001 110')
         (professeur['chemin'] / 'ecrire_ses_memoires.txt').write_text('E 001 202')
         self.formation.ouvrir_tour(self.profil, 1)
         self.terminer()
         self.assertEqual(self.formation.charger()['manuels']['allies']['001'], 202)
         for general in eleves:
             fiche = self.progression.caracteristiques_general(general)
-            self.assertEqual(fiche['evolution_apprise'], 1002)
-            self.assertNotIn(1002, fiche['evolutions_acquises'])
-            self.assertEqual(self.progression.attribuer_niveau(general), 1002)
-            self.assertIn(1002, self.progression.caracteristiques_general(general)['evolutions_acquises'])
+            self.assertEqual(fiche['evolution_apprise'], 110)
+            self.assertNotIn(110, fiche['evolutions_acquises'])
+            self.assertEqual(self.progression.attribuer_niveau(general), 110)
+            self.assertIn(110, self.progression.caracteristiques_general(general)['evolutions_acquises'])
 
     def test_forge_partielle_ne_supprime_aucun_cavalier_et_copie_non_autorisee(self):
         general = self.forge(nombre=2)

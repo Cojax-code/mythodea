@@ -134,7 +134,7 @@ class SoldatsFormation(unittest.TestCase):
         registre['manuels']['allies']['001'] = 202
         self.formation.sauvegarder(registre)
         self.assertEqual(self.progression.caracteristiques_general(eleve)['evolution_apprise'], 201)
-        self.assertEqual(self.progression.attribuer_niveau(eleve, Mock(randint=lambda a, b: a)), 201)
+        self.assertEqual(self.progression.attribuer_niveau(eleve, Mock(randint=lambda a, b: a)), ('maitrise_commandement', 5))
         self.assertIsNone(self.progression.caracteristiques_general(eleve)['evolution_apprise'])
 
     def test_emplacements_valides_et_autorisation_ecriture(self):
@@ -198,8 +198,8 @@ class SoldatsFormation(unittest.TestCase):
         secret = 'SECRET_personnel-ne-pas-publier'
         (general['chemin'] / 'ordre.txt').write_text(secret + '\n1-2\n999-999\n')
         with patch.object(self.generaux.rapports, 'afficher_et_ecrire') as rapport:
-            ordres = self.generaux.lire_ordres_general(general['chemin'])
-        self.assertEqual([o['identifiant'] for o in ordres], ['1-2'])
+            forces = self.generaux.lire_generaux_territoire(self.config.game_path / 'est_3', self.profil)
+        self.assertNotIn('ordres', forces['j1']['1'])
         self.assertNotIn(secret, str(rapport.call_args_list))
         self.assertNotIn('999-999', str(rapport.call_args_list))
 

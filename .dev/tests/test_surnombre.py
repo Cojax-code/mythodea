@@ -36,6 +36,12 @@ class Surnombre(unittest.TestCase):
         parent.mkdir(parents=True, exist_ok=True)
         chemin = parent / f"general{numero}"
         self.generaux.creer_general(chemin, chemin.name)
+        # Scénario de combat de base ; les bonus V2 sont testés séparément.
+        profils = self.generaux.progression.charger()
+        identite = f'{joueur}:{chemin.name}'
+        if identite in profils:
+            profils[identite].update(etiquettes={}, etiquettes_permanentes=[])
+            self.generaux.progression.sauvegarder(profils)
         if ordre is not None:
             (chemin / "ordre_surnombre.txt").write_text(f"{ordre}\n", encoding="utf-8")
         prefixe = "cavalerie" if equipement == "cheval" else "infanterie"
@@ -72,7 +78,7 @@ class Surnombre(unittest.TestCase):
         for chemin, attendu, uid in ((exterieur, "1\n", 1001), (village, "2\n", 1002)):
             fichier = chemin / "ordre_surnombre.txt"
             self.assertEqual(fichier.read_text(encoding="utf-8"), attendu)
-            self.assertEqual((chemin / "ordre.txt").read_text(encoding="utf-8"), "1-2\n")
+            self.assertFalse((chemin / "ordre.txt").exists())
             self.assertIn(call(fichier, uid, uid), self.chown.call_args_list)
             self.assertIn(call(fichier, 0o600), self.chmod.call_args_list)
         self.assertFalse(list((self.config.game_path / "est_3/bot").rglob("ordre_surnombre.txt")))
@@ -238,6 +244,9 @@ class Surnombre(unittest.TestCase):
                 self.etat.sauvegarder_positions_generaux(positions)
 
     def test_un_allie_fuit_autre_continue_decisions_individuelles(self):
+        # Conserver le scénario frontal historique via le point d'entrée
+        # interne existant, sans réintroduire le fichier d'ordres supprimé.
+        self.profil['configurations_terrain'] = {'est_3': {'attaque_frontale': True}}
         j1 = self.general(ordre=1)
         j2 = self.general("j2", place="2", ordre=2)
         self.colonne()

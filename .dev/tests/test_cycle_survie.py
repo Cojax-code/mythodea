@@ -165,6 +165,7 @@ class CycleSurvie(unittest.TestCase):
         self.assertEqual(self.generaux.total_general_depuis_chemin(allie), 10)
 
     def test_retraite_reservee_dossier_deplace_apres_tous_combats(self):
+        self.profil['configurations_terrain'] = {'est_2': {'attaque_frontale': True}}
         fuyard = self.general(territoire="est_2", ordre=1)
         self.general("j2", territoire="est_2", place="2", ordre=2)
         self.colonne(10, "est_3")
@@ -241,7 +242,7 @@ class CycleSurvie(unittest.TestCase):
     def test_controles_sans_mutation_y_compris_sur_anomalie(self):
         allie = self.general(territoire="village")
         (allie / "avant/invalide").mkdir()
-        (allie / "ordre.txt").unlink()
+        (allie / "ordre_surnombre.txt").unlink(missing_ok=True)
         self.etat.sauvegarder_attentes_repli({"j1:general1": 2}, self.profil)
         avant = self.photo()
         self.securite.controler_coherence_territoires(self.profil)

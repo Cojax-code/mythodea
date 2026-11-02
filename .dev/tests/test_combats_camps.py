@@ -57,6 +57,12 @@ class CombatsCamps(unittest.TestCase):
         zone["chemin"].mkdir(parents=True, exist_ok=True)
         chemin = zone["chemin"] / nom
         self.generaux.creer_general(chemin, nom)
+        # Scénario de combat de base ; les bonus V2 sont testés séparément.
+        profils = self.generaux.progression.charger()
+        identite = f'{joueur}:{chemin.name}'
+        if identite in profils:
+            profils[identite].update(etiquettes={}, etiquettes_permanentes=[])
+            self.generaux.progression.sauvegarder(profils)
         (chemin / "ordre.txt").write_text(ordre, encoding="utf-8")
         for bloc, (nombre, equipement) in (blocs or {}).items():
             prefixe = "cavalerie" if equipement == "cheval" else "infanterie"
@@ -124,7 +130,7 @@ class CombatsCamps(unittest.TestCase):
             self.assertEqual(general["emplacement"], place)
             self.assertIn(joueur, general["chemin"].parts)
             self.assertEqual(general["fiche"]["nom"], general["nom"])
-            self.assertEqual(general["ordres"][0]["identifiant"], "1-2")
+            self.assertNotIn("ordres", general)
             self.assertEqual(len(general["blocs"]["avant"]["unites"]), 2)
             self.assertEqual(self.etat.general_est_fatigue(general), place == "2")
 
@@ -174,7 +180,8 @@ class CombatsCamps(unittest.TestCase):
         self.assertEqual(self.etat.charger_controle_territoires(self.profil)["est_1"], "bot")
         self.assertIn("est_1=bot", self.config.controle_territoires_path.read_text(encoding="utf-8"))
 
-    def test_ordre_frontal_allie_declenche_duels_puis_range(self):
+    def test_frontal_explicite_declenche_duels_puis_range(self):
+        self.profil["configurations_terrain"] = {self.territoire.name: {"attaque_frontale": True}}
         self.general("j1", place="1", blocs={"avant": (5, "arc")})
         self.general("j2", place="2", blocs={"avant": (2, "pique")}, ordre="1-2")
         self.general("bot", place="1", blocs={"avant": (2, "pique")})
@@ -198,7 +205,7 @@ class CombatsCamps(unittest.TestCase):
         self.combats.resoudre_combat_off_def(self.territoire, "allies", self.profil)
         journal = self.config.rapport_long_path.read_text(encoding="utf-8")
         self.assertIn("Défenseur : allies | Attaquant : bot", journal)
-        self.assertIn("Ordre frontal demandé par : bot", journal)
+        self.assertNotIn("Ordre frontal demandé", journal)
         self.assertEqual(self.generaux.controle_forces(self.forces()), "allies")
 
     def test_manoeuvre_cible_avantage_naturel_avant_cible_faible(self):

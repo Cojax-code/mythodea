@@ -449,7 +449,7 @@ class DefisSurvie(unittest.TestCase):
             manoeuvre = self.combats.attaque_ciblee(armee, g1, g2, 'avant', 'avant')
         self.assertEqual(choc['final_1'], 15)
         self.assertEqual(manoeuvre['final_attaquant'], 15)
-        self.assertEqual([a.args[-2:] for a in calcul.call_args_list], [('avant', 'avant')] * 2)
+        self.assertEqual([a.args[4:6] for a in calcul.call_args_list], [('avant', 'avant')] * 2)
 
     def test_ciblage_avantageux_garde_ordre_des_blocs(self):
         armee = {'j1': {}, 'bot': {b: {'type': 'vide', 'nombre': 0} for b in self.config.ordre_blocs}}

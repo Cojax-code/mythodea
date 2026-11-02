@@ -97,7 +97,11 @@ ETIQUETTES_COMBAT = {
 
 # Identifiants scolaires stables pour les trois emplacements mémoire.
 # Les étiquettes permanentes de palier ne peuvent pas être écrites.
-ETIQUETTES_ECOLE = {2001 + i: nom for i, nom in enumerate(ETIQUETTES_COMBAT)}
+ETIQUETTES_ECOLE = {
+    2001: 'infanterie', 2002: 'distance', 2003: 'cavalerie', 2004: 'humain',
+    2005: 'melee', 2006: 'orc', 2007: 'mort_vivant', 2008: 'noble',
+    2009: 'armure_legere', 2010: 'lourde', 2011: 'chaman', 2012: 'cruelle',
+}
 
 # 101..199 : apprentissages d'unités ; 201..299 : catégories de caractéristiques.
 # 1001..1999 : ordres. Un ID d'unité et un ID d'évolution ne sont pas interchangeables.

@@ -497,19 +497,24 @@ def ouvrir_tour(configuration, tour):
             continue
         preparer_demandes(general)
         try:
-            textes = []
-            for nom in ('ecrire_ses_memoires.txt', 'lire_les_memoires.txt'):
+            textes = {}
+            for nom in ('lire_les_memoires.txt', 'ecrire_ses_memoires.txt'):
                 chemin = general['chemin'] / nom
                 sans_liens(chemin)
                 infos = chemin.stat()
                 if not stat.S_ISREG(infos.st_mode) or infos.st_nlink != 1:
                     raise ValueError('Une demande doit être un fichier ordinaire sans lien physique.')
-                textes.append(chemin.read_text(encoding='utf-8'))
+                # Le contenu de l'écriture ignorée ne doit pas empêcher une
+                # lecture valide ; l'intégrité des deux fichiers reste contrôlée.
+                textes[nom] = ('' if nom == 'ecrire_ses_memoires.txt'
+                               and textes['lire_les_memoires.txt'].strip()
+                               else chemin.read_text(encoding='utf-8'))
             unites = (relever_unites(general, initialiser=general['lieu'] != 'ecole_officiers')
                       if general['lieu'] in ('hopital', 'forge', 'ecole_officiers') else {})
             eligibles = unites_forge_validees(configuration, general) if general['lieu'] == 'forge' else ()
             commencer_sejour(tour, general, general['lieu'], general['camp'], preuve_general(general),
-                             ecrire=textes[0], lire=textes[1], unites=unites, eligibles_forge=eligibles)
+                             ecrire=textes['ecrire_ses_memoires.txt'], lire=textes['lire_les_memoires.txt'],
+                             unites=unites, eligibles_forge=eligibles)
         except ValueError as erreur:
             soldats.ecrire_copie(general['chemin'] / 'formation_resultat.txt', str(erreur) + '\n')
     donnees = charger()

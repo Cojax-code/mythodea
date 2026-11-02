@@ -27,15 +27,14 @@ def global_armee(generaux, qg, messager_present=False):
 
 
 
-def selectionner_qg(candidats, points):
-    """Aucun départage implicite. Le calcul pertinent est fourni par l'appelant."""
-    eligibles = [g for g in candidats if g['nature'] in ('stratege', 'stratege_hybride', 'instinctif_hybride')
-                 and g.get('qg') and g.get('effectif_bloc_qg', 0) > 0]
-    if not eligibles:
-        return None
-    meilleur = max(points(g) for g in eligibles)
-    premiers = [g for g in eligibles if points(g) == meilleur]
-    return premiers[0] if len(premiers) == 1 else None
+def selectionner_qg(candidats, points=None):
+    """API de sélection explicite : toute nature, aucun départage par les PC.
+
+    Le paramètre historique points est conservé pour les appelants externes,
+    mais n'est plus consulté. Le pilote territorial lit les fichiers QG.
+    """
+    eligibles = [g for g in candidats if g.get('qg') and g.get('effectif_bloc_qg', 0) > 0]
+    return eligibles[0] if len(eligibles) == 1 else None
 
 
 class QuartierGeneral:
@@ -100,6 +99,9 @@ def pc_qg_sur_territoire(qg, generaux_presents):
     for general in generaux_presents:
         if general is None or general.get('camp') != camp:
             continue
+        composition = generaux.lire_composition_general(general['chemin'])
+        messager |= any(bloc.get('messager_du_QG', 0) > 0
+                        for bloc in composition.values())
         fiche = progression.caracteristiques_general(general)
         if fiche is None:
             continue
@@ -107,9 +109,6 @@ def pc_qg_sur_territoire(qg, generaux_presents):
         fiches.append(entree)
         if entree['identifiant'] == identite:
             qg_fiche = entree
-        composition = generaux.lire_composition_general(general['chemin'])
-        messager |= any(bloc.get('messager_du_QG', 0) > 0
-                        for bloc in composition.values())
     return pc_qg_globaux(qg_fiche, fiches, messager)
 
 
@@ -203,7 +202,7 @@ def bonus_etiquettes(pc, coefficients):
     return sum((Fraction(pc) * Fraction(c) for c in coefficients), Fraction(0))
 
 def coefficient_niveau_general(niveau):
-    """Coefficient fixe de 0,5 ; le niveau borne seulement les apprentissages."""
+    """Coefficient officiel fixe de 0,5, indépendant du niveau du général."""
     from fractions import Fraction
     if type(niveau) is not int or niveau < 0:
         raise ValueError('Niveau invalide.')
@@ -224,7 +223,6 @@ def effets_etiquettes_general(fiche, etiquettes_cibles, *, portee='duel'):
     pc = fiche.get('points_commandement', 0)
     # Coefficient fixe : le niveau du général borne l'apprentissage,
     # mais ne multiplie plus une deuxième fois les bonus.
-    from fractions import Fraction
     coeff = Fraction(1, 2)
     total = {}
     for nom, niveau in fiche.get('etiquettes', {}).items():
@@ -232,6 +230,7 @@ def effets_etiquettes_general(fiche, etiquettes_cibles, *, portee='duel'):
         if not regle or type(niveau) is not int or niveau <= 0:
             continue
         # Le rang de l'étiquette multiplie le coefficient fixe de 0,5.
+
         # Une portée future peut être déclarée par le registre de l'effet.
         if regle.get('portee', 'duel') != portee:
             continue

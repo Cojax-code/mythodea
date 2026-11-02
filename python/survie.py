@@ -266,6 +266,16 @@ def preparer_phase_ennemie(numero_vague, configuration=None, aleatoire=None):
 
 
 def resoudre_cascade(territoire, configuration=None, mode_combat="OFF/OFF", en_cours_de_fuite=None):
+    """Un seul QG et un seul calcul initial pour toute la cascade territoriale."""
+    configuration = profil_survie(configuration)
+    if mode_combat not in ("OFF/OFF", "OFF/DEF"):
+        raise ValueError("Mode d'affrontement inconnu.")
+    generaux.remonter_renforts_bot(territoire, configuration)
+    with combats._contexte_qg_territorial(territoire, configuration):
+        return _resoudre_cascade(territoire, configuration, mode_combat, en_cours_de_fuite)
+
+
+def _resoudre_cascade(territoire, configuration, mode_combat, en_cours_de_fuite):
     """Enchaîne les affrontements communs, avec décisions entre deux seulement.
 
     L'appel ne déplace pas le bot, ne crée aucune vague et ne lance aucun tour.
@@ -280,7 +290,6 @@ def resoudre_cascade(territoire, configuration=None, mode_combat="OFF/OFF", en_c
         raise ValueError("Mode d'affrontement inconnu.")
     camp_bot = configuration["acteurs"]["bot"]["camp"]
     camp_allie = configuration["acteurs"][configuration["joueurs"][0]]["camp"]
-    generaux.remonter_renforts_bot(territoire, configuration)
     forces = generaux.lire_forces_territoire(territoire, configuration)
     for general in generaux.generaux_actifs_joueur(forces, camp_allie):
         generaux.assurer_ordre_surnombre(

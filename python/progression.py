@@ -162,11 +162,7 @@ def evolutions_eligibles(fiche, catalogue=None, apprentissage=True):
 
 
 def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None):
-    """Progression naturelle à chaque niveau ; roulette sauf tous les cinq niveaux.
-
-    Aux paliers de cinq, obtention d'une étiquette permanente (non modifiable
-    à l'École). Les évolutions d'unités restent autorisées aux autres niveaux.
-    """
+    """Gain naturel, puis étiquette aux paliers N5/N10 autorisés ou roulette."""
     aleatoire = random if aleatoire is None else aleatoire
     resultat = deepcopy(fiche)
     resultat['niveau'] += 1
@@ -232,7 +228,10 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
         else:
             identifiant = candidats[aleatoire.randint(0, len(candidats) - 1)]
     if categorie in ('commandement', 'moral'):
-        nom, gain = recompense_statistique(orientation, aleatoire)
+        # Une mémoire croisée d'hybride garde le barème de la récompense,
+        # indépendamment de l'orientation qui gouverne le gain naturel.
+        nom, gain = recompense_statistique(
+            'stratege' if categorie == 'commandement' else 'instinctif', aleatoire)
         if categorie == 'commandement':
             resultat['points_commandement'] += gain
         else:

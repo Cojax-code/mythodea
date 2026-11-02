@@ -1,6 +1,7 @@
 """Calcul des combats, choc initial, manœuvres et combat rangé."""
 import random
 import stat
+from fractions import Fraction
 from contextvars import ContextVar
 from contextlib import contextmanager
 
@@ -121,6 +122,8 @@ def _pourcentage_soutien(type_unite, effet, cible=None, *, adverse=False):
 
 def _fichier_qg_valide(chemin):
     """Seul un fichier ordinaire non lié est une déclaration de QG."""
+    if any(parent.is_symlink() for parent in chemin.parents):
+        raise ValueError(f'Déclaration QG sous un dossier lié interdite : {chemin}')
     try:
         infos = chemin.lstat()
     except FileNotFoundError:
@@ -135,7 +138,23 @@ def _contexte_qg_territorial(territoire, configuration):
     """Fige les QG déclarés par QG.txt ou qg.txt au début du territoire."""
     import commandement
     forces = generaux.lire_forces_territoire(territoire, configuration)
-    tous = [general for places in forces.values() for general in places.values() if general]
+    tous = [general for places in forces.values() for general in places.values()
+            if general and generaux.general_a_des_unites(general)]
+    courant = _EFFETS_TERRITOIRE.get()
+    if courant.get('territoire') == territoire:
+        # Les renforts nouvellement engagés reçoivent l'instantané initial.
+        # Ni leurs PC ni leurs déclarations ne changent le QG de cette bataille.
+        for camp, instantane in courant['instantanes'].items():
+            if camp in courant['qg_detruits']:
+                continue
+            effets = commandement.repartir_effets_qg(instantane, tous)
+            courant['allies'].update(effets)
+            courant['camps_allies'].setdefault(camp, set()).update(effets)
+            for identite, malus in commandement.repartir_malus_qg(instantane, tous).items():
+                courant['malus_par_origine'].setdefault(identite, {})[camp] = malus
+                courant['malus'][identite] = dict(malus)
+        yield
+        return
     declarations = {}
     for general in tous:
         # Le joueur désigne son QG par un fichier vide (ou non) dans le
@@ -148,7 +167,7 @@ def _contexte_qg_territorial(territoire, configuration):
         if any(fichiers):
             declarations.setdefault(general['camp'], []).append(general)
     allies, malus, qg_identites = {}, {}, set()
-    camps_allies, malus_par_origine = {}, {}
+    camps_allies, malus_par_origine, instantanes = {}, {}, {}
     for camp, candidats in declarations.items():
         if len(candidats) > 1:
             rapports.afficher_et_ecrire(
@@ -160,6 +179,7 @@ def _contexte_qg_territorial(territoire, configuration):
         instantane = commandement.instantane_qg_territorial(qg, tous)
         if instantane is None:
             raise ValueError('QG sans caractéristiques officielles.')
+        instantanes[camp] = instantane
         effets_allies = commandement.repartir_effets_qg(instantane, tous)
         allies.update(effets_allies)
         camps_allies[camp] = set(effets_allies)
@@ -169,6 +189,7 @@ def _contexte_qg_territorial(territoire, configuration):
             for cle, valeur in effets.items():
                 courant[cle] = courant.get(cle, 0) + valeur
     jeton = _EFFETS_TERRITOIRE.set({
+        'territoire': territoire, 'instantanes': instantanes,
         'allies': allies, 'malus': malus, 'qg': qg_identites,
         'camps_allies': camps_allies, 'malus_par_origine': malus_par_origine,
         'qg_detruits': set(),
@@ -840,35 +861,38 @@ def valeur_base_bloc(infos, bloc=None):
     return valeur
 
 
-def _bonus_valeur_duel(fiche, type_unite, position):
+def _bonus_valeur_duel(fiche, type_unite, position, general=None):
     """Bonus de valeur du général, en pourcentage exact de sa valeur de base."""
     from fractions import Fraction
-    if not fiche or type_unite == 'vide':
+    if type_unite == 'vide':
         return Fraction(0)
     import commandement
     cibles = set(unites.definition(type_unite)['etiquettes'])
-    effets = commandement.effets_etiquettes_general(fiche, cibles)
+    effets = commandement.effets_etiquettes_general(fiche or {}, cibles)
     personnel = sum((valeur for (effet, _), valeur in effets.items()
                       if effet == 'valeur'), Fraction(0))
     identites = _DUEL_IDENTITES.get()
-    if identites:
-        soutien = _effets_transmis(identites[position])
+    if general is not None or identites:
+        soutien = _effets_transmis(general if general is not None else identites[position])
         etiquettes = set(unites.definition(type_unite)['etiquettes'])
         personnel += sum((valeur for (effet, cible), valeur in soutien.items()
                           if effet == 'valeur' and cible in etiquettes), Fraction(0))
     return personnel
 
 
-def _malus_chaman_duel(fiche_adverse, type_unite, position):
+def _malus_chaman_duel(fiche_adverse, type_unite, position, general=None, adversaire=None):
     """Malus de valeur sur les Orcs, produit par l'étiquette chaman ennemie."""
     from fractions import Fraction
-    if not fiche_adverse or not unites.etiquette(type_unite, 'orc'):
+    if not unites.etiquette(type_unite, 'orc'):
         return Fraction(0)
     import commandement
-    effets = commandement.effets_etiquettes_general(fiche_adverse, {'orc'})
+    effets = commandement.effets_etiquettes_general(fiche_adverse or {}, {'orc'})
     personnel = effets.get(('malus_valeur_adverse', 'orc'), Fraction(0))
     identites = _DUEL_IDENTITES.get()
-    if identites:
+    if general is not None and adversaire is not None:
+        personnel += _malus_global_hors_qg_courant(
+            general, adversaire, ('malus_valeur_adverse', 'orc'))
+    elif identites:
         personnel += _malus_global_hors_qg_courant(
             identites[position], identites[1-position],
             ('malus_valeur_adverse', 'orc'))
@@ -884,6 +908,7 @@ def combat_bloc(
     bloc_2=None,
     fiche_1=None,
     fiche_2=None,
+    *, general_1=None, general_2=None,
 ):
     # Calcule le résultat d'un combat entre deux blocs.
     #
@@ -921,15 +946,15 @@ def combat_bloc(
 
     # Étiquettes du duel : addition des bonus/malus en pourcentages,
     # sans écriture dans les PC et sans cumul multiplicatif des étiquettes.
-    # 100 % est la valeur de référence. Le plancher zéro évite toute valeur
+    # 100 % est la valeur de référence. Le plancher de 1 % évite toute valeur
     # de résistance négative ou une division par zéro.
     from fractions import Fraction
     valeur_1 *= max(Fraction(1, 100),
-                    1 + (_bonus_valeur_duel(fiche_1, type_1, 0)
-                         - _malus_chaman_duel(fiche_2, type_1, 0)) / 100)
+                    1 + (_bonus_valeur_duel(fiche_1, type_1, 0, general_1)
+                         - _malus_chaman_duel(fiche_2, type_1, 0, general_1, general_2)) / 100)
     valeur_2 *= max(Fraction(1, 100),
-                    1 + (_bonus_valeur_duel(fiche_2, type_2, 1)
-                         - _malus_chaman_duel(fiche_1, type_2, 1)) / 100)
+                    1 + (_bonus_valeur_duel(fiche_2, type_2, 1, general_2)
+                         - _malus_chaman_duel(fiche_1, type_2, 1, general_2, general_1)) / 100)
 
     # ------------------------------------------
     # Fatigue
@@ -1008,7 +1033,7 @@ def supprimer_unites(infos, survivants, general=None):
         moral = unites.moral_bloc(caracteristiques, composition, bloc)
         identite = (general['joueur'], general['nom'])
         pourcentage = _MALUS_MORAL_DUEL.get().get(identite, 0)
-        moral = max(0, moral * max(0, 100 - pourcentage) / 100)
+        moral = max(0, Fraction(moral) * max(0, 100 - pourcentage) / 100)
     return soldats.pertes(infos, survivants, moral, random)
 
 
@@ -1062,6 +1087,7 @@ def confrontation_directe(
         bloc, bloc,
         progression.caracteristiques_general(general_1),
         progression.caracteristiques_general(general_2),
+        general_1=general_1, general_2=general_2,
     )
     soldats.affrontement(general_1, general_2)
 
@@ -1237,6 +1263,7 @@ def attaque_ciblee(
         bloc_attaquant, bloc_cible,
         progression.caracteristiques_general(general_attaquant),
         progression.caracteristiques_general(general_defenseur),
+        general_1=general_attaquant, general_2=general_defenseur,
     )
     if initial_attaquant > 0 and initial_defenseur > 0:
         soldats.affrontement(general_attaquant, general_defenseur)

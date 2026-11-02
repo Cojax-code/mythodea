@@ -99,6 +99,12 @@ class Regressions(unittest.TestCase):
     def general(self, joueur="j1", nom="general1", territoire="base1", emplacement="1"):
         chemin = self.config.game_path / territoire / joueur / emplacement / nom
         self.generaux.creer_general(chemin, nom)
+        # Scénario de combat de base ; les bonus V2 sont testés séparément.
+        profils = self.generaux.progression.charger()
+        identite = f'{joueur}:{chemin.name}'
+        if identite in profils:
+            profils[identite].update(etiquettes={}, etiquettes_permanentes=[])
+            self.generaux.progression.sauvegarder(profils)
         return chemin
 
     def autoriser(self, joueur="j1", nom="general1", position="base1", compteur=1):
@@ -284,6 +290,14 @@ class Regressions(unittest.TestCase):
         self.assertEqual(self.etat.charger_controle_territoires()["terrain1"], "j1")
 
     def test_transition_frontal_vers_range_avec_survivants_des_deux_camps(self):
+        configuration_mode = self.config.configuration_mode
+        def profil_frontal(mode='classique'):
+            profil = configuration_mode(mode)
+            profil['configurations_terrain'] = {'terrain1': {'attaque_frontale': True}}
+            return profil
+        temporaire = patch.object(self.config, 'configuration_mode', profil_frontal)
+        temporaire.start()
+        self.addCleanup(temporaire.stop)
         for joueur, nom, emplacement, nombre, equipement in [
             ("j1", "general1", "1", 5, "arc"),
             ("j2", "general1", "1", 2, "pique"),
@@ -308,6 +322,14 @@ class Regressions(unittest.TestCase):
         self.assertNotIn("Aucun combat rangé.", rapport)
 
     def test_frontal_termine_sans_range_si_un_camp_disparait(self):
+        configuration_mode = self.config.configuration_mode
+        def profil_frontal(mode='classique'):
+            profil = configuration_mode(mode)
+            profil['configurations_terrain'] = {'terrain1': {'attaque_frontale': True}}
+            return profil
+        temporaire = patch.object(self.config, 'configuration_mode', profil_frontal)
+        temporaire.start()
+        self.addCleanup(temporaire.stop)
         for joueur, nombre in [("j1", 5), ("j2", 2)]:
             general = self.general(joueur, territoire="terrain1")
             self.autoriser(joueur, position="terrain1")
