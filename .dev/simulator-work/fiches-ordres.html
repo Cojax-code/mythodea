@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fiches techniques des ordres — Mythodea</title><link rel="stylesheet" href="css/style.css">
+<style>
+nav .help-menu{display:inline-flex;position:relative;align-items:center;vertical-align:baseline;font:inherit;line-height:inherit}
+nav .help-menu>summary{display:inline-flex;align-items:center;cursor:pointer;list-style:none;font:inherit;color:inherit}
+nav .help-menu>summary::-webkit-details-marker{display:none}
+nav .help-menu>summary::after{content:" ▾";font-size:.8em}
+nav .help-menu .help-dropdown{position:absolute;z-index:1000;top:100%;left:0;min-width:190px;display:flex;flex-direction:column;padding:6px;background:#202938;border:1px solid #64748b;border-radius:7px;box-shadow:0 5px 15px #0003}
+nav .help-dropdown a{white-space:nowrap;padding:9px 12px;color:#fff;text-decoration:none}
+nav .help-dropdown a:hover,nav .help-dropdown a:focus-visible{background:#41526d}
+main.fiches{max-width:1080px;margin:30px auto;padding:0 18px 50px}.fiches section{padding:22px}
+.fiches p{line-height:1.6}.fiches .muted{color:#526078}
+.fiches .cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.fiches label{display:block;font-weight:600;margin:12px 0 5px}.fiches input,.fiches select,.fiches textarea{box-sizing:border-box;width:100%;padding:10px;border:1px solid #a5b3c4;border-radius:6px;font:inherit;background:white;color:#222}
+.fiches textarea{min-height:88px;resize:vertical}.fiches fieldset{border:1px solid #d0d9e5;border-radius:8px;padding:14px;margin:16px 0}.fiches legend{font-weight:700}
+.fiches button,.fiches .file-label{border:1px solid #263b59;background:#263b59;color:white;border-radius:6px;padding:10px 14px;cursor:pointer;font:inherit}
+.fiches button.secondary,.fiches .file-label.secondary{background:white;color:#263b59}
+.fiches .actions{display:flex;flex-wrap:wrap;gap:10px;margin:15px 0}.fiches .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.fiches .card{border:1px solid #d8dfeb;padding:14px;border-radius:8px;background:#f8fafc}.fiches .card p{overflow-wrap:anywhere}
+.fiches .inline-choice{display:inline-flex;align-items:center;gap:10px;margin-top:14px}.fiches input[type="checkbox"]{width:auto;height:18px;accent-color:#263b59}.fiches [hidden]{display:none!important}
+.fiches .notice{padding:12px;background:#eef2f7;border-left:3px solid #506a90}.fiches .status{min-height:1.5em}
+@media(max-width:650px){.fiches .cols{grid-template-columns:1fr}.fiches section{padding:15px}}
+</style><script src="js/main.js" defer></script></head><body>
+<header><h1>MYTHODEA</h1><nav aria-label="Navigation principale"><a href="index.html">Présentation</a><a href="telechargement.html">Téléchargement</a><a href="regles.html">Règles</a><details class="help-menu"><summary>Aide de jeu</summary><div class="help-dropdown"><a href="carte.html">Carte du jeu</a><a href="batiments.html">Bâtiments</a><a href="chemins.html">Chemins Linux</a><a href="bestiaire.html">Bestiaire</a><a href="ordres.html">Ordres</a><a href="quetes.html">Quêtes</a></div></details><details class="help-menu"><summary>Fiches techniques</summary><div class="help-dropdown"><a href="fiches-unites.html">Fiches des unités</a><a href="fiches-ordres.html">Fiches des ordres</a></div></details><a href="simulateur.html">Simulateur</a></nav></header>
+<main class="fiches">
+<h1>Fiches techniques des ordres</h1>
+<p class="muted">Atelier de conception des futurs ordres de Mythodea V2. Comme pour les unités, les fiches sont des <strong>propositions</strong>, indépendantes du moteur de combat. Un ordre décrit ici n'est pas automatiquement exécutable.</p>
+<section><h2 id="form-title">Nouvelle fiche d'ordre</h2>
+<form id="fiche-form">
+<fieldset><legend>1. Identification</legend><div class="cols">
+<div><label for="nom">Nom de l'ordre *</label><input id="nom" maxlength="100" required placeholder="Ex. Tenir la ligne"></div>
+<div><label for="categorie">Catégorie</label><select id="categorie"><option value="globale">Globale — armée / QG</option><option value="duel">Duel — affrontement de généraux</option><option value="individuelle">Individuelle — un général</option></select></div>
+<div><label class="inline-choice" for="contre-ordre"><input id="contre-ordre" type="checkbox"> Contre-ordre</label></div>
+</div></fieldset>
+<fieldset><legend>2. Conditions d'utilisation</legend><div class="cols">
+<div><label for="declenchement">Moment d'activation</label><select id="declenchement"><option>Avant le combat territorial</option><option>Avant le duel</option><option>Avant le choc initial</option><option>Après le choc initial</option><option>Manœuvre</option><option>Après un affrontement</option><option>À la défaite / retraite</option><option>Autre (préciser)</option></select></div>
+<div><label for="portee">Cible</label><textarea id="portee" placeholder="Général, bloc, unité, armée, territoire…"></textarea></div>
+<div><label for="prerequis">Prérequis et déblocage</label><textarea id="prerequis" placeholder="Niveau, évolution, présence du QG, bâtiment…"></textarea></div></div>
+
+</fieldset>
+<fieldset><legend>3. Effet et interactions</legend>
+<label for="effet">Effet exact de l'ordre *</label><textarea id="effet" required placeholder="Décrire la modification du combat, les calculs et le résultat attendu."></textarea>
+<label for="priorite-active">Priorité par rapport aux phases ?</label>
+<select id="priorite-active"><option value="non" selected>Non</option><option value="oui">Oui</option></select>
+<div id="priorite-champ" hidden><label for="priorite">Décrire la priorité</label><textarea id="priorite" placeholder="À quel moment l'ordre intervient-il par rapport aux autres phases ?"></textarea></div>
+</fieldset>
+<fieldset><legend>4. Commentaire</legend><label for="commentaire">Commentaire</label><textarea id="commentaire" placeholder="Notes libres sur cet ordre…"></textarea></fieldset><div class="actions"><button type="submit">Enregistrer la fiche</button><button type="button" class="secondary" id="nouveau">Nouvelle fiche</button></div></form>
+<p id="message" class="status" role="status" aria-live="polite"></p></section>
+<section><h2>Mes fiches d'ordres (<span id="compteur">0</span>)</h2>
+<p class="notice">Les fiches restent dans le navigateur utilisé. <strong>Exporte-les en JSON</strong> pour les sauvegarder et les partager avec Codex. Le statut « Validé sur le papier » ne déploie rien dans le jeu.</p>
+<div class="actions"><button id="exporter" type="button">Exporter JSON</button><label class="file-label secondary" for="importer">Importer JSON</label><input id="importer" type="file" accept=".json,application/json" hidden></div><div id="liste" class="cards"></div></section>
+</main>
+<script>
+(()=>{'use strict';
+const KEY='mythodea_ordres_brouillons_v1',ids=['nom','categorie','declenchement','portee','prerequis','effet','priorite','commentaire'];
+const $=id=>document.getElementById(id);let fiches=[],edition=null;
+try{const x=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(x))fiches=x.filter(o=>o&&typeof o==='object').slice(0,500)}catch(_){$('message').textContent='Lecture des données locales impossible.'}
+function sauver(){try{localStorage.setItem(KEY,JSON.stringify(fiches));return true}catch(_){$('message').textContent='Stockage indisponible : exporte tes fiches.';return false}}
+function affichePriorite(){$('priorite-champ').hidden=$('priorite-active').value!=='oui'}
+$('priorite-active').addEventListener('change',affichePriorite);
+function lire(){const o=Object.fromEntries(ids.map(id=>[id,$(id).value.trim()]));o.contre_ordre=$('contre-ordre').checked;o.priorite_active=$('priorite-active').value;if(o.priorite_active!=='oui')o.priorite='';return o}
+function remplir(o){for(const id of ids)$(id).value=o[id]||'';if(!o.commentaire)o.commentaire=[o.questions,o.exemple].filter(Boolean).join('\n\n');$('commentaire').value=o.commentaire||'';$('contre-ordre').checked=!!o.contre_ordre;$('priorite-active').value=o.priorite_active||(o.priorite?'oui':'non');affichePriorite()}
+function nouveau(){$('fiche-form').reset();edition=null;affichePriorite();$('form-title').textContent="Nouvelle fiche d'ordre"}
+function bouton(label,fn){const b=document.createElement('button');b.type='button';b.textContent=label;b.className='secondary';b.addEventListener('click',fn);return b}
+function para(parent,label,value){const p=document.createElement('p');const strong=document.createElement('strong');strong.textContent=label; p.append(strong,document.createTextNode(value));parent.append(p)}
+function afficher(){const target=$('liste');target.replaceChildren();$('compteur').textContent=fiches.length;if(!fiches.length){const p=document.createElement('p');p.textContent="Aucune fiche enregistrée.";target.append(p);return}
+fiches.forEach((f,i)=>{const card=document.createElement('article');card.className='card';const h=document.createElement('h3');h.textContent=f.nom||'Sans nom';card.append(h);para(card,'Catégorie : ',f.categorie||'/');para(card,'Contre-ordre : ',f.contre_ordre?'Oui':'Non');para(card,'Effet : ',f.effet||'/');const a=document.createElement('div');a.className='actions';a.append(bouton('Modifier',()=>{edition=i;remplir(f);$('form-title').textContent='Modifier : '+f.nom;window.scrollTo({top:0,behavior:'smooth'})}),bouton('Dupliquer',()=>{if(fiches.length>=500)return alert('Limite de 500 fiches.');fiches.push({...f,nom:f.nom+' (copie)'});sauver();afficher()}),bouton('Supprimer',()=>{if(confirm('Supprimer cette fiche ?')){fiches.splice(i,1);nouveau();sauver();afficher()}}));card.append(a);target.append(card)})}
+$('fiche-form').addEventListener('submit',e=>{e.preventDefault();const v=lire();if(!v.nom||!v.effet)return;if(edition===null){if(fiches.length>=500)return $('message').textContent='Limite de 500 fiches.';fiches.push(v)}else fiches[edition]=v;const ok=sauver();afficher();$('message').textContent=ok?'Fiche enregistrée dans ce navigateur.':'Fiche modifiée, mais stockage impossible.';nouveau()});
+$('nouveau').addEventListener('click',nouveau);
+$('exporter').addEventListener('click',()=>{const blob=new Blob([JSON.stringify({version:1,type:'mythodea_ordres',fiches},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='mythodea-ordres.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+$('importer').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>1024*1024)throw Error('Fichier trop volumineux.');const v=JSON.parse(await file.text());const a=Array.isArray(v)?v:v?.type==='mythodea_ordres'?v.fiches:null;if(!Array.isArray(a)||a.length>500||!a.every(x=>x&&typeof x==='object'&&typeof x.nom==='string'&&typeof x.effet==='string'))throw Error('Format de fiches invalide.');if(!confirm('Remplacer toutes les fiches locales par '+a.length+' fiches importées ?'))return;fiches=a.map(x=>({...Object.fromEntries(ids.map(id=>[id,typeof x[id]==='string'?x[id].slice(0,10000):''])),contre_ordre:!!x.contre_ordre,priorite_active:x.priorite_active==='oui'||(!x.priorite_active&&x.priorite)?'oui':'non',commentaire:typeof x.commentaire==='string'?x.commentaire.slice(0,10000):[x.questions,x.exemple].filter(Boolean).join('\n\n')}));nouveau();sauver();afficher();$('message').textContent='Import terminé.'}catch(err){$('message').textContent=err.message}finally{e.target.value=''}});
+afficher();
+})();
+</script></body></html>

@@ -1,0 +1,148 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background-color: #f5f6f8;
+    color: #222;
+}
+
+header {
+    background-color: #202938;
+    color: white;
+    padding: 20px;
+}
+
+nav {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+}
+
+nav a:hover {
+    text-decoration: underline;
+}
+
+main {
+    max-width: 1000px;
+    margin: 30px auto;
+    padding: 0 20px;
+}
+
+section {
+    background: white;
+    padding: 25px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+
+/* Les ajouts du prototype restent limités à la page du simulateur. */
+.simulator { max-width: 1180px; padding-bottom: 48px; line-height: 1.5; }
+.simulator [hidden] { display: none !important; }
+.simulator .sim-eyebrow { font-size: .78rem; letter-spacing: .12em; color: #526078; font-weight: 700; }
+.simulator h1 { margin-bottom: 12px; }
+.simulator h2 { margin-top: 0; }
+.simulator h4 { margin: 16px 0 8px; }
+.simulator .sim-note { border-left: 3px solid #62738d; padding: 10px 14px; background: #eaf0f6; }
+.simulator .sim-muted { color: #526078; font-size: .9rem; }
+.simulator .sim-armies { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.simulator .sim-army { border-top: 4px solid #286da8; padding: 20px; min-width: 0; }
+.simulator .sim-camp-b.sim-army { border-color: #a64d31; }
+.simulator .sim-camp-a h2, .simulator .sim-camp-a h4 { color: #205d91; }
+.simulator .sim-camp-b h2, .simulator .sim-camp-b h4 { color: #98452c; }
+.simulator .sim-total { font-weight: 700; margin-top: 0; }
+.simulator .sim-formation { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: 'avant avant' 'gauche droite' 'arriere arriere'; gap: 12px; }
+.simulator .sim-block { border: 1px solid #d6dce6; border-radius: 6px; margin: 0; padding: 12px; min-width: 0; background: #f8fafc; }
+.simulator .sim-block-avant { grid-area: avant; }
+.simulator .sim-block-droite { grid-area: droite; }
+.simulator .sim-block-gauche { grid-area: gauche; }
+.simulator .sim-block-arriere { grid-area: arriere; }
+.simulator legend { font-weight: 700; padding: 0 4px; }
+.simulator label { display: block; font-size: .9rem; margin-bottom: 4px; }
+.simulator input, .simulator select { box-sizing: border-box; width: 100%; font: inherit; border: 1px solid #9aa8bb; border-radius: 4px; padding: 8px; background: white; color: #222; margin-bottom: 8px; min-height: 42px; }
+.simulator small { display: block; min-height: 1.4em; }
+.simulator .sim-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+.simulator .sim-actions > div { flex: 1 1 250px; }
+.simulator button { border: 1px solid #205d91; background: #205d91; color: white; font: inherit; font-weight: 700; border-radius: 5px; padding: 11px 16px; cursor: pointer; min-height: 44px; }
+.simulator button.sim-secondary { background: white; color: #205d91; }
+.simulator button:disabled { opacity: .55; cursor: not-allowed; }
+.simulator :focus-visible { outline: 3px solid #bd7a10; outline-offset: 3px; }
+.simulator .sim-error { color: #9b271c; font-weight: 700; }
+.simulator .sim-outcome { font-size: 1.5rem; font-weight: 700; color: #202938; }
+.simulator .sim-results { scroll-margin-top: 18px; }
+.simulator .sim-results .sim-block p { font-size: .9rem; margin: 6px 0; }
+.simulator meter { width: 100%; height: 14px; }
+.simulator .sim-phase, .simulator .sim-journal, .simulator .sim-help { border: 1px solid #d6dce6; border-radius: 6px; padding: 14px; margin: 14px 0; background: white; }
+.simulator summary { cursor: pointer; font-weight: 700; min-height: 26px; }
+.simulator .sim-phase li { padding: 8px 0; border-bottom: 1px solid #e0e5eb; }
+.simulator .sim-phase li p { margin: 4px 0; }
+.simulator pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .84rem; max-height: 550px; overflow: auto; background: #202938; color: #eef2f6; padding: 16px; border-radius: 4px; }
+.simulator .sim-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.simulator .sim-layout-button { flex: 0 0 44px; padding: 4px; font-size: 1.6rem; }
+.simulator #armies { align-items: start; }
+.simulator[data-layout="vertical"] #armies { grid-template-columns: 1fr; }
+.simulator .sim-panel { background: white; border: 1px solid #d6dce6; border-radius: 8px; margin: 14px 0; min-width: 0; }
+.simulator .sim-panel > summary { padding: 16px 18px; overflow-wrap: anywhere; }
+.simulator .sim-panel > summary > span { font-size: 1.1rem; }
+.simulator .sim-panel > summary small { color: #526078; font-size: .85rem; font-weight: 400; margin: 4px 0 0 18px; }
+.simulator .sim-panel-body { padding: 0 18px 18px; }
+.simulator .sim-panel.sim-army { padding: 0; border-top: 4px solid #286da8; }
+.simulator .sim-panel.sim-camp-b { border-top-color: #a64d31; }
+.simulator .sim-general { border: 1px solid #d6dce6; border-radius: 6px; margin-bottom: 14px; }
+.simulator .sim-general > summary { padding: 12px; background: #f3f6fa; border-radius: 6px; }
+.simulator .sim-general > summary small { font-size: .83rem; font-weight: 400; margin-top: 4px; color: #526078; }
+.simulator .sim-general > summary small.sim-error { color: #9b271c; }
+.simulator .sim-general-body { padding: 12px; }
+.simulator .sim-remove { margin-top: 14px; font-size: .9rem; }
+.simulator .sim-options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.simulator #results { margin-bottom: 0; }
+.simulator select:disabled { background: #f0f2f5; color: #526078; }
+.simulator .sim-controls { margin-top: 20px; }
+.simulator .sim-general-result { margin-top: 12px; }
+.simulator #journal { max-height: 650px; overflow: auto; border-radius: 4px; background: #202938; padding: 12px; }
+.simulator #journal pre { margin: 0; padding: 0; max-height: none; overflow: visible; }
+.simulator .sim-explanation { background: #eef3f9; color: #202938; border-radius: 4px; margin: 8px 0; padding: 6px 10px; font-size: .85rem; }
+.simulator .sim-explanation summary { padding: 6px 0; min-height: 32px; overflow-wrap: anywhere; }
+.simulator .sim-explanation p { margin: 6px 0; }
+.simulator .sim-random-general { margin-bottom: 14px; }
+.simulator .sim-log-camp-a { color: #205d91; }
+.simulator .sim-log-camp-b { color: #98452c; }
+.simulator #journal pre .sim-log-camp-a { color: #a9cceb; }
+.simulator #journal pre .sim-log-camp-b { color: #e8bba6; }
+.simulator .sim-log-block { font-weight: 700; }
+@media (max-width: 800px) { .simulator .sim-armies { grid-template-columns: 1fr; } }
+@media (max-width: 430px) {
+    .simulator { padding: 0 10px 32px; }
+    .simulator section { padding: 14px; }
+    .simulator .sim-army { padding: 14px; }
+    .simulator .sim-block { padding: 8px; }
+    .simulator select { font-size: .85rem; }
+    .simulator .sim-panel-body { padding: 0 10px 14px; }
+    .simulator .sim-general-body { padding: 8px; }
+    .simulator .sim-options-grid { grid-template-columns: 1fr; gap: 8px; }
+}
+
+/* Navigation commune : le Bestiaire reste dans Aide de jeu, sans chevauchement
+   avec l'onglet Fiches techniques. */
+header nav { align-items: center; row-gap: 10px; }
+header nav > a, header nav > .help-menu { flex: 0 0 auto; }
+header nav .help-menu { display: inline-flex; position: relative; align-items: center; font: inherit; }
+header nav .help-menu > summary { display: inline-flex; align-items: center; cursor: pointer; color: white; list-style: none; font: inherit; }
+header nav .help-menu > summary::-webkit-details-marker { display: none; }
+header nav .help-menu > summary::after { content: " ▾"; font-size: .8em; }
+header nav .help-dropdown { display: none !important; position: absolute; z-index: 1000; top: 100%; left: 0; min-width: 185px; padding: 6px; flex-direction: column; background: #202938; border: 1px solid #64748b; border-radius: 7px; box-shadow: 0 5px 15px #0003; }
+header nav .help-menu[open] .help-dropdown { display: flex !important; }
+header nav .help-dropdown a { padding: 9px 12px; color: #fff; white-space: nowrap; text-decoration: none; }
+header nav .help-dropdown a:hover, header nav .help-dropdown a:focus-visible { background: #41526d; }
+header nav a[aria-current="page"] { text-decoration: underline; text-underline-offset: 5px; }
+@media (max-width: 650px) { header nav .help-dropdown { left: auto; right: 0; max-width: 90vw; } }
+
+/* Profils du simulateur : champs et ?tiquettes accessibles sur petit ?cran. */
+.sim-labels { margin: 1rem 0; }
+.sim-label-row { display: grid; grid-template-columns: minmax(7rem,1fr) 4rem auto 1.2rem auto 1.2rem; gap: .4rem; align-items: center; padding: .4rem 0; border-bottom: 1px solid #cbd5e1; }
+.sim-label-row input { min-width: 0; width: 100%; }
+.sim-general-body input[type=checkbox] { width: 1.2rem; height: 1.2rem; }
+@media(max-width: 500px) { .sim-label-row { grid-template-columns: 1fr 4rem; } }

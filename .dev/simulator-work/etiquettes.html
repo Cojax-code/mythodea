@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Étiquettes — Mythodea V2</title><meta name="description" content="Guide des étiquettes de généraux, activation, QG et Messager."><link rel="stylesheet" href="css/style.css"><script src="js/main.js" defer></script>
+<style>
+nav .help-menu{display:inline-flex;position:relative;align-items:center;vertical-align:baseline;font:inherit}
+nav .help-menu>summary{display:inline-flex;cursor:pointer;list-style:none;color:inherit}
+nav .help-menu>summary::after{content:" ▾";font-size:.8em}
+nav .help-menu>summary::-webkit-details-marker{display:none}
+nav .help-menu .help-dropdown{position:absolute;z-index:1000;top:100%;left:0;min-width:190px;display:flex;flex-direction:column;padding:6px;background:#202938;border:1px solid #64748b;border-radius:7px;box-shadow:0 5px 15px #0003}
+nav .help-dropdown a{display:block;white-space:nowrap;padding:9px 12px;color:white;text-decoration:none}nav .help-dropdown a:hover{background:#41526d}
+.ordres-main{max-width:1150px;margin:34px auto;padding:0 18px 60px}.ordres-main section{padding:25px;margin-bottom:18px}.ordres-main p{line-height:1.65}
+.hero h2{font-size:clamp(1.7rem,4vw,2.6rem);margin:0 0 12px}.intro{max-width:770px}
+.rules-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}.rule{border-left:3px solid #526a90;padding:8px 14px;background:#f3f6fa;border-radius:3px}
+.rule strong{display:block;margin-bottom:6px}.rule p{margin:0;font-size:.94rem}
+.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:18px 0 24px}.controls input,.controls select{padding:11px 12px;border:1px solid #a6b4c6;border-radius:8px;background:white;font:inherit;color:#203045}.controls input{flex:1 1 270px;min-width:0}.controls select{flex:0 1 240px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}.ordre{border:1px solid #d6dfe8;border-radius:10px;padding:19px;background:#f9fbfe;box-shadow:0 2px 8px #18253d0b}.ordre h3{margin:12px 0;font-size:1.17rem}.ordre p{margin:0;font-size:.95rem}.ordre[hidden]{display:none}
+.meta{display:flex;justify-content:space-between;align-items:center;gap:10px;color:#4c607b;font-size:.84rem;font-weight:600}.number{font-variant-numeric:tabular-nums;color:#8897a7}
+.empty[hidden]{display:none}.footer-note{font-size:.87rem;color:#526078;margin-top:22px}
+@media(max-width:650px){.ordres-main section{padding:18px}nav .help-menu .help-dropdown{left:auto;right:0}}
+</style></head><body><header><h1>MYTHODEA</h1><nav aria-label="Navigation principale"><a href="index.html">Présentation</a><a href="telechargement.html">Téléchargement</a><a href="regles.html">Règles</a><details class="help-menu"><summary>Aide de jeu</summary><div class="help-dropdown"><a href="carte.html">Carte du jeu</a><a href="batiments.html">Bâtiments</a><a href="chemins.html">Chemins Linux</a><a href="bestiaire.html">Bestiaire</a><a href="etiquettes.html" aria-current="page">Étiquettes</a><a href="quetes.html">Quêtes</a></div></details><details class="help-menu"><summary>Fiches techniques</summary><div class="help-dropdown"><a href="fiches-unites.html">Fiches des unités</a><a href="etiquettes.html">Guide des étiquettes</a></div></details><a href="simulateur.html">Simulateur</a></nav></header>
+<main class="ordres-main">
+<section class="hero"><h2>Étiquettes de généraux</h2><p class="intro">Une étiquette apprise donne un avantage de combat, mais seules les étiquettes activées par le joueur sont prises en compte. Ce guide décrit les règles effectives de Mythodea v2.0.</p></section>
+<section><h2>Connaître, activer et améliorer</h2><div class="rules-grid">
+<div class="rule"><strong>Stratège</strong><p>Une étiquette à la création, une aux niveaux 5 et 10. Jusqu'à trois étiquettes actives.</p></div>
+<div class="rule"><strong>Instinctif</strong><p>Une étiquette obtenue au niveau 5 ; une seule active à la fois.</p></div>
+<div class="rule"><strong>Hybrides</strong><p>La limite suit l'orientation principale du général.</p></div>
+<div class="rule"><strong>Zombie</strong><p>À chaque niveau après transformation, 20 % de chance de connaître « mort_vivant », avec un emplacement spécial en plus.</p></div></div>
+<p>Pour choisir, créer <code>etiquettes_actives.txt</code> dans le dossier du général. Indiquer les identifiants exacts, une par ligne ou séparés par des virgules :</p>
+<pre><code>distance
+humain
+cavalerie</code></pre>
+<p>Un fichier vide désactive toutes les étiquettes. S'il est absent, les étiquettes connues s'activent automatiquement dans la limite admise. Les noms sont sensibles à la casse, les doublons et les étiquettes inconnues sont refusés. La sélection est figée au début de la bataille territoriale ; un renfort tardif la fige à son premier engagement.</p>
+<p>À l'École des officiers, les étiquettes scolaires peuvent être apprises puis améliorées jusqu'au rang autorisé (rang 2 dès le niveau 5, rang 3 dès le niveau 10...). Les étiquettes permanentes des paliers ne peuvent pas être améliorées à l'École.</p></section>
+<section><h2>Calcul des effets</h2>
+<p><strong>Bonus ou malus en pourcentage = PC × 0,5 × rang de l'étiquette.</strong> Les effets compatibles s'additionnent sur la valeur correspondante, sans multiplication en cascade. Une étiquette sans cible compatible n'apporte aucun bonus à ce bloc.</p>
+<div class="rules-grid">
+<div class="rule"><strong>Infanterie, distance, cavalerie</strong><p>Bonus de valeur pour les unités qui portent l'étiquette correspondante.</p></div>
+<div class="rule"><strong>Humain, mêlée, orc, mort-vivant</strong><p>Bonus de valeur selon l'identité réelle de l'unité.</p></div>
+<div class="rule"><strong>Noble, armure légère, lourde</strong><p>Bonus de valeur pour les unités compatibles.</p></div>
+<div class="rule"><strong>Chaman</strong><p>Malus de valeur sur les unités Orcs ennemies.</p></div>
+<div class="rule"><strong>Cruelle</strong><p>Malus au moral adverse utilisé lors des sauvetages.</p></div></div>
+<p>Identifiants exacts : <code>infanterie</code>, <code>distance</code>, <code>cavalerie</code>, <code>humain</code>, <code>melee</code>, <code>orc</code>, <code>mort_vivant</code>, <code>noble</code>, <code>armure_legere</code>, <code>lourde</code>, <code>chaman</code>, <code>cruelle</code>.</p></section>
+<section><h2>QG et Messager</h2><p>Le joueur désigne le QG par <code>QG.txt</code> ou <code>qg.txt</code> dans le dossier du général. Plusieurs QG dans le même camp annulent le soutien global. Un QG transmet ses effets aux alliés engagés mais ne reçoit pas une deuxième copie de ses propres bonus.</p>
+<p>Le Messager occupe cinq places et donne un bonus non cumulable de 10 % des PC des autres généraux alliés engagés sur le territoire (arrondi à l'inférieur), uniquement pour le soutien global. Si le QG est détruit, ses effets globaux cessent sans effacer les bonus personnels des alliés.</p></section>
+<section><p><a href="regles.html">Retour aux règles</a> · <a href="bestiaire.html">Consulter le bestiaire</a></p></section></main></body></html>

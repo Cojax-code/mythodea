@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Règles du mode Survie V2.0 de Mythodea.">
+    <title>Règles — Mythodea V2.0 Survie</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Styles limités à la page Règles : le style général du site reste partagé. */
+        .rules { max-width: 1000px; margin: 30px auto; padding: 0 20px 48px; }
+        .rules section { padding: 24px 28px; }
+        .rules h2 { margin-top: 0; padding-bottom: 8px; border-bottom: 1px solid #dce1e8; }
+        .rules h3 { margin: 24px 0 8px; }
+        .rules p, .rules li { line-height: 1.65; }
+        .rules li + li { margin-top: 5px; }
+        .rules code { background: #edf0f4; border-radius: 4px; padding: 1px 5px; overflow-wrap: anywhere; }
+        .rules pre { background: #202938; color: #f1f5f9; padding: 16px; border-radius: 6px; overflow-x: auto; line-height: 1.5; }
+        .rules pre code { color: inherit; background: none; padding: 0; white-space: pre; }
+        .rules table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.96rem; }
+        .rules th, .rules td { border: 1px solid #dce1e8; padding: 10px 12px; text-align: left; vertical-align: top; }
+        .rules th { background: #edf0f4; }
+        .rules .table-scroll { overflow-x: auto; }
+        .rules .intro { font-size: 1.07rem; }
+        .rules .note { border-left: 3px solid #64748b; padding-left: 12px; }
+        .rules .planned { margin: 20px 0; padding: 0; background: transparent; border: 0; }
+        .rules .planned h3 { margin-top: 24px; }
+        @media (max-width: 650px) { .rules { padding: 0 12px 32px; } .rules section { padding: 18px; } }
+    </style>
+
+<style id="mythodea-help-nav">
+nav .help-menu{display:inline-flex;position:relative;align-items:center;vertical-align:baseline;font:inherit;line-height:inherit}
+nav .help-menu>summary{display:inline-flex;align-items:center;cursor:pointer;padding:0;list-style:none;user-select:none;font:inherit;line-height:inherit;color:inherit}
+nav .help-menu>summary::-webkit-details-marker{display:none}
+nav .help-menu>summary::after{content:" ▾";font-size:.8em}
+nav .help-menu[open]>summary,nav .help-menu>summary:focus-visible{outline:2px solid #6d91bb;outline-offset:2px}
+nav .help-menu .help-dropdown{position:absolute;z-index:1000;top:100%;left:0;min-width:185px;display:flex;flex-direction:column;padding:6px;background:#202938;border:1px solid #64748b;border-radius:7px;box-shadow:0 5px 15px #0003}
+nav .help-dropdown a{display:block!important;white-space:nowrap;padding:9px 12px!important;color:#fff!important;text-decoration:none}
+nav .help-dropdown a:hover,nav .help-dropdown a:focus-visible{background:#41526d;color:#fff!important}
+@media(max-width:650px){nav .help-menu .help-dropdown{left:auto;right:0;max-width:90vw}}
+</style>
+<script src="js/main.js" defer></script></head>
+<body>
+    <header>
+        <h1>MYTHODEA</h1>
+        <nav aria-label="Navigation principale"><a href="index.html">Présentation</a><a href="telechargement.html">Téléchargement</a><a href="regles.html">Règles</a><details class="help-menu"><summary>Aide de jeu</summary><div class="help-dropdown"><a href="carte.html">Carte du jeu</a><a href="batiments.html">Bâtiments</a><a href="chemins.html">Chemins Linux</a><a href="bestiaire.html">Bestiaire</a><a href="etiquettes.html">Étiquettes</a><a href="quetes.html">Quêtes</a></div></details><details class="help-menu"><summary>Fiches techniques</summary><div class="help-dropdown"><a href="fiches-unites.html">Fiches des unités</a><a href="etiquettes.html">Guide des étiquettes</a></div></details><a href="simulateur.html">Simulateur</a></nav>
+    </header>
+
+    <main class="rules">
+        <h1>Règles — V2.0 : Survie</h1>
+        <p class="note"><strong>Lecture du manuel :</strong> ce manuel présente les règles de Mythodea. Les mécanismes dépendent de la version du jeu installée sur le serveur ; les valeurs encore non définies ne sont pas inventées.</p>
+
+        <section id="objectif">
+            <h2>1. Objectif et camps</h2>
+            <p class="intro">Deux joueurs, <code>j1</code> et <code>j2</code>, coopèrent pour défendre leur village contre des vagues d'ennemis contrôlées par le jeu (<code>bot</code>). Ils agissent au moyen de véritables commandes Linux sur les fichiers et dossiers du plateau.</p>
+            <p><strong>Défaite :</strong> la partie se termine lorsque le <strong>bot contrôle le village à la fin d'une résolution</strong>. L'arrivée d'ennemis au village ne provoque pas automatiquement la défaite : les combats et le contrôle territorial sont d'abord résolus.</p>
+            <p>Le prototype Est n'a pas de condition de victoire finale prédéfinie : l'objectif est de résister aux vagues successives.</p>
+        </section>
+
+        <section id="carte">
+            <h2>2. Territoires et contrôle</h2>
+            <p>Le mode Survie V2.0 se joue sur le village et les trois territoires du <strong>front Est</strong>. Les généraux se déplacent entre territoires adjacents. Le village est le point à défendre ; le <code>repli</code> est une zone réservée aux sanctions, et non un territoire à explorer volontairement.</p>
+            <p>Chaque territoire dispose de quatre <strong>positions actives</strong>, numérotées de <code>1</code> à <code>4</code>, partagées entre les deux alliés. Les territoires extérieurs peuvent accueillir des renforts en positions <code>5</code> à <code>20</code>. Au village, les généraux non engagés restent dans la <strong>caserne_militaire</strong>.</p>
+            <p>À la fin d'une résolution, un territoire est <strong>allié</strong>, <strong>contrôlé par le bot</strong>, <strong>neutre</strong> ou <strong>contesté</strong>, selon la présence des forces actives. Un territoire peut rester contesté après un rattrapage ennemi, sans second combat dans le même tour.</p>
+            <p>La carte détaillée et les chemins de chaque lieu se trouvent dans <a href="carte.html">Aide de jeu</a>.</p>
+        </section>
+
+        <section id="tours">
+            <h2>3. Tours et rythme de la partie</h2>
+            <ol>
+                <li><strong>Tour 0 :</strong> tour complet de préparation, sans déplacement d'ennemis déjà présents. À sa résolution, la vague 1 apparaît et peut combattre.</li>
+                <li><strong>ACTIONS :</strong> chaque joueur dispose par défaut de <strong>120 secondes</strong> pour agir dans son environnement Linux.</li>
+                <li><strong>Clôture :</strong> annonce sur les terminaux, puis gel temporaire des sessions pour enregistrer les actions. Le gel initial dure au minimum <strong>10 secondes</strong> ; il peut être prolongé pour raisons techniques.</li>
+                <li><strong>RÉSOLUTION :</strong> le moteur contrôle les actions, fait avancer les anciennes forces ennemies, crée la nouvelle vague, résout les combats et les retraites, puis met à jour les rapports et le contrôle des territoires.</li>
+                <li><strong>CONSULTATION :</strong> une pause de <strong>60 secondes</strong> permet de lire les résultats avant le tour suivant. Cette phase n'est pas une nouvelle fenêtre d'action.</li>
+            </ol>
+            <p>À la résolution du tour <code>N</code>, le jeu fait apparaître la vague <code>N+1</code>. Une vague ne se déplace pas pendant la résolution de son apparition.</p>
+            <p>Les combats sont résolus territorialement dans l'ordre <code>village → est_1 → est_2 → est_3</code>. Les journaux de combat peuvent s'actualiser progressivement ; la vitesse d'affichage ne change pas les règles de combat.</p>
+        </section>
+
+        <section id="generaux">
+            <h2>4. Généraux et formations</h2>
+            <p>Un général est un dossier Linux contenant ses unités, une fiche et sa sélection d’étiquettes. Chaque général possède exactement quatre blocs :</p>
+            <pre><code>general1/
+├── avant/
+├── droite/
+├── gauche/
+├── arriere/
+├── fiche.txt
+├── QG.txt (optionnel)\n├── etiquettes_actives.txt (optionnel)
+└── ordre_surnombre.txt</code></pre>
+            <p><code>ordre_surnombre.txt</code> est géré séparément des ordres habituels. Il peut être recréé par le moteur s'il manque.</p>
+            <ul>
+                <li>Un général ordinaire dispose de <strong>20 places maximum</strong>, réparties entre ses quatre blocs. Certaines unités occupent plusieurs places ; un général zombie gagne 2 places supplémentaires par niveau obtenu après sa résurrection.</li>
+                <li>Chaque joueur peut obtenir <strong>cinq généraux par création normale au maximum</strong>, à raison d'un par tour. <code>general1</code> est attribué automatiquement dans le home au début de la partie.</li>
+                <li>Les généraux de récompense sont <strong>hors du quota</strong> des cinq créations normales.</li>
+                <li>Un numéro de général attribué n'est jamais réutilisé, même après sa destruction.</li>
+                <li>La <code>fiche.txt</code> identifie le général et peut préciser son orientation (<code>stratege</code>, <code>combattant</code> ou <code>hybride</code>) et sa préférence <code>position_surnombre</code>.</li>
+                <li>Un général qui perd toutes ses unités est détruit.</li>
+            </ul>
+            <h3>Progression et blessures — règles actives</h3>
+            <p>Les généraux gagnent un niveau après deux batailles territoriales personnellement combattues et survécues, ou trois séjours complets en réserve (jauges distinctes). Le stratège gagne naturellement 2 à 4 PC par niveau ; l'instinctif gagne 1 point de moral aux niveaux pairs. Leurs récompenses supplémentaires et les étiquettes sont décrites sur la <a href="etiquettes.html">page Étiquettes</a>.</p>
+            <p>Une unité ayant survécu à cinq batailles devient <strong>vétéran</strong>, puis <strong>héroïque</strong> après dix. Les unités sauvées peuvent conserver des blessures et leur expérience. Un séjour complet à l'Hôpital remet les blessures à zéro, sans effacer l'expérience ou les statuts ; les unités soumises à des soins particuliers suivent leurs propres règles.</p>
+            <h3>Homogénéité des blocs</h3>
+            <p>Un bloc valide doit être composé d'un seul type d'unité. Si plusieurs types sont mélangés, le type majoritaire est conservé et les unités minoritaires sont supprimées. <strong>En cas d'égalité entre les types les plus nombreux, tout le bloc est supprimé.</strong> Les unités inconnues ou mal équipées sont également supprimées.</p>
+        </section>
+
+        <section id="unites">
+            <h2>5. Unités et entraînement</h2>
+            <p>Une unité est représentée par un dossier Linux. Selon son type, le moteur vérifie les fichiers attendus, son origine, une transformation validée, des événements de jeu ou des conditions particulières : l'équipement seul ne suffit donc pas toujours à identifier une unité légitime. Les unités sont réparties en <strong>quatre blocs homogènes</strong>, dans la limite des places disponibles du général (20 à l'origine ; capacité évolutive pour un général zombie).</p>
+            <p>Les entraînements se font dans les zones autorisées du joueur, notamment son home et la <strong>caserne_militaire</strong> du village. Un général ayant reçu des unités doit y rester jusqu'à la fin du tour avant de repartir. Les ajouts réalisés ailleurs peuvent être supprimés par les contrôles du moteur.</p>
+            <p>Pour les fiches, les avantages entre unités, les forces et faiblesses, les unités spéciales et les fréquences de génération connues, consultez le <a href="bestiaire.html">Bestiaire</a>.</p>
+        </section>
+
+        <section id="unites-v2">
+            <h2>5 bis. Unités spéciales, Zombies et capacités</h2>
+            <p>Le <a href="bestiaire.html">Bestiaire</a> présente les douze unités reconnues : Sauvageons, Chevaliers clinquants, Orcs, Messagers du QG et Zombies inclus. Les recettes associées utilisent les bâtiments du village, la <a href="batiments.html#crypte-plaines">Crypte des plaines</a> (EST_1), la <a href="batiments.html#bibliotheque">Bibliothèque</a> et la <a href="batiments.html#morgue">Morgue</a>.</p>
+            <h3>Généraux zombies</h3>
+            <p>Lorsqu'un général meurt, un tirage unique de <strong>5 %</strong> peut le ressusciter à la Morgue. La transformation est définitive et crée un cadavre officiel utilisable une seule fois pour fabriquer un Trop gros zombie. Un général zombie n'obtient pas de nouvelle récompense ordinaire à sa montée de niveau : sa capacité augmente définitivement de <strong>2 places par niveau gagné après la résurrection</strong>.</p>
+            <h3>Propagation et Spore</h3>
+            <p><strong>Propagation :</strong> lorsqu'un bloc de Zombies ordinaires survit à un affrontement, il crée dans ce même bloc <code>ceil(pertes_adverses / 2)</code> Zombies supplémentaires. <strong>Spore :</strong> après chaque affrontement du Trop gros zombie contre un bloc non zombie, un soldat adverse est transformé en Zombie, même si le Gros zombie vient d'être détruit. La victime est celle ayant le moins de batailles à son actif ; les égalités sont départagées aléatoirement. Elle rejoint le bloc zombie compatible le plus nombreux du général zombie.</p>
+            <p><strong>Ni Spore ni Propagation ne s'appliquent entre Zombies.</strong> Les Zombies créés pendant les affrontements peuvent provisoirement dépasser la capacité de l'armée ; le surplus est régulé <strong>seulement après l'ensemble des combats du territoire</strong>, en préservant prioritairement les anciens soldats.</p>
+            <h3>Bouclier vivant</h3>
+            <p>Chaque général zombie peut posséder <strong>un seul Trop gros zombie</strong>. Il occupe dix places et possède une réserve de résistance initiale de <strong>250</strong>, mais ne tue pas directement les adversaires. Il affronte en priorité les blocs adverses : si leur puissance effective est supérieure ou égale à sa résistance, il meurt immédiatement ; sinon, il perd <strong>un quart</strong> de cette puissance et poursuit. La résistance restante est conservée sur le territoire et revient à 250 après tous les combats si le Bouclier a survécu.</p>
+            <p>Après son passage sur les blocs adverses, les Zombies ordinaires cherchent une cible qu'ils ont une chance de vaincre ; à défaut, ils suivent les correspondances classiques des blocs. Le Bouclier peut ensuite affronter les survivants. <strong>S'il meurt, les combats reprennent normalement.</strong> S'il ne reste plus de Zombies ordinaires, le Gros zombie disparaît et son général est vaincu. Si deux généraux zombies possèdent chacun un Gros zombie, les deux Boucliers <strong>s'ignorent</strong> et les autres Zombies combattent selon les règles ordinaires.</p>
+            <p>L'étiquette <code>infatigable</code> existe mais son effet particulier n'est <strong>pas activé</strong> à ce stade. Les ordres supplémentaires liés aux Messagers du QG attendent également leur mise en service.</p>
+        </section>
+
+        <section id="deplacements">
+            <h2>6. Déplacements et fatigue</h2>
+            <p>Le déplacement d'un général se fait avec <code>mv</code>. Un <strong>déplacement normal</strong> correspond à un déplacement entre territoires adjacents.</p>
+            <ul>
+              <li><strong>Home → garnison :</strong> compte comme un déplacement territorial pour rejoindre le village. Un général <strong>nouvellement créé</strong> ou <strong>enregistré au tour précédent dans son home</strong> peut néanmoins être placé pour <strong>défendre le village</strong> ou accéder à ses bâtiments (<strong>École des officiers</strong>, <strong>Forge</strong>, etc.) dès son arrivée. Il ne peut pas rejoindre directement <code>est_1</code> au tour 0.</li>
+              <li><strong>Village :</strong> une fois au village, les transferts entre ses bâtiments et espaces internes ne consomment pas de déplacement normal.</li>
+              <li><strong>Marche forcée :</strong> franchir deux territoires pendant un tour est possible si le territoire intermédiaire est allié ou neutre. Elle est interdite du home directement vers <code>est_1</code>.</li>
+              <li><strong>Général de récompense :</strong> son arrivée et sa sortie de la zone de récompense suivent la règle particulière permettant son déplacement direct vers une destination légale, sans détour imposé par le home.</li>
+              <li><strong>Rappel au home :</strong> possible depuis une position tactique légale selon les règles du jeu ; le retour vers le front doit ensuite respecter le passage par le village.</li>
+            </ul>
+            <h3>Effet concret de la fatigue</h3>
+            <p>La marche forcée rend le général <strong>fatigué pendant le tour</strong>. Lorsqu'un bloc fatigué affronte un <strong>bloc frais du même type d'unité</strong>, le bloc frais bénéficie d'un avantage dans le calcul du combat. Ce n'est pas une diminution générale de toutes les statistiques : contre un type différent, les avantages habituels des unités restent déterminants.</p>
+            <p>La fatigue est suivie par général et recalculée au tour suivant. Les bâtiments internes du village ne provoquent pas de fatigue liée à un déplacement territorial.</p>
+        </section>
+
+        <section id="cooperation">
+            <h2>7. Groupe allié et placement</h2>
+            <p>Les joueurs appartenant au <strong>groupe allié</strong> coopèrent pour défendre leurs territoires. Leurs comptes Linux et leurs dossiers restent séparés, mais les positions de combat sont communes.</p>
+            <p><strong>Exemple :</strong> <code>j1</code> et <code>j2</code> sont deux membres du groupe allié. Si le général de <code>j1</code> occupe la position <code>1</code> d'un territoire, <code>j2</code> ne peut pas y placer simultanément un autre général. Une collision de position active peut envoyer les deux généraux au <code>repli</code>.</p>
+            <p>Les quatre positions actives <code>1</code> à <code>4</code> sont partagées entre les membres du groupe. Sur les territoires extérieurs, les emplacements <code>5</code> à <code>20</code> servent aux <strong>positions de surnombre</strong> : les généraux qui s'y trouvent attendent leur entrée éventuelle dans les positions actives.</p>
+        </section>
+
+        <section id="combat">
+            <h2>8. Résolution des combats</h2>
+            <h3>Avantages entre unités</h3>
+            <p>Chaque type d'unité possède des cibles favorables. Contre une cible favorable, la valeur utilisée par le moteur est multipliée par <strong>2</strong> ; sinon, le multiplicateur de type est <strong>1</strong>. Par exemple, un archer est avantagé contre un piquier, un piquier contre un cavalier et un cavalier contre un archer. La cavalerie lourde possède des interactions particulières. Consultez les tableaux du <a href="bestiaire.html">Bestiaire</a>.</p>
+            <h3>Affrontement entre deux généraux</h3>
+            <p><strong>1. CHOC INITIAL :</strong> seuls les blocs qui se font face se confrontent : avant contre avant, droite contre droite, gauche contre gauche et arrière contre arrière. Si aucune paire correspondante n'est occupée, cette phase peut ne produire aucun choc.</p>
+            <h3>2. MANŒUVRE — ordre de priorité</h3>
+            <ol>
+                <li><strong>AVANT LIBRE</strong> : exception à la priorité tardive de l'Avant — s'il n'a pas affronté d'Avant adverse pendant le choc initial, il agit en premier.</li>
+                <li><strong>ARRIÈRE</strong> : blocs arrière encore capables de combattre.</li>
+                <li><strong>FLANCS</strong> : blocs droite/gauche classés par effectifs décroissants ; égalités départagées aléatoirement.</li>
+                <li><strong>AVANT DÉJÀ ENGAGÉ</strong> : ayant participé au choc initial, il agit en dernier lors de la manœuvre.</li>
+            </ol>
+            <p><strong>Chaque bloc agit au maximum une fois par tour de manœuvre.</strong> Une fois tous les blocs éligibles traités, un nouveau tour de manœuvre peut commencer. Les pertes sont immédiates ; les blocs détruits avant leur action sont ignorés. Limite : dix tours de manœuvre par duel.</p>
+            <p>Un bloc privilégie d'abord une cible contre laquelle son type est avantagé. À défaut, il vise parmi les blocs ennemis encore occupés l'un des moins nombreux.</p>
+            <h3>Affrontement entre plusieurs généraux</h3>
+            <p>Dans l'ancien scénario de <strong>confrontation frontale 1-2</strong>, les positions correspondantes s'affrontent d'abord (1 contre 1, jusqu'à 4 contre 4). Le <strong>combat rangé</strong> poursuit ensuite avec les généraux encore présents, pris par ordre de position. Un général survivant peut ainsi affronter successivement plusieurs ennemis.</p>
+            <p>Les modes <strong>OFF/OFF</strong> et <strong>OFF/DEF</strong> indiquent la situation des camps. Le mode OFF/DEF ne crée pas, à lui seul, de bonus défensif dans les calculs décrits.</p>
+            <p>Pour apprendre à reconnaître les phases dans les fichiers de résultats, voir <a href="chemins.html">Aide de jeu — lecture des rapports</a>.</p>
+        </section>
+
+        <section id="ordres">
+            <h2>9. Commandement, étiquettes et décisions de surnombre</h2>
+            <h3>QG, Messager et étiquettes actives</h3>
+            <p>Le système des anciens <code>ordre.txt</code> et contre-ordres n'est plus actif en v2.0. Le QG est désigné par un fichier <code>QG.txt</code> (ou <code>qg.txt</code>) dans le dossier du général : un QG par camp et par bataille territoriale. Plusieurs désignations dans le même camp annulent ses effets globaux.</p>
+            <p>Les étiquettes connues ne sont pas forcément toutes actives. Le joueur choisit dans <code>etiquettes_actives.txt</code> leurs noms exacts, une par ligne ou séparés par des virgules : au plus trois chez le stratège, une chez l'instinctif. Un fichier absent active automatiquement les étiquettes connues dans la limite permise ; un fichier vide n'en active aucune. Le choix est figé au début de la bataille territoriale.</p>
+            <pre><code>distance
+humain
+cavalerie</code></pre>
+            <p>Chaque étiquette compatible apporte <strong>PC × 0,5 × rang de l'étiquette</strong> points de pourcentage, additionnés avant leur application. Le QG transmet ses effets aux généraux alliés engagés, sans se les ajouter une seconde fois. Le Messager occupe cinq places, ne combat pas et apporte au soutien global du QG 10 % des PC des autres généraux alliés engagés, sans cumul. La mort du QG supprime ses effets globaux, sans supprimer les bonus personnels des alliés.</p>
+            <p>Progression : le stratège commence avec une étiquette et en gagne une aux niveaux 5 et 10 (trois maximum). L'instinctif obtient la sienne au niveau 5 (une maximum). Les autres niveaux suivent la roulette de récompenses. Un général zombie gagne deux places par niveau après transformation et dispose à chaque niveau de 20 % de chance d'apprendre <code>mort_vivant</code>, tant qu'il ne la connaît pas.</p>
+            <h3>Ordre de surnombre</h3>
+            <p>Quand des renforts ennemis sont disponibles après un premier affrontement, chaque général allié survivant peut suivre son choix inscrit dans <code>ordre_surnombre.txt</code> :</p>
+            <div class="table-scroll"><table>
+                <thead><tr><th>Valeur</th><th>Effet</th></tr></thead>
+                <tbody><tr><td><code>1</code></td><td>Demander une retraite avant le prochain affrontement contre les renforts.</td></tr><tr><td><code>2</code></td><td>Continuer le combat contre les renforts.</td></tr></tbody>
+            </table></div>
+            <p>La valeur par défaut est <code>1</code> hors du village et <code>2</code> au village. Une valeur absente ou invalide applique le défaut de la zone et fait l'objet d'un avertissement. <strong>Au village, aucune retraite automatique n'a lieu</strong>, même si le fichier indique <code>1</code>.</p>
+            <p>Lorsqu'un affrontement libère des places actives, les premiers renforts ennemis y remontent dans leur ordre d'arrivée. De nouveaux combats peuvent alors s'enchaîner sur le même territoire durant une seule résolution.</p>
+            <h3>Retraite tactique</h3>
+            <p>Sur le front Est, une retraite possible se dirige vers le village : <code>est_3 → est_2 → est_1 → village</code>. Elle n'ajoute pas de fatigue, mais ne l'efface pas non plus. Elle n'est autorisée que si le territoire de destination, déjà résolu, ne contient plus de bot actif et dispose d'une place libre. Sinon, le général reste combattre.</p>
+            <p>Le moteur vérifie et attribue d'abord les places libres aux généraux autorisés à battre en retraite, pour éviter que deux généraux choisissent la même place ; il les déplace ensuite. Hors village, on peut utiliser les positions <code>1</code> à <code>20</code> ; au village, uniquement <code>1</code> à <code>4</code>. La caserne_militaire peut accueillir des généraux en retraite si une place appropriée y est disponible selon les règles de placement.</p>
+            <p>Le champ <code>position_surnombre</code> de la <code>fiche.txt</code> indique une <strong>préférence de placement</strong> pour les situations de surnombre ou de retraite. Par exemple, <code>position_surnombre=5</code> demande de placer ce général à la place 5 si elle est disponible et autorisée. Si elle est occupée, le moteur cherche la prochaine place libre. Les généraux sans préférence sont placés après ceux qui en ont une. Au village, seules les places effectivement admises peuvent être utilisées : indiquer 5 ne crée pas une cinquième position active.</p>
+        </section>
+
+        <section id="vagues">
+            <h2>10. Vagues ennemies et surnombre</h2>
+            <p>Des vagues ennemies apparaissent à chaque résolution, puis avancent vers le village à partir des tours suivants. La difficulté augmente avec le numéro de vague. Toutes les cinq vagues, une vague Boss renforce le front Est ; les apparitions changent également de régime à partir de la vague 26.</p>
+            <p>Un territoire possède quatre positions actives pour les combats. Lorsque davantage d'ennemis arrivent, les généraux supplémentaires restent en <strong>positions de surnombre</strong>, c'est-à-dire en attente dans la colonne de renforts. Après un affrontement, ils peuvent remonter dans les places libérées et provoquer un autre combat au cours de la même résolution.</p>
+            <p>L'ordre d'entrée privilégie les occupants déjà présents, puis les anciens arrivants, puis les nouveaux ennemis apparus. Les règles détaillées de surnombre et les décisions de retraite se trouvent dans la <a href="#ordres">section 9</a>.</p>
+        </section>
+
+        <section id="village">
+            <h2>11. Le village</h2>
+            <p>La garnison défend le village ; les autres bâtiments accueillent les activités des joueurs. Les déplacements internes au village ne consomment pas de déplacement territorial, tandis que l'accès depuis le home suit les règles normales.</p>
+            <p>Pour les emplacements, les chemins Linux, les usages de la <strong>caserne_militaire</strong>, de l'Hôpital et de sa Morgue, de l'École des officiers, de l'Hôtel de Ville et de sa Bibliothèque, du Clocher et des deux Cryptes, consultez <a href="batiments.html">Aide de jeu — Le village</a>.</p>
+        </section>
+
+        <section id="crypte">
+            <h2>12. Défis de la Crypte</h2>
+            <p>Les recettes de la Crypte du village permettent de pratiquer des commandes Linux et d'obtenir des généraux de récompense. La Crypte des plaines d'EST_1 permet quant à elle d'obtenir jusqu'à quatre unités spéciales pour un général présent connaissant personnellement la recette. Pour la procédure de tentative, les documents disponibles et les récompenses, consultez <a href="quetes.html#crypte">Quêtes et découvertes — Crypte</a> et <a href="batiments.html">Aide de jeu — Le village</a>.</p>
+        </section>
+
+        <section id="cabane">
+            <h2>13. Quêtes et découvertes</h2>
+            <p>Certains lieux et documents renferment des défis, dont la cabane mystérieuse sur le front Est. Les conditions d'accès, la manière de soumettre des réponses et les récompenses figurent dans la rubrique <a href="quetes.html">Quêtes et découvertes</a>.</p>
+        </section>
+
+        <section id="securite">
+            <h2>14. Validité des actions et sanctions</h2>
+            <p>La validité des mouvements et des unités est contrôlée lors de la résolution. Les règles qui suivent protègent l'équité du jeu et les dossiers réels des joueurs.</p>
+            <p>Le moteur contrôle les actions des joueurs avant les combats, notamment les identités de généraux, leur propriétaire Linux réel, les duplications, les emplacements occupés, les déplacements et la composition des unités.</p>
+            <ul>
+                <li>Un général inventé ou une identité déjà détruite ne devient pas légitime en recréant simplement son dossier.</li>
+                <li>Les unités invalides, les ajouts interdits et celles dépassant les limites peuvent être supprimés.</li>
+                <li>Une duplication illégale sur la carte peut entraîner la suppression des copies et l'envoi du général réel au repli.</li>
+                <li>Une collision de positions actives ou un déplacement illégal peut envoyer un général au <code>repli</code>.</li>
+                <li>Les copies et anomalies détectées uniquement dans le home sont traitées comme des essais en bac à sable : elles donnent lieu à des avertissements, sans sanction de repli.</li>
+            </ul>
+            <p>Un général sanctionné au repli doit attendre un nombre de tours égal à <code>arrondi supérieur (distance de retour / 2)</code>. Exemples : distance 1 ou 2 → un tour ; distance 3 ou 4 → deux tours. Pendant ce délai, il ne peut pas agir. Après l'attente, son retour normal se fait vers le village. Le repli de sanction est distinct de la retraite tactique en combat.</p>
+            <p><strong>Conséquences du repli :</strong> un général sanctionné ne peut pas agir pendant son attente ; celle-ci dure un nombre de tours égal à l'arrondi supérieur de la moitié de sa distance de retour. Exemple : distance 3 → 2 tours d'attente. La sortie du repli ne constitue pas une retraite tactique : le retour n'est autorisé qu'après l'expiration du délai, vers la destination prévue par le mode Survie.</p>
+            <p>Les permissions Linux séparent les dossiers de <code>j1</code> et <code>j2</code> et empêchent les joueurs de modifier directement les forces du bot ou les états privés du moteur.</p>
+        </section>
+
+    </main>
+</body>
+</html>

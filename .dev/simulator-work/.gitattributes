@@ -1,0 +1,2 @@
+# Garder le lanceur utilisable sous Linux, même après un checkout Windows.
+scripts/*.sh text eol=lf

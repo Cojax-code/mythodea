@@ -1,0 +1,82 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chemins Linux — Mythodea</title><link rel="stylesheet" href="css/style.css"><style>
+        .help { max-width: 1100px; margin: 30px auto; padding: 0 20px 50px; }
+        .help h1 { margin-bottom: 8px; }
+        .help p, .help li { line-height: 1.65; }
+        .help section { padding: 25px 28px; }
+        .help h2 { margin-top: 0; }
+        .help h3 { margin-top: 25px; }
+        .help code { background: #edf0f4; border-radius: 4px; padding: 2px 5px; overflow-wrap: anywhere; }
+        .help pre { background: #202938; color: #f1f5f9; border-radius: 6px; padding: 16px; overflow-x: auto; line-height: 1.55; }
+        .help pre code { background: none; padding: 0; color: inherit; white-space: pre; }
+        .help table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+        .help th, .help td { padding: 12px 11px; text-align: left; vertical-align: top; border: 1px solid #dce1e8; }
+        .help th { background: #edf0f4; }
+        .help .table-scroll { overflow-x: auto; }
+        .subnav { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
+        .subnav button { padding: 10px 16px; border: 1px solid #bcc7d3; border-radius: 6px; cursor: pointer; font: inherit; background: white; color: #202938; }
+        .subnav button[aria-selected="true"] { background: #202938; color: white; border-color: #202938; }
+        .subnav button:focus-visible { outline: 3px solid #7eacdf; outline-offset: 2px; }
+        .help section[hidden] { display: none; }
+        .map-visual { display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr)); gap: 10px; margin: 22px 0 14px; }
+        .map-node { border: 2px solid #d0d8e2; border-radius: 9px; background: #f8fafc; padding: 16px 10px; text-align: center; position: relative; min-width: 0; }
+        .map-node:not(:last-child)::after { content: "↔"; position: absolute; right: -14px; top: 40%; z-index: 1; font-size: 22px; font-weight: bold; color: #465467; background: white; line-height: 1; }
+        .map-node strong { display: block; font-size: 1.02rem; }
+        .map-node small { display: block; margin-top: 7px; color: #475569; }
+        .map-node code { font-size: .83rem; }
+        .map-node.village { border-color: #6d91bb; background: #eaf2ff; }
+        .map-node.special { border-style: dashed; }
+        .map-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: .92rem; margin-bottom: 18px; }
+        .legend-swatch { display: inline-block; width: 13px; height: 13px; margin-right: 5px; border: 2px solid #d0d8e2; border-radius: 3px; vertical-align: -2px; }
+        .legend-swatch.village { border-color: #6d91bb; background: #eaf2ff; }
+        .legend-swatch.special { border-style: dashed; }
+        .muted { color: #475569; }
+        .quick { border-left: 4px solid #6d91bb; padding-left: 14px; }
+        @media (max-width: 800px) { .map-visual { display: flex; flex-direction: column; gap: 12px; } .map-node:not(:last-child)::after { content: "↕"; bottom: -20px; top: auto; right: calc(50% - 9px); } }
+        @media (max-width: 650px) { .help { padding: 0 12px 35px; } .help section { padding: 17px; } }
+    </style>
+<style id="mythodea-help-nav">
+nav .help-menu{display:inline-flex;position:relative;align-items:center;vertical-align:baseline;font:inherit;line-height:inherit}
+nav .help-menu>summary{display:inline-flex;align-items:center;cursor:pointer;padding:0;list-style:none;user-select:none;font:inherit;line-height:inherit;color:inherit}
+nav .help-menu>summary::-webkit-details-marker{display:none}
+nav .help-menu>summary::after{content:" ▾";font-size:.8em}
+nav .help-menu[open]>summary,nav .help-menu>summary:focus-visible{outline:2px solid #6d91bb;outline-offset:2px}
+nav .help-menu .help-dropdown{position:absolute;z-index:1000;top:100%;left:0;min-width:185px;display:flex;flex-direction:column;padding:6px;background:#202938;border:1px solid #64748b;border-radius:7px;box-shadow:0 5px 15px #0003}
+nav .help-dropdown a{display:block!important;white-space:nowrap;padding:9px 12px!important;color:#fff!important;text-decoration:none}
+nav .help-dropdown a:hover,nav .help-dropdown a:focus-visible{background:#41526d;color:#fff!important}
+@media(max-width:650px){nav .help-menu .help-dropdown{left:auto;right:0;max-width:90vw}}
+</style>
+<script src="js/main.js" defer></script></head><body><header><h1>MYTHODEA</h1><nav aria-label="Navigation principale"><a href="index.html">Présentation</a><a href="telechargement.html">Téléchargement</a><a href="regles.html">Règles</a><details class="help-menu"><summary>Aide de jeu</summary><div class="help-dropdown"><a href="carte.html">Carte du jeu</a><a href="batiments.html">Bâtiments</a><a href="chemins.html">Chemins Linux</a><a href="bestiaire.html">Bestiaire</a><a href="etiquettes.html">Étiquettes</a><a href="quetes.html">Quêtes</a></div></details><details class="help-menu"><summary>Fiches techniques</summary><div class="help-dropdown"><a href="fiches-unites.html">Fiches des unités</a><a href="etiquettes.html">Guide des étiquettes</a></div></details><a href="simulateur.html">Simulateur</a></nav></header><main class="help"><p><a href="aide.html">← Retour à l'aide de jeu</a></p><h1>Chemins Linux</h1><section id="chemins">
+            <h2>Chemins Linux</h2>
+            <p class="quick">La liste indique les dossiers actuellement documentés. Les chemins suivants utilisent <code>j1</code>. Remplacez-le par <code>j2</code> pour l'autre joueur. Les chemins indiquent où se trouvent les éléments ; certains dossiers sont privés ou accessibles seulement sous conditions.</p>
+            <div class="table-scroll"><table>
+                <thead><tr><th>Élément</th><th>Chemin Linux</th><th>Utilité</th></tr></thead>
+                <tbody>
+                    <tr><td>Home</td><td><code>/home/j1/</code></td><td>Ajouter des unités dans les généraux.</td></tr>
+                    <tr><td>Garnison</td><td><code>/game/village/j1/garnison/</code></td><td>Positions actives <code>1</code> à <code>4</code>.</td></tr>
+                    <tr><td>Caserne militaire</td><td><code>/game/village/j1/caserne_militaire/</code></td><td>Stockage et entraînement hors combat.</td></tr>
+                    <tr><td>Clocher — état du tour</td><td><code>/game/village/clocher/etat_tour.txt</code></td><td>Tour, phase et temps restant.</td></tr>
+                    <tr><td>Clocher — résolution</td><td><code>/game/village/clocher/suivi_tour.log</code></td><td>Permet de suivre les résolutions des batailles en direct.</td></tr>
+                    <tr><td>Hôtel de Ville</td><td><code>/game/village/j1/hotel_de_ville/</code></td><td>Documents, rapports et courrier.</td></tr>
+                    <tr><td>Journal du Toonitruand</td><td><code>/game/village/j1/hotel_de_ville/journal_du_Toonitruand/</code></td><td>Tutoriel progressif.</td></tr>
+                    <tr><td>Journal du Vétéran</td><td><code>/game/village/j1/hotel_de_ville/journal_du_veteran/</code></td><td>Tutoriel condensé.</td></tr>
+                    <tr><td>Rapport court</td><td><code>/game/rapport/rapport_court.txt</code></td><td>Résumé des batailles et des résultats.</td></tr>
+                    <tr><td>Rapport long</td><td><code>/game/rapport/rapport_long.txt</code></td><td>Détails des engagements et des pertes.</td></tr>
+                    <tr><td>Rapport d'exploration</td><td><code>/game/village/j1/hotel_de_ville/rapport_exploration.txt</code></td><td>État publié de la carte et des forces.</td></tr>
+                    <tr><td>Bestiaire</td><td><code>/game/village/j1/hotel_de_ville/bestiaire/</code></td><td>Fiches d'unités débloquées.</td></tr>
+                    <tr><td>Courrier — envoi</td><td><code>/game/village/j1/hotel_de_ville/courrier/envoie_message.txt</code></td><td>Envoyer un <code>FLAG &lt;flag&gt;</code>.</td></tr>
+                    <tr><td>Courrier — réception</td><td><code>/game/village/j1/hotel_de_ville/courrier/reception_message.txt</code></td><td>Consulter les réponses.</td></tr>
+                    <tr><td>Courrier — requêtes</td><td><code>/game/village/j1/hotel_de_ville/courrier/liste_requetes.txt</code></td><td>Voir les requêtes reconnues.</td></tr>
+                    <tr><td>Crypte — grimoire</td><td><code>/game/village/j1/crypte/grimoire/</code></td><td>PDF des recettes.</td></tr>
+                    <tr><td>Crypte — atelier</td><td><code>/game/village/j1/crypte/atelier/</code></td><td>Exécuter les recettes Linux.</td></tr>
+                    <tr><td>Crypte — récompenses</td><td><code>/game/village/j1/crypte/recompense/</code></td><td>Récupérer un général bonus.</td></tr>
+                    <tr><td>Hôpital</td><td><em>Chemin à confirmer sur le serveur</em></td><td>Supprime les blessures des unités après un tour complet de soins.</td></tr>
+                    <tr><td>École des officiers</td><td><em>Chemin à confirmer sur le serveur</em></td><td>Sauvegarde des compétences et permet aux généraux de les apprendre.</td></tr>
+                    <tr><td>Front Est 1</td><td><code>/game/est_1/</code></td><td>Territoire extérieur proche du village.</td></tr>
+                    <tr><td>Front Est 2</td><td><code>/game/est_2/</code></td><td>Territoire du milieu.</td></tr>
+                    <tr><td>Front Est 3</td><td><code>/game/est_3/</code></td><td>Territoire du fond.</td></tr>
+                    <tr><td>Cabane mystérieuse</td><td><code>/game/est_2/cabane_mysterieuse/</code></td><td>Quête accessible quand les alliés contrôlent <code>est_2</code>.</td></tr>
+                    <tr><td>Renforts alliés</td><td><code>/game/<em>nom_de_territoire</em>/j1/renforts/</code></td><td>Places <code>5</code> à <code>20</code> hors village.</td></tr>
+                    <tr><td>Repli</td><td><code>/game/repli/j1/</code></td><td>Zone de sanction, non accessible volontairement.</td></tr>
+                </tbody>
+            </table></div>
+        </section></main></body></html>

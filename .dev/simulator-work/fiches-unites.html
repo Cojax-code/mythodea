@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fiches techniques des unités — Mythodea</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+main.fiches{max-width:1080px;margin:30px auto;padding:0 18px 50px}
+.fiches h1{margin-bottom:8px}.muted{color:#536275;line-height:1.55}
+.fiches section{margin:18px 0;padding:22px}
+.fiches .cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.fiches label{display:block;font-weight:600;font-size:.9rem;margin:11px 0 5px}
+.fiches input:not([type=checkbox]),.fiches select,.fiches textarea{box-sizing:border-box;width:100%;border:1px solid #a5b3c4;padding:10px;border-radius:6px;background:#fff;font:inherit}
+.fiches textarea{min-height:70px;resize:vertical}
+.fiches fieldset{border:1px solid #d0d9e5;border-radius:8px;margin:14px 0;padding:12px 16px}
+.fiches legend{font-weight:700;padding:0 8px}
+.fiches button,.fiches .file-label{border:1px solid #263b59;background:#263b59;color:white;border-radius:6px;padding:10px 14px;font:inherit;cursor:pointer;display:inline-block}
+.fiches button.secondary,.fiches .file-label.secondary{background:#fff;color:#263b59}
+.fiches .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px}
+.fiches .tag-groups fieldset{margin:10px 0;background:#fafbfd}.fiches .chips{display:flex;gap:12px;flex-wrap:wrap;padding:6px 0}
+.fiches .chips label{font-weight:400;margin:0}
+.fiches .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.fiches .card{border:1px solid #d8dfeb;padding:14px;border-radius:8px;background:#f8fafc}
+.fiches .card h3{margin:0 0 8px}.fiches .card p{margin:5px 0}.fiches .card .actions{margin-top:12px}
+.fiches .notice{padding:12px;background:#eef2f7;border-left:3px solid #506a90;border-radius:4px;line-height:1.5}
+.fiches [hidden]{display:none!important}.fiches .status{min-height:1.5em}
+@media(max-width:650px){.fiches .cols{grid-template-columns:1fr}.fiches section{padding:15px}}
+</style>
+<script src="js/main.js" defer></script></head>
+<body>
+<header><h1>MYTHODEA</h1><nav aria-label="Navigation principale"><a href="index.html">Présentation</a><a href="telechargement.html">Téléchargement</a><a href="regles.html">Règles</a><details class="help-menu"><summary>Aide de jeu</summary><div class="help-dropdown"><a href="carte.html">Carte du jeu</a><a href="batiments.html">Bâtiments</a><a href="chemins.html">Chemins Linux</a><a href="bestiaire.html">Bestiaire</a><a href="ordres.html">Ordres</a><a href="quetes.html">Quêtes</a></div></details><details class="help-menu"><summary>Fiches techniques</summary><div class="help-dropdown"><a href="fiches-unites.html">Fiches des unités</a><a href="fiches-ordres.html">Fiches des ordres</a></div></details><a href="simulateur.html">Simulateur</a></nav></header>
+<main class="fiches">
+<h1>Fiches techniques des unités</h1>
+<p class="muted">Espace de conception : décris les unités avant de décider de leur intégration au moteur. Les bonus, capacités et règles proposés ici ne deviennent <strong>pas automatiquement actifs</strong> dans Mythodea.</p>
+<section>
+<h2 id="form-title">Nouvelle fiche d’unité</h2>
+<form id="fiche-form">
+<fieldset><legend>1. Identification</legend>
+<div class="cols"><div><label for="nom">Nom de l’unité *</label><input id="nom" required maxlength="100" placeholder="Ex. Milicien"></div>
+
+<div><label for="position">Position préférée</label><select id="position"><option>Avant</option><option>Arrière</option><option>Droite</option><option>Gauche</option><option selected>Indifférent</option></select></div><div><label for="compatibilite">Compatibilité avec le général</label><select id="compatibilite"><option value="stratege">Stratège</option><option value="tous" selected>Tous</option><option value="instinctif">Instinctif</option></select></div></div>
+<h3>Étiquettes de l’unité</h3>
+<p class="muted">Aucune étiquette prédéfinie : saisis celles que tu souhaites pour chaque unité. Nous déciderons ensuite comment les classer et si elles influencent le commandement ou le combat.</p>
+<label for="autres-etiquettes">Étiquettes (séparées par des virgules)</label><input id="autres-etiquettes" placeholder="Saisir librement les étiquettes">
+<label for="caracteristiques-etiquettes">Caractéristiques des étiquettes (facultatif)</label><textarea id="caracteristiques-etiquettes" placeholder="Décrire librement ce que signifie chaque étiquette"></textarea>
+
+</fieldset>
+<fieldset><legend>2. Création et transformation</legend>
+<div class="cols"><div><label for="recette">Recette Linux (un fichier par ligne)</label><textarea id="recette" placeholder="cheval&#10;armure"></textarea></div><div><label for="lieu">Lieu de création</label><input id="lieu" placeholder="Ex. village, Forge, autre"></div></div>
+<label for="creation">Conditions de création</label><textarea id="creation" placeholder="Pré-requis, délais, restrictions…"></textarea>
+<label for="transformable"><input id="transformable" type="checkbox"> Cette fiche représente une unité pouvant résulter d’une transformation</label>
+<div id="transformation" hidden><label for="origine">Unité d’origine</label><input id="origine" placeholder="Nom de l’unité à transformer"></div>
+</fieldset>
+<fieldset><legend>3. Combat et interactions</legend>
+<div class="cols"><div><label for="valeur">Valeur individuelle de combat (proposition)</label><input id="valeur" type="number" min="1" step="1" value="5"><p class="muted">Valeur standard envisagée : 5 ; le moteur reste indépendant.</p></div>
+<div><label for="fort">Forte contre</label><textarea id="fort" placeholder="Unités ou étiquettes"></textarea><label for="multiplicateur">Multiplicateur de combat (proposition)</label><input id="multiplicateur" type="number" min="1" step="0.1" placeholder="Ex. 2"></div><div><label for="faible">Faible contre</label><textarea id="faible" placeholder="Unités ou étiquettes"></textarea><label for="diviseur">Diviseur de combat (proposition)</label><input id="diviseur" type="number" min="1" step="0.1" placeholder="Ex. 2"></div>
+</div>
+<label for="capacite">Capacité spéciale (effets, activation et restrictions)</label><textarea id="capacite"></textarea>
+</fieldset>
+<fieldset><legend>4. Blessures et soins</legend>
+<div class="cols"><div><label for="blessures">Blessures cumulables (hors progression)</label><input id="blessures" type="number" min="0" max="99" step="1" value="1"><p class="muted">Unités actuelles : 1. La progression vétéran/héroïque reste une règle distincte.</p></div><div><label for="guerison">Durée de guérison</label><input id="guerison" type="number" min="0" max="99" step="1" value="1"></div><div><label for="soins">Lieu de guérison</label><input id="soins" value="Hôpital"></div><div><label for="soins-notes">Précisions sur les soins</label><textarea id="soins-notes"></textarea></div></div>
+</fieldset>
+<fieldset><legend>5. Remarques et validation</legend>
+<label for="remarques">Remarques / points à décider</label><textarea id="remarques"></textarea>
+<label for="statut">Statut de la proposition</label><select id="statut"><option value="valide" selected>À intégrer</option><option value="equilibrage">À équilibrer</option></select>
+</fieldset>
+<div class="actions"><button type="submit">Ajouter / mettre à jour la fiche</button><button type="button" class="secondary" id="reinitialiser">Nouvelle fiche</button></div>
+</form>
+<p class="status" id="message" role="status"></p>
+</section>
+<section><h2>Mes propositions (<span id="compteur">0</span>)</h2>
+<div class="notice">Les fiches sont conservées <strong>dans ce navigateur uniquement</strong>. Utilise « Exporter JSON » pour sauvegarder tes données et les placer ensuite sur GitHub. Importer un JSON remplace la liste actuelle après confirmation. Le bouton « Validé » indique une décision de conception, pas une activation dans le jeu.</div>
+<div class="actions"><button id="exporter" type="button">Exporter JSON</button><label class="file-label secondary" for="importer">Importer JSON</label><input id="importer" type="file" accept=".json,application/json" hidden></div>
+<div id="liste" class="cards" style="margin-top:18px"></div>
+</section>
+</main>
+<script>
+(() => {
+'use strict';
+const KEY='mythodea_unites_brouillons_v1';
+const $=id=>document.getElementById(id);
+const champs=['nom','position','compatibilite','autres-etiquettes','caracteristiques-etiquettes','recette','lieu','creation','origine','valeur','fort','multiplicateur','faible','diviseur','capacite','blessures','guerison','soins','soins-notes','remarques','statut'];
+let fiches=[];let edition=null;
+try{let charge=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(charge))fiches=charge.filter(x=>x&&typeof x==='object').slice(0,500);}catch(e){$('message').textContent='Impossible de lire les fiches enregistrées dans ce navigateur.';}
+function sauver(){try{localStorage.setItem(KEY,JSON.stringify(fiches));return true;}catch(e){$('message').textContent='Stockage local indisponible : exporte tes fiches JSON pour les conserver.';return false;}}
+function lecture(){const o={};for(const id of champs)o[id.replaceAll('-','_')]=$(id).value.trim();o.dossier=o.nom.trim().replace(/\s+/g,'_');o.transformable=$('transformable').checked;o.etiquettes=(o.autres_etiquettes||'').split(',').map(v=>v.trim()).filter(Boolean);return o;}
+function remplir(o){for(const id of champs){let v=o[id.replaceAll('-','_')];if(id==='guerison'){v=v==='normale'?'1':v==='lente'?'2':v==='autre'?'1':v;}if(id==='statut' && (!v||v==='brouillon'))v='valide';if(id==='position'&&!v)v='Indifférent';$(id).value=v??'';}$('transformable').checked=!!o.transformable;if(!o.autres_etiquettes&&Array.isArray(o.etiquettes))$('autres-etiquettes').value=o.etiquettes.join(', ');afficherTransformation();}
+function afficherTransformation(){$('transformation').hidden=!$('transformable').checked;}
+$('transformable').addEventListener('change',afficherTransformation);
+function nouveau(){$('fiche-form').reset();edition=null;afficherTransformation();$('form-title').textContent='Nouvelle fiche d’unité';}
+$('reinitialiser').addEventListener('click',nouveau);
+function element(tag,txt,cls){const n=document.createElement(tag);if(txt!==undefined)n.textContent=txt;if(cls)n.className=cls;return n;}
+function dessiner(){
+$('compteur').textContent=fiches.length;
+const cible=$('liste');cible.replaceChildren();
+if(!fiches.length){cible.append(element('p','Aucune proposition enregistrée pour le moment.'));return;}
+fiches.forEach((f,i)=>{
+const card=element('article',undefined,'card');card.append(element('h3',f.nom||'Sans nom'),element('p','Étiquettes : '+(f.autres_etiquettes||((f.etiquettes||[]).join(', '))||'Aucune')),element('p','Valeur : '+(f.valeur||'À définir')),element('p','Statut : '+(f.statut==='equilibrage'?'À équilibrer':'À intégrer')));
+const actions=element('div',undefined,'actions');
+const edit=element('button','Modifier','secondary');edit.type='button';edit.addEventListener('click',()=>{edition=i;remplir(f);$('form-title').textContent='Modifier : '+f.nom;window.scrollTo({top:0,behavior:'smooth'});});
+const duplic=element('button','Dupliquer','secondary');duplic.type='button';duplic.addEventListener('click',()=>{fiches.push({...f,nom:(f.nom||'Unité')+' (copie)',});sauver();dessiner();});
+const del=element('button','Supprimer','secondary');del.type='button';del.addEventListener('click',()=>{if(confirm('Supprimer cette fiche ?')){fiches.splice(i,1);nouveau();sauver();dessiner();}});
+actions.append(edit,duplic,del);card.append(actions);cible.append(card);
+});
+}
+$('fiche-form').addEventListener('submit',e=>{e.preventDefault();const f=lecture();if(!f.nom){$('message').textContent='Indique un nom pour cette unité.';return;}if(edition===null)fiches.push(f);else fiches[edition]=f;sauver();$('message').textContent='Fiche enregistrée dans ce navigateur. Pense à exporter le JSON pour la sauvegarder.';nouveau();dessiner();});
+$('exporter').addEventListener('click',()=>{const blob=new Blob([JSON.stringify({format:'mythodea-propositions-unites',version:1,unites:fiches},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='mythodea-unites.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+$('importer').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>2_000_000)throw Error('Fichier trop volumineux.');const data=JSON.parse(await file.text());if(data.format!=='mythodea-propositions-unites'||data.version!==1||!Array.isArray(data.unites)||data.unites.length>500||!data.unites.every(f=>f&&typeof f.nom==='string'&&typeof f==='object'))throw Error('Format JSON Mythodea non reconnu.');if(confirm('Remplacer les propositions actuelles par les '+data.unites.length+' fiches importées ?')){fiches=data.unites;sauver();nouveau();dessiner();$('message').textContent='Importation terminée.';}}catch(err){$('message').textContent='Import impossible : '+err.message;}e.target.value='';});
+dessiner();
+})();
+</script>
+</body></html>

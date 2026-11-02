@@ -1,0 +1,104 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bâtiments — Mythodea</title><link rel="stylesheet" href="css/style.css"><style>
+        .help { max-width: 1100px; margin: 30px auto; padding: 0 20px 50px; }
+        .help h1 { margin-bottom: 8px; }
+        .help p, .help li { line-height: 1.65; }
+        .help section { padding: 25px 28px; }
+        .help h2 { margin-top: 0; }
+        .help h3 { margin-top: 25px; }
+        .help code { background: #edf0f4; border-radius: 4px; padding: 2px 5px; overflow-wrap: anywhere; }
+        .help pre { background: #202938; color: #f1f5f9; border-radius: 6px; padding: 16px; overflow-x: auto; line-height: 1.55; }
+        .help pre code { background: none; padding: 0; color: inherit; white-space: pre; }
+        .help table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+        .help th, .help td { padding: 12px 11px; text-align: left; vertical-align: top; border: 1px solid #dce1e8; }
+        .help th { background: #edf0f4; }
+        .help .table-scroll { overflow-x: auto; }
+        .subnav { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
+        .subnav button { padding: 10px 16px; border: 1px solid #bcc7d3; border-radius: 6px; cursor: pointer; font: inherit; background: white; color: #202938; }
+        .subnav button[aria-selected="true"] { background: #202938; color: white; border-color: #202938; }
+        .subnav button:focus-visible { outline: 3px solid #7eacdf; outline-offset: 2px; }
+        .help section[hidden] { display: none; }
+        .map-visual { display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr)); gap: 10px; margin: 22px 0 14px; }
+        .map-node { border: 2px solid #d0d8e2; border-radius: 9px; background: #f8fafc; padding: 16px 10px; text-align: center; position: relative; min-width: 0; }
+        .map-node:not(:last-child)::after { content: "↔"; position: absolute; right: -14px; top: 40%; z-index: 1; font-size: 22px; font-weight: bold; color: #465467; background: white; line-height: 1; }
+        .map-node strong { display: block; font-size: 1.02rem; }
+        .map-node small { display: block; margin-top: 7px; color: #475569; }
+        .map-node code { font-size: .83rem; }
+        .map-node.village { border-color: #6d91bb; background: #eaf2ff; }
+        .map-node.special { border-style: dashed; }
+        .map-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: .92rem; margin-bottom: 18px; }
+        .legend-swatch { display: inline-block; width: 13px; height: 13px; margin-right: 5px; border: 2px solid #d0d8e2; border-radius: 3px; vertical-align: -2px; }
+        .legend-swatch.village { border-color: #6d91bb; background: #eaf2ff; }
+        .legend-swatch.special { border-style: dashed; }
+        .muted { color: #475569; }
+        .quick { border-left: 4px solid #6d91bb; padding-left: 14px; }
+        @media (max-width: 800px) { .map-visual { display: flex; flex-direction: column; gap: 12px; } .map-node:not(:last-child)::after { content: "↕"; bottom: -20px; top: auto; right: calc(50% - 9px); } }
+        @media (max-width: 650px) { .help { padding: 0 12px 35px; } .help section { padding: 17px; } }
+    </style>
+<style id="mythodea-help-nav">
+nav .help-menu{display:inline-flex;position:relative;align-items:center;vertical-align:baseline;font:inherit;line-height:inherit}
+nav .help-menu>summary{display:inline-flex;align-items:center;cursor:pointer;padding:0;list-style:none;user-select:none;font:inherit;line-height:inherit;color:inherit}
+nav .help-menu>summary::-webkit-details-marker{display:none}
+nav .help-menu>summary::after{content:" ▾";font-size:.8em}
+nav .help-menu[open]>summary,nav .help-menu>summary:focus-visible{outline:2px solid #6d91bb;outline-offset:2px}
+nav .help-menu .help-dropdown{position:absolute;z-index:1000;top:100%;left:0;min-width:185px;display:flex;flex-direction:column;padding:6px;background:#202938;border:1px solid #64748b;border-radius:7px;box-shadow:0 5px 15px #0003}
+nav .help-dropdown a{display:block!important;white-space:nowrap;padding:9px 12px!important;color:#fff!important;text-decoration:none}
+nav .help-dropdown a:hover,nav .help-dropdown a:focus-visible{background:#41526d;color:#fff!important}
+@media(max-width:650px){nav .help-menu .help-dropdown{left:auto;right:0;max-width:90vw}}
+</style>
+<script src="js/main.js" defer></script></head><body><header><h1>MYTHODEA</h1><nav aria-label="Navigation principale"><a href="index.html">Présentation</a><a href="telechargement.html">Téléchargement</a><a href="regles.html">Règles</a><details class="help-menu"><summary>Aide de jeu</summary><div class="help-dropdown"><a href="carte.html">Carte du jeu</a><a href="batiments.html">Bâtiments</a><a href="chemins.html">Chemins Linux</a><a href="bestiaire.html">Bestiaire</a><a href="etiquettes.html">Étiquettes</a><a href="quetes.html">Quêtes</a></div></details><details class="help-menu"><summary>Fiches techniques</summary><div class="help-dropdown"><a href="fiches-unites.html">Fiches des unités</a><a href="etiquettes.html">Guide des étiquettes</a></div></details><a href="simulateur.html">Simulateur</a></nav></header><main class="help"><p><a href="aide.html">← Retour à l'aide de jeu</a></p><h1>Bâtiments</h1><section id="village">
+            <h2>Bâtiments des villages et des villes</h2>
+            <p>Un village ou une ville regroupe plusieurs bâtiments. Leur nombre et leur présence peuvent varier suivant la localité ; l’Hôtel de Ville est un service commun que l’on retrouve dans chaque village ou ville. Le village du front Est est le centre à défendre. <strong>Les quatre positions actives de garnison sont partagées entre j1 et j2</strong> ; leurs casernes militaires, hôtels de ville et cryptes restent personnels.</p>
+            <div class="table-scroll"><table>
+                <thead><tr><th>Bâtiment</th><th>Utilisation en jeu</th><th>Possible hors d'une localité ?</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Garnison</strong></td><td>Placer les généraux sur les positions actives 1 à 4 pour défendre le village ou partir au front.</td><td><strong>Non</strong></td></tr>
+                    <tr><td><strong>Caserne militaire</strong></td><td>Conserver des généraux hors combat et les entraîner. <strong>Un général qui y reste 3 tours complets gagne un niveau.</strong></td><td><strong>Oui</strong></td></tr>
+                    <tr><td><strong>Hôtel de Ville</strong></td><td>Lire les journaux, les rapports et le bestiaire ; envoyer des réponses aux défis par courrier.</td><td><strong>Non</strong></td></tr>
+                    <tr><td><strong>Clocher</strong></td><td>Consulter le tour actuel, sa phase et le temps restant.</td><td><strong>Non</strong></td></tr>
+                    <tr><td><strong>Crypte</strong></td><td>Consulter les recettes Linux, travailler dans l'atelier et récupérer les récompenses.</td><td><strong>Oui</strong></td></tr>
+                    <tr><td><strong>Hôpital</strong></td><td>Soigner simultanément les unités blessées des généraux présents après un tour complet.</td><td><strong>Non</strong></td></tr>
+                    <tr><td><strong>École des officiers</strong></td><td>Apprendre ou écrire des évolutions dans le manuel.</td><td><strong>Non</strong></td></tr>
+                    <tr><td><strong>Forge</strong></td><td>Fabriquer les équipements spéciaux des unités, dont ceux de la cavalerie lourde, après un tour complet de présence du général.</td><td><strong>Non</strong></td></tr>
+                    <tr><td><strong>Bibliothèque</strong> (Hôtel de Ville)</td><td>Consulter les tomes officiels utilisés dans les recettes des unités orques.</td><td><strong>Non</strong></td></tr>
+                    <tr><td><strong>Morgue</strong> (Hôpital)</td><td>Accueillir les généraux ressuscités en Zombies, conserver les cadavres officiels et réaliser les rituels du Trop gros zombie.</td><td><strong>Non</strong></td></tr>
+                    <tr><td><strong>Crypte des plaines</strong> (EST_1)</td><td>Réaliser des recettes de Sauvageons et d'Orcs pour un général personnellement compétent ; recevoir jusqu'à quatre unités.</td><td><strong>Oui</strong></td></tr>
+                </tbody>
+            </table></div>
+            <p><strong>Possible hors d'une localité ?</strong> indique si le bâtiment peut exister indépendamment d'un hameau, village ou ville.</p>
+            <h3>Déplacements à l'intérieur du village</h3>
+            <p>La réorganisation <code>caserne_militaire ↔ garnison</code> n'utilise pas de déplacement normal. Un général entraîné pendant le tour doit toutefois respecter son délai d'entraînement avant de partir. Les déplacements entre les bâtiments du village ne consomment pas de déplacement normal.</p>
+            <h3>Hôpital</h3>
+            <p>L'hôpital accueille plusieurs généraux dans des emplacements distincts. <strong>Tous les généraux présents sont soignés simultanément</strong>, dans la limite des places physiques.</p>
+            <p>Après <strong>un tour complet de présence</strong>, les blessures des unités sont remises à zéro. L'expérience et les statuts <strong>vétéran</strong> et <strong>héroïque</strong> sont conservés. Quitter trop tôt ne permet pas de terminer les soins.</p>
+            <h3 id="morgue">Morgue de l'Hôpital</h3>
+            <p>Lorsqu'un général meurt, il possède une <strong>chance unique de 5 %</strong> de renaître en général zombie. La Morgue devient accessible à la première résurrection. Le nouveau général y apparaît, et un <strong>cadavre officiel</strong> y est créé. Chaque cadavre peut servir une seule fois à fabriquer un <strong>Trop gros zombie</strong>, en vérifiant un lien physique (même inode) et un lien symbolique relatif. Un général zombie ne peut posséder qu'un seul Trop gros zombie, qui occupe dix places.</p>
+            <p>Les Zombies ordinaires ne proviennent pas des cadavres : ils peuvent être obtenus en déplaçant avec <code>mv</code> un archer, piquier ou cavalier déjà validé, selon les conditions du moteur. La résurrection zombie est irréversible ; chaque niveau gagné ensuite augmente sa capacité maximale de <strong>2 places</strong>.</p>
+            <h3 id="bibliotheque">Bibliothèque de l'Hôtel de Ville</h3>
+            <p>Les tomes officiels de la Bibliothèque servent de références aux recettes des Orcs de la Crypte des plaines. Les exercices mettent notamment en pratique <code>cp</code>, <code>du</code>, <code>nl</code> et <code>head</code>. Un fichier inventé ou modifié n'est pas accepté comme livre officiel.</p>
+            <h3>École des officiers</h3>
+            <p>L'École des officiers dispose d'une <strong>capacité d'accueil de 6 généraux</strong> : ces places peuvent être occupées ou libres. Le manuel possède <strong>3 emplacements pour apprendre</strong> et <strong>3 emplacements pour écrire</strong>, indépendamment des places réservées aux généraux.</p>
+            <div class="table-scroll"><table>
+                <thead><tr><th>Action</th><th>Code</th><th>Exemple / résultat</th></tr></thead>
+                <tbody>
+                    <tr><td>Apprendre</td><td><code>a</code> ou <code>A</code></td><td><code>a 001 201</code> : demander l'apprentissage de l'évolution 201 située à l'emplacement 001.</td></tr>
+                    <tr><td>Écrire</td><td><code>e</code> ou <code>E</code></td><td>Inscrire ou remplacer une évolution dans un emplacement du manuel.</td></tr>
+                </tbody>
+            </table></div>
+            <p>Un <strong>tour complet de présence</strong> est nécessaire pour valider l'action. Le moteur contrôle les emplacements et identifiants. Si un tour comporte des lectures et des écritures, <strong>tous les apprentissages sont effectués avant les écritures</strong>, même si les opérations concernent le même emplacement.</p>
+            <p>Chaque général conserve dans sa fiche l'identifiant de l'évolution réellement apprise, même si le manuel est modifié ensuite.</p>
+            <h3>Forge</h3>
+            <p>La <strong>Forge</strong> permet de <strong>transformer des unités déjà créées et validées</strong> grâce à des équipements spécifiques. Les unités venant d'être créées et n'ayant pas encore été validées ne peuvent pas être transformées à la Forge. Pour une <strong>cavalerie lourde</strong>, les fichiers <code>armure</code>, <code>cuirasse</code>, <code>bouclier</code> et <code>casque</code> y sont préparés pour une unité préalablement validée ; le général doit y rester <strong>un tour complet</strong>. Le <a href="bestiaire.html#unites">Bestiaire</a> décrit les équipements requis.</p>
+            <p class="quick"><strong>Attention :</strong> les chemins exacts de l'Hôpital et de l'École doivent être vérifiés sur le serveur avant de saisir les commandes. Voir les <a href="regles.html#village">règles des bâtiments</a>.</p>
+        </section>
+<section id="crypte-plaines"><h2>La Crypte des plaines — EST_1</h2>
+<p>Ce site extérieur au village utilise une validation de recettes Linux comparable à la Crypte du village, avec un <strong>catalogue distinct</strong> : Sauvageon, Orc assaillant, Orc archer et Orc chaman. Un général doit occuper l'emplacement prévu de la Crypte et <strong>avoir personnellement débloqué la recette par sa progression</strong>. La connaissance d'un autre général ne suffit pas.</p>
+<p>Une réussite attribue <strong>jusqu'à quatre unités</strong> au général présent, et non un nouveau général ni un bloc de 20. Le nombre dépend de la capacité encore disponible : quatre, trois, deux, une ou aucune. La destination indiquée doit être compatible avec le type d'unité ; sinon, le système peut retenir un autre bloc compatible et signaler le changement. Les règles de délai et de validation de la Crypte s'appliquent aussi ici.</p>
+<p>Les livres des recettes orques se trouvent à la <a href="#bibliotheque">Bibliothèque</a>. Pour les unités obtenues, voir le <a href="bestiaire.html#unites">Bestiaire</a>.</p>
+</section>
+<section id="crypte"><h2>La Crypte</h2><p>Chaque joueur dispose d'un <code>grimoire/</code>, d'un <code>atelier/</code> et d'un espace <code>recompense/</code>. Les recettes PDF du grimoire peuvent être récupérées par SCP/SFTP. Pour tenter une recette pendant ACTIONS : se placer dans son atelier, lancer <code>crypte_commence</code>, exécuter exactement les commandes demandées puis terminer avec <code>crypte_fin</code>. Une commande supplémentaire, une erreur ou une interruption invalide la tentative.</p>
+<div class="scroll"><table><thead><tr><th>Recette</th><th>Exercice</th><th>Récompense</th><th>Délai de répétition</th></tr></thead><tbody>
+<tr><td>Âme et Lie Poulin</td><td>Fichiers et dossiers</td><td>20 cavaliers : 10 <strong>Avant</strong>, 5 <strong>Droite</strong>, 5 <strong>Gauche</strong></td><td>5 tours</td></tr>
+<tr><td>Har-chez-moi</td><td>Lecture, redirections, pipelines, filtrage</td><td>20 archers : <strong>Arrière</strong></td><td>5 tours</td></tr>
+<tr><td>Pic-nic</td><td>Permissions Linux</td><td>20 piquiers : 6 <strong>Avant</strong>, 7 <strong>Droite</strong>, 7 <strong>Gauche</strong></td><td>5 tours</td></tr></tbody></table></div>
+<p>Le délai de répétition est commun aux trois recettes pour chaque joueur. La récompense doit être récupérée avant d'en obtenir une nouvelle. Un échec ne consomme pas le délai. Le général bonus apparaît après la résolution dans <code>crypte/recompense/</code>, ne compte pas dans le quota normal de création et <strong>peut se déplacer directement hors du village</strong> vers une destination légale.</p></section>
+</main></body></html>

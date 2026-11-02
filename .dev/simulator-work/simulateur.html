@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/style.css">
+    <meta name="description" content="Simulez jusqu’à quatre généraux par camp avec le véritable moteur de combat Mythodea V2.0.">
+    <script src="js/simulateur.js" defer></script>
+    <title>Simulateur — Mythodea V2.0</title>
+
+<style id="mythodea-help-nav">
+nav .help-menu{display:inline-flex;position:relative;align-items:center;vertical-align:baseline;font:inherit;line-height:inherit}
+nav .help-menu>summary{display:inline-flex;align-items:center;cursor:pointer;padding:0;list-style:none;user-select:none;font:inherit;line-height:inherit;color:inherit}
+nav .help-menu>summary::-webkit-details-marker{display:none}
+nav .help-menu>summary::after{content:" ▾";font-size:.8em}
+nav .help-menu[open]>summary,nav .help-menu>summary:focus-visible{outline:2px solid #6d91bb;outline-offset:2px}
+nav .help-menu .help-dropdown{position:absolute;z-index:1000;top:100%;left:0;min-width:185px;display:flex;flex-direction:column;padding:6px;background:#202938;border:1px solid #64748b;border-radius:7px;box-shadow:0 5px 15px #0003}
+nav .help-dropdown a{display:block!important;white-space:nowrap;padding:9px 12px!important;color:#fff!important;text-decoration:none}
+nav .help-dropdown a:hover,nav .help-dropdown a:focus-visible{background:#41526d;color:#fff!important}
+@media(max-width:650px){nav .help-menu .help-dropdown{left:auto;right:0;max-width:90vw}}
+</style>
+<style id="mythodea-comparateur-style">
+.mode-switcher{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0 24px}
+.mode-switcher button{padding:12px 16px;border:1px solid #a6b4c5;border-radius:7px;background:#fff;color:#202938;cursor:pointer;font-weight:700}
+.mode-switcher button[aria-selected="true"]{background:#202938;color:#fff}
+.mode-switcher button:focus-visible{outline:3px solid #638cba;outline-offset:2px}
+#comparison-panel[hidden],#battle-panel[hidden]{display:none!important}
+
+    #comparison-panel { max-width: 1050px; }
+    #comparison-panel .sim-intro { color: #5e6878; line-height: 1.6; }
+    #comparison-panel .sim-modes { display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0; }
+    #comparison-panel .sim-mode { border: 1px solid #bcc7d5; background: #fff; padding: 12px 18px; border-radius: 7px; font-weight: 600; cursor: pointer; color: #202938; }
+    #comparison-panel .sim-mode[aria-selected="true"] { background: #202938; color: #fff; }
+    #comparison-panel .sim-mode:focus-visible, #comparison-panel .sim-field input:focus-visible { outline: 3px solid #4b86d4; outline-offset: 2px; }
+    #comparison-panel .sim-columns, #comparison-panel .sim-results { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+    #comparison-panel .sim-panel { border: 1px solid #dce1e8; background: #f8fafc; padding: 18px; border-radius: 8px; }
+    #comparison-panel .sim-panel h3 { margin-top: 0; }
+    #comparison-panel .sim-field { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 12px 0; }
+    #comparison-panel .sim-field label { font-weight: 600; }
+    #comparison-panel .sim-field input[type="number"] { width: 92px; padding: 8px; border: 1px solid #9aa8b8; border-radius: 5px; }
+    #comparison-panel .sim-range { width: 100%; accent-color: #274e84; }
+    #comparison-panel .sim-bonus-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    #comparison-panel .sim-score { font-size: 1.65rem; font-weight: 700; color: #1c3f70; }
+    #comparison-panel .sim-survivors { font-size: 1.2rem; font-weight: 700; }
+    #comparison-panel .sim-note { background: #eef3f9; padding: 12px 14px; border-left: 3px solid #426da4; line-height: 1.55; border-radius: 3px; }
+    #comparison-panel .sim-formula { overflow-x: auto; padding: 12px; background: #f3f5f8; border-radius: 6px; font-family: Consolas, monospace; }
+    #comparison-panel .sim-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    #comparison-panel .sim-table th, #comparison-panel .sim-table td { padding: 9px 12px; text-align: right; border-bottom: 1px solid #dde3eb; }
+    #comparison-panel .sim-table th:first-child, #comparison-panel .sim-table td:first-child { text-align: left; }
+    #comparison-panel .sim-table tbody tr.selected { background: #e3eefb; font-weight: 700; }
+    #comparison-panel .sim-scroll { overflow-x: auto; }
+    #comparison-panel .sim-hidden { display: none; }
+    #comparison-panel .sim-unit-tags{border:1px solid #dce1e8;border-radius:6px;padding:12px;margin:14px 0}
+    #comparison-panel .sim-unit-tag-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px}
+    #comparison-panel .sim-unit-tag-options label{display:flex;align-items:center;gap:7px;font-weight:400}
+    #comparison-panel .sim-unit-tag-options input{width:auto}
+    @media (max-width: 620px) { #comparison-panel .sim-columns, #comparison-panel .sim-results { grid-template-columns: 1fr; } }
+  
+</style>
+<script src="js/main.js" defer></script></head>
+<body>
+<header>
+        <h1>MYTHODEA</h1>
+
+        <nav aria-label="Navigation principale"><a href="index.html">Présentation</a><a href="telechargement.html">Téléchargement</a><a href="regles.html">Règles</a><details class="help-menu"><summary>Aide de jeu</summary><div class="help-dropdown"><a href="carte.html">Carte du jeu</a><a href="batiments.html">Bâtiments</a><a href="chemins.html">Chemins Linux</a><a href="bestiaire.html">Bestiaire</a><a href="etiquettes.html">Étiquettes</a><a href="quetes.html">Quêtes</a></div></details><details class="help-menu"><summary>Fiches techniques</summary><div class="help-dropdown"><a href="fiches-unites.html">Fiches des unités</a><a href="etiquettes.html">Guide des étiquettes</a></div></details><a href="simulateur.html">Simulateur</a></nav>
+
+    </header>
+
+    <main class="simulator">
+        <div class="mode-switcher" role="tablist" aria-label="Mode de simulation">
+          <button type="button" id="tab-bataille" role="tab" aria-controls="battle-panel" aria-selected="true">Simulation de bataille</button>
+          <button type="button" id="tab-comparateur" role="tab" aria-controls="comparison-panel" aria-selected="false">Comparateur d’unités</button>
+        </div>
+        <div id="battle-panel" role="tabpanel" aria-labelledby="tab-bataille">
+        <p class="sim-eyebrow">V2.0 · MOTEUR OFFICIEL · BATAILLE TERRITORIALE</p>
+        <div class="sim-heading">
+            <h1>Préparer un affrontement</h1>
+            <button id="layout-button" type="button" class="sim-secondary sim-layout-button" aria-label="Afficher les camps verticalement" aria-pressed="false" title="Afficher les camps verticalement" hidden><span id="layout-icon" aria-hidden="true">▥</span></button>
+        </div>
+        <p>Configurez jusqu’à <strong>quatre généraux actifs par camp</strong>, leurs profils et leurs quatre blocs. Chaque général dispose de 20 places, avec une capacité supplémentaire selon son évolution zombie.</p>
+        <p class="sim-note">Chaque bataille utilise un plateau jetable, séparé des parties réelles. Choc initial, manœuvres et combat rangé sont résolus par le moteur officiel b31b842. OFF/OFF et OFF/DEF utilisent actuellement les mêmes règles de combat, sans bonus défensif.</p>
+        <noscript><p class="sim-error">Activez JavaScript pour configurer les formations et lancer une simulation.</p></noscript>
+        <p id="service-status" role="status">Chargement du catalogue du moteur…</p>
+        <form id="simulation-form" novalidate hidden>
+            <div id="armies" class="sim-armies"></div>
+            <details id="advanced-panel" class="sim-panel sim-config-panel">
+                <summary><span>Paramètres avancés</span><small id="advanced-summary">Réglages automatiques</small></summary>
+                <div class="sim-panel-body">
+                    <label for="seed-mode">Graine aléatoire</label>
+                    <select id="seed-mode"><option value="auto">Automatique — nouvelle graine à chaque combat</option><option value="fixed">Fixe — reproduire les mêmes tirages</option></select>
+                    <div id="fixed-seed" hidden>
+                        <label for="seed">Valeur de la graine</label>
+                        <input id="seed" name="seed" type="number" min="0" max="4294967295" step="1" value="12" required disabled aria-describedby="seed-help">
+                    </div>
+                    <p id="seed-help" class="sim-muted">Une graine fixe permet de rejouer les mêmes tirages avec la même composition et la même version du moteur.</p>
+                    <p id="engine-version" class="sim-muted"></p>
+                </div>
+            </details>
+            <section class="sim-controls" aria-labelledby="run-title">
+                <h2 id="run-title">Lancer le combat</h2>
+                <div class="sim-options-grid">
+                    <div><label for="combat-mode">Mode de combat</label><select id="combat-mode" aria-describedby="combat-mode-help"><option value="OFF/OFF">OFF/OFF</option><option value="OFF/DEF">OFF/DEF</option></select></div>
+                    <div id="defender-field" hidden><label for="defender">Camp défenseur</label><select id="defender" disabled><option value="A">Camp A</option><option value="B" selected>Camp B</option></select></div>
+                </div>
+                <p id="combat-mode-help" class="sim-muted">Le moteur officiel utilise actuellement les mêmes calculs dans les deux modes, sans bonus défensif. En OFF/DEF, échanger les camps échange aussi le rôle de défenseur.</p>
+                <div class="sim-actions">
+                    <button id="run-button" type="submit">Lancer la simulation</button>
+                    <button id="swap-button" type="button" class="sim-secondary">Échanger les camps</button>
+                </div>
+                <p class="sim-muted">Profils, PC, moral, étiquettes, QG et Messagers sont transmis au moteur. Sans fatigue, renforts en cascade ni retraites. Direction, terrain et fuite volontaire sont réservés à la v2.1. Les nouvelles décisions postérieures à b31b842 ne sont pas encore disponibles.</p>
+                <p id="validation" role="status"></p>
+                <p id="run-error" class="sim-error" role="alert" hidden></p>
+            </section>
+        </form>
+        <details id="results-panel" class="sim-panel">
+            <summary><span>Résultats du combat</span><small id="results-caption">Aucune simulation effectuée</small></summary>
+        <section id="results" class="sim-results" aria-labelledby="results-title" hidden>
+            <h2 id="results-title" tabindex="-1">Résultat du combat</h2>
+            <p id="result-stale" class="sim-note" hidden>La configuration a changé. Ce résultat correspond au combat précédent.</p>
+            <div id="result-summary"></div>
+            <p id="result-meta" class="sim-muted"></p>
+            <button id="reuse-seed" type="button" class="sim-secondary">Réutiliser cette graine</button>
+            <h3>Les quatre blocs avant et après</h3>
+            <div id="block-results" class="sim-armies"></div>
+            <h3>Déroulement du combat</h3>
+            <div id="phases"></div>
+            <details class="sim-journal">
+                <summary>Journal chronologique intégral du moteur</summary>
+                <p class="sim-muted"><span class="sim-log-camp-a">j1 = camp A</span> ; <span class="sim-log-camp-b">j2 = camp B</span>. Touchez ou ouvrez les mentions ⓘ pour afficher les explications facultatives.</p>
+                <div id="journal" tabindex="0" role="region" aria-label="Journal du combat et explications tactiques"></div>
+            </details>
+        </section>
+        </details>
+        <details class="sim-help">
+            <summary>Comprendre les unités et les limites du prototype</summary>
+            <p>Archers contre piquiers, piquiers contre cavaliers, cavaliers contre archers : le type avantagé bénéficie du multiplicateur officiel ×2.</p>
+            <p>La cavalerie lourde est une unité spéciale de récompense. Elle a l’avantage contre les archers et les cavaliers ; les piquiers ont l’avantage contre elle. À partir de 15 cavaliers lourds dans l’avant, sa valeur de base passe de 5 à 10, tant que le seuil reste atteint. Les autres blocs n’obtiennent pas ce bonus.</p>
+            <p>Un bloc contient un seul type de combattant, avec des Messagers et un Gros zombie éventuels en soutien. Le Messager occupe cinq places et le Gros zombie dix. Les pertes sont calculées par le moteur Python officiel ; les compositions saisies restent disponibles après chaque simulation.</p>
+            <p>Le remplissage aléatoire répartit de 1 à 20 combattants compatibles dans les blocs et remplace leur composition. La génération de général utilise la progression officielle au niveau choisi et remplace son profil, en conservant ses troupes. Les deux boutons sont réutilisables. La graine de combat reproduit le même scénario avec cette version du moteur.</p>
+            <p>Chaque camp dispose des positions actives 1 à 4. Choisir une position occupée permute les deux généraux ; retirer un général laisse sa position vide. Les numéros des fiches sont renumérotés après suppression, sans déplacer les positions restantes. Les saisies sont conservées lorsque vous repliez les volets ou changez la disposition, pendant cette session de page.</p>
+            <p>Un combat en déséquilibre (par exemple 1 contre 2) utilise la résolution territoriale officielle. La colonne de renforts, la cascade Survie et ses choix de retraite nécessitent des forces hors des quatre positions actives ; ils ne sont pas proposés ici.</p>
+            <p>Le résultat d’un duel ne représente pas une probabilité de victoire.</p>
+        </details>
+        </div>
+        <section id="comparison-panel" role="tabpanel" aria-labelledby="tab-comparateur">
+      <h2>Comparateur d'unités</h2>
+      <p>Compare deux blocs et leurs bonus d'étiquettes selon les nouvelles règles de PC de Mythodea : <strong>coefficient fixe de 0,5 à tous les niveaux</strong>. Chaque étiquette de général appliquée à une unité contribue séparément ; les pourcentages sont additionnés. Le tirage aléatoire des PC utilise la plage du niveau actuel, sans additionner d'éventuels gains de commandement précédents. Le comparateur reste théorique et indépendant de la simulation Python ci-dessus.</p>
+      <div class="sim-columns">
+        <div class="sim-panel">
+          <h3>Bloc A</h3>
+          <div class="sim-field"><label for="effectif-a">Effectif</label><input type="number" id="effectif-a" min="1" max="20" step="1" value="20"></div>
+          <div class="sim-field"><label for="valeur-a">Valeur par soldat</label><input type="number" id="valeur-a" min="1" max="100" step="1" value="5"></div>
+          <div class="sim-field"><label for="fatigues-a">Soldats fatigués</label><input type="number" id="fatigues-a" min="0" max="20" step="1" value="0"></div>
+          <div class="sim-field"><label for="pc-a">PC du général A</label><input type="number" id="pc-a" min="0" max="1000" step="1" value="20"></div>
+          <div class="sim-field"><label for="niveau-a">Niveau du général A</label><input type="number" id="niveau-a" min="0" max="100" step="1" value="0"></div>
+          <div class="sim-field"><label for="mode-pc-a">Attribution des PC</label><select id="mode-pc-a"><option value="manuel">Manuelle</option><option value="aleatoire">Aléatoire selon le niveau</option></select></div>
+          <div class="sim-field"><span id="plage-pc-a" class="sim-muted">Plage du niveau : 11–20 PC</span><button type="button" id="tirage-pc-a" class="sim-secondary">Retirer des PC</button></div>
+          <fieldset class="sim-unit-tags" id="unite-tags-a"><legend>Étiquettes des unités du bloc A</legend><div class="sim-unit-tag-options" id="unite-tags-options-a"></div></fieldset>
+          <p class="sim-muted">Étiquettes apprises par le général (bonus seulement si l'unité possède l'étiquette) :</p>
+          <div class="sim-field"><label for="etiquette-a-1">Étiquette 1</label><select id="etiquette-a-1" class="sim-etiquette"></select><input type="number" id="rang-a-1" aria-label="Niveau de l'étiquette A1" min="0" max="1" value="1" step="1"></div>
+          <div class="sim-field"><label for="etiquette-a-2">Étiquette 2</label><select id="etiquette-a-2" class="sim-etiquette"></select><input type="number" id="rang-a-2" aria-label="Niveau de l'étiquette A2" min="0" max="1" value="0" step="1"></div>
+        </div>
+        <div class="sim-panel">
+          <h3>Bloc B</h3>
+          <div class="sim-field"><label for="effectif-b">Effectif</label><input type="number" id="effectif-b" min="1" max="20" step="1" value="20"></div>
+          <div class="sim-field"><label for="valeur-b">Valeur par soldat</label><input type="number" id="valeur-b" min="1" max="100" step="1" value="5"></div>
+          <div class="sim-field"><label for="fatigues-b">Soldats fatigués</label><input type="number" id="fatigues-b" min="0" max="20" step="1" value="0"></div>
+          <div class="sim-field"><label for="pc-b">PC du général B</label><input type="number" id="pc-b" min="0" max="1000" step="1" value="20"></div>
+          <div class="sim-field"><label for="niveau-b">Niveau du général B</label><input type="number" id="niveau-b" min="0" max="100" step="1" value="0"></div>
+          <div class="sim-field"><label for="mode-pc-b">Attribution des PC</label><select id="mode-pc-b"><option value="manuel">Manuelle</option><option value="aleatoire">Aléatoire selon le niveau</option></select></div>
+          <div class="sim-field"><span id="plage-pc-b" class="sim-muted">Plage du niveau : 11–20 PC</span><button type="button" id="tirage-pc-b" class="sim-secondary">Retirer des PC</button></div>
+          <fieldset class="sim-unit-tags" id="unite-tags-b"><legend>Étiquettes des unités du bloc B</legend><div class="sim-unit-tag-options" id="unite-tags-options-b"></div></fieldset>
+          <p class="sim-muted">Étiquettes apprises par le général (bonus seulement si l'unité possède l'étiquette) :</p>
+          <div class="sim-field"><label for="etiquette-b-1">Étiquette 1</label><select id="etiquette-b-1" class="sim-etiquette"></select><input type="number" id="rang-b-1" aria-label="Niveau de l'étiquette B1" min="0" max="1" value="0" step="1"></div>
+          <div class="sim-field"><label for="etiquette-b-2">Étiquette 2</label><select id="etiquette-b-2" class="sim-etiquette"></select><input type="number" id="rang-b-2" aria-label="Niveau de l'étiquette B2" min="0" max="1" value="0" step="1"></div>
+        </div>
+      </div>
+      <div class="sim-panel" style="margin:16px 0">
+        <h3>Bonus et malus calculés</h3>
+        <p id="detail-bonus-a" aria-live="polite"></p>
+        <p id="detail-bonus-b" aria-live="polite"></p>
+        <p class="sim-muted">Seules les étiquettes présentes à la fois sur l'unité et sur le général donnent un bonus. Les doublons sont ignorés et les niveaux d'étiquette sont limités par le niveau du général. Le bonus de valeur est additionné avant l'application à la valeur de base.</p>
+      </div>
+      <div class="sim-results" aria-live="polite" aria-atomic="true">
+        <div class="sim-panel"><h3>Résultat du bloc A</h3><div class="sim-score" id="score-a">110</div><p>Score de combat</p><p class="sim-survivors" id="survivants-a">2 survivants</p><p id="pertes-a">18 pertes</p></div>
+        <div class="sim-panel"><h3>Résultat du bloc B</h3><div class="sim-score" id="score-b">100</div><p>Score de combat</p><p class="sim-survivors" id="survivants-b">0 survivant</p><p id="pertes-b">20 pertes</p></div>
+      </div>
+      <h3>Comment les pertes sont calculées</h3>
+      <p>Chaque étiquette de valeur présente sur l'unité et apprise par le général ajoute <strong>PC × coefficient de niveau du général × niveau de l'étiquette</strong> points de pourcentage. Les étiquettes s'additionnent ; les bonus ne se multiplient jamais entre eux. La valeur modifiée sert à l'attaque et à la résistance.</p>
+      <div class="sim-formula">
+        Coefficient fixe = 0,5 (le niveau général limite seulement le niveau maximal des étiquettes)<br>
+        Bonus total (%) = PC × 0,5 × somme des niveaux des étiquettes applicables<br>
+        Valeur effective = valeur de base × max(0,01 ; 1 + bonus total / 100)<br>
+        Score = valeur effective × (effectif + avantages de fatigue)<br>
+        Pertes A = min(effectif A ; ⌊score B / (score A / effectif A)⌋)<br>
+        Pertes B = min(effectif B ; ⌊score A / (score B / effectif B)⌋)
+      </div>
+      <p class="sim-note"><strong>Comparateur théorique.</strong> L'appariement des soldats fatigués reste une hypothèse du prototype. Les effets globaux du QG, le malus de moral « cruelle », le malus « chaman », les blessures et les avantages entre types distincts ne sont pas encore appliqués dans ce comparateur. Le simulateur de bataille utilise toujours sa version de moteur verrouillée.</p>
+      <h3>Comparaison des résultats selon les PC du général A</h3>
+      <p>Le tableau fait varier les PC de A de 0 à 100 par pas de 5, avec les étiquettes et les autres paramètres sélectionnés.</p>
+      <div class="sim-scroll"><table class="sim-table">
+        <thead><tr><th>PC A</th><th>Bonus A</th><th>Score A</th><th>Survivants A</th><th>Survivants B</th></tr></thead>
+        <tbody id="sim-table-body"></tbody>
+      </table></div>
+    </section>
+    </main>
+
+<script id="mythodea-modes-script">
+(() => {
+  const battle = document.getElementById('battle-panel');
+  const comparison = document.getElementById('comparison-panel');
+  const battleTab = document.getElementById('tab-bataille');
+  const comparisonTab = document.getElementById('tab-comparateur');
+  function show(mode) {
+    const isBattle = mode === 'battle';
+    battle.hidden = !isBattle;
+    comparison.hidden = isBattle;
+    battleTab.setAttribute('aria-selected', String(isBattle));
+    comparisonTab.setAttribute('aria-selected', String(!isBattle));
+  }
+  battleTab.addEventListener('click', () => show('battle'));
+  comparisonTab.addEventListener('click', () => show('compare'));
+  show('battle');
+})();
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const fmt = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 2});
+  const noms = ['infanterie','distance','cavalerie','humain','melee','orc','mort_vivant','noble','armure_legere','lourde'];
+  const labels = {melee:'Mêlée',mort_vivant:'Zombie',armure_legere:'Armure légère',lourde:'Armure lourde'};
+  for (const camp of ['a','b']) for (let i=1;i<=2;i++) {
+    const el = $('etiquette-'+camp+'-'+i);
+    el.add(new Option('Aucune',''));
+    noms.forEach(n => el.add(new Option(labels[n] || n.replaceAll('_',' '),n)));
+  }
+  for (const camp of ['a','b']) for (const nom of noms) {
+    const label=document.createElement('label');
+    const input=document.createElement('input');
+    input.type='checkbox';input.value=nom;input.checked=camp==='a' && nom==='infanterie';
+    label.append(input,document.createTextNode(labels[nom] || nom.replaceAll('_',' ')));
+    $('unite-tags-options-'+camp).append(label);
+  }
+  $('etiquette-a-1').value='infanterie';
+  const fmtP = x => (x>=0?'+':'')+fmt.format(x)+' %';
+  function entier(id,min,max,defaultValue) {
+    const v = Number($(id).value);
+    return Number.isInteger(v) && v>=min && v<=max ? v : defaultValue;
+  }
+  function plagePC(niveau) {
+    const tranche=10*(Math.floor(niveau/5)+1);
+    return [tranche+1,2*tranche];
+  }
+  function tirerPC(c){
+    const niveau=entier('niveau-'+c,0,100,0);
+    const [mini,maxi]=plagePC(niveau);
+    $('pc-'+c).value=mini+Math.floor(Math.random()*(maxi-mini+1));
+  }
+  function actualiserPC(c,retirer=false){
+    const auto=$('mode-pc-'+c).value==='aleatoire';
+    $('pc-'+c).readOnly=auto;
+    $('tirage-pc-'+c).disabled=!auto;
+    const [mini,maxi]=plagePC(entier('niveau-'+c,0,100,0));
+    $('plage-pc-'+c).textContent='Plage du niveau : '+mini+'–'+maxi+' PC (sans gains d’évolution)';
+    if(auto && retirer)tirerPC(c);
+  }
+  function fiche(c) {
+    const niveau = entier('niveau-'+c,0,100,0);
+    const pc = entier('pc-'+c,0,1000,20);
+    const coefficient = 0.5;
+    const maxRang = 1+Math.floor(niveau/5);
+    const maxEmplacements = maxRang;
+    const etiquettesUnites=new Set([...document.querySelectorAll('#unite-tags-options-'+c+' input:checked')].map(input=>input.value));
+    let totalRangs=0, utilises=0, correspondances=0;
+    const vues = new Set();
+    for (let i=1;i<=2;i++){
+      const nom=$('etiquette-'+c+'-'+i).value;
+      const input=$('rang-'+c+'-'+i);
+      input.max=String(maxRang);
+      const brut=Number(input.value);
+      const rang=Number.isInteger(brut) ? Math.max(0,Math.min(maxRang,brut)) : 0;
+      input.value=rang;
+      if(nom && rang && !vues.has(nom) && utilises<maxEmplacements){
+        vues.add(nom);utilises++;
+        if(etiquettesUnites.has(nom)){totalRangs+=rang;correspondances++;}
+      }
+    }
+    return {pc,niveau,coefficient,totalRangs,correspondances,pct:pc*coefficient*totalRangs};
+  }
+  function calcul(nA,vA,nB,vB,pctA,pctB,fa,fb) {
+    const avantageA=Math.min(nA-fa,fb), avantageB=Math.min(nB-fb,fa);
+    const valeurA=vA*Math.max(.01,1+pctA/100), valeurB=vB*Math.max(.01,1+pctB/100);
+    const scoreA=valeurA*(nA+avantageA),scoreB=valeurB*(nB+avantageB);
+    const pertesA=Math.min(nA,Math.floor(scoreB*nA/scoreA));
+    const pertesB=Math.min(nB,Math.floor(scoreA*nB/scoreB));
+    return {scoreA,scoreB,pertesA,pertesB,restA:nA-pertesA,restB:nB-pertesB};
+  }
+  function afficher(){
+    const a=fiche('a'),b=fiche('b');
+    const nA=entier('effectif-a',1,20,20),nB=entier('effectif-b',1,20,20);
+    const vA=entier('valeur-a',1,100,5),vB=entier('valeur-b',1,100,5);
+    const fa=Math.min(nA,entier('fatigues-a',0,20,0)),fb=Math.min(nB,entier('fatigues-b',0,20,0));
+    $('fatigues-a').max=nA;$('fatigues-b').max=nB;
+    $('detail-bonus-a').textContent='Bloc A : '+a.pc+' PC × '+fmt.format(a.coefficient)+' × '+a.totalRangs+' niveaux compatibles ('+a.correspondances+' étiquette(s)) = '+fmtP(a.pct);
+    $('detail-bonus-b').textContent='Bloc B : '+b.pc+' PC × '+fmt.format(b.coefficient)+' × '+b.totalRangs+' niveaux compatibles ('+b.correspondances+' étiquette(s)) = '+fmtP(b.pct);
+    const r=calcul(nA,vA,nB,vB,a.pct,b.pct,fa,fb);
+    for(const c of ['a','b']) {
+      const score=c==='a'?r.scoreA:r.scoreB,rest=c==='a'?r.restA:r.restB,pertes=c==='a'?r.pertesA:r.pertesB;
+      $('score-'+c).textContent=fmt.format(score);
+      $('survivants-'+c).textContent=rest+' survivant'+(rest===1?'':'s');
+      $('pertes-'+c).textContent=pertes+' perte'+(pertes===1?'':'s');
+    }
+    const rows=[];
+    for(let pc=0;pc<=100;pc+=5){
+      const bonus=pc*a.coefficient*a.totalRangs;
+      const t=calcul(nA,vA,nB,vB,bonus,b.pct,fa,fb);
+      rows.push('<tr'+(pc===a.pc?' class="selected"':'')+'><td>'+pc+'</td><td>'+fmtP(bonus)+'</td><td>'+fmt.format(t.scoreA)+'</td><td>'+t.restA+'</td><td>'+t.restB+'</td></tr>');
+    }
+    $('sim-table-body').innerHTML=rows.join('');
+  }
+  for(const c of ['a','b']){
+    $('mode-pc-'+c).addEventListener('change',()=>{actualiserPC(c,true);afficher();});
+    $('niveau-'+c).addEventListener('change',()=>{actualiserPC(c,$('mode-pc-'+c).value==='aleatoire');afficher();});
+    $('tirage-pc-'+c).addEventListener('click',()=>{tirerPC(c);afficher();});
+    actualiserPC(c);
+  }
+  document.querySelectorAll('#comparison-panel input, #comparison-panel select').forEach(el=>{
+    el.addEventListener('input',afficher);
+    el.addEventListener('change',afficher);
+  });
+  afficher();
+})();;
+</script>
+</body>
+</html>

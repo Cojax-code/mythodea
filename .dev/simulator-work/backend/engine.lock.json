@@ -1,0 +1,574 @@
+{
+  "repository": "https://github.com/Cojax-code/mythodea.git",
+  "branch": "v2.0",
+  "commit": "b31b842d689d22b7efe4393010fccb6bc3a6aa77",
+  "files": {
+    "bouclier_vivant.py": "011427c00884482cac642884250b70bcb79760f988546c4413e93367725ff44f",
+    "catalogues.py": "ab01e9a259dcdcf2004683d9da6a5e76c797da550f1fd50a711a3ebe7f8654ae",
+    "combats.py": "560ce2929f1e0f9dfa285f2d1be06be30eff6c83c14e210cca6de03d39970639",
+    "commandement.py": "112a29799f112d761a030b2e4914a8de9f4b8208aa6cfde09dfe4c6fd395891e",
+    "config.py": "8b2f32c59eada096272f848ab75b4e9b91cfb51637736abe94023ba1a2f1f126",
+    "crypte.py": "e27a9cdb6bba61e4b9c6cef305fb4b3d9881506b3890f0154ea3572289345e9d",
+    "crypte_client.py": "b2ac046cd0bf29c4dd07139b4351feea05fee5b796e68ba2c83319164bbb4814",
+    "crypte_installer.py": "89de86f7dad6db67c6e38366daf530b52a13fc6a6f1582dba20570e770cb089c",
+    "cycle_linux.py": "1017a79315e65d4ed3b5425a8e1b878a9c1f36ed4f0e58e5df2abcc1af62d805",
+    "defis.py": "debb0e5afc2f66bd76cfeb522356d8773c08693220948f87220b93f450140288",
+    "etat.py": "7341f5ffde641836146715913cecdb1c80920cb099459b7e92c61e573aece847",
+    "formation.py": "19aeafe853af172c60a112dfeeadf12d39d3aa8bc6f1cd5a5643047e7e0650cb",
+    "generaux.py": "d65d59dfdf452e6ebdeeb3435f0bac194ac03d2a9277f99a173d935af55d9a9c",
+    "minuterie.py": "89320c7f6a17035f004f188d00da8b0d41568871ef3c7d50a9a26b5ebea777d8",
+    "morgue.py": "76ab744a3ed908216fd56da47cf1fe7daae8da16337763a48fa8bbd8d385c4ac",
+    "mouvements.py": "35fab2c9a54641301b8d51caab15763ee6a2145c3c89b968d92d6f32d3312b79",
+    "mythodea_v_1_5.py": "6490a00c482f5d1f2b9b76586d54ecdbd36487c57efca3b9b2de63da5118ef7f",
+    "plateau.py": "aba581f47316a5cbe224821e99c762890695ec2beeb9768c65487b4c85e758e8",
+    "progression.py": "6bfe157e0d66345a21b0be3e21fee03dbdd9371df09b63f030f39ebf9bbdd6c9",
+    "rapports.py": "6ddd176bc70670f96782f6e14941cc55edf74cde8f9682b142d0c08565e5effe",
+    "securite.py": "13c9e37b6938156ecb03a9ec4783c49dab4464f6a4cec17eefea9f020637c098",
+    "soldats.py": "3cc3c5fb40bf6bc8eab93274f717b07bf83e8fb3eb9c26e677b30512a5d2b4aa",
+    "survie.py": "3820cf01fa62b718e58e2c380915444090033d72b16bed99c8fef1f685e2bf94",
+    "survie_admin.py": "d9f4b62d1021992030ef8581203be49667f21c25b3680fccc7f49025f7eb2b60",
+    "unites.py": "3cb4266e0efee9b60860176ae6fa5a8b74ca74b913f82b1ecefce70264ea391d",
+    "vagues.py": "fc12111a5d4b787083f9d9406841afc640f3a65f6d8dce1dc559abd18b6b26c4",
+    "victoire.py": "eb8b22b54bdef1d5bda1dd646452cb39ef799cc158f9f0e781db50180e109a13"
+  },
+  "catalog": {
+    "blocks": [
+      "avant",
+      "droite",
+      "gauche",
+      "arriere"
+    ],
+    "max_units": 20,
+    "units": [
+      "archer",
+      "piquier",
+      "cavalier",
+      "cavalerie_lourde",
+      "sauvageon",
+      "chevalier_clinquant",
+      "orc_assaillant",
+      "orc_archer",
+      "orc_chaman",
+      "messager_du_QG",
+      "zombie",
+      "Trop_gros_zombie"
+    ],
+    "unit_details": {
+      "archer": {
+        "nom": "archer",
+        "prefixe": "infanterie",
+        "recette": [
+          "arc"
+        ],
+        "fabrication": 5,
+        "valeur_combat": 5,
+        "etiquettes": [
+          "infanterie",
+          "distance"
+        ],
+        "forces": [
+          "piquier"
+        ],
+        "faiblesses": [
+          "cavalier",
+          "cavalerie_lourde"
+        ],
+        "effets": [],
+        "natures": null,
+        "terrain": null,
+        "positionnement": null,
+        "progression": false,
+        "blessures": 1,
+        "soins": "hopital",
+        "tours_soins": 1,
+        "places": 1
+      },
+      "piquier": {
+        "nom": "piquier",
+        "prefixe": "infanterie",
+        "recette": [
+          "pique"
+        ],
+        "fabrication": 5,
+        "valeur_combat": 5,
+        "etiquettes": [
+          "infanterie"
+        ],
+        "forces": [
+          "cavalier",
+          "cavalerie_lourde"
+        ],
+        "faiblesses": [
+          "distance"
+        ],
+        "effets": [],
+        "natures": null,
+        "terrain": null,
+        "positionnement": null,
+        "progression": false,
+        "blessures": 1,
+        "soins": "hopital",
+        "tours_soins": 1,
+        "places": 1
+      },
+      "cavalier": {
+        "nom": "cavalier",
+        "prefixe": "cavalerie",
+        "recette": [
+          "cheval"
+        ],
+        "fabrication": 5,
+        "valeur_combat": 5,
+        "etiquettes": [
+          "cavalerie"
+        ],
+        "forces": [
+          "archer"
+        ],
+        "faiblesses": [
+          "piquier",
+          "cavalerie_lourde"
+        ],
+        "effets": [],
+        "natures": null,
+        "terrain": null,
+        "positionnement": null,
+        "progression": false,
+        "blessures": 1,
+        "soins": "hopital",
+        "tours_soins": 1,
+        "places": 1
+      },
+      "cavalerie_lourde": {
+        "nom": "cavalerie_lourde",
+        "prefixe": "cavalerie_L",
+        "recette": [
+          "cheval",
+          "armure",
+          "cuirasse",
+          "bouclier",
+          "casque"
+        ],
+        "fabrication": null,
+        "valeur_combat": 5,
+        "etiquettes": [
+          "cavalerie",
+          "lourde"
+        ],
+        "forces": [
+          "archer",
+          "cavalier"
+        ],
+        "faiblesses": [
+          "piquier"
+        ],
+        "effets": [
+          "formation_avant_15"
+        ],
+        "natures": null,
+        "terrain": null,
+        "positionnement": null,
+        "progression": false,
+        "blessures": 1,
+        "soins": "hopital",
+        "tours_soins": 1,
+        "places": 1
+      },
+      "sauvageon": {
+        "nom": "sauvageon",
+        "prefixe": "sauvageon",
+        "recette": [
+          "sauvageon.txt"
+        ],
+        "valeur_combat": 3,
+        "etiquettes": [
+          "humain",
+          "melee",
+          "a_pied",
+          "cruelle"
+        ],
+        "forces": [],
+        "faiblesses": [
+          "archer",
+          "cavalier",
+          "cavalerie_lourde"
+        ],
+        "effets": [
+          "regeneration_fuite"
+        ],
+        "natures": null,
+        "blessures": 0,
+        "soins": null,
+        "fabrication": null,
+        "terrain": null,
+        "positionnement": null,
+        "progression": true,
+        "tours_soins": 1,
+        "places": 1
+      },
+      "chevalier_clinquant": {
+        "nom": "chevalier_clinquant",
+        "prefixe": "chevalier_clinquant",
+        "recette": [],
+        "valeur_combat": 5,
+        "valeur_avant": 6,
+        "etiquettes": [
+          "humain",
+          "melee",
+          "a_pied",
+          "noble",
+          "ami_des_animaux",
+          "armure_legere"
+        ],
+        "forces": [
+          "piquier",
+          "sauvageon"
+        ],
+        "faiblesses": [
+          "cavalier",
+          "archer",
+          "cavalerie_lourde"
+        ],
+        "effets": [
+          "moral_par_unite"
+        ],
+        "natures": [
+          "instinctif"
+        ],
+        "blessures": 2,
+        "soins": "hopital",
+        "tours_soins": 2,
+        "fabrication": null,
+        "terrain": null,
+        "positionnement": null,
+        "progression": true,
+        "places": 1
+      },
+      "orc_assaillant": {
+        "nom": "orc_assaillant",
+        "prefixe": "orc_assaillant",
+        "recette": [
+          "tome_du_orc_assaillant"
+        ],
+        "valeur_combat": 6,
+        "valeur_avant": 7,
+        "etiquettes": [
+          "orc",
+          "melee",
+          "cruelle",
+          "mauvais_nageur"
+        ],
+        "forces": [
+          "archer",
+          "piquier",
+          "cavalier"
+        ],
+        "faiblesses": [
+          "chevalier_clinquant",
+          "cavalerie_lourde",
+          "orc_chaman"
+        ],
+        "effets": [],
+        "natures": [
+          "instinctif"
+        ],
+        "blessures": 1,
+        "soins": "chaman",
+        "fabrication": null,
+        "terrain": null,
+        "positionnement": null,
+        "progression": true,
+        "tours_soins": 1,
+        "places": 1
+      },
+      "orc_archer": {
+        "nom": "orc_archer",
+        "prefixe": "orc_archer",
+        "recette": [
+          "tome_du_orc_archer"
+        ],
+        "valeur_combat": 6,
+        "etiquettes": [
+          "orc",
+          "distance",
+          "cruelle",
+          "mauvais_nageur"
+        ],
+        "forces": [
+          "piquier",
+          "sauvageon"
+        ],
+        "faiblesses": [
+          "chevalier_clinquant",
+          "cavalerie_lourde",
+          "cavalier",
+          "orc_chaman"
+        ],
+        "effets": [],
+        "natures": [
+          "instinctif"
+        ],
+        "blessures": 1,
+        "soins": "chaman",
+        "fabrication": null,
+        "terrain": null,
+        "positionnement": null,
+        "progression": true,
+        "tours_soins": 1,
+        "places": 1
+      },
+      "orc_chaman": {
+        "nom": "orc_chaman",
+        "prefixe": "orc_chaman",
+        "recette": [
+          "tome_du_orc_chaman"
+        ],
+        "valeur_combat": 2,
+        "etiquettes": [
+          "orc",
+          "cruelle",
+          "mauvais_nageur",
+          "chaman",
+          "soutien"
+        ],
+        "forces": [
+          "orc_assaillant",
+          "orc_archer"
+        ],
+        "multiplicateur": 3,
+        "faiblesses": [
+          "non_orc"
+        ],
+        "effets": [
+          "moral_cruel",
+          "soins_victoire"
+        ],
+        "natures": [
+          "instinctif"
+        ],
+        "blessures": 1,
+        "soins": "chaman",
+        "fabrication": null,
+        "terrain": null,
+        "positionnement": null,
+        "progression": true,
+        "tours_soins": 1,
+        "places": 1
+      },
+      "messager_du_QG": {
+        "nom": "messager_du_QG",
+        "prefixe": "messager_du_QG",
+        "recette": [
+          "sceau du roi",
+          "enveloppe",
+          "monocle"
+        ],
+        "valeur_combat": 0,
+        "etiquettes": [
+          "soutien",
+          "humain",
+          "non_combattant",
+          "a_pied"
+        ],
+        "forces": [],
+        "faiblesses": [],
+        "effets": [
+          "bonus_pc_qg"
+        ],
+        "natures": [
+          "stratege"
+        ],
+        "blessures": 0,
+        "soins": null,
+        "places": 5,
+        "fabrication": null,
+        "terrain": null,
+        "positionnement": null,
+        "progression": true,
+        "tours_soins": 1
+      },
+      "zombie": {
+        "nom": "zombie",
+        "prefixe": "zombi",
+        "recette": [],
+        "valeur_combat": 5,
+        "etiquettes": [
+          "mort_vivant",
+          "propagation",
+          "mauvais_nageur",
+          "infatigable"
+        ],
+        "forces": [],
+        "faiblesses": [
+          "tout"
+        ],
+        "effets": [],
+        "natures": null,
+        "blessures": 0,
+        "soins": null,
+        "fabrication": null,
+        "terrain": null,
+        "positionnement": null,
+        "progression": false,
+        "tours_soins": 1,
+        "places": 1
+      },
+      "Trop_gros_zombie": {
+        "nom": "Trop_gros_zombie",
+        "prefixe": "Trop_gros_zombie",
+        "recette": [],
+        "valeur_combat": 250,
+        "etiquettes": [
+          "mort_vivant",
+          "propagation",
+          "mauvais_nageur",
+          "infatigable",
+          "bouclier_vivant",
+          "spore"
+        ],
+        "forces": [],
+        "faiblesses": [
+          "tout"
+        ],
+        "effets": [
+          "sans_degats",
+          "bouclier_vivant"
+        ],
+        "natures": null,
+        "blessures": 0,
+        "soins": null,
+        "places": 10,
+        "fabrication": null,
+        "terrain": null,
+        "positionnement": null,
+        "progression": false,
+        "tours_soins": 1
+      }
+    },
+    "labels": {
+      "infanterie": {
+        "effet": "valeur",
+        "cible": "infanterie"
+      },
+      "distance": {
+        "effet": "valeur",
+        "cible": "distance"
+      },
+      "cavalerie": {
+        "effet": "valeur",
+        "cible": "cavalerie"
+      },
+      "humain": {
+        "effet": "valeur",
+        "cible": "humain"
+      },
+      "melee": {
+        "effet": "valeur",
+        "cible": "melee"
+      },
+      "orc": {
+        "effet": "valeur",
+        "cible": "orc"
+      },
+      "mort_vivant": {
+        "effet": "valeur",
+        "cible": "mort_vivant"
+      },
+      "noble": {
+        "effet": "valeur",
+        "cible": "noble"
+      },
+      "armure_legere": {
+        "effet": "valeur",
+        "cible": "armure_legere"
+      },
+      "lourde": {
+        "effet": "valeur",
+        "cible": "lourde"
+      },
+      "chaman": {
+        "effet": "malus_valeur_adverse",
+        "cible": "orc"
+      },
+      "cruelle": {
+        "effet": "malus_moral_adverse",
+        "cible": null
+      }
+    },
+    "natures": [
+      "stratege",
+      "instinctif",
+      "stratege_hybride",
+      "instinctif_hybride"
+    ],
+    "traits": [
+      "charismatique",
+      "leader",
+      "inventeur"
+    ],
+    "limits": {
+      "level": 50,
+      "pc": 1000,
+      "morale": 100
+    },
+    "label_rank_max": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      2,
+      2,
+      3,
+      3,
+      3,
+      3,
+      3,
+      4,
+      4,
+      4,
+      4,
+      4,
+      5,
+      5,
+      5,
+      5,
+      5,
+      6,
+      6,
+      6,
+      6,
+      6,
+      7,
+      7,
+      7,
+      7,
+      7,
+      8,
+      8,
+      8,
+      8,
+      8,
+      9,
+      9,
+      9,
+      9,
+      9,
+      10,
+      10,
+      10,
+      10,
+      10,
+      11
+    ],
+    "active_limits": {
+      "stratege": 3,
+      "instinctif": 1,
+      "stratege_hybride": 3,
+      "instinctif_hybride": 1
+    }
+  }
+}
