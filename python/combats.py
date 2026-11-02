@@ -155,50 +155,54 @@ def _contexte_qg_territorial(territoire, configuration):
                 courant['malus'][identite] = dict(malus)
         yield
         return
-    declarations = {}
-    for general in tous:
-        # Le joueur désigne son QG par un fichier vide (ou non) dans le
-        # dossier du général. Deux graphies sont admises et comptent comme
-        # une seule désignation lorsqu'elles concernent le même général.
-        # Contrôler systématiquement LES DEUX graphies : un fichier régulier
-        # ne doit jamais masquer un second chemin invalide (lien, dossier...).
-        fichiers = tuple(_fichier_qg_valide(general['chemin'] / nom)
-                        for nom in ('QG.txt', 'qg.txt'))
-        if any(fichiers):
-            declarations.setdefault(general['camp'], []).append(general)
-    allies, malus, qg_identites = {}, {}, set()
-    camps_allies, malus_par_origine, instantanes = {}, {}, {}
-    for camp, candidats in declarations.items():
-        if len(candidats) > 1:
-            rapports.afficher_et_ecrire(
-                f"{territoire.name} : plusieurs QG pour {camp} ; effets globaux annulés."
-            )
-            continue
-        qg = candidats[0]
-        qg_identites.add((qg['joueur'], qg['nom']))
-        instantane = commandement.instantane_qg_territorial(qg, tous)
-        if instantane is None:
-            raise ValueError('QG sans caractéristiques officielles.')
-        instantanes[camp] = instantane
-        effets_allies = commandement.repartir_effets_qg(instantane, tous)
-        allies.update(effets_allies)
-        camps_allies[camp] = set(effets_allies)
-        for identite, effets in commandement.repartir_malus_qg(instantane, tous).items():
-            malus_par_origine.setdefault(identite, {})[camp] = dict(effets)
-            courant = malus.setdefault(identite, {})
-            for cle, valeur in effets.items():
-                courant[cle] = courant.get(cle, 0) + valeur
-    jeton = _EFFETS_TERRITOIRE.set({
-        'territoire': territoire, 'instantanes': instantanes,
-        'allies': allies, 'malus': malus, 'qg': qg_identites,
-        'camps_allies': camps_allies, 'malus_par_origine': malus_par_origine,
-        'qg_detruits': set(),
-    })
+    jeton_selection = progression.figer_selections_territoriales(tous)
     try:
-        yield
-    finally:
-        _EFFETS_TERRITOIRE.reset(jeton)
+        declarations = {}
+        for general in tous:
+            # Le joueur désigne son QG par un fichier vide (ou non) dans le
+            # dossier du général. Deux graphies sont admises et comptent comme
+            # une seule désignation lorsqu'elles concernent le même général.
+            # Contrôler systématiquement LES DEUX graphies : un fichier régulier
+            # ne doit jamais masquer un second chemin invalide (lien, dossier...).
+            fichiers = tuple(_fichier_qg_valide(general['chemin'] / nom)
+                            for nom in ('QG.txt', 'qg.txt'))
+            if any(fichiers):
+                declarations.setdefault(general['camp'], []).append(general)
+        allies, malus, qg_identites = {}, {}, set()
+        camps_allies, malus_par_origine, instantanes = {}, {}, {}
+        for camp, candidats in declarations.items():
+            if len(candidats) > 1:
+                rapports.afficher_et_ecrire(
+                    f"{territoire.name} : plusieurs QG pour {camp} ; effets globaux annulés."
+                )
+                continue
+            qg = candidats[0]
+            qg_identites.add((qg['joueur'], qg['nom']))
+            instantane = commandement.instantane_qg_territorial(qg, tous)
+            if instantane is None:
+                raise ValueError('QG sans caractéristiques officielles.')
+            instantanes[camp] = instantane
+            effets_allies = commandement.repartir_effets_qg(instantane, tous)
+            allies.update(effets_allies)
+            camps_allies[camp] = set(effets_allies)
+            for identite, effets in commandement.repartir_malus_qg(instantane, tous).items():
+                malus_par_origine.setdefault(identite, {})[camp] = dict(effets)
+                courant = malus.setdefault(identite, {})
+                for cle, valeur in effets.items():
+                    courant[cle] = courant.get(cle, 0) + valeur
+        jeton = _EFFETS_TERRITOIRE.set({
+            'territoire': territoire, 'instantanes': instantanes,
+            'allies': allies, 'malus': malus, 'qg': qg_identites,
+            'camps_allies': camps_allies, 'malus_par_origine': malus_par_origine,
+            'qg_detruits': set(),
+        })
+        try:
+            yield
+        finally:
+            _EFFETS_TERRITOIRE.reset(jeton)
 
+    finally:
+        progression.retablir_selections_territoriales(jeton_selection)
 
 def adversaire_du_duel(armee, joueur):
     """Le duel fournit ses deux participants, indépendamment de leurs noms."""
