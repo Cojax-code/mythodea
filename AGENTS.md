@@ -5,10 +5,11 @@ Ce fichier définit les règles de travail pour les agents qui modifient Mythode
 ## Avant toute modification
 
 1. Lire `MYTHODEA_SPEC.md`.
-2. Pour toute modification du mode Survie ou de la V2.0, lire aussi `SURVIE_SPEC.md`.
-3. Inspecter les fichiers réellement concernés avant de proposer une modification.
-4. Vérifier les tests existants liés à la zone modifiée.
-5. Ne jamais supposer une règle de gameplay qui n'est pas documentée ou explicitement demandée.
+2. Pour la progression, les étiquettes ou le QG, lire aussi `REGLES_V2.md`.
+3. Pour toute modification du mode Survie ou de la V2.0, lire aussi `SURVIE_SPEC.md`.
+4. Inspecter les fichiers réellement concernés avant de proposer une modification.
+5. Vérifier les tests existants liés à la zone modifiée.
+6. Ne jamais supposer une règle de gameplay qui n'est pas documentée ou explicitement demandée.
 
 ## Règle principale
 
@@ -22,7 +23,7 @@ Ne pas modifier silencieusement :
 - les priorités de MANŒUVRE ;
 - les déplacements ;
 - la marche forcée et la fatigue ;
-- les ordres ;
+- les étiquettes, le QG et la décision `ordre_surnombre.txt` ;
 - les sanctions anti-triche ;
 - les permissions Linux ;
 - les chemins sous `/game`, `/home/j1`, `/home/j2` ;
@@ -51,7 +52,8 @@ Il doit rester léger et appeler les modules spécialisés.
 Ne pas multiplier les petits modules sans raison claire.
 
 Le mode classique, le mode Survie V2.0 et le futur multijoueur doivent réutiliser
-au maximum le même moteur : généraux, mouvements, combats, ordres, sécurité et rapports.
+au maximum le même moteur : généraux, mouvements, combats, étiquettes,
+commandement, sécurité et rapports.
 
 Pour la V2.0, ne pas dupliquer une règle du moteur dans du code spécifique au mode
 Survie si elle peut rester commune. Les règles encore ouvertes dans `SURVIE_SPEC.md`
