@@ -1,11 +1,12 @@
 # Mythodea V2.0 — Mode Survie
 
-Ce document décrit le prototype jouable Survie Est et les règles de conception
-du mode Survie. Les fonctionnalités prévues au-delà de ce prototype restent
-distinctes du cycle actuellement implémenté.
+Ce document décrit le cycle jouable Survie Est et les règles de conception
+du mode Survie. Les fonctionnalités futures restent distinctes des règles
+effectivement implémentées.
 
-Il complète `MYTHODEA_SPEC.md`, qui reste la référence du moteur commun hérité de
-la V1.5. Les règles non définies ici ne doivent pas être inventées.
+Il complète [MYTHODEA_SPEC.md](MYTHODEA_SPEC.md), référence du moteur commun.
+[REGLES_V2.md](REGLES_V2.md) définit la progression, les étiquettes et le QG.
+Les règles non définies ici ne doivent pas être inventées.
 
 Le plateau Survie occupe une partition dédiée montée directement sur `/game`.
 L'administrateur crée et monte cette partition manuellement ; le dépôt reste par
@@ -49,10 +50,9 @@ Le but n'est pas de créer un deuxième moteur séparé.
 Le mode Survie servira aussi d'environnement d'intégration et de jeu pour éprouver
 le moteur commun.
 
-Les tests Python de régression du moteur commun restent conservés. Le document
-`TESTS.md` de la V1.5 n'est pas repris comme documentation de la V2.0 ; une nouvelle
-documentation de tests pourra être créée plus tard lorsque les scénarios Survie
-seront suffisamment définis.
+Les tests Python de régression du moteur commun sont conservés. Les scénarios
+Linux, les permissions réelles et la préparation Raspberry Pi sont documentés
+dans [TESTS_LINUX_SURVIE.md](TESTS_LINUX_SURVIE.md).
 
 Les validations réelles liées aux comptes Linux, UID/GID, propriétaires, `chmod`
 et `chown` seront effectuées sur Raspberry Pi lorsque l'environnement sera
@@ -419,22 +419,18 @@ Les détails exacts, récompenses et conditions de déclenchement restent à dé
 
 ---
 
-## 8. Ordres
+## 8. Étiquettes et décision de surnombre
 
-Les anciens ordres de `ordre.txt` sont retirés en v2.0, conformément à
-`REGLES_V2.md`. `ordre_surnombre.txt` conserve ses choix de retraite et de poursuite.
+Les anciens ordres de combat de `ordre.txt` ont été retirés en v2.0.
+La progression, les étiquettes actives, le QG et les bonus globaux relèvent
+de [REGLES_V2.md](REGLES_V2.md).
 
-Les ordres supplémentaires seront introduits progressivement après observation du
-gameplay réel.
+Le fichier `ordre_surnombre.txt` reste utilisé exclusivement pour les
+décisions de retraite ou de poursuite dans le mode Survie. Il ne doit pas
+être confondu avec les anciens ordres de combat.
 
-Point de design important à résoudre :
-
-- plusieurs ordres alliés et adverses doivent pouvoir coexister lorsqu'ils ne se
-  contredisent pas ;
-- une simple priorité globale fondée sur une statistique ne doit pas être imposée
-  sans validation de gameplay ;
-- les règles de chevauchement, contradiction et résolution devront être définies
-  avant implémentation.
+La fuite volontaire avant ou pendant un combat est reportée à la v2.1 ;
+aucun nouveau format de commande ne doit être imaginé pour la v2.0.
 
 ---
 
