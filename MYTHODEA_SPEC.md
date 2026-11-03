@@ -1059,13 +1059,13 @@ Limite de sécurité actuelle :
 
 ---
 
-## 14. Ordres des généraux
+## 14. Étiquettes et choix de retraite
 
 Les anciens ordres joueur de `ordre.txt` sont retirés en v2.0 ; leurs IDs 1001 à
 1005 restent réservés et ne sont jamais réutilisés. Les anciens fichiers ne
 confèrent aucun effet ni récompense. Leur texte privé n'est pas publié.
-Une mémoire d'ordre retiré encore en attente nécessite une décision de migration,
-sans remplacement automatique par une autre récompense.
+Les anciennes données expérimentales liées aux ordres ne constituent pas une
+obligation de migration ; elles ne doivent pas réintroduire d'effet supprimé.
 
 `ordre_surnombre.txt` reste indépendant et conserve ses choix de retraite ou de
 poursuite définis dans `SURVIE_SPEC.md`. Les modes OFF/OFF et OFF/DEF restent
@@ -1442,7 +1442,7 @@ Sans décision explicite, ne pas changer :
 - structure des généraux et unités ;
 - permissions 700/600 ;
 - identité officielle des généraux ;
-- limite de 20 unités et 5 généraux ;
+- limites officielles de capacité des unités et de création des généraux ;
 - sanctions anti-duplication / emplacement ;
 - règles de mouvement et marche forcée ;
 - triangle archer/piquier/cavalier ;
@@ -1463,7 +1463,7 @@ ne deviennent applicables qu'après validation explicite.
 
 ### Identifiants et fabrication
 
-`catalogues.py` est la source des recettes reconnues et de la légende des ordres.
+`catalogues.py` est la source des recettes et des identifiants reconnus.
 Les identifiants sont universels, permanents et ne doivent jamais être recyclés.
 
 | Type générique | ID unité | ID d'évolution | Référence de fabrication | Valeur de combat |
