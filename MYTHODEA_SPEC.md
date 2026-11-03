@@ -1395,118 +1395,41 @@ décrits dans `SURVIE_SPEC.md` et `TESTS_LINUX_SURVIE.md`.
 
 ## 18. Tests
 
-Suite actuelle :
+La suite de développement se lance depuis la racine :
 
 ```bash
 python3 -B -m unittest discover -s .dev/tests -v
 ```
 
-La suite conserve les 32 tests de régression V1.5 couvrant notamment :
+Les tests couvrent notamment combats, manœuvres, mouvements, progression,
+étiquettes, QG, permissions simulées, cycles Survie, retraites et reprises.
+Ils utilisent des plateaux temporaires et ne remplacent pas les contrôles
+avec de vrais UID/GID sur Linux.
 
-- priorité globale de la manœuvre ;
-- avant libre et flancs ;
-- transition frontal -> combat rangé ;
-- ordre des généraux par emplacement ;
-- mouvements des deux joueurs ;
-- marche forcée et fatigue ;
-- repli ;
-- conflits d'emplacement ;
-- identité et résurrection interdite ;
-- duplication ;
-- blocs mixtes ;
-- limite de 20 unités ;
-- OFF/OFF et OFF/DEF ;
-- rapports de bataille.
-
-`test_modes.py` vérifie en complément les profils classique et Survie, la séparation
-entre propriétaires Linux et camps, la sélection du mode, le cycle classique et la
-réparation du plateau sans génération.
-
-`test_village.py` couvre les zones Survie, les réserves, les positions logiques,
-les déplacements, l'identité et les collisions entre joueurs alliés. Les suites
-V1.5 et de sélection du mode sont conservées sans modification.
-
-`test_combats_camps.py` couvre les duels contre le bot, les forces coopératives,
-l'ordre des positions, les identités, la fatigue, les ordres, le contrôle par camp
-et la compatibilité classique. Les forces sont préparées dans un plateau temporaire,
-sans génération de vagues.
-
-`test_vagues.py` couvre les compositions Est, leur matérialisation, la progression,
-les noms d'affichage, les identités, les droits Unix simulés, la conservation des
-forces excédentaires et leur exclusion des quatre places de combat.
-Il vérifie aussi la remontée après affrontement, l'ordre d'arrivée persistant et
-le déplacement de la colonne entière jusqu'au village.
-
-`test_surnombre.py` vérifie le scan, les fichiers privés et leurs défauts, les
-choix individuels, les retraites et placements `1..20` à l'arrivée, les cascades avec
-pertes cumulées, l'ordre de la colonne et les conditions d'arrêt.
-
-`test_repli.py` couvre les distances de sanction, les délais persistants privés,
-l'interdiction de sortir pendant l'attente et le retour après son expiration.
-
-`test_cycle_survie.py` couvre la relation tour/vague, les déplacements planifiés,
-les ordres d'apparition et de combat, l'audit unique, les retraites réservées puis
-différées, le contrôle final, la défaite, le timer simulé, l'état persistant, la
-reprise et l'exclusion des moteurs concurrents.
-
-Les tests utilisent un plateau temporaire et peuvent simuler les dépendances Unix.
-Ils ne remplacent pas un test réel sur Linux avec vrais UID/GID, `chown`, `chmod`
-et comptes `j1` / `j2`.
-
-Voir [TESTS_LINUX_SURVIE.md](TESTS_LINUX_SURVIE.md) pour les contrôles Linux
-et la procédure d'essai sur Raspberry Pi.
+Les procédures Linux, tests root et préparations sur Raspberry Pi sont
+décrits dans [TESTS_LINUX_SURVIE.md](TESTS_LINUX_SURVIE.md).
 
 ---
 
-## 19. Mode classique, Survie et futur multijoueur
+## 19. Réutilisation du moteur commun
 
-Le moteur commun doit rester indépendant du mode de jeu autant que possible.
-
-Objectif architectural :
-
-```text
-                 moteur Mythodea
-                /               \
-       mode classique          mode Survie
-          /   \
-        j1     j2
-```
-
-Le mode Survie ne doit pas réimplémenter les combats, mouvements, généraux,
-étiquettes, commandement ou rapports fondamentaux.
-
-Il doit surtout définir :
-
-- comment les ennemis apparaissent ;
-- comment ils choisissent leurs actions ;
-- les vagues et la progression ;
-- les objectifs et conditions propres au mode.
-
-Le multijoueur et le mode Survie doivent réutiliser au maximum les mêmes modules.
-
-Une future faction PNJ distincte pourra permettre du solo ou du coop sans détourner
-la logique de `j2`.
+Les modes classique et Survie réutilisent les mêmes règles de généraux,
+mouvements, combats, étiquettes, commandement et rapports. Le mode Survie
+n'ajoute que son cycle, ses vagues, ses bots et ses objectifs propres,
+décrits dans [SURVIE_SPEC.md](SURVIE_SPEC.md).
 
 ---
 
-## 20. Clôture de la V1.5 et passage à la V2.0
+## 20. Historique des versions
 
-La V1.5 constitue l'héritage du moteur classique. En v2.0, les anciens ordres
-de combat ont été remplacés par les étiquettes et le commandement décrits dans
-[REGLES_V2.md](REGLES_V2.md). Le choix de retraite/poursuite
-`ordre_surnombre.txt` demeure une mécanique distincte du mode Survie.
-Il ne faut pas réintroduire d'anciens ordres en se fondant sur cet historique.
+La V1.5 est l'origine du moteur classique. En v2.0, les anciens ordres
+de combat sont remplacés par les étiquettes et le commandement de
+[REGLES_V2.md](REGLES_V2.md). `ordre_surnombre.txt` reste une décision
+de retraite/poursuite propre au mode Survie.
 
-La validation réelle sur Raspberry Pi reste nécessaire pour les comportements liés
-aux vrais comptes Linux, UID/GID, propriétaires et permissions. Elle pourra se
-poursuivre pendant le développement du mode Survie, qui réutilise le même moteur.
-
-La V2.0 dispose du cycle jouable Survie Est et poursuit les objectifs suivants :
-
-1. développer le mode Survie sans dupliquer le moteur commun ;
-2. utiliser ce mode comme environnement d'intégration et de jeu pour éprouver le moteur ;
-3. introduire progressivement les mécaniques propres au Survie ;
-4. intégrer dans ce mode les petits objectifs Linux aléatoires de type Bandit débutant.
+Les évolutions historiques sont consultables dans l'historique Git.
+La validation avec de vrais comptes SSH, UID/GID et permissions sur Raspberry Pi
+reste distincte des validations sous WSL.
 
 ---
 
@@ -1531,9 +1454,8 @@ Sans décision explicite, ne pas changer :
 - formats et terminologie des rapports ;
 - règles de victoire.
 
-Cette spécification décrit le comportement à préserver. Les nouvelles règles
-d'ordres et les futurs modes doivent être ajoutés explicitement lorsqu'ils sont
-validés.
+Cette spécification décrit le comportement à préserver. Les règles futures
+ne deviennent applicables qu'après validation explicite.
 
 ---
 
@@ -1568,100 +1490,39 @@ définis dans `catalogues.py` et `REGLES_V2.md`.
 
 ### Caractéristiques et niveaux des généraux
 
-Une création officielle apparaît au niveau 0 : `stratege` 45 %, `instinctif` 45 %,
-`stratege_hybride` 5 %, `instinctif_hybride` 5 %. Nature, orientation principale et
-trait inné sont permanents. L'orientation d'un hybride est celle de son préfixe ;
-elle détermine ses traits, ses paliers permanents, ses limites d'activation et
-ses accès aux unités. Les deux hybrides utilisent la distribution Hybride de
-la roulette de `REGLES_V2.md`.
-Cet aléatoire est indépendant de celui des combats existants.
+La référence unique pour les probabilités de nature, de trait, les gains
+naturels, les paliers, la roulette, les étiquettes et la progression zombie
+est [REGLES_V2.md](REGLES_V2.md). Les capacités croisées des hybrides,
+les rangs scolaires et les plafonds d'activation y sont définis.
 
-| Nature | Charismatique | Leader | Inventeur |
-| --- | --- | --- | --- |
-| Stratège | 50 % | 35 % | 15 % |
-| Instinctif | 50 % | 15 % | 35 % |
+La création conserve les natures `stratege`, `instinctif`,
+`stratege_hybride` et `instinctif_hybride`. Nature, dominante et trait inné
+sont persistants. Les champs `niveau`, `nature`, `orientation_principale`,
+`trait_inne`, `points_commandement`, `moral`, `evolutions_acquises`,
+`evolution_apprise`, `progression_combat` et `progression_formation`
+sont visibles dans `fiche.txt`. Le profil privé
+`.systeme/progression.json`, indexé par `joueur:generalN`, fait autorité :
+modifier la fiche du joueur ne change pas les statistiques officielles.
 
-Champs ajoutés à `fiche.txt` : `niveau`, `nature`, `orientation_principale`, `trait_inne`,
-`points_commandement`, `moral`, `evolutions_acquises`, `evolution_apprise`,
-`progression_combat`, `progression_formation`.
-Les listes d'IDs sont séparées par des virgules ; l'absence d'évolution apprise
-est une valeur vide. Les anciens champs sont conservés. L'autorité est
-`.systeme/progression.json`, indexée par `joueur:generalN`. Modifier la fiche
-possédée par le joueur ne change pas les caractéristiques officielles.
+Deux jauges indépendantes déclenchent les niveaux :
+- **Combat** : un point par bataille territoriale personnellement combattue
+  et survécue, cascades comprises. Deux points donnent un niveau.
+- **Formation** : un point par tour entier validé dans la caserne militaire
+  (dossier `village/<joueur>/reserve/`). Trois points donnent un niveau.
 
-Un stratège commence avec 11 à 20 PC et une étiquette permanente de rang 1.
-Il gagne naturellement +2 à +4 PC par niveau. Un instinctif commence à 0 PC
-et gagne +1 moral aux niveaux pairs. Tous commencent à 0 moral, plafonné à 100.
-Les deux hybrides gagnent +2 à +4 PC à chaque niveau et +1 moral aux niveaux pairs.
-Il n'existe pas de plafond de PC. Les paliers d'étiquettes permanentes sont
-N5/N10 pour le stratège et N5 pour l'instinctif, hybrides inclus selon leur dominante.
-Ils apprennent une nouvelle étiquette s'il en reste une, même si les places actives
-sont pleines ; sinon ils utilisent la roulette normale. Les plafonds trois/une
-concernent uniquement l'activation ordinaire, pas les connaissances.
+Seule la jauge déclenchée revient à zéro. Les formations sont traitées avant
+les combats. `valider_evenement` conserve atomiquement jauges, niveau,
+récompenses et reçus privés `progressions_validees` dans `progression.json`.
+Les clés de validation incluent `formation:<tour>:<joueur>:<generalN>`
+et `combat:survie:<tour>:<territoire>` ; le profil suit ses propres reçus.
+Une répétition d'événement ne donne pas une nouvelle récompense et peut
+réparer la fiche visible après interruption.
 
-Les autres niveaux utilisent la roulette sans ordres de `REGLES_V2.md` : les
-probabilités PC/moral/unité/étiquette sont redistribuées proportionnellement entre
-les catégories encore accessibles. Leader privilégie les étiquettes. Les PC
-(+5 à +10) sont accessibles aussi aux instinctifs ; le moral donne +2 à +4.
-Le moral plafonné, les unités acquises et les étiquettes connues sont exclus.
-La roulette apprend une étiquette compatible inconnue au rang 1, sans plafond
-total ni amélioration de rang. Ce dernier point reste provisoire, en attente de
-décision ; l'École conserve l'amélioration des rangs. Si les autres catégories
-sont épuisées, les PC restent répétables. Les tirages sont déterministes à graine fixe.
-
-Après zombification, chaque niveau ajoute deux places à la capacité de base de
-20 et donne un tirage de 20 % pour apprendre `mort_vivant` au rang 1 tant qu'elle
-est inconnue. Aucun gain naturel ni récompense ordinaire n'est attribué. Les
-anciennes étiquettes sont conservées ; l'acquisition spéciale dispose d'un
-emplacement actif supplémentaire réservé exclusivement à `mort_vivant`, jamais
-réutilisable pour une étiquette ordinaire, même si `mort_vivant` n'est pas choisie.
-`etat_zombie` et `niveaux_zombie` restent
-dans le profil officiel ; une sélection joueur ne modifie jamais la capacité.
-
-À l'École, les hybrides peuvent mémoriser une évolution disponible de l'autre
-orientation. Une mémoire 201 ou 202 donne le même gain au prochain niveau,
-sans changer nature ni trait. Moral et commandement peuvent coexister. Ces
-capacités croisées d'unités ne deviennent pas des récompenses aléatoires ordinaires.
-Les statistiques de roulette suivent en revanche les nouvelles tables de nature.
-Les non-hybrides restent soumis aux restrictions de nature. Aucune capacité
-croisée n'est accordée automatiquement. Les profils antérieurs gardent leur nature ;
-leur orientation se déduit de celle-ci sans nouveau tirage.
-
-Les deux jauges indépendantes commencent à zéro :
-
-- Combat : un point si le général a personnellement participé à au moins un
-  affrontement de blocs adverses et possède encore des unités à la fin de toute
-  la résolution territoriale. Choc, manœuvres, duels et cascades ne comptent
-  ensemble qu'une fois. Défaite survécue et fuite après combat comptent ; fuite
-  sans engagement, bloc vide ou destruction avant la fin ne comptent pas.
-  Deux points donnent un niveau et remettent seulement cette jauge à zéro.
-- Formation : un point par tour complet validé dans la caserne militaire, dont
-  le dossier technique reste `village/<joueur>/reserve/`. Trois points donnent
-  un niveau et remettent seulement cette jauge à zéro.
-
-Le pilote traite les formations avant les combats, dans un ordre déterministe.
-Chaque niveau réutilise `monter_niveau` et les récompenses ci-dessus ; la mémoire
-apprise remplace la prochaine roulette applicable et reste conservée aux paliers
-d'étiquettes permanentes. Les tirages automatiques
-utilisent un générateur indépendant de celui des combats.
-
-`valider_evenement` persiste ensemble jauges, niveau, récompense et reçu privé
-`progressions_validees` dans `progression.json`, par écriture atomique. Les clés
-sont `formation:<tour>:<joueur>:<generalN>` et
-`combat:survie:<tour>:<territoire>` ; chaque profil a ses propres reçus.
-Représenter une même clé répare la copie de fiche sans redonner de point ou
-de récompense. Les reçus ne sont pas publiés dans `fiche.txt` et accompagnent
-les captures et sauvegardes. Le cycle Survie interrompu pendant la résolution
-reste bloqué pour récupération ; la republication ne rejoue pas les combats.
-En classique, chaque résolution appelée reçoit un UUID distinct : il n'existe
-pas de reprise automatique d'un tour classique interrompu.
-
-`progression_due` reste une API de condition administrative ; des observations
-brutes ne valident aucun événement. `attribuer_niveau` conserve son rôle d'appel
-explicite. Les profils existants commencent les jauges manquantes à zéro lors
-de leur première validation, sans reconstituer d'expérience antérieure.
-Un ancien général sans profil officiel reste inchangé, avec un moral effectif
-nul ; sa montée de niveau exige une migration explicitement définie.
+Une mémoire de l'École remplace la prochaine roulette applicable et reste
+en attente lors d'un palier garanti. Les tirages automatiques sont séparés
+du générateur des combats. La reprise d'un cycle Survie interrompu pendant
+la résolution exige une récupération administrative sans rejouer les combats.
+Un tour classique interrompu n'a pas de reprise automatique.
 
 ### Étiquettes actives, commandement et QG
 
