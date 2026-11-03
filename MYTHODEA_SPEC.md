@@ -1057,6 +1057,29 @@ Limite de sécurité actuelle :
 20 engagements de combat rangé maximum
 ```
 
+Une paire dont tous les blocs ont une valeur effective nulle ne répète pas
+inutilement ses manœuvres. En combat rangé, les seules paires entièrement nulles
+sont passées, dans l'ordre des emplacements, tant qu'une autre paire peut combattre.
+Ce contrôle est recalculé après chaque engagement, notamment après la perte d'un QG.
+La phase spéciale du Bouclier vivant conserve sa résolution propre.
+
+Si toutes les paires actives sont nulles, la bataille s'arrête immédiatement,
+sans pertes artificielles : en OFF/DEF, le défenseur doit conserver le territoire
+et l'attaquant doit battre en retraite ; en OFF/OFF, les deux camps doivent partir.
+Le résultat distingue cette décision de sa réalisation physique. Le défenseur
+est transmis explicitement par l'appelant ; s'il manque, la décision OFF/DEF est
+signalée non résolue. Le bilan facultatif des API de combat expose l'impasse et
+les camps devant partir, sans modifier le retour historique des renforts promus.
+
+La cascade Survie réutilise la retraite alliée existante lorsque sa destination
+est valide, sans bot actif à l'arrivée, avec ses réservations et déplacements
+différés habituels. Le QG est désactivé dès acceptation. Au village, faute de
+destination, les survivants restent présents. Les destinations de retraite
+classiques et bots ne sont pas définies : ces retraites restent explicitement
+non résolues, sans repli de sanction ni suppression. Le contrôle reflète les forces
+encore présentes (hors retraites acceptées et réservées dans le cycle différé),
+jamais le seul résultat théorique de l'impasse.
+
 ---
 
 ## 14. Étiquettes et choix de retraite

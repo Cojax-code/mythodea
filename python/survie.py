@@ -265,17 +265,17 @@ def preparer_phase_ennemie(numero_vague, configuration=None, aleatoire=None):
     return {"deplacements": deplacements, "nouveaux": nouveaux}
 
 
-def resoudre_cascade(territoire, configuration=None, mode_combat="OFF/OFF", en_cours_de_fuite=None):
+def resoudre_cascade(territoire, configuration=None, mode_combat="OFF/OFF", en_cours_de_fuite=None, *, defenseur=None):
     """Un seul QG et un seul calcul initial pour toute la cascade territoriale."""
     configuration = profil_survie(configuration)
     if mode_combat not in ("OFF/OFF", "OFF/DEF"):
         raise ValueError("Mode d'affrontement inconnu.")
     generaux.remonter_renforts_bot(territoire, configuration)
     with combats._contexte_qg_territorial(territoire, configuration):
-        return _resoudre_cascade(territoire, configuration, mode_combat, en_cours_de_fuite)
+        return _resoudre_cascade(territoire, configuration, mode_combat, en_cours_de_fuite, defenseur)
 
 
-def _resoudre_cascade(territoire, configuration, mode_combat, en_cours_de_fuite):
+def _resoudre_cascade(territoire, configuration, mode_combat, en_cours_de_fuite, defenseur=None):
     """Enchaîne les affrontements communs, avec décisions entre deux seulement.
 
     L'appel ne déplace pas le bot, ne crée aucune vague et ne lance aucun tour.
@@ -296,23 +296,45 @@ def _resoudre_cascade(territoire, configuration, mode_combat, en_cours_de_fuite)
             general["chemin"], general["joueur"], territoire.name, configuration)
     affrontements = 0
     retraites = []
+    bilan_impasse = {}
     while (generaux.generaux_actifs_joueur(forces, camp_allie)
            and generaux.generaux_actifs_joueur(forces, camp_bot)):
         affrontements += 1
         titre = f"=== AFFRONTEMENT SURVIE {affrontements} : {territoire.name} ==="
         rapports.ecrire_rapport_territoire(territoire, titre)
         rapports.afficher_et_ecrire(titre)
-        promus = combats.resoudre_combat_range(territoire, mode_combat, configuration)
+        bilan = {}
+        promus = combats.resoudre_combat_range(
+            territoire, mode_combat, configuration, defenseur=defenseur, bilan=bilan)
         forces = generaux.lire_forces_territoire(territoire, configuration)
         allies = generaux.generaux_actifs_joueur(forces, camp_allie)
         ennemis = generaux.generaux_actifs_joueur(forces, camp_bot)
-        if not allies or not ennemis or not promus:
+        # Une promotion peut apporter un combattant effectif : conserver le
+        # choix de surnombre puis réévaluer les nouveaux actifs à l'affrontement suivant.
+        impasse = bilan.get('impasse', False) and not promus
+        if impasse:
+            bilan_impasse = bilan
+        if not allies or not ennemis or (not promus and not impasse):
             break
 
         # Le choix est individuel et n'est lu qu'après la remontée des renforts.
-        fuyards = [general for general in allies
+        fuyards = ([general for general in allies if camp_allie in bilan['camps_retraite']]
+                   if impasse else [general for general in allies
                    if generaux.lire_ordre_surnombre(general, territoire.name, configuration) == 1
-                   and territoire.name not in configuration["villages"]]
+                   and territoire.name not in configuration["villages"]])
+        if impasse and territoire.name in configuration['villages']:
+            fuyards = []  # Rester au village n'est pas une retraite effectuée.
+        if impasse and fuyards:
+            try:
+                arrivee = mouvements.destination_retraite_surnombre(territoire.name, configuration)
+            except ValueError as erreur:
+                rapports.afficher_et_ecrire(f"Retraite d'impasse non résolue : {erreur}")
+                fuyards = []
+            else:
+                forces_arrivee = generaux.lire_forces_territoire(configuration['game_path'] / arrivee, configuration)
+                if generaux.generaux_actifs_joueur(forces_arrivee, camp_bot):
+                    rapports.afficher_et_ecrire(f"Retraite d'impasse non résolue : bot actif sur {arrivee}.")
+                    fuyards = []
         if en_cours_de_fuite is None:
             destinations = mouvements.preparer_retraites_surnombre(fuyards, territoire, configuration)
         else:
@@ -344,10 +366,24 @@ def _resoudre_cascade(territoire, configuration, mode_combat, en_cours_de_fuite)
             )
         # Relire après les départs : seuls les alliés encore présents combattront.
         forces = generaux.lire_forces_territoire(territoire, configuration)
+        if impasse:
+            restants = [g for camp in bilan['camps_retraite']
+                        for g in generaux.generaux_actifs_joueur(forces, camp)]
+            bilan_impasse['retraites_non_resolues'] = [f"{g['joueur']}:{g['nom']}" for g in restants]
+            if restants or not bilan['camps_retraite']:
+                message = ("Retraite d'impasse non résolue : "
+                           + (', '.join(bilan_impasse['retraites_non_resolues']) or 'défenseur inconnu')
+                           + ". Destination absente ou indisponible ; survivants conservés.")
+                rapports.afficher_et_ecrire(message)
+                rapports.ecrire_rapport_territoire(territoire, message)
+            break
 
     controle = generaux.controle_forces(forces)
     rapports.ecrire_rapport_territoire(territoire, f"Fin de cascade : contrôle {controle}.")
-    return {"affrontements": affrontements, "retraites": retraites, "controle": controle}
+    resultat = {"affrontements": affrontements, "retraites": retraites, "controle": controle}
+    if bilan_impasse:
+        resultat['impasse'] = bilan_impasse
+    return resultat
 
 
 def ouvrir_tour_survie(configuration=None, horloge=None):
@@ -494,7 +530,8 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
             mode = "OFF/DEF" if controle_avant.get(nom) in ("allies", "bot") else "OFF/OFF"
             import soldats
             with soldats.bataille_complete(f'survie:{tour}:{nom}', configuration):
-                batailles[nom] = resoudre_cascade(territoire, configuration, mode, en_cours_de_fuite)
+                batailles[nom] = resoudre_cascade(territoire, configuration, mode, en_cours_de_fuite,
+                                                 defenseur=controle_avant.get(nom))
                 import unites
                 unites.terminer_territoire(territoire, f'survie:{tour}:{nom}', configuration)
     finally:

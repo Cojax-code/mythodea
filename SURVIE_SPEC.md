@@ -399,6 +399,14 @@ Les détails exacts, récompenses et conditions de déclenchement restent à dé
 
 ## 8. Étiquettes et décision de surnombre
 
+Une impasse territoriale à valeurs nulles suit la décision OFF/OFF ou OFF/DEF
+du moteur commun (MYTHODEA_SPEC, section 13). Les retraites alliées requises
+réutilisent la file et les réservations existantes, indépendamment du choix
+volontaire de surnombre. Une destination occupée par le bot ou indisponible,
+un départ du village sans destination et toute retraite bot restent explicitement
+non résolus. Les survivants ne sont ni supprimés ni envoyés au repli et continuent
+à compter pour le contrôle tant que leur retraite n'est pas acceptée.
+
 Les anciens ordres de combat de `ordre.txt` ont été retirés en v2.0.
 La progression, les étiquettes actives, le QG et les bonus globaux relèvent
 de [REGLES_V2.md](REGLES_V2.md).

@@ -149,14 +149,14 @@ class Surnombre(unittest.TestCase):
         effectifs_depart = []
         compositions = []
         resoudre = self.combats.resoudre_combat_range
-        def observer(*args):
+        def observer(*args, **kwargs):
             effectifs_depart.append(self.generaux.total_general_depuis_chemin(joueur))
             forces = self.generaux.lire_forces_territoire(args[0], self.profil)
             actifs = self.generaux.generaux_actifs_joueur(forces, "bot")
             compositions.append([g["nom"] for g in actifs])
             for general in actifs:
                 self.assertEqual(general["fiche"], fiches[general["nom"]])
-            return resoudre(*args)
+            return resoudre(*args, **kwargs)
         with patch.object(self.combats, "resoudre_combat_range", side_effect=observer):
             resultat = self.cascade()
         self.assertEqual(resultat, {"affrontements": 3, "retraites": [], "controle": "allies"})
@@ -280,9 +280,9 @@ class Surnombre(unittest.TestCase):
         self.colonne()
         resoudre = self.combats.resoudre_combat_range
         compteur = 0
-        def modifier_apres_deuxieme(*args):
+        def modifier_apres_deuxieme(*args, **kwargs):
             nonlocal compteur
-            promus = resoudre(*args)
+            promus = resoudre(*args, **kwargs)
             compteur += 1
             if compteur == 2:
                 (joueur / "ordre_surnombre.txt").write_text("1\n", encoding="utf-8")
@@ -297,8 +297,8 @@ class Surnombre(unittest.TestCase):
         joueur = self.general(ordre=2)
         self.colonne(5)
         resoudre = self.combats.resoudre_combat_range
-        def supprimer_apres_initial(*args):
-            resultat = resoudre(*args)
+        def supprimer_apres_initial(*args, **kwargs):
+            resultat = resoudre(*args, **kwargs)
             (joueur / "ordre_surnombre.txt").unlink()
             return resultat
         with patch.object(self.combats, "resoudre_combat_range", side_effect=supprimer_apres_initial):

@@ -122,7 +122,7 @@ class CycleSurvie(unittest.TestCase):
         self.colonne(1, "village", numeros=[2])
         reel = self.survie.resoudre_cascade
         ordre = []
-        def verifier(territoire, *args):
+        def verifier(territoire, *args, **kwargs):
             ordre.append(territoire.name)
             self.assertEqual(self.etat.lire_compteur_general("bot"), 8)
             if len(ordre) == 1:
@@ -132,7 +132,7 @@ class CycleSurvie(unittest.TestCase):
                 for nom in self.survie.ORDRE_APPARITION_EST:
                     self.assertEqual(len(self.survie.inventorier_ennemis(self.config.game_path / nom, self.profil)),
                                      3 if nom == 'est_1' else 2)
-            return reel(territoire, *args)
+            return reel(territoire, *args, **kwargs)
         with patch.object(self.survie, "resoudre_cascade", side_effect=verifier):
             self.resoudre()
         self.assertEqual(ordre, ["village", "est_1", "est_2", "est_3"])
@@ -215,9 +215,9 @@ class CycleSurvie(unittest.TestCase):
         self.colonne(10, "est_3")
         reel = self.combats.resoudre_combat_range
         compteur = 0
-        def changer(*args):
+        def changer(*args, **kwargs):
             nonlocal compteur
-            resultat = reel(*args)
+            resultat = reel(*args, **kwargs)
             compteur += 1
             if compteur == 2:
                 (b / "ordre_surnombre.txt").write_text("1\n", encoding="utf-8")

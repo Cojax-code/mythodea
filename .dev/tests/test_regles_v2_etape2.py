@@ -230,12 +230,113 @@ class CombatsEtape2(unittest.TestCase):
         with self.contexte():
             resultat = self.combats.combat_entre_generaux(a, b)
         self.assertEqual((resultat['final_1'], resultat['final_2']), (1, 1))
+        self.assertEqual(resultat['manoeuvres'], [])
         self.assertEqual((self.infos(a)['nombre'], self.infos(b)['nombre']), (1, 1))
         with patch.object(self.combats, 'combat_entre_generaux',
                           wraps=self.combats.combat_entre_generaux) as duels:
             self.combats.resoudre_combat_range(self.config.game_path / 'est_3', 'OFF/OFF', self.profil)
-        self.assertEqual(duels.call_count, 20)
+        self.assertEqual(duels.call_count, 0)  # Impasse détectable avant tout engagement inutile.
         self.assertEqual((self.infos(a)['nombre'], self.infos(b)['nombre']), (1, 1))
+
+    def paire_nulle(self):
+        a = self.combattant(nombre=0, pc=200, etiquettes={'chaman': 1})
+        b = self.combattant('bot', nombre=0, pc=200, etiquettes={'chaman': 1})
+        for g in (a, b):
+            self.speciale(g, 'orc_archer')
+        return a, b
+
+    def test_choc_nul_autre_bloc_positif_continue(self):
+        a, b = self.paire_nulle()
+        self.speciale(a, 'archer', bloc='arriere')
+        with self.contexte():
+            resultat = self.combats.combat_entre_generaux(a, b)
+        self.assertEqual(resultat['final_2'], 0)
+        self.assertTrue(resultat['manoeuvres'])
+
+    def test_premiers_generaux_nuls_autre_general_continue(self):
+        a, b = self.paire_nulle()
+        renfort = self.combattant(numero=2, place='2', nombre=2)
+        with patch.object(self.combats, 'combat_entre_generaux',
+                          wraps=self.combats.combat_entre_generaux) as duels:
+            self.combats.resoudre_combat_range(self.config.game_path / 'est_3', 'OFF/OFF', self.profil)
+        self.assertEqual(duels.call_count, 1)
+        self.assertEqual(duels.call_args.args[0]['nom'], renfort['nom'])
+        self.assertEqual(self.infos(a)['nombre'], 1)
+        self.assertFalse(b['chemin'].exists())
+
+    def test_impasse_off_def_conserve_defenseur_sans_inventer_retraite_bot(self):
+        a, b = self.paire_nulle()
+        bilan = {}
+        self.combats.resoudre_combat_off_def(self.config.game_path / 'est_3', 'allies', self.profil, bilan=bilan)
+        self.assertEqual(bilan['camps_retraite'], ['bot'])
+        self.assertEqual(bilan['controle'], 'conteste')
+        self.assertTrue(a['chemin'].exists() and b['chemin'].exists())
+
+    def test_impasse_survie_off_off_retraite_alliee_bot_non_resolu(self):
+        a, b = self.paire_nulle()
+        resultat = self.survie.resoudre_cascade(self.config.game_path / 'est_3', self.profil)
+        self.assertEqual(len(resultat['retraites']), 1)
+        self.assertTrue(resultat['retraites'][0]['chemin'].is_relative_to(self.config.game_path / 'est_2'))
+        self.assertEqual(resultat['impasse']['retraites_non_resolues'], ['bot:general1'])
+        self.assertEqual(resultat['controle'], 'bot')  # Occupant réel, pas territoire libéré.
+        self.assertFalse(a['chemin'].exists())
+        self.assertTrue(b['chemin'].exists())
+
+    def test_impasse_retraite_differee_qg_desactive_avant_deplacement(self):
+        a, b = self.paire_nulle()
+        (a['chemin'] / 'QG.txt').touch()
+        reservations = []
+        with self.contexte():
+            resultat = self.survie.resoudre_cascade(self.config.game_path / 'est_3', self.profil,
+                                                   'OFF/DEF', reservations, defenseur='bot')
+            self.assertIn('allies', self.combats._EFFETS_TERRITOIRE.get()['qg_inactifs'])
+        self.assertEqual(len(reservations), 1)
+        self.assertTrue(a['chemin'].exists())
+        self.assertEqual(resultat['impasse']['retraites_non_resolues'], [])
+        self.survie.mouvements.appliquer_retraites_surnombre(reservations, self.profil)
+        self.assertFalse(a['chemin'].exists())
+
+    def test_impasse_retraite_bloquee_par_bot_conserve_territoire_conteste(self):
+        a, b = self.paire_nulle()
+        self.general('bot', numero=2, territoire='est_2', nombre=1)
+        resultat = self.survie.resoudre_cascade(self.config.game_path / 'est_3', self.profil,
+                                               'OFF/DEF', defenseur='bot')
+        self.assertEqual(resultat['retraites'], [])
+        self.assertEqual(resultat['controle'], 'conteste')
+        self.assertEqual(resultat['impasse']['retraites_non_resolues'], ['j1:general1'])
+
+    def test_impasse_sans_route_signalee_sans_exception_ni_deplacement(self):
+        a, b = self.paire_nulle()
+        profil = dict(self.profil, carte_territoires={})
+        resultat = self.survie.resoudre_cascade(self.config.game_path / 'est_3', profil,
+                                               'OFF/DEF', defenseur='bot')
+        self.assertEqual(resultat['controle'], 'conteste')
+        self.assertEqual(resultat['retraites'], [])
+        self.assertEqual(resultat['impasse']['retraites_non_resolues'], ['j1:general1'])
+        self.assertTrue(a['chemin'].exists() and b['chemin'].exists())
+
+    def test_impasse_off_def_sans_defenseur_ne_choisit_pas_un_camp(self):
+        a, b = self.paire_nulle()
+        resultat = self.survie.resoudre_cascade(self.config.game_path / 'est_3', self.profil, 'OFF/DEF')
+        self.assertEqual(resultat['controle'], 'conteste')
+        self.assertEqual(resultat['retraites'], [])
+        self.assertEqual(resultat['impasse']['camps_retraite'], [])
+        self.assertTrue(a['chemin'].exists() and b['chemin'].exists())
+
+    def test_renfort_promu_apres_duel_frontal_reprend_avant_impasse(self):
+        a, b = self.paire_nulle()
+        (a['chemin'] / 'ordre_surnombre.txt').write_text('2', encoding='utf-8')
+        self.combattant(numero=2, place='2', nombre=1)
+        self.combattant('bot', numero=2, nombre=1)
+        for numero in (3, 4):
+            g = self.combattant('bot', numero=numero, nombre=0, pc=200, etiquettes={'chaman': 1})
+            self.speciale(g, 'orc_archer')
+        self.combattant('bot', numero=5, nombre=2)
+        profil = dict(self.profil, configurations_terrain={'est_3': {'attaque_frontale': True}})
+        resultat = self.survie.resoudre_cascade(self.config.game_path / 'est_3', profil)
+        self.assertEqual(resultat['affrontements'], 2)
+        self.assertEqual(resultat['retraites'], [])
+        self.assertEqual(resultat['controle'], 'bot')
 
     def test_etiquette_roulette_persiste_rejeu_ne_redonne_rien_selection_preservee(self):
         g = self.combattant(etiquettes={'infanterie': 1})

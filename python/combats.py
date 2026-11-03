@@ -227,6 +227,34 @@ def camps_du_combat(configuration):
     return camps
 
 
+def duel_valeurs_nulles(general_1, general_2):
+    """Vrai seulement si toutes les paires de blocs sont à zéro contre zéro.
+
+    Ne pas confondre un choc nul avec une impasse du duel. La phase spéciale
+    des Boucliers et les soutiens isolés gardent leur résolution habituelle.
+    Aucun tirage, aucune perte et aucune modification du plateau ici.
+    """
+    if any(bouclier_vivant.presence_bouclier(g) for g in (general_1, general_2)):
+        return False
+    blocs = [generaux.lire_blocs_general(g['chemin']) for g in (general_1, general_2)]
+    fiches = [progression.caracteristiques_general(g) for g in (general_1, general_2)]
+    paires = False
+    for position_1, infos_1 in blocs[0].items():
+        for position_2, infos_2 in blocs[1].items():
+            if not infos_1['nombre'] or not infos_2['nombre']:
+                continue
+            if any(unites.etiquette(i['type'], 'non_combattant') for i in (infos_1, infos_2)):
+                return False
+            paires = True
+            valeurs = valeurs_effectives_bloc(
+                infos_1, infos_2, bloc_1=position_1, bloc_2=position_2,
+                fiche_1=fiches[0], fiche_2=fiches[1],
+                general_1=general_1, general_2=general_2)
+            if any(valeurs):
+                return False
+    return paires
+
+
 def combat_entre_generaux(general_1, general_2):
     jeton = _DUEL_IDENTITES.set((general_1, general_2))
     try:
@@ -343,6 +371,10 @@ def _combat_entre_generaux(general_1, general_2):
             generaux.total_unites_general(armee[joueur_1]) == 0
             or generaux.total_unites_general(armee[joueur_2]) == 0
         ):
+            break
+
+        if duel_valeurs_nulles(general_1, general_2):
+            rapports.afficher_et_ecrire("Duel à valeurs nulles : aucune perte, fin des manœuvres.")
             break
 
         rapports.afficher_et_ecrire(f"\n--- Tour de manœuvre {tour} ---")
@@ -548,11 +580,13 @@ def resoudre_attaque_frontale(
 def resoudre_combat_range(
     territory,
     mode_combat,
-    configuration=None
+    configuration=None, *, defenseur=None, bilan=None
 ):
     if configuration is None:
         configuration = config.configuration_mode("classique")
-    resoudre_affrontement_actif(territory, mode_combat, configuration)
+    issue = resoudre_affrontement_actif(territory, mode_combat, configuration, defenseur=defenseur)
+    if issue and bilan is not None:
+        bilan.update(issue)
     # L'affrontement est terminé : préparer la tête de colonne avant le choix
     # de retraite, sans engager les nouveaux actifs dans cette bataille.
     promus = generaux.remonter_renforts_bot(territory, configuration)
@@ -568,7 +602,7 @@ def resoudre_combat_range(
 def _resoudre_affrontement_actif_interne(
     territory,
     mode_combat,
-    configuration=None
+    configuration=None, *, defenseur=None
 ):
     if configuration is None:
         configuration = config.configuration_mode("classique")
@@ -721,8 +755,27 @@ def _resoudre_affrontement_actif_interne(
 
             return
 
-        general_camp_1 = actifs_camp_1[0]
-        general_camp_2 = actifs_camp_2[0]
+        # Conserver l'ordre des emplacements, en passant les seules paires
+        # entièrement nulles. Recalculer après chaque duel (pertes, QG détruit).
+        paire = next(((a, b) for a in actifs_camp_1 for b in actifs_camp_2
+                      if not duel_valeurs_nulles(a, b)), None)
+        if paire is None:
+            if tableau_combat_range_ouvert:
+                rapports.ecrire_fin_tableau_affrontements(territory)
+                rapports.ecrire_details_engagements(territory, engagements_combat_range)
+            camps_retraite = ([c for c in (camp_1, camp_2) if c != defenseur]
+                              if mode_combat == 'OFF/DEF' and defenseur in (camp_1, camp_2)
+                              else [camp_1, camp_2] if mode_combat == 'OFF/OFF' else [])
+            message = (f"Impasse territoriale {mode_combat} : toutes les valeurs sont nulles ; "
+                       "aucune perte artificielle. "
+                       + (f"Retraite requise : {', '.join(camps_retraite)}. " if camps_retraite
+                          else "Défenseur inconnu : décision de retraite non résolue. ")
+                       + "Retraite physique non résolue à ce stade ; contrôle encore contesté.")
+            rapports.afficher_et_ecrire(message)
+            rapports.ecrire_rapport_territoire(territory, message)
+            return {'impasse': True, 'camps_retraite': camps_retraite,
+                    'defenseur': defenseur, 'controle': 'conteste'}
+        general_camp_1, general_camp_2 = paire
 
         rapports.afficher_et_ecrire(
             f"\n--- Combat rangé "
@@ -801,14 +854,14 @@ def _resoudre_affrontement_actif_interne(
     )
 
 
-def resoudre_affrontement_actif(territory, mode_combat, configuration=None):
+def resoudre_affrontement_actif(territory, mode_combat, configuration=None, *, defenseur=None):
     if configuration is None:
         configuration = config.configuration_mode('classique')
     with _contexte_qg_territorial(territory, configuration):
-        return _resoudre_affrontement_actif_interne(territory, mode_combat, configuration)
+        return _resoudre_affrontement_actif_interne(territory, mode_combat, configuration, defenseur=defenseur)
 
 
-def resoudre_combat_v15(territory, configuration=None):
+def resoudre_combat_v15(territory, configuration=None, *, bilan=None):
     # Résolution OFF/OFF.
 
     rapports.afficher_et_ecrire(
@@ -817,11 +870,11 @@ def resoudre_combat_v15(territory, configuration=None):
 
     resoudre_combat_range(
         territory,
-        "OFF/OFF", configuration
+        "OFF/OFF", configuration, bilan=bilan
     )
 
 
-def resoudre_combat_off_def(territory, defenseur, configuration=None):
+def resoudre_combat_off_def(territory, defenseur, configuration=None, *, bilan=None):
     # Résolution OFF/DEF.
     #
     # Pour l'instant, le moteur de combat est le même que OFF/OFF.
@@ -842,7 +895,7 @@ def resoudre_combat_off_def(territory, defenseur, configuration=None):
         f"Défenseur : {defenseur} | Attaquant : {attaquant}"
     )
 
-    resoudre_combat_range(territory, "OFF/DEF", configuration)
+    resoudre_combat_range(territory, "OFF/DEF", configuration, defenseur=defenseur, bilan=bilan)
 
 
 def cible_facile(type_unite):
@@ -912,41 +965,11 @@ def _malus_chaman_duel(fiche_adverse, type_unite, position, general=None, advers
     return personnel
 
 
-def combat_bloc(
-    infos_1,
-    infos_2,
-    fatigue_1=False,
-    fatigue_2=False,
-    bloc_1=None,
-    bloc_2=None,
-    fiche_1=None,
-    fiche_2=None,
-    *, general_1=None, general_2=None,
-):
-    # Calcule le résultat d'un combat entre deux blocs.
-    #
-    # Règle de fatigue :
-    # si les deux unités sont normalement équivalentes,
-    # l'unité non fatiguée obtient l'avantage sur l'unité fatiguée.
-    #
-    # La fatigue ne modifie pas les avantages naturels
-    # entre types différents.
-
-    type_1 = infos_1["type"]
-    type_2 = infos_2["type"]
-
-    nombre_1 = infos_1["nombre"]
-    nombre_2 = infos_2["nombre"]
-
-    if nombre_1 == 0 or nombre_2 == 0:
-        return nombre_1, nombre_2
-
-    # Les soutiens isolés ne frappent pas et disparaissent avec leur bloc.
-    soutien_1 = unites.etiquette(type_1, 'non_combattant')
-    soutien_2 = unites.etiquette(type_2, 'non_combattant')
-    if soutien_1 or soutien_2:
-        return (0 if soutien_1 else nombre_1, 0 if soutien_2 else nombre_2)
-
+def valeurs_effectives_bloc(infos_1, infos_2, fatigue_1=False, fatigue_2=False,
+                            bloc_1=None, bloc_2=None, fiche_1=None, fiche_2=None,
+                            *, general_1=None, general_2=None):
+    """Calcul commun exact, sans pertes ni tirage, également utilisé pour les impasses."""
+    type_1, type_2 = infos_1['type'], infos_2['type']
     valeur_1 = valeur_base_bloc(infos_1, bloc_1) * multiplicateur(
         type_1,
         type_2
@@ -982,6 +1005,48 @@ def combat_bloc(
         # Général 2 fatigué, général 1 frais.
         elif fatigue_2 and not fatigue_1:
             valeur_1 *= 2
+
+    return valeur_1, valeur_2
+
+
+def combat_bloc(
+    infos_1,
+    infos_2,
+    fatigue_1=False,
+    fatigue_2=False,
+    bloc_1=None,
+    bloc_2=None,
+    fiche_1=None,
+    fiche_2=None,
+    *, general_1=None, general_2=None,
+):
+    # Calcule le résultat d'un combat entre deux blocs.
+    #
+    # Règle de fatigue :
+    # si les deux unités sont normalement équivalentes,
+    # l'unité non fatiguée obtient l'avantage sur l'unité fatiguée.
+    #
+    # La fatigue ne modifie pas les avantages naturels
+    # entre types différents.
+
+    type_1 = infos_1["type"]
+    type_2 = infos_2["type"]
+
+    nombre_1 = infos_1["nombre"]
+    nombre_2 = infos_2["nombre"]
+
+    if nombre_1 == 0 or nombre_2 == 0:
+        return nombre_1, nombre_2
+
+    # Les soutiens isolés ne frappent pas et disparaissent avec leur bloc.
+    soutien_1 = unites.etiquette(type_1, 'non_combattant')
+    soutien_2 = unites.etiquette(type_2, 'non_combattant')
+    if soutien_1 or soutien_2:
+        return (0 if soutien_1 else nombre_1, 0 if soutien_2 else nombre_2)
+
+    valeur_1, valeur_2 = valeurs_effectives_bloc(
+        infos_1, infos_2, fatigue_1, fatigue_2, bloc_1, bloc_2, fiche_1, fiche_2,
+        general_1=general_1, general_2=general_2)
 
     degats_1 = nombre_1 * valeur_1
     degats_2 = nombre_2 * valeur_2
