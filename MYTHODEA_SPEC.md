@@ -72,7 +72,9 @@ mythodea/
 │       ├── test_surnombre.py
 │       └── test_cycle_survie.py
 ├── README.md
-├── TESTS.md
+├── REGLES_V2.md
+├── SURVIE_SPEC.md
+├── TESTS_LINUX_SURVIE.md
 └── MYTHODEA_SPEC.md
 ```
 
@@ -1451,7 +1453,8 @@ Les tests utilisent un plateau temporaire et peuvent simuler les dépendances Un
 Ils ne remplacent pas un test réel sur Linux avec vrais UID/GID, `chown`, `chmod`
 et comptes `j1` / `j2`.
 
-Voir `TESTS.md` pour les détails.
+Voir [TESTS_LINUX_SURVIE.md](TESTS_LINUX_SURVIE.md) pour les contrôles Linux
+et la procédure d'essai sur Raspberry Pi.
 
 ---
 
@@ -1470,7 +1473,7 @@ Objectif architectural :
 ```
 
 Le mode Survie ne doit pas réimplémenter les combats, mouvements, généraux,
-ordres ou rapports fondamentaux.
+étiquettes, commandement ou rapports fondamentaux.
 
 Il doit surtout définir :
 
@@ -1488,11 +1491,11 @@ la logique de `j2`.
 
 ## 20. Clôture de la V1.5 et passage à la V2.0
 
-La V1.5 est considérée comme la base de référence du moteur classique actuel.
-
-La finalisation complète des ordres n'est pas une condition de clôture de la V1.5.
-Les ordres supplémentaires seront conçus et introduits progressivement lorsque
-l'expérience de jeu permettra de valider leur utilité et leur équilibre.
+La V1.5 constitue l'héritage du moteur classique. En v2.0, les anciens ordres
+de combat ont été remplacés par les étiquettes et le commandement décrits dans
+[REGLES_V2.md](REGLES_V2.md). Le choix de retraite/poursuite
+`ordre_surnombre.txt` demeure une mécanique distincte du mode Survie.
+Il ne faut pas réintroduire d'anciens ordres en se fondant sur cet historique.
 
 La validation réelle sur Raspberry Pi reste nécessaire pour les comportements liés
 aux vrais comptes Linux, UID/GID, propriétaires et permissions. Elle pourra se
