@@ -314,7 +314,7 @@ def _resoudre_cascade(territoire, configuration, mode_combat, en_cours_de_fuite)
                    if generaux.lire_ordre_surnombre(general, territoire.name, configuration) == 1
                    and territoire.name not in configuration["villages"]]
         if en_cours_de_fuite is None:
-            destinations = mouvements.retraites_surnombre(fuyards, territoire, configuration)
+            destinations = mouvements.preparer_retraites_surnombre(fuyards, territoire, configuration)
         else:
             destinations = []
             if fuyards:
@@ -329,6 +329,10 @@ def _resoudre_cascade(territoire, configuration, mode_combat, en_cours_de_fuite)
                     en_cours_de_fuite.extend(destinations)
                     configuration["generaux_hors_combat"].update(
                         f"{g['joueur']}:{g['nom']}" for g, _ in destinations)
+        for general, destination in destinations:
+            combats.desactiver_qg_retraite(general)
+        if en_cours_de_fuite is None:
+            mouvements.appliquer_retraites_surnombre(destinations, configuration)
         for general, destination in destinations:
             retraites.append({"joueur": general["joueur"], "nom": general["nom"],
                               "origine": territoire.name, "chemin": destination})

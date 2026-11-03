@@ -43,7 +43,8 @@ class Progression(unittest.TestCase):
             for trait, poids in progression.RECOMPENSES[nature].items():
                 obtenu = dict.fromkeys(poids, 0)
                 for valeur in range(1, sum(poids.values()) + 1):
-                    obtenu[progression.tirer_pondere(poids, Mock(randint=Mock(return_value=valeur)))] += 1
+                    accessibles = {c: p for c, p in poids.items() if p > 0}
+                    obtenu[progression.tirer_pondere(accessibles, Mock(randint=Mock(return_value=valeur)))] += 1
                 self.assertEqual(obtenu, poids, (nature, trait))
 
     def test_commandement_par_tranches(self):
@@ -63,6 +64,7 @@ class Progression(unittest.TestCase):
 
     def test_recompenses_impossibles_exclues_et_redistribution(self):
         fiche = self.fiche()
+        fiche['etiquettes'] = dict.fromkeys(catalogues.ETIQUETTES_COMBAT, 1)
         # Épuiser aussi les unités ajoutées au catalogue V2 : ce scénario
         # vérifie la redistribution lorsqu'il ne reste que du commandement.
         fiche['evolutions_acquises'] = [i for i, e in

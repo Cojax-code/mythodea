@@ -161,7 +161,8 @@ class NiveauxHomeForge(unittest.TestCase):
         self.assertEqual((fiche['niveau'], fiche['progression_combat'], fiche['progression_formation']), (2, 0, 0))
         self.assertEqual(fiche['progressions_validees']['formation:1:j1:general1']['recompense'][0], 'force_caractere')
         recompense = fiche['progressions_validees']['combat:survie:1:village']['recompense']
-        self.assertIn(recompense[0] if isinstance(recompense, list) else recompense, ('maitrise_commandement', 105, 110))
+        self.assertIn(recompense[0] if isinstance(recompense, list) else recompense,
+                      ('maitrise_commandement', 'force_caractere', 'etiquette', 105, 110))
         self.formation.resoudre_tour(self.profil, 1)
         self.progression.valider_evenement(general, 'combat', 'survie:1:village')
         self.assertEqual(self.fiche(general), fiche)
@@ -180,8 +181,8 @@ class NiveauxHomeForge(unittest.TestCase):
             fiche = self.fiche(general)
             recompense = fiche['progressions_validees']['combat:b']['recompense']
             self.assertIn(recompense[0] if isinstance(recompense, list) else recompense,
-                          ('maitrise_commandement', 105, 110) if numero == 1 else
-                          ('force_caractere', 104, 105, 106, 107, 108, 109))
+                          ('maitrise_commandement', 'force_caractere', 'etiquette', 105, 110) if numero == 1 else
+                          ('maitrise_commandement', 'force_caractere', 'etiquette', 104, 105, 106, 107, 108, 109))
             self.assertEqual((fiche['nature'], fiche['trait_inne']), (nature, trait))
 
     def test_home_ancien_nouvelles_unites_toutes_activites_gratuites(self):
@@ -282,7 +283,8 @@ class NiveauxHomeForge(unittest.TestCase):
         general = self.creer(nature='instinctif')
         acquis = [i for i, e in self.progression.evolutions_eligibles(
             self.fiche(general), apprentissage=False).items() if e['categorie'] in ('unite', 'ordre')]
-        self.preparer_points(general, progression_combat=1, evolutions_acquises=acquis)
+        self.preparer_points(general, progression_combat=1, evolutions_acquises=acquis,
+                            etiquettes=dict.fromkeys(self.progression.catalogues.ETIQUETTES_COMBAT, 1))
         with patch.object(self.progression.aleatoire_progression, 'randint', return_value=5):
             self.progression.valider_evenement(general, 'combat', 'sans-recompense')
         fiche = self.fiche(general)

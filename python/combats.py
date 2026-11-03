@@ -67,23 +67,32 @@ _DUEL_IDENTITES = ContextVar('mythodea_duel_identites', default=None)
 
 def _desactiver_qg_detruit(general):
     """Retire définitivement le soutien si le général QG perd toutes ses unités."""
+    if generaux.total_general_depuis_chemin(general['chemin']) <= 0:
+        _desactiver_qg(general, 'éliminé')
+
+
+def desactiver_qg_retraite(general):
+    """À appeler dès acceptation d'une retraite, avant le prochain affrontement."""
+    _desactiver_qg(general, 'en retraite')
+
+
+def _desactiver_qg(general, motif):
+    """Retire bonus et malus sans relève pendant toute la bataille territoriale."""
     contexte = _EFFETS_TERRITOIRE.get()
     if not contexte:
         return
     identite = (general['joueur'], general['nom'])
     if identite not in contexte.get('qg', set()):
         return
-    if generaux.total_general_depuis_chemin(general['chemin']) > 0:
-        return
     camp = general['camp']
-    if camp in contexte.get('qg_detruits', set()):
+    if camp in contexte.get('qg_inactifs', set()):
         return
-    contexte['qg_detruits'].add(camp)
-    # Un QG éliminé n'est plus une source active d'effets globaux.
+    contexte['qg_inactifs'].add(camp)
+    # Un QG éliminé ou en retraite n'est plus une source d'effets globaux.
     # La liste initiale ne sera jamais relue : aucune relève automatique.
     contexte['qg'].discard(identite)
     rapports.afficher_et_ecrire(
-        f"QG {general['joueur']}/{general['nom']} éliminé : "
+        f"QG {general['joueur']}/{general['nom']} {motif} : "
         f"soutien global du camp {camp} désactivé jusqu'à la fin de la bataille."
     )
     for cible in list(contexte['allies']):
@@ -145,7 +154,7 @@ def _contexte_qg_territorial(territoire, configuration):
         # Les renforts nouvellement engagés reçoivent l'instantané initial.
         # Ni leurs PC ni leurs déclarations ne changent le QG de cette bataille.
         for camp, instantane in courant['instantanes'].items():
-            if camp in courant['qg_detruits']:
+            if camp in courant['qg_inactifs']:
                 continue
             effets = commandement.repartir_effets_qg(instantane, tous)
             courant['allies'].update(effets)
@@ -194,7 +203,7 @@ def _contexte_qg_territorial(territoire, configuration):
             'territoire': territoire, 'instantanes': instantanes,
             'allies': allies, 'malus': malus, 'qg': qg_identites,
             'camps_allies': camps_allies, 'malus_par_origine': malus_par_origine,
-            'qg_detruits': set(),
+            'qg_inactifs': set(),
         })
         try:
             yield
@@ -950,13 +959,13 @@ def combat_bloc(
 
     # Étiquettes du duel : addition des bonus/malus en pourcentages,
     # sans écriture dans les PC et sans cumul multiplicatif des étiquettes.
-    # 100 % est la valeur de référence. Le plancher de 1 % évite toute valeur
-    # de résistance négative ou une division par zéro.
+    # 100 % est la référence ; les malus peuvent annuler la valeur, jamais
+    # la rendre négative. Les résistances nulles sont traitées avant division.
     from fractions import Fraction
-    valeur_1 *= max(Fraction(1, 100),
+    valeur_1 *= max(Fraction(0),
                     1 + (_bonus_valeur_duel(fiche_1, type_1, 0, general_1)
                          - _malus_chaman_duel(fiche_2, type_1, 0, general_1, general_2)) / 100)
-    valeur_2 *= max(Fraction(1, 100),
+    valeur_2 *= max(Fraction(0),
                     1 + (_bonus_valeur_duel(fiche_2, type_2, 1, general_2)
                          - _malus_chaman_duel(fiche_1, type_2, 1, general_2, general_1)) / 100)
 
@@ -983,8 +992,12 @@ def combat_bloc(
 
     # Comme dans le moteur historique, la valeur effective sert aussi de
     # résistance : conserver les avantages et la fatigue au dénominateur.
-    pertes_1 = min(nombre_1, degats_2 // valeur_1)
-    pertes_2 = min(nombre_2, degats_1 // valeur_2)
+    # À résistance nulle : seuls des dégâts strictement positifs déciment.
+    # Les sauvetages sont appliqués ensuite par le traitement commun des pertes.
+    pertes_1 = (min(nombre_1, degats_2 // valeur_1) if valeur_1 > 0
+                else nombre_1 if degats_2 > 0 else 0)
+    pertes_2 = (min(nombre_2, degats_1 // valeur_2) if valeur_2 > 0
+                else nombre_2 if degats_1 > 0 else 0)
 
     survivants_1 = max(
         0,

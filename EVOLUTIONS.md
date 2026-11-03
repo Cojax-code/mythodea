@@ -3,8 +3,10 @@
 Les nouveaux généraux reçoivent un niveau 0, une nature et un trait permanent.
 Leurs champs apparaissent dans `fiche.txt`. Les anciennes fiches sont conservées.
 Les natures sont stratège (45 %), instinctif (45 %), stratège hybride (5 %) et
-instinctif hybride (5 %). Les hybrides gardent les traits et récompenses ordinaires
-de leur orientation principale, et peuvent apprendre ceux de l'autre à l'École.
+instinctif hybride (5 %). Les hybrides gardent les traits et les limites d'activation
+de leur orientation principale, mais utilisent la roulette Hybride et gagnent
+naturellement PC et moral. Les probabilités et les acquisitions d'étiquettes sont
+définies dans [REGLES_V2.md](REGLES_V2.md). L'École conserve l'apprentissage croisé.
 La référence de fabrication des trois unités ordinaires vaut 5. La propriété
 distincte `valeur_combat` vaut également 5 pour les quatre types actuels.
 Un bloc de 10 archers a une puissance de base de 50. Les avantages, la fatigue
@@ -127,15 +129,19 @@ avec toutes ses unités et ses données.
 
 ## Ce qui attend encore une décision
 
-- Les autres ordres et unités à gagner. Commandement 201, moral 202, technologie
-  de Forge 104 et attaque frontale 1002 sont disponibles comme évolutions.
-- La matérialisation des QG et le raccordement de leurs priorités aux effets des
-  ordres historiques. Les calculs et la sélection sont testés, sans nouvelle
-  tactique activée dans les parties.
+- L'amélioration directe des rangs d'étiquettes par roulette : elle apprend
+  actuellement seulement une étiquette inconnue au rang 1.
+- Les interactions des effets d'étiquettes avec la phase spéciale du Bouclier
+  vivant et d'éventuelles règles de moral supplémentaires.
 - Le départage de deux écritures simultanées et le remplacement d'un apprentissage
   en attente ; actuellement ces cas sont refusés explicitement.
 - La migration des caractéristiques des généraux déjà existants. Aucun tirage
   rétroactif ni gain d'expérience antérieure n'est appliqué.
+
+Les QG, leurs étiquettes actives, le Messager et la désactivation dès acceptation
+d'une retraite de surnombre suivent [REGLES_V2.md](REGLES_V2.md).
+Les anciens ordres 1001 à 1005, dont attaque frontale 1002, sont retirés ;
+ils ne sont ni des évolutions disponibles ni des récompenses de roulette.
 
 ## Sauvegardes et transferts
 

@@ -13,14 +13,19 @@ TRAITS = {
 }
 RECOMPENSES = {
     'stratege': {
-        'charismatique': {'commandement': 60, 'unite': 10},
-        'leader': {'commandement': 20, 'unite': 10},
-        'inventeur': {'commandement': 20, 'unite': 60},
+        'charismatique': {'commandement': 50, 'moral': 0, 'unite': 15, 'etiquette': 35},
+        'leader': {'commandement': 45, 'moral': 0, 'unite': 15, 'etiquette': 40},
+        'inventeur': {'commandement': 25, 'moral': 0, 'unite': 40, 'etiquette': 35},
     },
     'instinctif': {
-        'charismatique': {'moral': 60, 'unite': 25},
-        'leader': {'moral': 20, 'unite': 20},
-        'inventeur': {'moral': 20, 'unite': 70},
+        'charismatique': {'commandement': 10, 'moral': 55, 'unite': 20, 'etiquette': 15},
+        'leader': {'commandement': 10, 'moral': 50, 'unite': 20, 'etiquette': 20},
+        'inventeur': {'commandement': 10, 'moral': 35, 'unite': 40, 'etiquette': 15},
+    },
+    'hybride': {
+        'charismatique': {'commandement': 30, 'moral': 30, 'unite': 15, 'etiquette': 25},
+        'leader': {'commandement': 25, 'moral': 30, 'unite': 15, 'etiquette': 30},
+        'inventeur': {'commandement': 20, 'moral': 20, 'unite': 35, 'etiquette': 25},
     },
 }
 
@@ -122,11 +127,8 @@ def apprendre_etiquette(fiche, identifiant):
             raise ValueError('Niveau maximal de cette étiquette déjà atteint.')
         niveaux[identifiant] = actuel + 1
     else:
-        limite = 3 if orientation_principale(resultat) == 'stratege' else 1
         if orientation_principale(resultat) == 'instinctif' and resultat['niveau'] < 5:
-            raise ValueError('L’instinctif obtient sa première étiquette au niveau 5.')
-        if len(niveaux) >= limite:
-            raise ValueError('Nombre maximal d’étiquettes atteint pour cette nature.')
+            raise ValueError('L’apprentissage scolaire d’une nouvelle étiquette instinctive exige le niveau 5.')
         if len(niveaux) - len(resultat.get('etiquettes_permanentes', [])) >= emplacements_etiquettes(resultat['niveau']):
             raise ValueError('Aucun emplacement d’étiquette disponible.')
         niveaux[identifiant] = 1
@@ -151,9 +153,12 @@ def evolutions_eligibles(fiche, catalogue=None, apprentissage=True):
     for identifiant, evolution in catalogue.items():
         if not evolution['disponible']:
             continue
-        if not compatible(fiche, evolution['natures'], apprentissage):
-            continue
         categorie = evolution['categorie']
+        # Les statistiques de roulette suivent la table, indépendamment de la
+        # dominante. Les restrictions scolaires et d'unités restent inchangées.
+        statistique_roulette = not apprentissage and categorie in ('commandement', 'moral')
+        if not statistique_roulette and not compatible(fiche, evolution['natures'], apprentissage):
+            continue
         if categorie == 'moral' and fiche['moral'] >= 100:
             continue
         if categorie == 'unite' and identifiant in fiche['evolutions_acquises']:
@@ -178,23 +183,23 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
         return resultat, None
 
     orientation = orientation_principale(resultat)
-    if orientation == 'stratege':
+    hybride = resultat['nature'].endswith('_hybride')
+    if orientation == 'stratege' or hybride:
         resultat['points_commandement'] += gain_pc_naturel(aleatoire)
-    else:
+    if orientation == 'instinctif' or hybride:
         resultat['moral'] = min(100, resultat['moral'] + gain_moral_naturel(niveau))
 
-    # Stratège : trois étiquettes au total (création, N5, N10).
-    # Instinctif : une seule étiquette, au N5.
+    # Acquisitions garanties inchangées : création/N5/N10 ou N5 selon la
+    # dominante. Les connaissances de roulette ne consomment pas ces paliers.
     # À partir du N15 pour les stratèges, et hors N5 pour les
     # instinctifs, la roulette ordinaire s'applique également aux paliers.
     palier_etiquette = ((orientation == 'stratege' and niveau in (5, 10))
                          or (orientation == 'instinctif' and niveau == 5))
     if palier_etiquette:
-        limite = 3 if orientation == 'stratege' else 1
         permanentes = resultat.setdefault('etiquettes_permanentes', [])
         disponibles = [nom for nom in catalogues.ETIQUETTES_COMBAT
                        if nom not in resultat.get('etiquettes', {})]
-        if len(resultat.get('etiquettes', {})) < limite and disponibles:
+        if disponibles:
             choix = disponibles[aleatoire.randint(0, len(disponibles) - 1)]
             resultat.setdefault('etiquettes', {})[choix] = 1
             permanentes.append(choix)
@@ -214,9 +219,12 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
         categorie = eligibles[manuel]['categorie']
     else:
         # Les poids sont normalisés sur les récompenses encore accessibles.
-        poids = RECOMPENSES[orientation][resultat['trait_inne']]
+        disponibles = [nom for nom in catalogues.ETIQUETTES_COMBAT
+                       if nom not in resultat.get('etiquettes', {})]
+        poids = RECOMPENSES['hybride' if hybride else orientation][resultat['trait_inne']]
         poids = {categorie: chance for categorie, chance in poids.items()
-                 if any(e['categorie'] == categorie for e in eligibles.values())}
+                 if chance > 0 and (bool(disponibles) if categorie == 'etiquette' else
+                                    any(e['categorie'] == categorie for e in eligibles.values()))}
         if not poids:
             # Quand le moral est plafonné et toutes les unités acquises,
             # les PC restent la dernière récompense répétable.
@@ -224,6 +232,12 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
             resultat['points_commandement'] += gain
             return resultat, ('maitrise_commandement', gain)
         categorie = tirer_pondere(poids, aleatoire)
+        if categorie == 'etiquette':
+            # Provisoirement : connaissance nouvelle au rang 1 uniquement.
+            # L'amélioration d'un rang connu reste réservée à l'École.
+            choix = disponibles[aleatoire.randint(0, len(disponibles) - 1)]
+            resultat.setdefault('etiquettes', {})[choix] = 1
+            return resultat, ('etiquette', choix)
         candidats = [i for i, e in eligibles.items() if e['categorie'] == categorie]
         if len(candidats) == 1:
             identifiant = candidats[0]
@@ -235,7 +249,7 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
             identifiant = candidats[aleatoire.randint(0, len(candidats) - 1)]
     if categorie in ('commandement', 'moral'):
         # Une mémoire croisée d'hybride garde le barème de la récompense,
-        # indépendamment de l'orientation qui gouverne le gain naturel.
+        # indépendamment de l'orientation principale.
         nom, gain = recompense_statistique(
             'stratege' if categorie == 'commandement' else 'instinctif', aleatoire)
         if categorie == 'commandement':
@@ -306,14 +320,12 @@ def selection_etiquettes(fiche, chemin_general):
     connues = resultat.get('etiquettes', {})
     orientation = orientation_principale(resultat)
     maximum = 3 if orientation == 'stratege' else 1
-    if resultat.get('etat_zombie'):
-        # L'étiquette de zombification est une acquisition spéciale,
-        # indépendante des emplacements ordinaires.
-        maximum += int('mort_vivant' in connues)
+    speciale = {'mort_vivant'} if resultat.get('etat_zombie') else set()
     try:
         info = selection.lstat()
     except FileNotFoundError:
-        actives = list(connues)[:maximum]
+        ordinaires = [nom for nom in connues if nom not in speciale][:maximum]
+        actives = [nom for nom in connues if nom in ordinaires or nom in speciale]
     else:
         if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
             raise ValueError('Sélection d’étiquettes liée ou non ordinaire interdite.')
@@ -338,7 +350,7 @@ def selection_etiquettes(fiche, chemin_general):
             raise ValueError('Étiquette active sélectionnée plusieurs fois.')
         if any(nom not in connues for nom in actives):
             raise ValueError('Sélection contenant une étiquette non apprise.')
-        if len(actives) > maximum:
+        if sum(nom not in speciale for nom in actives) > maximum:
             raise ValueError('Trop d’étiquettes actives pour cette nature.')
     resultat['etiquettes_actives'] = actives
     return resultat

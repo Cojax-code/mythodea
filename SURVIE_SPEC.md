@@ -1119,6 +1119,15 @@ physique n'a pas encore été déplacé. Après la résolution de tous les terri
 les retraites acceptées sont appliquées exactement aux places réservées, sans refaire
 un placement différent.
 
+Si le général désigné QG fait partie des retraites acceptées, ses bonus et malus
+globaux disparaissent **dès l'acceptation**, avant le prochain affrontement et
+avant le déplacement physique, immédiat ou différé. Cette désactivation est
+définitive pour la bataille territoriale : aucun autre général, Messager ou
+renfort ne restaure les effets ni ne devient automatiquement QG. Les effets
+personnels des autres généraux et le QG adverse restent actifs. Une retraite
+refusée conserve le soutien. Cela ne crée aucune fuite volontaire avant ou
+pendant le combat, réservée à une décision de v2.1.
+
 Une retraite finale ne doit jamais recréer un territoire contesté ni déclencher un
 second combat. La remontée automatique des renforts **alliés** vers `1..4` n'est
 pas définie ici et n'est pas déclenchée implicitement par la lecture des forces ou
@@ -1712,7 +1721,8 @@ niveau gagné **après** la transformation. La capacité initiale demeure 20 pla
 Tant qu'il ne connaît pas `mort_vivant`, chaque niveau donne aussi un tirage
 indépendant de 20 % pour l'apprendre au rang 1. L'acquisition persiste sans nouveau
 tirage et conserve les étiquettes ordinaires. Elle dispose d'un emplacement actif
-supplémentaire spécial ; les règles de sélection de `REGLES_V2.md` s'appliquent.
+supplémentaire exclusivement réservé à `mort_vivant`, jamais à une étiquette
+ordinaire ; les règles de sélection de `REGLES_V2.md` s'appliquent.
 
 Une armée de général zombie ne peut posséder qu'un seul
 `Trop_gros_zombie`. Celui-ci occupe dix places, n'inflige pas de pertes

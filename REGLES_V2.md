@@ -17,40 +17,59 @@ de son préfixe ; les apprentissages croisés ne changent ni sa nature ni son tr
 | --- | --- | --- |
 | PC initiaux | 11 à 20 | 0 |
 | Moral initial | 0 | 0 |
-| Gain naturel | +2 à +4 PC à chaque niveau | +1 moral aux niveaux pairs |
-| Récompense statistique native | Maîtrise du commandement : +5 à +10 PC | Force de caractère : +2 à +4 moral |
-| Étiquettes permanentes | Création, niveau 5, niveau 10, si place libre | Niveau 5, si place libre |
-| Maximum total d'étiquettes | 3 | 1 |
+| Gain naturel hors hybride | +2 à +4 PC à chaque niveau, aucun moral | +1 moral aux niveaux pairs, aucun PC |
+| Étiquettes permanentes garanties | Création, niveau 5, niveau 10 | Niveau 5 |
+| Maximum d'étiquettes ordinaires actives | 3 | 1 |
+
+Les deux natures hybrides gagnent **+2 à +4 PC à chaque niveau et +1 moral aux
+niveaux pairs**, quelle que soit leur dominante. Leur dominante conserve les
+règles de création, de paliers, d'activation, d'unités et de fabrication.
+Les connaissances ne sont pas plafonnées à trois ou une étiquette.
 
 Le moral est plafonné à 100. Les étiquettes de palier sont de niveau 1 et ne sont
-pas modifiables à l'École. Si la limite est déjà atteinte, le palier utilise la
+pas modifiables à l'École. Un palier apprend une étiquette encore inconnue, même
+si les places actives sont remplies. Si aucune n'est disponible, il utilise la
 roulette normale. Le stratège utilise donc la roulette aux niveaux 15, 20, etc.,
 l'instinctif à tous les niveaux sauf son éventuelle attribution au niveau 5.
 
 Les traits natifs suivent les poids 50/35/15 (charismatique/leader/inventeur)
-chez le stratège et 50/15/35 chez l'instinctif. Les **poids** de la roulette sont :
+chez le stratège et 50/15/35 chez l'instinctif, hybrides inclus selon leur dominante.
+Charismatique privilégie les statistiques, Leader les étiquettes et Inventeur
+les unités. Les probabilités de roulette sont :
 
-| Orientation / trait | Statistique native | Unité |
-| --- | ---: | ---: |
-| Stratège charismatique | 60 | 10 |
-| Stratège leader | 20 | 10 |
-| Stratège inventeur | 20 | 60 |
-| Instinctif charismatique | 60 | 25 |
-| Instinctif leader | 20 | 20 |
-| Instinctif inventeur | 20 | 70 |
+| Nature / trait | PC | Moral | Unité | Étiquette |
+| --- | ---: | ---: | ---: | ---: |
+| Stratège charismatique | 50 % | 0 % | 15 % | 35 % |
+| Stratège leader | 45 % | 0 % | 15 % | 40 % |
+| Stratège inventeur | 25 % | 0 % | 40 % | 35 % |
+| Instinctif charismatique | 10 % | 55 % | 20 % | 15 % |
+| Instinctif leader | 10 % | 50 % | 20 % | 20 % |
+| Instinctif inventeur | 10 % | 35 % | 40 % | 15 % |
+| Hybride charismatique | 30 % | 30 % | 15 % | 25 % |
+| Hybride leader | 25 % | 30 % | 15 % | 30 % |
+| Hybride inventeur | 20 % | 20 % | 35 % | 25 % |
 
-Ces poids sont normalisés sur les catégories encore accessibles ; ce ne sont pas
-des pourcentages sur 100. Les anciens poids d'ordres sont supprimés. Par exemple,
-60/10 donne une probabilité de 6/7 pour les PC et de 1/7 pour une unité.
-Une évolution d'unité déjà acquise est exclue. Le moral à 100 est exclu.
+Chaque ligne totalise 100 %. Les deux hybrides utilisent la ligne Hybride.
+La récompense PC donne +5 à +10, y compris à l'instinctif ; le moral donne +2 à +4,
+plafonné à 100. Aucun plafond de PC n'est prévu par le moteur.
+L'unité est choisie parmi les évolutions compatibles avec la dominante et encore
+inconnues. Les apprentissages croisés d'unités restent propres à l'École.
+L'étiquette est choisie parmi les entrées inconnues de `ETIQUETTES_COMBAT`,
+actuellement toutes compatibles avec les quatre natures, au rang 1.
+
+Une catégorie indisponible est retirée et ses probabilités sont redistribuées
+proportionnellement entre les catégories restantes de poids positif. Le moral
+à 100, les unités acquises et les étiquettes connues sont exclus. Exemple : chez
+l'instinctif charismatique, moral et étiquettes épuisés donnent PC/unité = 10/20,
+soit 1/3 et 2/3. Les tirages entiers restent reproductibles à graine fixe.
 Si toutes les catégories accessibles sont épuisées, +5 à +10 PC restent le dernier
 recours répétable, même pour un instinctif.
 
 Une évolution mémorisée à l'École remplace la roulette du prochain niveau
 applicable. Elle est conservée lorsqu'un palier attribue une étiquette permanente.
 Pour un hybride, une mémoire de moral donne +2 à +4 moral et une mémoire de PC
-+5 à +10 PC, indépendamment de sa nature ; son gain naturel reste celui de son
-orientation principale. Une mémoire devenue incompatible bloque l'attribution
++5 à +10 PC, indépendamment de sa nature ; ses deux gains naturels restent
+applicables. Une mémoire devenue incompatible bloque l'attribution
 sans perte d'état ; aucun remplacement silencieux n'est effectué.
 
 Deux batailles territoriales personnellement combattues et survécues donnent un
@@ -61,6 +80,15 @@ spécifique de capacité, sans ces récompenses ordinaires.
 ## Étiquettes
 
 ### Sélection active
+
+Les **étiquettes connues** et leurs rangs sont conservés dans le profil officiel.
+La roulette apprend une nouvelle étiquette sans plafond total de connaissances,
+y compris avant le niveau 5 chez l'instinctif. Elle ne l'active pas d'office si
+un fichier de sélection existe et ne la rend pas permanente.
+**Comportement provisoire :** la roulette n'améliore jamais un rang connu ;
+l'amélioration par roulette reste une décision ouverte. Lorsque toutes les
+étiquettes sont connues, cette catégorie est retirée du tirage. L'amélioration
+des rangs reste assurée par l'École selon ses règles existantes.
 
 Dans son dossier, le joueur peut créer `etiquettes_actives.txt` et inscrire
 les noms des étiquettes apprises, une par ligne ou séparés par des virgules.
@@ -82,12 +110,16 @@ engagement, sans recalculer le soutien global initial.
 À chaque niveau gagné après zombification, le général zombie conserve son
 gain habituel de deux places et, tant qu'il ne connaît pas `mort_vivant`,
 dispose d'un tirage indépendant de 20 % pour l'apprendre au niveau 1.
-Cette étiquette spéciale offre un emplacement actif supplémentaire au zombie
-et ne retire pas ses étiquettes ordinaires.
+Cette étiquette spéciale dispose d'un emplacement actif supplémentaire au zombie,
+**exclusivement réservé à `mort_vivant`**. Sans acquisition ou sans sélection de
+`mort_vivant`, aucune étiquette ordinaire supplémentaire n'est autorisée.
+Sans fichier de sélection, les premières trois/une étiquettes ordinaires connues
+sont actives, ainsi que `mort_vivant` si connue, quel que soit son ordre d'acquisition.
+Le zombie garde ses deux places de capacité par niveau et n'a aucune roulette ordinaire.
 
 ```text
 bonus en points de pourcentage = PC × 1/2 × niveau de l'étiquette
-valeur finale = valeur contextuelle × (1 + somme des bonus et malus / 100)
+valeur finale = valeur contextuelle × max(0, 1 + somme des bonus et malus / 100)
 ```
 
 Le coefficient 1/2 est fixe, sans multiplicateur lié au niveau du général.
@@ -105,9 +137,20 @@ Une unité portant plusieurs cibles bénéficie de la somme des bonus applicable
 adverse utilisé pour les sauvetages, sans changer le profil permanent.
 L'ancienne synergie de moral entre unités cruelles et chamans est retirée.
 
-Le code conserve son plancher préexistant de 1 % pour la valeur après malus,
-afin d'éviter une division par zéro. Le choix d'équilibrage à 100 % de malus ou
-au-delà reste à confirmer ; l'audit ne le modifie pas.
+Le facteur final est borné à **0 %**, jamais négatif, après addition des bonus
+et malus. Une valeur positive, même inférieure à 1 %, reste exacte.
+Dans les combats ordinaires, la valeur effective sert aussi de résistance :
+
+- valeur nulle et dégâts reçus strictement positifs : décimation du bloc,
+  sous réserve des sauvetages existants ;
+- valeur nulle et dégâts reçus nuls : aucune perte ;
+- deux blocs de valeur nulle : aucune perte des deux côtés ;
+- valeur positive : calcul habituel des pertes, sans changement.
+
+Le moteur traite le zéro avant toute division. Les pertes restent simultanées,
+sans perte artificielle pour départager un duel. Les limites de résolution et les
+sauvetages, blessures et exceptions raciales existants restent applicables.
+Cette règle ne redéfinit pas la phase spéciale du Bouclier vivant.
 
 ## École des officiers
 
@@ -121,9 +164,12 @@ Lecture et écriture exigent chacune un séjour complet, selon les preuves du mo
   concurrentes sur la même mémoire sont refusées ensemble.
 - Une étiquette scolaire s'apprend au niveau 1, puis s'améliore d'un niveau par séjour,
   au maximum `1 + niveau_general // 5`. Les permanentes sont verrouillées.
-- Les limites totales sont trois étiquettes pour le stratège et une pour l'instinctif.
-  Aucune première étiquette scolaire instinctive avant le niveau 5.
-  La capacité scolaire suit aussi `1 + niveau_general // 5`, hors permanentes.
+- Les limites trois/une portent sur l'activation, sans plafond total de connaissances.
+  L'apprentissage scolaire d'une nouvelle étiquette instinctive reste inaccessible
+  avant le niveau 5. La capacité d'acquisition scolaire conserve
+  `1 + niveau_general // 5`, en comptant les connaissances non permanentes,
+  y compris celles de roulette. Atteindre cette capacité n'empêche ni la roulette
+  d'apprendre une étiquette, ni l'École d'améliorer un rang connu admissible.
 - Une mémoire d'évolution est gardée jusqu'à son niveau applicable ; une leçon
   d'étiquette est appliquée à la fin du séjour et ne remplace pas cette mémoire.
 - Les reçus privés empêchent de traiter deux fois le même séjour.
@@ -172,9 +218,15 @@ sans division entre bénéficiaires. Les malus globaux ciblent le camp adverse.
 Quand le QG combat lui-même, ses malus personnels s'appliquent une fois, sans
 addition de son propre malus global ni amplification par le Messager.
 
-La destruction complète du QG retire irréversiblement les bonus et malus de son
-camp pour cette bataille. Les bonus personnels alliés et le QG adverse restent
-actifs. Il n'y a aucune relève. Les chemins du QG détruit ne sont pas réutilisés.
+La destruction complète du QG ou l'acceptation de sa retraite de surnombre retire
+immédiatement et irréversiblement les bonus et malus globaux de son camp pour
+cette bataille territoriale. La retraite désactive les effets dès son acceptation,
+avant le déplacement physique, même différé. Une retraite refusée ne les retire pas.
+Les effets personnels des autres généraux et le QG adverse restent actifs.
+Il n'y a aucune relève, ni réactivation par un Messager ou un renfort ultérieur.
+Les chemins du QG détruit ne sont pas réutilisés. Le prochain territoire dispose
+de son propre instantané. `ordre_surnombre.txt` conserve son fonctionnement :
+aucune fuite volontaire avant ou pendant un affrontement n'est ajoutée en v2.0.
 
 La désignation exige un fichier ordinaire sans lien symbolique ou physique ;
 les deux graphies sont contrôlées. La capture Survie refuse le lien **avant** la
@@ -188,17 +240,27 @@ sans récompense ; une montée explicite ou une désignation QG sans caractéris
 officielles réclame une migration définie. Les anciens profils ne reçoivent pas
 de compensation rétroactive pour les paliers déjà passés.
 
+Les nouvelles connaissances utilisent le dictionnaire `etiquettes` existant ;
+une récompense de roulette est renvoyée sous la forme `('etiquette', nom)` et
+enregistrée comme les autres récompenses dans les reçus privés existants.
+Les anciennes sélections zombies utilisant la place spéciale pour une étiquette
+ordinaire supplémentaire sont désormais refusées et doivent être corrigées par
+le joueur. Les connaissances restent intactes. Une même graine reproduit les
+tirages du nouveau moteur, sans garantir ceux de l'ancienne table de roulette.
+
+À 0 PC, l'étiquette instinctive produit un bonus nul. La roulette peut désormais
+lui donner des PC ; aucun PC initial supplémentaire n'est accordé.
+
 À décider explicitement :
 
-- À 0 PC, l'étiquette instinctive produit un bonus nul. Les PC de dernier recours
-  ou un apprentissage croisé d'hybride peuvent l'activer plus tard ; aucun PC initial
-  supplémentaire n'a été accordé.
 - Migration d'une mémoire d'ordre retiré encore en attente, de profils dépassant
   les nouveaux plafonds ou dépourvus de provenance des étiquettes permanentes.
 - Effets sur la résistance spéciale du Bouclier vivant et sur sa phase prioritaire :
   cette phase utilise encore sa formule dédiée, distincte des duels ordinaires.
-- Sort des effets d'un QG qui se retire vivant entre deux affrontements : la règle
-  validée ici définit la destruction, pas une nouvelle règle de retraite du QG.
+- Amélioration directe des rangs par roulette : non activée en attendant décision.
+- Éventuelles exceptions de moral supplémentaires : aucune n'est ajoutée au cas
+  de valeur nulle ; plafonds, fractions de `cruelle`, sauvetages et restrictions
+  raciales existants sont conservés.
 
 La validation réelle Raspberry Pi/SSH reste décrite dans
 [TESTS_LINUX_SURVIE.md](TESTS_LINUX_SURVIE.md). Une suite WSL réussie ne la remplace pas.

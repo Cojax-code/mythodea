@@ -24,8 +24,8 @@ class ProgressionFinale(unittest.TestCase):
 
     def test_hybrides_gain_selon_statistique_apprise(self):
         for nature, evolution, recompense, pc, moral in (
-                ('stratege_hybride', 202, ('force_caractere', 4), 19, 4),
-                ('instinctif_hybride', 201, ('maitrise_commandement', 10), 25, 1)):
+                ('stratege_hybride', 202, ('force_caractere', 4), 19, 5),
+                ('instinctif_hybride', 201, ('maitrise_commandement', 10), 29, 1)):
             fiche = self.fiche(nature, niveau=1, evolution_apprise=evolution)
             avant = deepcopy(fiche)
             apres, obtenu = progression.monter_niveau(fiche, Mock(randint=lambda a, b: b))
@@ -55,7 +55,8 @@ class ProgressionFinale(unittest.TestCase):
                 fiche, recompense = progression.monter_niveau(fiche, random.Random(niveau))
                 palier = niveau in ((5, 10) if stratege else (5,))
                 self.assertEqual(isinstance(recompense, tuple) and recompense[0] == 'etiquette_permanente', palier)
-                self.assertLessEqual(len(fiche['etiquettes']), 3 if stratege else 1)
+                # Les trois/une places bornent l'activation, pas les connaissances.
+                self.assertLessEqual(len(fiche['etiquettes_permanentes']), 3 if stratege else 1)
                 self.assertLessEqual(fiche['moral'], 100)
                 if stratege:
                     self.assertGreaterEqual(fiche['points_commandement'] - precedent['points_commandement'], 2)

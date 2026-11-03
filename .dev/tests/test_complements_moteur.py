@@ -49,11 +49,11 @@ class ComplementsMoteur(unittest.TestCase):
             apres, identifiant = self.progression.monter_niveau(fiche, Mock(randint=lambda a, b: b))
             self.assertEqual((identifiant, apres['niveau'], apres['nature'], apres['trait_inne']),
                              (('force_caractere', 4) if evolution == 202 else ('maitrise_commandement', 10), 2, nature, fiche['trait_inne']))
-            self.assertEqual(apres['moral'], 4 if evolution == 202 else 1)
+            self.assertEqual(apres['moral'], 5 if evolution == 202 else 1)
             self.assertEqual(apres['points_commandement'] - fiche['points_commandement'],
-                             10 if evolution == 201 else 4)
-            # Les apprentissages croisés n'entrent jamais dans le tirage ordinaire.
-            self.assertNotIn(evolution, self.progression.evolutions_eligibles(fiche, apprentissage=False))
+                             14 if evolution == 201 else 4)
+            # Les deux statistiques font désormais partie de la roulette Hybride.
+            self.assertIn(evolution, self.progression.evolutions_eligibles(fiche, apprentissage=False))
 
     def test_qg_toute_nature_designee_sans_condition_de_pc(self):
         commandement = importlib.import_module('commandement')

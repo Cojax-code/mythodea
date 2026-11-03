@@ -892,6 +892,7 @@ vA = valeur_contextuelle_A * formation_A * avantage_A * fatigue_A * etiquettes_A
 vB = valeur_contextuelle_B * formation_B * avantage_B * fatigue_B * etiquettes_B
 puissance_A = effectif_A * vA
 puissance_B = effectif_B * vB
+# Pour vA et vB strictement positifs ; cas nuls explicités ci-dessous.
 pertes_A = min(effectif_A, puissance_B // vA)
 pertes_B = min(effectif_B, puissance_A // vB)
 survivants_A = effectif_A - pertes_A
@@ -900,7 +901,14 @@ survivants_B = effectif_B - pertes_B
 
 La valeur contextuelle inclut l'éventuelle valeur propre au bloc Avant du catalogue.
 Le facteur `etiquettes` additionne les pourcentages personnels et globaux compatibles,
-avec les malus adverses, selon `REGLES_V2.md`. Les calculs intermédiaires restent
+avec les malus adverses, selon `REGLES_V2.md`, avec un plancher de **0 %**.
+Une valeur effective nulle face à des dégâts positifs provoque la décimation du
+bloc, sous réserve des sauvetages existants ; face à zéro dégât, elle ne provoque
+aucune perte. Deux blocs à zéro ne subissent donc aucune perte. Ces branches sont
+traitées avant division ; pour toute valeur positive, les formules ci-dessus
+restent inchangées, même sous 1 %. Aucune perte artificielle ne départage le duel ;
+les limites de résolution existantes restent applicables.
+Les calculs intermédiaires restent
 des `Fraction` ; aucun arrondi supplémentaire n'est appliqué. Le Messager ne cause
 aucune perte et le Bouclier vivant conserve sa résolution spéciale documentée dans
 `SURVIE_SPEC.md`.
@@ -1560,7 +1568,9 @@ définis dans `catalogues.py` et `REGLES_V2.md`.
 Une création officielle apparaît au niveau 0 : `stratege` 45 %, `instinctif` 45 %,
 `stratege_hybride` 5 %, `instinctif_hybride` 5 %. Nature, orientation principale et
 trait inné sont permanents. L'orientation d'un hybride est celle de son préfixe ;
-elle détermine ses traits et ses récompenses ordinaires, avec les mêmes poids.
+elle détermine ses traits, ses paliers permanents, ses limites d'activation et
+ses accès aux unités. Les deux hybrides utilisent la distribution Hybride de
+la roulette de `REGLES_V2.md`.
 Cet aléatoire est indépendant de celui des combats existants.
 
 | Nature | Charismatique | Leader | Inventeur |
@@ -1579,26 +1589,37 @@ possédée par le joueur ne change pas les caractéristiques officielles.
 Un stratège commence avec 11 à 20 PC et une étiquette permanente de rang 1.
 Il gagne naturellement +2 à +4 PC par niveau. Un instinctif commence à 0 PC
 et gagne +1 moral aux niveaux pairs. Tous commencent à 0 moral, plafonné à 100.
-Les paliers d'étiquettes permanentes sont N5/N10 pour le stratège et N5 pour
-l'instinctif, dans les plafonds totaux respectifs de trois et une étiquette.
-Les hybrides suivent leur orientation principale.
+Les deux hybrides gagnent +2 à +4 PC à chaque niveau et +1 moral aux niveaux pairs.
+Il n'existe pas de plafond de PC. Les paliers d'étiquettes permanentes sont
+N5/N10 pour le stratège et N5 pour l'instinctif, hybrides inclus selon leur dominante.
+Ils apprennent une nouvelle étiquette s'il en reste une, même si les places actives
+sont pleines ; sinon ils utilisent la roulette normale. Les plafonds trois/une
+concernent uniquement l'activation ordinaire, pas les connaissances.
 
 Les autres niveaux utilisent la roulette sans ordres de `REGLES_V2.md` : les
-poids sont normalisés entre les catégories encore accessibles. Le moral plafonné
-et les unités déjà acquises sont exclus. Si ces catégories sont épuisées, le gain
-de +5 à +10 PC reste le dernier recours répétable.
+probabilités PC/moral/unité/étiquette sont redistribuées proportionnellement entre
+les catégories encore accessibles. Leader privilégie les étiquettes. Les PC
+(+5 à +10) sont accessibles aussi aux instinctifs ; le moral donne +2 à +4.
+Le moral plafonné, les unités acquises et les étiquettes connues sont exclus.
+La roulette apprend une étiquette compatible inconnue au rang 1, sans plafond
+total ni amélioration de rang. Ce dernier point reste provisoire, en attente de
+décision ; l'École conserve l'amélioration des rangs. Si les autres catégories
+sont épuisées, les PC restent répétables. Les tirages sont déterministes à graine fixe.
 
 Après zombification, chaque niveau ajoute deux places à la capacité de base de
 20 et donne un tirage de 20 % pour apprendre `mort_vivant` au rang 1 tant qu'elle
 est inconnue. Aucun gain naturel ni récompense ordinaire n'est attribué. Les
 anciennes étiquettes sont conservées ; l'acquisition spéciale dispose d'un
-emplacement actif supplémentaire. `etat_zombie` et `niveaux_zombie` restent
+emplacement actif supplémentaire réservé exclusivement à `mort_vivant`, jamais
+réutilisable pour une étiquette ordinaire, même si `mort_vivant` n'est pas choisie.
+`etat_zombie` et `niveaux_zombie` restent
 dans le profil officiel ; une sélection joueur ne modifie jamais la capacité.
 
 À l'École, les hybrides peuvent mémoriser une évolution disponible de l'autre
 orientation. Une mémoire 201 ou 202 donne le même gain au prochain niveau,
 sans changer nature ni trait. Moral et commandement peuvent coexister. Ces
-capacités croisées ne deviennent jamais des récompenses aléatoires ordinaires.
+capacités croisées d'unités ne deviennent pas des récompenses aléatoires ordinaires.
+Les statistiques de roulette suivent en revanche les nouvelles tables de nature.
 Les non-hybrides restent soumis aux restrictions de nature. Aucune capacité
 croisée n'est accordée automatiquement. Les profils antérieurs gardent leur nature ;
 leur orientation se déduit de celle-ci sans nouveau tirage.
@@ -1664,8 +1685,12 @@ Les renforts ultérieurs reçoivent le soutien existant sans nouveau calcul.
 Chaque effet vaut `PC × 1/2 × rang` en points de pourcentage. Les bonus et malus
 compatibles s'additionnent ; le niveau du général n'est pas un second multiplicateur.
 Le QG ne reçoit pas sa propre copie globale ; ses effets personnels utilisent
-ses PC personnels. Sa destruction retire définitivement son soutien pour cette
-bataille. Le sort du soutien d'un QG retiré vivant reste une décision ouverte.
+ses PC personnels. Sa destruction ou l'acceptation de sa retraite de surnombre
+retire immédiatement ses bonus et malus globaux pour toute cette bataille,
+avant même un déplacement physique différé. Aucun remplaçant n'est désigné et
+aucun renfort ni Messager ne réactive ces effets. Les effets personnels des autres
+généraux restent actifs ; une retraite refusée conserve le soutien. La cascade
+appelle `combats.desactiver_qg_retraite()` pour les seules retraites acceptées.
 Les détails, notamment `chaman` et `cruelle`, sont dans `REGLES_V2.md`.
 
 Les choix de combat exigent des fichiers ordinaires sans liens symboliques ou
