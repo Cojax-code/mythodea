@@ -11,17 +11,16 @@ permissions Unix et Python.
 
 ## État actuel
 
-La branche V1.5 contient le moteur classique `j1 contre j2`, désormais découpé en
-modules. Le gameplay reste basé sur le même moteur de déplacement, de sécurité et
-de combat.
+La branche `v2.0` rassemble le moteur commun du mode classique (`j1` contre
+`j2`) et le cycle jouable du mode Survie Est. Les combats et la progression
+utilisent les **étiquettes**, les PC et le soutien du QG, à la place des
+anciens ordres de combat. `ordre_surnombre.txt` reste réservé aux décisions
+de retraite et de poursuite du mode Survie.
 
-La V1.5 est considérée comme la base stable du moteur classique. Le système complet
-d'ordres n'est volontairement pas bloquant pour clôturer cette version : seuls les
-comportements déjà validés sont conservés, et les autres ordres seront affinés plus
-tard à partir de l'expérience de jeu.
-
-La V2.0 propose un prototype Survie Est jouable qui réutilise le moteur commun.
-La validation réelle sous Linux / Raspberry Pi se poursuit pendant son développement.
+Le moteur a fait l'objet de tests automatisés sous Linux/WSL ; la validation
+d'une partie complète avec de vrais joueurs sur Raspberry Pi reste à mener.
+Les règles applicables sont décrites dans [REGLES_V2.md](REGLES_V2.md),
+[MYTHODEA_SPEC.md](MYTHODEA_SPEC.md) et [SURVIE_SPEC.md](SURVIE_SPEC.md).
 
 ## Lancer le jeu
 
@@ -160,9 +159,12 @@ vrais comptes, UID/GID et permissions sur Linux.
 
 ## Documentation
 
-- `MYTHODEA_SPEC.md` : référence des règles actuelles et de l'architecture.
-- `SURVIE_SPEC.md` : règles et décisions de conception propres au mode Survie V2.0.
+- [REGLES_V2.md](REGLES_V2.md) : progression, étiquettes, QG et Messager.
+- [MYTHODEA_SPEC.md](MYTHODEA_SPEC.md) : moteur commun, formats et invariants.
+- [SURVIE_SPEC.md](SURVIE_SPEC.md) : cycle et règles du mode Survie Est.
+- [EVOLUTIONS.md](EVOLUTIONS.md) : bâtiments, formation et évolutions.
+- [TESTS_LINUX_SURVIE.md](TESTS_LINUX_SURVIE.md) : tests Linux et préparation Raspberry Pi.
+- [AGENTS.md](AGENTS.md) : instructions de travail pour les agents de développement.
 
-Mythodea est encore en développement : la V1.5 stabilise le moteur commun, et la
-V2.0 propose le cycle Survie du front Est. Les ordres supplémentaires seront
-introduits progressivement lorsqu'ils apporteront une vraie valeur au gameplay.
+Mythodea v2.0 reste en développement. Les décisions futures de la v2.1
+(notamment la fuite volontaire et les terrains) ne sont pas des règles actives.
