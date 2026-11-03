@@ -33,6 +33,8 @@ fatigue et sécurité du moteur commun. Il ne constitue pas un second moteur.
 Les règles communes sont dans [MYTHODEA_SPEC.md](MYTHODEA_SPEC.md), la
 progression et le commandement dans [REGLES_V2.md](REGLES_V2.md).
 
+## 2. Validation du moteur commun
+
 Les tests Linux et la préparation Raspberry Pi sont documentés dans
 [TESTS_LINUX_SURVIE.md](TESTS_LINUX_SURVIE.md). Une anomalie affectant une
 règle commune doit être corrigée dans le moteur commun, non contournée en Survie.
@@ -417,6 +419,8 @@ les futures cartes multijoueurs, les nouvelles conditions de victoire et
 les mécaniques de fuite volontaire ne sont pas définis ici comme règles actives.
 La retraite de surnombre existante conserve son fonctionnement documenté
 en section 13.
+
+## 10. Points encore ouverts
 
 La partie Survie ne dispose pas encore d'une condition générale de victoire :
 le contrôle final du village par le bot entraîne une défaite. Les futures
