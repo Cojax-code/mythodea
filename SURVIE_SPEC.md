@@ -26,40 +26,16 @@ Raspberry figurent dans `TESTS_LINUX_SURVIE.md`.
 
 ---
 
-## 1. Objectif de la V2.0
+## 1. Périmètre du mode Survie
 
-La V2.0 introduit le **mode Survie**.
+Le mode Survie Est utilise les généraux, unités, mouvements, combats,
+fatigue et sécurité du moteur commun. Il ne constitue pas un second moteur.
+Les règles communes sont dans [MYTHODEA_SPEC.md](MYTHODEA_SPEC.md), la
+progression et le commandement dans [REGLES_V2.md](REGLES_V2.md).
 
-Le mode Survie doit réutiliser au maximum le moteur commun de la V1.5 :
-
-- généraux ;
-- unités et blocs ;
-- mouvements ;
-- combats ;
-- sécurité ;
-- fatigue ;
-- rapports ;
-- règles Linux communes.
-
-Le but n'est pas de créer un deuxième moteur séparé.
-
----
-
-## 2. Rôle du mode Survie dans le développement
-
-Le mode Survie servira aussi d'environnement d'intégration et de jeu pour éprouver
-le moteur commun.
-
-Les tests Python de régression du moteur commun sont conservés. Les scénarios
-Linux, les permissions réelles et la préparation Raspberry Pi sont documentés
-dans [TESTS_LINUX_SURVIE.md](TESTS_LINUX_SURVIE.md).
-
-Les validations réelles liées aux comptes Linux, UID/GID, propriétaires, `chmod`
-et `chown` seront effectuées sur Raspberry Pi lorsque l'environnement sera
-disponible.
-
-Un bug découvert en Survie dans une règle commune doit être corrigé dans le moteur
-commun lorsque cela est approprié, et non contourné uniquement dans le mode Survie.
+Les tests Linux et la préparation Raspberry Pi sont documentés dans
+[TESTS_LINUX_SURVIE.md](TESTS_LINUX_SURVIE.md). Une anomalie affectant une
+règle commune doit être corrigée dans le moteur commun, non contournée en Survie.
 
 ---
 
@@ -434,47 +410,17 @@ aucun nouveau format de commande ne doit être imaginé pour la v2.0.
 
 ---
 
-## 9. Hors périmètre actuel
+## 9. Limites de la v2.0 et décisions futures
 
-Les éléments suivants ne doivent pas être ajoutés automatiquement à la V2.0 sans
-nouvelle décision de design :
+Le cycle jouable est limité au front Est. Les autres fronts, une économie,
+les futures cartes multijoueurs, les nouvelles conditions de victoire et
+les mécaniques de fuite volontaire ne sont pas définis ici comme règles actives.
+La retraite de surnombre existante conserve son fonctionnement documenté
+en section 13.
 
-- nouvelle carte multijoueur V3 ;
-- tailles de carte 1v1, 2v2 et 3v3 ;
-- nouvelle victoire par maintien de la base adverse ;
-- événements neutres liés à la future carte V3 ;
-- système complet d'argent ;
-- bâtiments ;
-- nouvelles statistiques avancées ;
-- moral complet ;
-- nouvelles unités avancées.
-
-Ces éléments appartiennent à des étapes ultérieures sauf décision explicite contraire.
-
----
-
-## 10. Questions restant à définir
-
-Les points suivants restent volontairement ouverts :
-
-1. futurs fronts Nord, Sud et Ouest ;
-2. chemin choisi par le bot dans la boucle ouest ;
-3. noms des branches situées après `sud_3` ;
-4. ressources initiales du joueur et future économie ;
-5. création, remplacement et recrutement futurs des unités ;
-6. place exacte des objectifs Linux dans la progression ;
-7. récompenses des objectifs Linux au-delà du premier mini-défi décrit ci-dessous ;
-8. requêtes du Courrier autres que `FLAG <flag>` ;
-9. réduction future des renseignements exposés par le Clocher ;
-10. condition éventuelle de victoire ou fin d'une partie Survie ;
-11. ordres spécifiques au combat en surnombre.
-
-Ces décisions restent ouvertes tant qu'elles ne sont pas nécessaires à l'étape
-d'implémentation en cours.
-
-L'entraînement home/réserve et le rappel volontaire vers le home sont définis
-ci-dessous. L'économie et les recrutements futurs restent ouverts.
-
+La partie Survie ne dispose pas encore d'une condition générale de victoire :
+le contrôle final du village par le bot entraîne une défaite. Les futures
+règles doivent être décidées explicitement avant toute implémentation.
 
 ---
 
@@ -1654,56 +1600,23 @@ conserve exactement les pertes historiques, les avantages naturels et le doublem
 de la cavalerie lourde à partir de 15 unités dans Avant. Les bots et joueurs
 utilisent le même calcul commun, sans effet tactique supplémentaire.
 
-### Forge du village
+### Forge, progression, hôpital et École des officiers
 
-La transformation est assurée par la Forge commune `village/forge/1/<joueur>/`,
-une seule place tous joueurs confondus. Elle nécessite un tour complet, un général
-d'orientation instinctive possédant la technologie 104, et un cavalier déjà validé
-dans l'état officiel du tour précédent,
-équipé de `cheval`, `cuirasse`, `armure`, `casque`, `bouclier`. Le moteur renomme
-le dossier en `cavalerie_LN` sans collision, conserve son identité et ses états,
-puis rapporte la conversion. Les règles détaillées et les scans sont communs
-avec les autres bâtiments, dans la section 22 de `MYTHODEA_SPEC.md`.
+Le fonctionnement partagé des bâtiments, des places, des séjours complets,
+des mémoires, des transformations, des états persistants et de la sécurité
+est documenté dans [MYTHODEA_SPEC.md](MYTHODEA_SPEC.md),
+section 22, et dans [EVOLUTIONS.md](EVOLUTIONS.md).
 
-## Progression, hôpital et École des officiers
+Dans le cycle Survie, les formations sont validées avant les combats.
+Une bataille territoriale, cascades comprises, ne peut apporter qu'un point
+de progression de combat par général personnellement engagé et survivant.
+Les retraites différées conservent les compteurs déjà gagnés.
 
-Les généraux et soldats utilisent les règles communes de la section 22 de
-`MYTHODEA_SPEC.md`. Une bataille survécue correspond à toute la résolution d'un
-territoire pendant le tour, cascades comprises. Seuls les généraux réellement
-engagés y participent ; les retraites différées conservent les compteurs obtenus.
-Un point de combat est attribué au général survivant ayant personnellement affronté
-un bloc adverse, au plus une fois par résolution territoriale. Deux points donnent
-un niveau. Trois tours complets validés dans la réserve donnent également un niveau
-par une jauge de formation indépendante. Le dossier technique reste `reserve/`.
-Seule la jauge déclenchée revient à zéro. Les formations précèdent les combats et
-les reçus privés persistants empêchent les doubles points et récompenses à la reprise.
-
-Le village possède les sous-zones `hopital/1..20` sous chaque dossier joueur
-(nombre configurable, places logiquement partagées), six places physiques communes
-`ecole_officiers/1..6/<joueur>/` et une Forge `forge/1/<joueur>/`.
-Les compartiments joueurs restent privés ; la capacité est partagée entre alliés,
-indépendamment de la garnison.
-Entrée et sortie sont des réorganisations internes sans consommation de mouvement.
-Ces zones sont hors combat et ne permettent pas l'entraînement de nouvelles unités.
-
-Le manuel commun, avec trois emplacements distincts des six places de généraux,
-est publié sous `village/ecole_officiers/memoire_des_generaux.txt`. Les joueurs
-préparent `a/A <emplacement> <ID>` ou `e/E <emplacement> <ID>` dans les demandes
-personnelles du général. Le séjour et la demande sont relevés avant ACTIONS et
-contrôlés sous gel de clôture ; les lectures précèdent les écritures dans la
-résolution privée. Tous les séjours de soins valides sont traités simultanément,
-sans plafond supplémentaire. Les résultats individuels restent privés.
-
-Les profils, soldats et séjours suivent le protocole commun des générations ;
-le document partagé est régénéré depuis l'état officiel après publication.
-Les étiquettes actives et le soutien du QG utilisent le moteur commun décrit dans
-`REGLES_V2.md`. La sélection est figée au début de toute la bataille territoriale,
-cascades comprises. Un renfort fige son choix au premier engagement et reçoit le
-soutien encore actif, sans recalcul des PC initiaux du QG ou du Messager.
-Les fichiers `etiquettes_actives.txt`, `QG.txt` et `qg.txt` doivent être ordinaires,
-sans lien symbolique ni physique ; la capture les contrôle avant copie.
-Les bots conservent leur résolution tactique commune, sans IA ni ordre spécial.
-
+Les sélections `etiquettes_actives.txt` sont figées pendant la bataille,
+et le QG/Messager suivent les règles de [REGLES_V2.md](REGLES_V2.md).
+Un renfort fige sa sélection à son premier engagement sans recalculer
+le soutien global initial. La capture Linux refuse les liens physiques
+et symboliques pour les fichiers sensibles.
 
 ## Unités zombies — Bouclier vivant et progression (décision du 20 octobre 2026)
 
