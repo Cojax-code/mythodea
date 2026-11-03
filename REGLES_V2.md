@@ -4,8 +4,8 @@ Référence des règles validées de la refonte, commune au JcJ et à Survie.
 [MYTHODEA_SPEC.md](MYTHODEA_SPEC.md) décrit les autres règles et la persistance ;
 [SURVIE_SPEC.md](SURVIE_SPEC.md) décrit le cycle Est ;
 [EVOLUTIONS.md](EVOLUTIONS.md) donne les commandes joueur des bâtiments.
-Les décisions remplacées restent consultables dans
-[l'historique](HISTORIQUE_REGLES.md), sans être des règles actives.
+Les règles remplacées ne sont pas applicables : pour retracer les décisions
+anciennes, consulter l'historique Git du dépôt plutôt qu'un document de règles actif.
 
 ## Progression
 
