@@ -77,6 +77,13 @@ niveau ; trois séjours complets en réserve donnent un niveau par une jauge dis
 Seule la jauge déclenchée revient à zéro. Les généraux zombies suivent leur règle
 spécifique de capacité, sans ces récompenses ordinaires.
 
+Les généraux zombies et les unités zombies ne bénéficient ni du moral ni des
+soins. Les anciennes valeurs de moral et de blessures restent enregistrées,
+mais ne permettent aucun sauvetage ni restauration des blessures zombies,
+y compris à l’Hôpital et par le Chaman. Les PC et les étiquettes compatibles
+restent applicables. Spore (conversion), Propagation (création) et la réserve
+territoriale du Bouclier vivant conservent leurs règles spécifiques.
+
 ## Étiquettes
 
 ### Sélection active

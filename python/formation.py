@@ -240,7 +240,7 @@ def valider_sejour(tour, general, lieu, camp, preuve_presence, tour_termine=Fals
             valeur = registre.get(identifiant)
             if valeur and not valeur.get('detruit') and valeur.get('dernier_soin') != cle:
                 definition = capacites.definition(valeur['type'])
-                if definition['soins'] != 'hopital':
+                if capacites.etiquette(valeur['type'], 'mort_vivant') or definition['soins'] != 'hopital':
                     continue
                 duree = definition['tours_soins']
                 suivi = valeur.get('presence_hopital', {})

@@ -42,6 +42,9 @@ def occupation(composition):
 def caracteristiques_armee(fiche, composition):
     """Bonus dérivés, jamais ajoutés à la progression persistante du général."""
     resultat = dict(fiche)
+    if fiche.get('etat_zombie'):
+        resultat['moral'] = 0
+        return resultat
     orcs = sum(n for bloc in composition.values() for t, n in bloc.items() if etiquette(t, 'orc'))
     chevaliers = sum(bloc.get('chevalier_clinquant', 0) for bloc in composition.values())
     # Les Orcs modifient uniquement le moral, jamais les points de commandement.
@@ -53,6 +56,8 @@ def caracteristiques_armee(fiche, composition):
 
 
 def blessures_max(type_unite, batailles):
+    if etiquette(type_unite, 'mort_vivant'):
+        return 0
     base = definition(type_unite)['blessures']
     if base == 0:
         return 0
@@ -387,7 +392,7 @@ def soigner_victoire_territoriale(configuration, territoire, evenement):
     nombre = 0
     import config
     for chemin, type_unite in presents:
-        if definition(type_unite)['soins'] is None:
+        if etiquette(type_unite, 'mort_vivant') or definition(type_unite)['soins'] is None:
             continue
         identifiant = soldats.retrouver(chemin, registre, config.dans_generation_privee())
         valeur = registre.get(identifiant)

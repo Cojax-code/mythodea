@@ -1107,7 +1107,8 @@ def trouver_cible_faible(armee, joueur_ennemi):
 def supprimer_unites(infos, survivants, general=None):
     caracteristiques = progression.caracteristiques_general(general) if general else None
     moral = 0
-    if caracteristiques and general['chemin'].is_dir():
+    if (caracteristiques and not caracteristiques.get('etat_zombie')
+            and general['chemin'].is_dir()):
         if caracteristiques['nature'] == 'stratege':
             caracteristiques['moral'] = 0
         composition = generaux.lire_composition_general(general['chemin'])

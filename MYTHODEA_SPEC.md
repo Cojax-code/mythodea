@@ -1588,6 +1588,13 @@ sur un FIFO substitué. Le gel et l'isolement privé du cycle Survie restent app
 
 ### Blessures et batailles complètes
 
+Les généraux zombies et les unités zombies ne bénéficient ni du moral ni des
+soins. Les anciennes valeurs de moral et de blessures restent enregistrées,
+mais ne permettent aucun sauvetage ni restauration des blessures zombies,
+y compris à l’Hôpital et par le Chaman. Les PC et les étiquettes compatibles
+restent applicables. Spore (conversion), Propagation (création) et la réserve
+territoriale du Bouclier vivant conservent leurs règles spécifiques.
+
 Après chaque choc de blocs et chaque manœuvre, les pertes sont sélectionnées
 comme auparavant. Un instinctif, instinctif hybride ou stratège hybride disposant
 de moral tire `pertes * moral // 100` candidats distincts

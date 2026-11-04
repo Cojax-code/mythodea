@@ -257,6 +257,9 @@ def pertes(infos, survivants, moral=0, aleatoire=None):
     aleatoire = random if aleatoire is None else aleatoire
     if (type(moral) is not int and not isinstance(moral, Fraction)) or not 0 <= moral <= 100:
         raise ValueError('Moral entier de 0 à 100 requis.')
+    # Les anciennes valeurs de moral ne peuvent sauver un soldat zombie.
+    if unites.etiquette(infos['type'], 'mort_vivant'):
+        moral = 0
     nombre_pertes = infos['nombre'] - survivants
     if nombre_pertes <= 0:
         return []

@@ -1645,6 +1645,13 @@ tirage et conserve les étiquettes ordinaires. Elle dispose d'un emplacement act
 supplémentaire exclusivement réservé à `mort_vivant`, jamais à une étiquette
 ordinaire ; les règles de sélection de `REGLES_V2.md` s'appliquent.
 
+Les généraux zombies et les unités zombies ne bénéficient ni du moral ni des
+soins. Les anciennes valeurs de moral et de blessures restent enregistrées,
+mais ne permettent aucun sauvetage ni restauration des blessures zombies,
+y compris à l’Hôpital et par le Chaman. Les PC et les étiquettes compatibles
+restent applicables. Spore (conversion), Propagation (création) et la réserve
+territoriale du Bouclier vivant conservent leurs règles spécifiques.
+
 Une armée de général zombie ne peut posséder qu'un seul
 `Trop_gros_zombie`. Celui-ci occupe dix places, n'inflige pas de pertes
 directes et porte les étiquettes `bouclier_vivant` et `spore`.
