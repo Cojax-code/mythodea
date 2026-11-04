@@ -224,29 +224,27 @@ def lancer_bataille_v15():
                     f"({general['total_unites']} unités)"
                 )
 
-                # Informations de niveau renseignement.
-                # Elles sont visibles dans le rapport long
-                # et territorial pendant la V1.5.
+                # Caractéristiques actuelles de la fiche du général.
                 fiche = general["fiche"]
 
                 rapports.afficher_et_ecrire(
-                    f"  orientation : "
-                    f"{fiche.get('orientation', 'inconnue')}"
+                    f"  nature : "
+                    f"{fiche.get('nature', 'inconnue')}"
                 )
 
                 rapports.afficher_et_ecrire(
-                    f"  stratégie : "
-                    f"{fiche.get('strategie', 'inconnue')}"
+                    f"  niveau : "
+                    f"{fiche.get('niveau', 'inconnu')}"
                 )
 
                 rapports.afficher_et_ecrire(
-                    f"  force : "
-                    f"{fiche.get('force', 'inconnue')}"
+                    f"  points de commandement : "
+                    f"{fiche.get('points_commandement', 'inconnus')}"
                 )
 
                 rapports.afficher_et_ecrire(
-                    f"  expérience : "
-                    f"{fiche.get('experience', 'inconnue')}"
+                    f"  moral : "
+                    f"{fiche.get('moral', 'inconnu')}"
                 )
 
                 if etat.general_est_fatigue(general):

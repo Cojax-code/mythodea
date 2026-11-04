@@ -73,7 +73,7 @@ class ProgressionEtape2(unittest.TestCase):
                 self.assertNotIn(recompense[1], precedentes)
                 self.assertEqual(fiche['etiquettes'][recompense[1]], 1)
                 self.assertTrue(all(fiche['etiquettes'][nom] == rang for nom, rang in precedentes.items()))
-                self.assertEqual(fiche['etiquettes_permanentes'], [])
+                self.assertNotIn('etiquettes_permanentes', fiche)
             self.assertEqual(set(fiche['etiquettes']), set(catalogues.ETIQUETTES_COMBAT))
             avant = dict(fiche['etiquettes'])
             fiche, recompense = progression.monter_niveau(fiche, Mock(randint=lambda a, b: b))
@@ -102,9 +102,10 @@ class ProgressionEtape2(unittest.TestCase):
                 fiche = self.fiche(nature, niveau=niveau, evolution_apprise=105,
                                    etiquettes=dict.fromkeys(('infanterie', 'distance', 'melee', 'orc'), 1))
                 apres, gain = progression.monter_niveau(fiche, random.Random(13))
-                self.assertEqual(gain[0], 'etiquette_permanente')
+                self.assertEqual(gain[0], 'etiquette')
                 self.assertEqual(len(apres['etiquettes']), 5)
-                self.assertEqual(apres['etiquettes_permanentes'], [gain[1]])
+                self.assertNotIn('etiquettes_permanentes', apres)
+                self.assertEqual(apres['etiquettes'][gain[1]], 1)
                 self.assertEqual(apres['evolution_apprise'], 105)
 
     def test_ecole_conserve_rangs_et_capacite_scolaire_sans_plafond_total_par_nature(self):
@@ -121,7 +122,7 @@ class ProgressionEtape2(unittest.TestCase):
         apres, recompense = progression.monter_niveau(fiche, Mock(randint=lambda a, b: a))
         self.assertEqual(recompense, ('maitrise_commandement', 5))
         self.assertEqual(apres['etiquettes'], fiche['etiquettes'])
-        self.assertEqual(apres['etiquettes_permanentes'], [])
+        self.assertNotIn('etiquettes_permanentes', apres)
         self.assertIsNone(apres['evolution_apprise'])
 
     def test_graine_fixe_reproduit_profils_et_recompenses(self):

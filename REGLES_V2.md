@@ -18,7 +18,7 @@ de son préfixe ; les apprentissages croisés ne changent ni sa nature ni son tr
 | PC initiaux | 11 à 20 | 0 |
 | Moral initial | 0 | 0 |
 | Gain naturel hors hybride | +2 à +4 PC à chaque niveau, aucun moral | +1 moral aux niveaux pairs, aucun PC |
-| Étiquettes permanentes garanties | Création, niveau 5, niveau 10 | Niveau 5 |
+| Étiquettes automatiques garanties | Création, niveau 5, niveau 10 | Niveau 5 |
 | Maximum d'étiquettes ordinaires actives | 3 | 1 |
 
 Les deux natures hybrides gagnent **+2 à +4 PC à chaque niveau et +1 moral aux
@@ -26,8 +26,8 @@ niveaux pairs**, quelle que soit leur dominante. Leur dominante conserve les
 règles de création, de paliers, d'activation, d'unités et de fabrication.
 Les connaissances ne sont pas plafonnées à trois ou une étiquette.
 
-Le moral est plafonné à 100. Les étiquettes de palier sont de niveau 1 et ne sont
-pas modifiables à l'École. Un palier apprend une étiquette encore inconnue, même
+Le moral est plafonné à 100. Les étiquettes de palier sont attribuées au rang 1
+et peuvent être améliorées à l'École. Un palier apprend une étiquette encore inconnue, même
 si les places actives sont remplies. Si aucune n'est disponible, il utilise la
 roulette normale. Le stratège utilise donc la roulette aux niveaux 15, 20, etc.,
 l'instinctif à tous les niveaux sauf son éventuelle attribution au niveau 5.
@@ -66,7 +66,7 @@ Si toutes les catégories accessibles sont épuisées, +5 à +10 PC restent le d
 recours répétable, même pour un instinctif.
 
 Une évolution mémorisée à l'École remplace la roulette du prochain niveau
-applicable. Elle est conservée lorsqu'un palier attribue une étiquette permanente.
+applicable. Elle est conservée lorsqu'un palier attribue une étiquette.
 Pour un hybride, une mémoire de moral donne +2 à +4 moral et une mémoire de PC
 +5 à +10 PC, indépendamment de sa nature ; ses deux gains naturels restent
 applicables. Une mémoire devenue incompatible bloque l'attribution
@@ -91,7 +91,7 @@ territoriale du Bouclier vivant conservent leurs règles spécifiques.
 Les **étiquettes connues** et leurs rangs sont conservés dans le profil officiel.
 La roulette apprend une nouvelle étiquette sans plafond total de connaissances,
 y compris avant le niveau 5 chez l'instinctif. Elle ne l'active pas d'office si
-un fichier de sélection existe et ne la rend pas permanente.
+un fichier de sélection existe. Aucune étiquette n'est verrouillée selon son origine.
 **Comportement provisoire :** la roulette n'améliore jamais un rang connu ;
 l'amélioration par roulette reste une décision ouverte. Lorsque toutes les
 étiquettes sont connues, cette catégorie est retirée du tirage. L'amélioration
@@ -170,13 +170,16 @@ Lecture et écriture exigent chacune un séjour complet, selon les preuves du mo
 - Toutes les lectures valides du tour précèdent les écritures. Deux écritures
   concurrentes sur la même mémoire sont refusées ensemble.
 - Une étiquette scolaire s'apprend au niveau 1, puis s'améliore d'un niveau par séjour,
-  au maximum `1 + niveau_general // 5`. Les permanentes sont verrouillées.
+  au maximum `1 + niveau_general // 5`. Toutes les étiquettes connues peuvent être
+  améliorées, y compris celles attribuées à la création, aux paliers ou par roulette.
 - Les limites trois/une portent sur l'activation, sans plafond total de connaissances.
   L'apprentissage scolaire d'une nouvelle étiquette instinctive reste inaccessible
   avant le niveau 5. La capacité d'acquisition scolaire conserve
-  `1 + niveau_general // 5`, en comptant les connaissances non permanentes,
-  y compris celles de roulette. Atteindre cette capacité n'empêche ni la roulette
-  d'apprendre une étiquette, ni l'École d'améliorer un rang connu admissible.
+  `1 + niveau_general // 5`, en comptant uniquement les nouvelles étiquettes
+  apprises à l'École. Les attributions automatiques (création, paliers, roulette
+  et acquisition zombie) sont exemptées. Une amélioration ne consomme aucune place.
+  Atteindre ou dépasser cette capacité n'empêche ni une attribution automatique,
+  ni l'École d'améliorer un rang connu admissible ; aucune connaissance n'est retirée.
 - Une mémoire d'évolution est gardée jusqu'à son niveau applicable ; une leçon
   d'étiquette est appliquée à la fin du séjour et ne remplace pas cette mémoire.
 - Les reçus privés empêchent de traiter deux fois le même séjour.
@@ -194,7 +197,7 @@ Les identifiants scolaires sont explicites et permanents :
 
 Les évolutions d'unités actives sont 104 à 110 ; 201 désigne les PC et 202 le moral.
 Les IDs retirés 1001 à 1005 ne sont jamais réutilisés.
-L'écriture d'une étiquette non permanente est actuellement permise sans exiger
+L'écriture d'une étiquette est actuellement permise sans exiger
 qu'elle soit déjà connue du rédacteur ; cette condition préexistante n'a pas été
 changée pendant l'audit et mérite une décision de conception.
 
@@ -241,15 +244,26 @@ copie, qui ferait sinon perdre la preuve de son existence.
 
 ## Compatibilité et décisions ouvertes
 
-Les états privés existants restent l'autorité. Aucun nouveau format ni migration
-de profils n'est introduit par cette stabilisation. Un général sans profil reste
+Les états privés existants restent l'autorité. Un général sans profil reste
 sans récompense ; une montée explicite ou une désignation QG sans caractéristiques
 officielles réclame une migration définie. Les anciens profils ne reçoivent pas
 de compensation rétroactive pour les paliers déjà passés.
 
 Les nouvelles connaissances utilisent le dictionnaire `etiquettes` existant ;
-une récompense de roulette est renvoyée sous la forme `('etiquette', nom)` et
+une récompense de palier ou de roulette est renvoyée sous la forme `('etiquette', nom)` et
 enregistrée comme les autres récompenses dans les reçus privés existants.
+La liste interne `etiquettes_apprises_ecole` conserve uniquement les acquisitions
+scolaires pour calculer le quota ; elle n'est pas publiée dans `fiche.txt` et
+ne verrouille aucun rang. Les anciennes `etiquettes_permanentes` sont supprimées
+du profil normalisé. Leurs noms et les reçus d'attribution automatique permettent
+de retrouver les exemptions ; les anciennes récompenses `etiquette_permanente`
+restent lisibles dans les reçus, sans être réécrites ni rejouées.
+Sans origine retrouvable, une connaissance est comptée comme scolaire. Les noms
+et les rangs existants sont conservés, même au-delà des plafonds actuels : seules
+les futures acquisitions scolaires et améliorations sont contrôlées.
+La lecture normalise en mémoire sans écrire ; la prochaine sauvegarde ou
+publication utilise le profil nettoyé. Aucun parcours de migration d'une partie
+existante n'est déclenché automatiquement hors de ces opérations habituelles.
 Les anciennes sélections zombies utilisant la place spéciale pour une étiquette
 ordinaire supplémentaire sont désormais refusées et doivent être corrigées par
 le joueur. Les connaissances restent intactes. Une même graine reproduit les
@@ -260,8 +274,7 @@ lui donner des PC ; aucun PC initial supplémentaire n'est accordé.
 
 À décider explicitement :
 
-- Migration d'une mémoire d'ordre retiré encore en attente, de profils dépassant
-  les nouveaux plafonds ou dépourvus de provenance des étiquettes permanentes.
+- Migration d'une mémoire d'ordre retiré encore en attente.
 - Effets sur la résistance spéciale du Bouclier vivant et sur sa phase prioritaire :
   cette phase utilise encore sa formule dédiée, distincte des duels ordinaires.
 - Amélioration directe des rangs par roulette : non activée en attendant décision.

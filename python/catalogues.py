@@ -96,7 +96,7 @@ ETIQUETTES_COMBAT = {
 }
 
 # Identifiants scolaires stables pour les trois emplacements mémoire.
-# Les étiquettes permanentes de palier ne peuvent pas être écrites.
+# Toutes les étiquettes du catalogue peuvent être apprises et améliorées à l'École.
 ETIQUETTES_ECOLE = {
     2001: 'infanterie', 2002: 'distance', 2003: 'cavalerie', 2004: 'humain',
     2005: 'melee', 2006: 'orc', 2007: 'mort_vivant', 2008: 'noble',

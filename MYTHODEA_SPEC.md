@@ -419,29 +419,16 @@ et un compteur distinct `.systeme/compteur_general_bot.txt`. Il n'est pas soumis
 
 ### Fiche
 
-Champs historiques conservés :
+La fiche contient `nom` et les caractéristiques actuelles de la section 22 :
+`nature`, `orientation_principale`, `trait_inne`, `niveau`, `points_commandement`,
+`moral`, `progression_combat`, `progression_formation`, `evolutions_acquises`,
+`evolution_apprise` et `etiquettes`.
 
-```text
-nom=general1
-orientation=stratege
-strategie=0
-force=0
-experience=0
-```
-
-Orientations connues :
-
-```text
-stratege
-combattant
-hybride
-```
-
-Les effets futurs de `strategie`, `force` et `experience` ne doivent pas être
-inventés tant qu'ils ne sont pas définis.
-
-Les nouvelles créations ajoutent les caractéristiques de la section 22.
-`orientation` reste un champ historique distinct de `nature`.
+Les champs historiques `orientation`, `strategie`, `force`, `experience` et
+`etiquettes_permanentes` ne sont plus générés. Les anciennes fiches restent
+lisibles ; ces clés sont ignorées par les calculs et retirées lors d'une
+publication habituelle de la fiche, sans toucher aux autres champs optionnels.
+L'affichage territorial utilise désormais nature, niveau, PC et moral.
 
 Une fiche du bot Est ajoute `faction=est`, `vague=<numero>` et
 `nom_affichage=general<vague>_<numero_dans_la_vague>`. `nom` reste canonique.
@@ -1522,10 +1509,17 @@ La création conserve les natures `stratege`, `instinctif`,
 `stratege_hybride` et `instinctif_hybride`. Nature, dominante et trait inné
 sont persistants. Les champs `niveau`, `nature`, `orientation_principale`,
 `trait_inne`, `points_commandement`, `moral`, `evolutions_acquises`,
-`evolution_apprise`, `progression_combat` et `progression_formation`
+`evolution_apprise`, `progression_combat`, `progression_formation` et `etiquettes`
 sont visibles dans `fiche.txt`. Le profil privé
 `.systeme/progression.json`, indexé par `joueur:generalN`, fait autorité :
 modifier la fiche du joueur ne change pas les statistiques officielles.
+La liste privée `etiquettes_apprises_ecole` compte les nouvelles acquisitions
+scolaires pour le quota, sans verrouiller leurs rangs. Les attributions automatiques
+en sont exemptées. À la lecture d'un ancien profil, les anciennes listes et reçus
+identifient ces exemptions ; une origine introuvable compte comme scolaire.
+Tous les noms et rangs acquis restent conservés, même si le quota est dépassé.
+La normalisation est sans écriture à la lecture ; les sauvegardes suivantes
+retirent les anciennes clés. Voir les règles de compatibilité dans `REGLES_V2.md`.
 
 Deux jauges indépendantes déclenchent les niveaux :
 - **Combat** : un point par bataille territoriale personnellement combattue
@@ -1691,8 +1685,8 @@ Les demandes personnelles sont `ecrire_ses_memoires.txt` (`e 001 201`) et
 syntaxe historique `001 201` pour écrire et `001` pour lire reste acceptée.
 Une lecture non vide prime sur l'écriture, même si cette lecture est invalide.
 L'écriture d'une évolution nécessite son acquisition et remplace l'emplacement
-choisi. Pour les étiquettes scolaires, le contrôle actuel interdit les permanentes
-mais n'exige pas la connaissance préalable ; cette condition reste une décision
+choisi. Pour les étiquettes scolaires, toutes les origines sont acceptées et
+le contrôle n'exige pas la connaissance préalable ; cette condition reste une décision
 ouverte dans `REGLES_V2.md`. Le manuel partagé par camp
 a exactement `001`, `002`, `003`, avec `vide` pour un emplacement libre.
 

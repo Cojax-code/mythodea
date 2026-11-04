@@ -6,6 +6,14 @@ Le moteur est verrouillé sur `Cojax-code/mythodea`, branche `v2.0`, commit
 `b31b842d689d22b7efe4393010fccb6bc3a6aa77`. Ses sources sont extraites des objets
 Git et vérifiées avant chaque worker ; le dépôt moteur reste inchangé.
 
+Ce verrou décrit une version antérieure au nettoyage des profils. Ses anciennes
+options « permanentes » ne représentent plus les règles actuelles du moteur :
+toutes les étiquettes connues sont améliorables, et seules les nouvelles acquisitions
+scolaires comptent dans le quota de l'École (voir `REGLES_V2.md` à la racine du dépôt).
+La mise à niveau du moteur embarqué et de l'interface du simulateur reste distincte
+du nettoyage des profils ; les descriptions et exemples ci-dessous concernent
+uniquement le commit verrouillé.
+
 | Zone | Ancien simulateur (`6326a607`) | Version mise à niveau |
 | --- | --- | --- |
 | Sources Python | 19 modules | 27 modules, SHA-256 dans `backend/engine.lock.json` |

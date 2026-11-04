@@ -134,9 +134,6 @@ unites_equipements = {
     for unite in catalogues.UNITES.values()
 }
 
-orientations = ["stratege", "combattant"]
-orientation_rare = "hybride"
-
 rapport_dir = game_path / "rapport"
 
 rapport_court_path = (

@@ -144,13 +144,10 @@ def commencer_sejour(tour, general, lieu, camp, preuve_presence,
             action = 'lecture'
         elif ecrire.strip():
             emplacement, evolution = demande_ecriture(ecrire)
-            if evolution in catalogues.ETIQUETTES_ECOLE:
-                # Un manuel d'étiquette peut être rédigé par un officier présent
-                # à l'École ; la lecture reste nécessaire pour l'apprendre.
-                nom_etiquette = catalogues.ETIQUETTES_ECOLE[evolution]
-                if nom_etiquette in caracteristiques.get('etiquettes_permanentes', []):
-                    raise ValueError('Une étiquette permanente ne peut être inscrite à l’École.')
-            elif evolution not in caracteristiques['evolutions_acquises']:
+            # Un manuel d'étiquette peut être rédigé par un officier présent
+            # à l'École ; la lecture reste nécessaire pour l'apprendre.
+            if (evolution not in catalogues.ETIQUETTES_ECOLE
+                    and evolution not in caracteristiques['evolutions_acquises']):
                 raise ValueError('Le général ne possède pas cette évolution.')
             action = 'ecriture'
     donnees['sejours'][cle] = dict(tour=tour, identite=identite, lieu=lieu, camp=camp,
@@ -186,11 +183,8 @@ def valider_sejour(tour, general, lieu, camp, preuve_presence, tour_termine=Fals
         if concurrents:
             raise ValueError('Écritures concurrentes : règle de départage à définir.')
         officiel = progression.caracteristiques_general(general)
-        if sejour['evolution'] in catalogues.ETIQUETTES_ECOLE:
-            nom_etiquette = catalogues.ETIQUETTES_ECOLE[sejour['evolution']]
-            if nom_etiquette in officiel.get('etiquettes_permanentes', []):
-                raise ValueError('Écriture d’une étiquette permanente interdite.')
-        elif sejour['evolution'] not in officiel['evolutions_acquises']:
+        if (sejour['evolution'] not in catalogues.ETIQUETTES_ECOLE
+                and sejour['evolution'] not in officiel['evolutions_acquises']):
             raise ValueError('Autorisation d’écriture perdue.')
         manuel[sejour['emplacement']] = sejour['evolution']
     elif sejour['action'] == 'lecture':

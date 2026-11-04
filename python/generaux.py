@@ -15,15 +15,6 @@ import progression
 aleatoire_caracteristiques = random.Random()
 
 
-def choisir_orientation_general():
-    chance = random.randint(1, 100)
-
-    if chance == 1:
-        return config.orientation_rare
-
-    return random.choice(config.orientations)
-
-
 def creer_general(chemin_general, nom_general):
     nouveau = not chemin_general.exists()
     chemin_general.mkdir(exist_ok=True)
@@ -35,17 +26,7 @@ def creer_general(chemin_general, nom_general):
     fiche = chemin_general / "fiche.txt"
 
     if not fiche.exists():
-        orientation = choisir_orientation_general()
-
-        texte = [
-            f"nom={nom_general}",
-            f"orientation={orientation}",
-            "strategie=0",
-            "force=0",
-            "experience=0",
-        ]
-
-        fiche.write_text("\n".join(texte), encoding="utf-8")
+        fiche.write_text(f"nom={nom_general}\n", encoding="utf-8")
 
     if nouveau:
         caracteristiques = progression.nouvelles_caracteristiques(aleatoire_caracteristiques)
@@ -169,12 +150,8 @@ def est_general_valide(chemin_general):
 
 def lire_fiche_general(chemin_general):
     # Lecture simple de fiche.txt sous forme de dictionnaire.
-    # Exemple :
-    # nom=general1
-    # orientation=stratege
-    # strategie=0
-    # force=0
-    # experience=0
+    # Les anciennes clés restent lisibles, sans intervenir dans la progression.
+    # Les caractéristiques officielles viennent de progression.json.
 
     fiche_path = chemin_general / "fiche.txt"
     fiche = {}

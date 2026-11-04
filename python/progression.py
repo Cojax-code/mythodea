@@ -34,6 +34,30 @@ NATURES = {'stratege': 45, 'instinctif': 45,
 SEUILS = {'combat': 2, 'formation': 3}
 # Les récompenses ne modifient pas la suite des tirages des combats.
 aleatoire_progression = random.Random()
+CHAMPS_HISTORIQUES = frozenset(('orientation', 'strategie', 'force', 'experience',
+                               'etiquettes_permanentes'))
+
+
+def normaliser_profil(fiche):
+    """Retire les anciennes clés sans modifier les connaissances ni leurs rangs."""
+    resultat = deepcopy(fiche)
+    anciennes = resultat.pop('etiquettes_permanentes', [])
+    for nom in anciennes:
+        # Les attributions automatiques historiques étaient au rang 1.
+        # Un rang déjà enregistré dans etiquettes reste prioritaire.
+        resultat.setdefault('etiquettes', {}).setdefault(nom, 1)
+    if 'etiquettes_apprises_ecole' not in resultat:
+        automatiques = set(anciennes)
+        for recu in resultat.get('progressions_validees', {}).values():
+            recompense = recu.get('recompense')
+            if (isinstance(recompense, (list, tuple)) and len(recompense) == 2
+                    and recompense[0] in ('etiquette', 'etiquette_permanente', 'etiquette_zombie')):
+                automatiques.add(recompense[1])
+        resultat['etiquettes_apprises_ecole'] = [
+            nom for nom in resultat.get('etiquettes', {}) if nom not in automatiques]
+    for cle in CHAMPS_HISTORIQUES:
+        resultat.pop(cle, None)
+    return resultat
 
 
 def orientation_principale(fiche):
@@ -86,15 +110,14 @@ def nouvelles_caracteristiques(aleatoire=None):
     nature = tirer_pondere(NATURES, aleatoire)
     orientation = nature.removesuffix('_hybride')
     trait = tirer_pondere(TRAITS[orientation], aleatoire)
-    # Le stratège démarre avec sa première étiquette définitive.
+    # Le stratège démarre avec sa première étiquette connue.
     initiale = (list(catalogues.ETIQUETTES_COMBAT)[aleatoire.randint(0, len(catalogues.ETIQUETTES_COMBAT) - 1)]
                 if orientation == 'stratege' else None)
     return dict(niveau=0, nature=nature, orientation_principale=orientation, trait_inne=trait,
                 points_commandement=gain_commandement(0, aleatoire) if orientation == 'stratege' else 0,
                 moral=0, evolutions_acquises=[], evolution_apprise=None,
                 progression_combat=0, progression_formation=0,
-                etiquettes={initiale: 1} if initiale else {},
-                etiquettes_permanentes=[initiale] if initiale else [])
+                etiquettes={initiale: 1} if initiale else {}, etiquettes_apprises_ecole=[])
 
 
 def emplacements_etiquettes(niveau):
@@ -115,11 +138,9 @@ def apprendre_etiquette(fiche, identifiant):
     Renvoie une nouvelle fiche sans modifier l'original. L'intégration dans
     le cycle de validation de l'École reste une étape distincte.
     """
-    resultat = deepcopy(fiche)
+    resultat = normaliser_profil(fiche)
     if identifiant not in catalogues.ETIQUETTES_COMBAT:
         raise ValueError('Étiquette inconnue du catalogue scolaire.')
-    if identifiant in resultat.get('etiquettes_permanentes', []):
-        raise ValueError('Étiquette permanente : modification interdite à l’École.')
     niveaux = resultat.setdefault('etiquettes', {})
     actuel = niveaux.get(identifiant, 0)
     if actuel:
@@ -129,9 +150,10 @@ def apprendre_etiquette(fiche, identifiant):
     else:
         if orientation_principale(resultat) == 'instinctif' and resultat['niveau'] < 5:
             raise ValueError('L’apprentissage scolaire d’une nouvelle étiquette instinctive exige le niveau 5.')
-        if len(niveaux) - len(resultat.get('etiquettes_permanentes', [])) >= emplacements_etiquettes(resultat['niveau']):
+        if len(resultat['etiquettes_apprises_ecole']) >= emplacements_etiquettes(resultat['niveau']):
             raise ValueError('Aucun emplacement d’étiquette disponible.')
         niveaux[identifiant] = 1
+        resultat['etiquettes_apprises_ecole'].append(identifiant)
     return resultat
 
 
@@ -170,7 +192,7 @@ def evolutions_eligibles(fiche, catalogue=None, apprentissage=True):
 def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None):
     """Gain naturel, puis étiquette aux paliers N5/N10 autorisés ou roulette."""
     aleatoire = random if aleatoire is None else aleatoire
-    resultat = deepcopy(fiche)
+    resultat = normaliser_profil(fiche)
     resultat['niveau'] += 1
     niveau = resultat['niveau']
     if resultat.get('etat_zombie'):
@@ -196,19 +218,17 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
     palier_etiquette = ((orientation == 'stratege' and niveau in (5, 10))
                          or (orientation == 'instinctif' and niveau == 5))
     if palier_etiquette:
-        permanentes = resultat.setdefault('etiquettes_permanentes', [])
         disponibles = [nom for nom in catalogues.ETIQUETTES_COMBAT
                        if nom not in resultat.get('etiquettes', {})]
         if disponibles:
             choix = disponibles[aleatoire.randint(0, len(disponibles) - 1)]
             resultat.setdefault('etiquettes', {})[choix] = 1
-            permanentes.append(choix)
-            return resultat, ('etiquette_permanente', choix)
+            return resultat, ('etiquette', choix)
         # Si toutes les étiquettes sont connues, roulette normale.
 
 
     # Une évolution mémorisée à l'École remplace la roulette du prochain
-    # niveau où aucune étiquette permanente n'est attribuée.
+    # niveau où aucune étiquette de palier n'est attribuée.
     manuel = resultat.get('evolution_apprise')
     eligibles = evolutions_eligibles(
         resultat, catalogue, apprentissage=manuel is not None)
@@ -276,12 +296,14 @@ def progression_due(fiche, observations, condition=None):
 def charger():
     import config
     chemin = config.racine_metier() / '.systeme/progression.json'
-    return json.loads(chemin.read_text(encoding='utf-8')) if chemin.exists() else {}
+    donnees = json.loads(chemin.read_text(encoding='utf-8')) if chemin.exists() else {}
+    return {identite: normaliser_profil(fiche) for identite, fiche in donnees.items()}
 
 
 def sauvegarder(donnees):
     import config
     import etat
+    donnees = {identite: normaliser_profil(fiche) for identite, fiche in donnees.items()}
     etat.ecrire_prive(config.racine_metier() / '.systeme/progression.json',
                       json.dumps(donnees, ensure_ascii=False) + '\n')
 
@@ -383,7 +405,7 @@ def enregistrer_creation(joueur, nom, caracteristiques):
 
 
 def publier_fiche(chemin_general, caracteristiques):
-    """Met à jour seulement les champs moteur, conserve les anciens attributs."""
+    """Publie les champs moteur et retire les clés historiques devenues inutiles."""
     import os
     import stat
     chemin = chemin_general / 'fiche.txt'
@@ -393,9 +415,11 @@ def publier_fiche(chemin_general, caracteristiques):
     if chemin.exists() and (not stat.S_ISREG(chemin.stat().st_mode) or chemin.stat().st_nlink != 1):
         raise RuntimeError(f'Fiche non ordinaire : {chemin}')
     lignes = chemin.read_text(encoding='utf-8').splitlines() if chemin.exists() else []
-    lignes = [l for l in lignes if l.split('=', 1)[0].strip() not in caracteristiques]
+    caracteristiques = normaliser_profil(caracteristiques)
+    lignes = [l for l in lignes if l.split('=', 1)[0].strip()
+              not in caracteristiques.keys() | CHAMPS_HISTORIQUES]
     for cle, valeur in caracteristiques.items():
-        if cle in ('apprentissages_valides', 'progressions_validees'):
+        if cle in ('apprentissages_valides', 'progressions_validees', 'etiquettes_apprises_ecole'):
             continue  # Journal de reprise privé, sans utilité dans la fiche joueur.
         if isinstance(valeur, list):
             valeur = ','.join(map(str, valeur))

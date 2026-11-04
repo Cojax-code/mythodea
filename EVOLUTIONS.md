@@ -1,7 +1,8 @@
 # Généraux, blessures et formation
 
 Les nouveaux généraux reçoivent un niveau 0, une nature et un trait permanent.
-Leurs champs apparaissent dans `fiche.txt`. Les anciennes fiches sont conservées.
+Leurs champs apparaissent dans `fiche.txt`. Les anciennes fiches restent lisibles ;
+les champs historiques inutilisés sont retirés à leur prochaine publication.
 Les natures sont stratège (45 %), instinctif (45 %), stratège hybride (5 %) et
 instinctif hybride (5 %). Les hybrides gardent les traits et les limites d'activation
 de leur orientation principale, mais utilisent la roulette Hybride et gagnent
@@ -92,6 +93,11 @@ sur la fiche de l'élève. Le manuel reste disponible aux autres généraux.
 Consulter `formation_resultat.txt`, puis vider la demande après traitement si
 aucun nouveau séjour n'est souhaité. Deux écritures concurrentes de la même entrée
 sont refusées ensemble. Un apprentissage déjà en attente n'est pas écrasé.
+
+Toutes les étiquettes connues peuvent être améliorées, quelle que soit leur origine,
+jusqu'au rang `1 + niveau // 5`. Seules les nouvelles étiquettes apprises à l'École
+consomment son quota de `1 + niveau // 5` ; celles reçues automatiquement en sont
+exemptées. Une amélioration ne consomme aucune place supplémentaire.
 
 ## Transformer des cavaliers à la Forge
 

@@ -245,7 +245,7 @@ class DefisSurvie(unittest.TestCase):
         self.assertEqual(self.rapports.nom_affichage_general(
             {'joueur': 'j1', 'nom': chemin.name, 'fiche': fiche}), 'cavalier_noir')
         self.assertEqual(self.rapports.formater_force(blocs['avant']), '20 cavaliers lourds')
-        self.assertEqual(fiche['force'], '0')
+        self.assertNotIn('force', fiche)
 
     def test_crypte_occupee_differe_sans_perdre_ni_dupliquer_defi(self):
         c = self.survie.crypte

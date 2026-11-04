@@ -20,7 +20,7 @@ class ProgressionFinale(unittest.TestCase):
     def fiche(self, nature='stratege', **champs):
         return dict(dict(nature=nature, niveau=0, points_commandement=15, moral=0,
                          trait_inne='charismatique', evolutions_acquises=[],
-                         evolution_apprise=None, etiquettes={}, etiquettes_permanentes=[]), **champs)
+                         evolution_apprise=None, etiquettes={}), **champs)
 
     def test_hybrides_gain_selon_statistique_apprise(self):
         for nature, evolution, recompense, pc, moral in (
@@ -38,7 +38,7 @@ class ProgressionFinale(unittest.TestCase):
         for nature in progression.NATURES:
             fiche = self.fiche(nature, niveau=4, evolution_apprise=105)
             apres, recompense = progression.monter_niveau(fiche, random.Random(1))
-            self.assertEqual(recompense[0], 'etiquette_permanente')
+            self.assertEqual(recompense[0], 'etiquette')
             self.assertEqual(apres['evolution_apprise'], 105)
             apres, recompense = progression.monter_niveau(apres, random.Random(2))
             self.assertEqual(recompense, 105)
@@ -48,15 +48,16 @@ class ProgressionFinale(unittest.TestCase):
     def test_natures_paliers_plafonds_et_roulette_apres_n10(self):
         for nature in progression.NATURES:
             stratege = nature.startswith('stratege')
-            fiche = self.fiche(nature, etiquettes={'infanterie': 1} if stratege else {},
-                               etiquettes_permanentes=['infanterie'] if stratege else [])
+            fiche = self.fiche(nature, etiquettes={'infanterie': 1} if stratege else {})
             for niveau in range(1, 21):
                 precedent = fiche
                 fiche, recompense = progression.monter_niveau(fiche, random.Random(niveau))
                 palier = niveau in ((5, 10) if stratege else (5,))
-                self.assertEqual(isinstance(recompense, tuple) and recompense[0] == 'etiquette_permanente', palier)
-                # Les trois/une places bornent l'activation, pas les connaissances.
-                self.assertLessEqual(len(fiche['etiquettes_permanentes']), 3 if stratege else 1)
+                if palier:
+                    self.assertEqual(recompense[0], 'etiquette')
+                    self.assertNotIn(recompense[1], precedent['etiquettes'])
+                    self.assertEqual(fiche['etiquettes'][recompense[1]], 1)
+                self.assertNotIn('etiquettes_permanentes', fiche)
                 self.assertLessEqual(fiche['moral'], 100)
                 if stratege:
                     self.assertGreaterEqual(fiche['points_commandement'] - precedent['points_commandement'], 2)
@@ -71,7 +72,7 @@ class ProgressionFinale(unittest.TestCase):
         self.assertEqual(fiche['points_commandement'], 30)
         self.assertEqual(len(set(fiche['evolutions_acquises'])), len(fiche['evolutions_acquises']))
 
-    def test_ecole_permanentes_limites_et_instinctif_avant_n5(self):
+    def test_ecole_anciennes_etiquettes_limites_et_instinctif_avant_n5(self):
         f = self.fiche(etiquettes={'infanterie': 1}, etiquettes_permanentes=['infanterie'])
         with self.assertRaises(ValueError):
             progression.apprendre_etiquette(f, 'infanterie')
@@ -79,6 +80,8 @@ class ProgressionFinale(unittest.TestCase):
         with self.assertRaises(ValueError):
             progression.apprendre_etiquette(f, 'distance')
         f['niveau'] = 5
+        f = progression.apprendre_etiquette(f, 'infanterie')
+        self.assertEqual(f['etiquettes']['infanterie'], 2)
         f = progression.apprendre_etiquette(f, 'distance')
         self.assertEqual(f['etiquettes']['distance'], 2)
         f = progression.apprendre_etiquette(f, 'cavalerie')

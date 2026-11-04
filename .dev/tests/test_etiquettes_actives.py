@@ -125,7 +125,7 @@ class SelectionEtProgression(unittest.TestCase):
                 self.assertEqual(progression.capacite_maximale(apres), 22)
                 self.assertEqual(apres['niveau'], 5)
                 for champ in ('points_commandement', 'moral', 'evolutions_acquises',
-                              'evolution_apprise', 'etiquettes_permanentes'):
+                              'evolution_apprise'):
                     self.assertEqual(apres[champ], fiche[champ])
                 self.assertEqual(apres['etiquettes']['infanterie'], 2)
                 self.assertEqual(recompense, ('etiquette_zombie', 'mort_vivant') if tirage <= 20 else None)
