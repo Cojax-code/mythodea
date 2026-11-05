@@ -523,7 +523,8 @@ def clore_tour(configuration, tour):
     for general in occupants(configuration):
         identite = f"{general['joueur']}:{general['nom']}"
         observations[identite] = dict(lieu=general['lieu'], camp=general['camp'],
-            preuve=preuve_general(general), unites=relever_unites(general))
+            preuve=preuve_general(general), unites=relever_unites(general),
+            inscrit_ouverture=f'{tour}:{identite}' in donnees['sejours'])
     donnees.setdefault('clotures', {})[str(tour)] = observations
     sauvegarder(donnees)
 
@@ -581,4 +582,15 @@ def resoudre_tour(configuration, tour):
         restant = charger()
         restant['sejours'].pop(cle, None)
         sauvegarder(restant)
+    # La caserne crédite aussi les arrivants pendant ACTIONS, dès leur première
+    # clôture. Les séjours enregistrés à l'ouverture restent soumis à la preuve
+    # d'absence de sortie/retour et sont traités plus haut. Les reçus de
+    # progression empêchent tout double gain lors d'une reprise.
+    for identite, observation in cloture.items():
+        if observation['lieu'] != 'reserve' or observation.get('inscrit_ouverture', True):
+            continue
+        general = presents.get(identite)
+        if (general and general['lieu'] == 'reserve'
+                and observation['preuve'] == preuve_general(general)):
+            progression.valider_evenement(general, 'formation', f'{tour}:{identite}')
     # Les copies des compteurs seront rafraîchies lors de la publication.
