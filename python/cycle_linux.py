@@ -421,8 +421,8 @@ class Generations:
         dossier_prive(self.generation)
         with crypte.VERROU:
             self.marquer(tour, 'capture')
-        self.backend.annoncer(f'FIN DU TOUR {tour}\nRÉSOLUTION EN COURS\nPAUSE : 10 secondes minimum')
-        self.afficher(tour, 'capture', detail='FIN DU TOUR\nRESOLUTION EN COURS\nGEL DEMANDE')
+        self.backend.annoncer(f'FIN DES ACTIONS — TOUR {tour}\nGEL TEMPORAIRE : capture des actions en cours.')
+        self.afficher(tour, 'capture', detail='FIN DES ACTIONS\nCAPTURE EN COURS\nGEL DEMANDE')
         self.backend.geler()
         debut = self.monotone()
         derniere = [-1]
@@ -432,7 +432,7 @@ class Generations:
                 raise TimeoutError('Seuil de sécurité de capture dépassé ; récupération requise.')
             if int(ecoule) != derniere[0]:
                 self.backend.verifier_gel()
-                self.afficher(tour, 'capture', detail='FIN DU TOUR\nRESOLUTION EN COURS\nJOUEURS GELES\n'
+                self.afficher(tour, 'capture', detail='FIN DES ACTIONS\nCAPTURE EN COURS\nJOUEURS GELES\n'
                               + ('PROLONGATION TECHNIQUE' if ecoule >= self.c['duree_gel_secondes']
                                  else 'PAUSE : 10 secondes'))
                 derniere[0] = int(ecoule)
@@ -561,7 +561,7 @@ class Generations:
         journal = {'generation': self.generation.name, 'termine': False, 'operations': []}
         fichier = self.generation / 'publication.json'
         ecrire_json(fichier, journal)
-        self.backend.annoncer('PUBLICATION DU TOUR\nGEL TEMPORAIRE : les rapports seront consultables après publication.')
+        self.backend.annoncer('PUBLICATION DU TOUR\nSECOND GEL TEMPORAIRE : les rapports seront consultables après publication.')
         self.afficher(tour, 'publication', detail='PUBLICATION DU TOUR\nGEL TEMPORAIRE : préparation des résultats')
         self.backend.geler()
         try:
