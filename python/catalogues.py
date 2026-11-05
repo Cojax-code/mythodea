@@ -35,7 +35,7 @@ UNITES.update({
             valeur_combat=5, valeur_avant=6,
             etiquettes=('humain', 'melee', 'a_pied', 'noble', 'ami_des_animaux', 'armure_legere'),
             forces=('piquier', 'sauvageon'), faiblesses=('cavalier', 'archer', 'cavalerie_lourde'),
-            effets=('moral_par_unite',), natures=('instinctif',), blessures=2, soins='hopital',
+            effets=('moral_par_unite',), natures=('stratege', 'instinctif'), blessures=2, soins='hopital',
             tours_soins=2),
     7: dict(nom='orc_assaillant', prefixe='orc_assaillant', recette=('tome_du_orc_assaillant',),
             valeur_combat=6, valeur_avant=7, etiquettes=('orc', 'melee', 'cruelle', 'mauvais_nageur'),
