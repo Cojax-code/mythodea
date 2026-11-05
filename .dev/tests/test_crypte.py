@@ -389,6 +389,21 @@ class Crypte(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.survie.resoudre_tour_survie(self.profil, gestion=g)
 
+    def test_permissions_recompense_consultation_puis_actions(self):
+        self.reussir()
+        self.creer()
+        gestion = self.gestion()
+        parent = self.crypte.zone(self.profil, 'j1') / 'recompense'
+        general = parent / 'general1'
+        destination = self.config.game_path / 'village/j1/garnison/1'
+        gestion.permissions_consultation()
+        for chemin in (parent, general, destination):
+            self.assertEqual(chemin.stat().st_mode & 0o700, 0o500)
+        gestion.permissions_actions()
+        for chemin in (parent, general, destination):
+            self.assertEqual(chemin.stat().st_mode & 0o700, 0o700)
+        self.assertTrue(general.exists())
+
     def test_recuperation_mv_puis_retour_interdit(self):
         self.reussir()
         self.creer()
