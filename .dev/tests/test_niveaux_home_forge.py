@@ -120,6 +120,16 @@ class NiveauxHomeForge(unittest.TestCase):
         self.progression.valider_evenement(general, 'combat', 'suivant')
         self.assertEqual(self.fiche(general)['niveau'], 2)
 
+    def test_entree_en_caserne_pendant_actions_compte_des_premiere_cloture(self):
+        # Aucun séjour n'est ouvert pour ce général au début du tour.
+        self.formation.ouvrir_tour(self.profil, 1)
+        general = self.creer(territoire='village', reserve=True)
+        self.terminer(1)
+        self.assertEqual(self.fiche(general)['progression_formation'], 1)
+        # Une résolution répétée ne doit jamais attribuer un second point.
+        self.formation.resoudre_tour(self.profil, 1)
+        self.assertEqual(self.fiche(general)['progression_formation'], 1)
+
     def test_sejour_reserve_incomplet_et_voisin_independant(self):
         general = self.creer(territoire='village', reserve=True)
         self.formation.ouvrir_tour(self.profil, 1)
