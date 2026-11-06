@@ -39,7 +39,7 @@ les résultats WSL ne les remplacent pas.
 
 La suite simulée `test_entrainement_rappel_survie.py` couvre l'attribution avant
 ACTIONS, l'idempotence, les compteurs après destruction, l'entraînement limité
-au home/réserve, les renommages et finalisations, le délai d'un tour, le rappel
+au home/caserne militaire, les renommages et finalisations, le délai d'un tour, le rappel
 sans fatigue et son retour obligatoire par le village. Elle traverse aussi les
 captures, publications et republications après incident. Les plateaux préparés
 par les helpers de tests disposent d'une référence des unités déjà publiées.
@@ -236,13 +236,13 @@ processus longs, utiliser les véritables sessions SSH confinées des joueurs.
 
 ```bash
 ls -ld /game/village /game/est_{1,2,3} /game/repli
-sudo ls -ld /game/village/j{1,2}/{garnison,reserve,hotel_de_ville}
+sudo ls -ld /game/village/j{1,2}/{garnison,caserne_militaire,hotel_de_ville}
 sudo ls -ld /game/est_1/j{1,2}/renforts/{5,20} /game/repli/j{1,2}
 sudo stat -c '%U:%G %a %n' /home/j{1,2}/general1 /home/j{1,2}/general1/ordre.txt
 sudo -u j1 sh -c 'test -w /home/j1/general1/ordre.txt && printf "1-2\n" > /home/j1/general1/ordre.txt'
 sudo -u j2 sh -c 'test -w /home/j2/general1/ordre.txt && printf "1-2\n" > /home/j2/general1/ordre.txt'
-sudo -u j1 touch /game/village/j1/reserve/.sonde
-sudo -u j1 rm /game/village/j1/reserve/.sonde
+sudo -u j1 touch /game/village/j1/caserne_militaire/.sonde
+sudo -u j1 rm /game/village/j1/caserne_militaire/.sonde
 sudo -u j2 touch /game/est_1/j2/renforts/5/.sonde
 sudo -u j2 rm /game/est_1/j2/renforts/5/.sonde
 ```
@@ -251,7 +251,7 @@ Les sondes suivantes doivent être **refusées**, même en ACTIONS :
 
 ```bash
 sudo -u j1 cat /home/j2/general1/ordre.txt
-sudo -u j1 touch /game/village/j2/reserve/.interdit
+sudo -u j1 touch /game/village/j2/caserne_militaire/.interdit
 sudo -u j2 touch /game/est_3/bot/.interdit
 sudo -u j1 ls /game/.systeme
 sudo -u j1 ls /game/.systeme/communication
@@ -616,7 +616,7 @@ dossiers `cavalerie_L1` à `cavalerie_L20`, contenant chacun exactement les fich
 normal inchangé. Retirer l'un de ces fichiers rend l'unité lourde invalide.
 Occuper d'abord la zone par une recette : le défi doit attendre sa récupération.
 La fiche indique « Construction : Verrouillée ». Une copie supplémentaire d'une
-unité lourde dans le home ou la réserve est supprimée à l'audit, tandis que les
+unité lourde dans le home ou la caserne militaire est supprimée à l'audit, tandis que les
 unités anciennes déplacées sont conservées. Vérifier les seuils 14/15 et le bonus
 uniquement à l'avant, contre archers, cavaliers et piquiers.
 
