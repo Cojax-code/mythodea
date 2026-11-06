@@ -189,7 +189,7 @@ Structure visible du prototype :
 │   ├── clocher/{etat_tour.txt,suivi_tour.log}
 │   ├── j1/                         # même structure pour j2/
 │   │   ├── garnison/1..4/
-│   │   ├── reserve/
+│   │   ├── caserne_militaire/
 │   │   ├── hotel_de_ville/
 │   │   │   ├── journal_du_Toonitruand/vague_0.txt ... vague_N.txt  # N ≤ 10, vagues atteintes
 │   │   │   ├── journal_du_veteran/vague_0.txt ... vague_N.txt     # mêmes vagues atteintes
@@ -211,30 +211,30 @@ La garnison est la zone militaire active du village. Les quatre emplacements `1`
 `4` conservent l'organisation connue du moteur classique. Les généraux conservent
 leurs blocs `avant`, `droite`, `gauche` et `arriere`.
 
-La `reserve/` permet de stocker des généraux présents au village mais non engagés.
+La `caserne_militaire/` permet de stocker des généraux présents au village mais non engagés.
 Les généraux y restent complets avec leurs blocs et fichiers. Un passage
-`reserve <-> garnison` est une réorganisation interne au village et **ne compte pas
-comme un mouvement**. Un général peut donc être placé depuis la réserve dans la
+`caserne_militaire <-> garnison` est une réorganisation interne au village et **ne compte pas
+comme un mouvement**. Un général peut donc être placé depuis la caserne militaire dans la
 garnison puis effectuer son déplacement normal hors du village pendant le même tour,
 si les autres règles de déplacement l'autorisent.
 
 ### Prise en charge des zones militaires
 
-`plateau.reparer_structure(configuration)` crée ou répare la garnison, la réserve
+`plateau.reparer_structure(configuration)` crée ou répare la garnison, la caserne militaire
 de chaque joueur avec son propriétaire Linux et des permissions `700`, ainsi que
 les renforts tactiques `renforts/5..20` uniquement sur les territoires extérieurs,
 les emplacements extérieurs et les espaces de repli séparés. La réparation ne crée
 aucun général et ne touche pas à sa composition. Le village n'a pas de renforts
 alliés : sa capacité active est limitée à quatre places logiques communes ;
-la réserve conserve les généraux complets inactifs. La colonne du bot conserve
+la caserne militaire conserve les généraux complets inactifs. La colonne du bot conserve
 ses renforts privés, sans suppression de troupes.
 
 La découverte et la sécurité utilisent les mêmes descriptions de zones dans
-`generaux.py`. La réserve est inspectée pour l'identité officielle, les propriétaires
+`generaux.py`. La caserne militaire est inspectée pour l'identité officielle, les propriétaires
 et les duplications, mais elle ne figure pas parmi les forces engagées.
 
 Les positions persistantes conservent le format `joueur:generalN=territoire`.
-Un général en réserve comme en garnison a la position logique `village` ; son
+Un général en caserne militaire comme en garnison a la position logique `village` ; son
 chemin réel permet de retrouver sa zone. Ainsi, la réorganisation interne ne crée
 ni mouvement supplémentaire ni fatigue. Les restrictions communes de déploiement,
 de retour du repli et de distance restent applicables au déplacement territorial.
@@ -287,7 +287,7 @@ terminé. Une ouverture de tour conserve le dernier bilan.
 avec une visibilité complète commune aux deux joueurs et un rendu distinct pour
 chaque destinataire. Il montre les cinq territoires du prototype, leur contrôle,
 les propriétaires, les noms d'affichage, les effectifs et compositions par bloc.
-Le home reste exclu. Garnison, réserve, récompenses Crypte et forces en attente
+Le home reste exclu. Garnison, caserne militaire, récompenses Crypte et forces en attente
 sont distinguées ; seuls les quatre emplacements actifs déterminent le contrôle.
 Le village n'a pas de renforts alliés 5..20. Le repli reste hors combat. Un territoire
 contesté par rattrapage affiche les deux camps sans provoquer de nouveau combat.
@@ -459,15 +459,15 @@ vierge termine son initialisation ; un général détruit ne réutilise jamais s
 numéro. Une interruption de préparation reste signalée pour récupération.
 
 Les joueurs créent ou finalisent les unités uniquement dans leur home ou dans
-`village/<joueur>/reserve/generalN`. Les ajouts sont interdits en garnison, sur
+`village/<joueur>/caserne_militaire/generalN`. Les ajouts sont interdits en garnison, sur
 les fronts, dans les renforts, au repli et dans la Crypte, y compris sa récompense.
 L'atelier pédagogique ne devient pas une zone de recrutement militaire.
 
-L'entraînement en réserve impose d'attendre la publication avant de
+L'entraînement en caserne militaire impose d'attendre la publication avant de
 quitter sa zone : un général entraîné au tour N puis déplacé est remis au chemin d'origine avec
 ses unités, sans fatigue ni sanction de repli. Au tour N+1, il peut partir
-normalement. L'interdiction inclut réserve/garnison.
-En réserve, tout ajout d'unités impose cette attente, y compris avant un départ
+normalement. L'interdiction inclut caserne militaire/garnison.
+En caserne militaire, tout ajout d'unités impose cette attente, y compris avant un départ
 hors du village ; après publication, la réorganisation puis le mouvement normal
 redeviennent possibles.
 
@@ -988,7 +988,7 @@ déplace. S'il est supprimé, le moteur le recrée au scan suivant avec la valeu
 défaut appropriée à sa situation de création.
 
 Le scan utilise la **position actuelle** au moment de recréer le fichier : `2`
-dans la réserve ou la garnison du village, `1` dans toute autre zone (home et repli
+dans la caserne militaire ou la garnison du village, `1` dans toute autre zone (home et repli
 compris). Il ne remplace pas un choix existant. Une valeur vide ou invalide est
 signalée dans le rapport long et utilise le défaut du lieu, sans réécrire le fichier.
 Le fichier appartient au joueur, en `600`, et ne modifie jamais `ordre.txt`.
@@ -1012,10 +1012,10 @@ positions `5..20` sont stockées dans une zone `renforts/` propre à chaque joue
 par exemple `est_1/j1/renforts/5/`. Cette file 1..20 concerne uniquement les
 territoires ouverts. Au village, la recherche est limitée à la garnison 1..4 ;
 aucune zone de renforts alliés n'est créée. Sans place libre à partir de la
-préférence, le général est accueilli dans la réserve privée de son joueur au
+préférence, le général est accueilli dans la caserne militaire privée de son joueur au
 village, sans création ni perte de données. Sur les autres territoires, une file
 pleine le laisse à l'origine, sans sanction de repli. Une préférence valide 5..20
-reste inchangée dans la fiche et conduit donc à la réserve à l'arrivée au village.
+reste inchangée dans la fiche et conduit donc à la caserne militaire à l'arrivée au village.
 
 La fiche d'un général joueur peut contenir le champ optionnel :
 
@@ -1239,7 +1239,7 @@ envoyés au territoire `repli`**.
 Les joueurs doivent donc communiquer pour répartir leurs généraux entre les quatre
 positions communes.
 
-Au village, `j1` et `j2` possèdent chacun une `reserve/` séparée. La réserve
+Au village, `j1` et `j2` possèdent chacun une `caserne_militaire/` séparée. La caserne militaire
 n'est pas une position de combat et n'entre pas dans la règle des quatre emplacements
 partagés.
 
@@ -1279,7 +1279,7 @@ Le contrôle territorial est calculé selon les unités des forces engagées :
 | Aucune unité | `neutre` |
 | Alliés et bot | `conteste` |
 
-La réserve reste exclue de ces forces. La sauvegarde conserve le format
+La caserne militaire reste exclue de ces forces. La sauvegarde conserve le format
 `territoire=controle`. Ces fonctions ne déclenchent ni défaite globale, ni nouvelle
 vague, ni nouveau tour : ces responsabilités appartiennent au cycle de `survie.py`.
 
@@ -1305,7 +1305,7 @@ village/<joueur>/crypte/
 Le grimoire contient trois PDF téléchargeables par SCP/SFTP, à lire sur l'ordinateur
 du joueur. L'atelier est entièrement jetable : aucun document personnel ne doit
 y être conservé. `recompense/` est une zone de récupération inactive, distincte
-de la garnison, de la réserve et des renforts tactiques.
+de la garnison, de la caserne militaire et des renforts tactiques.
 
 ### Recette et observation
 
@@ -1649,7 +1649,7 @@ Les généraux zombies et les unités zombies ne bénéficient ni du moral ni de
 soins. Les anciennes valeurs de moral et de blessures restent enregistrées,
 mais ne permettent aucun sauvetage ni restauration des blessures zombies,
 y compris à l’Hôpital et par le Chaman. Les PC et les étiquettes compatibles
-restent applicables. Spore (conversion), Propagation (création) et la réserve
+restent applicables. Spore (conversion), Propagation (création) et la caserne militaire
 territoriale du Bouclier vivant conservent leurs règles spécifiques.
 
 Une armée de général zombie ne peut posséder qu'un seul
@@ -1660,7 +1660,7 @@ il affronte successivement les blocs adverses : un bloc de puissance effective
 P le détruit immédiatement si P est supérieur ou égal à sa résistance R ;
 sinon sa résistance devient R - P/4 (valeur rationnelle, sans arrondi).
 Les rapports de force intègrent la faiblesse ×2 subie par les Zombies,
-sans diminuer deux fois la réserve. La résistance résiduelle est conservée
+sans diminuer deux fois la caserne militaire. La résistance résiduelle est conservée
 entre tous les duels du même territoire, puis rétablie à 250 à la fin des combats
 territoriaux, si le bouclier existe toujours.
 
