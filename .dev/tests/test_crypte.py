@@ -371,6 +371,19 @@ class Crypte(unittest.TestCase):
         self.assertEqual(self.etat.lire_compteur_general('j1'), 2)
         self.assertTrue((self.racine / 'home/j1/general2').exists())
 
+    def test_rapport_activites_par_joueur_et_remplacement(self):
+        import rapports
+        rapports.preparer_activites(self.profil, 3)
+        rapports.noter_activite(self.profil, 'j1', 'CASERNE MILITAIRE',
+                               'general1 : +1 formation')
+        premier = self.profil['game_path'] / 'village/j1/rapport_activites.txt'
+        autre = self.profil['game_path'] / 'village/j2/rapport_activites.txt'
+        self.assertIn('+1 formation', premier.read_text(encoding='utf-8'))
+        self.assertNotIn('+1 formation', autre.read_text(encoding='utf-8'))
+        rapports.preparer_activites(self.profil, 4)
+        self.assertIn('TOUR 4', premier.read_text(encoding='utf-8'))
+        self.assertNotIn('+1 formation', premier.read_text(encoding='utf-8'))
+
     def test_generation_privee_publication_sans_rejeu(self):
         self.reussir()
         g = self.gestion()
