@@ -99,7 +99,7 @@ Responsabilités :
 | `progression.py` | caractéristiques officielles, tirages pondérés et montée de niveau configurable |
 | `commandement.py` | effets fractionnaires des étiquettes, instantané QG/Messager et répartition du soutien territorial |
 | `soldats.py` | identité individuelle, blessures, sauvetages et batailles survécues |
-| `formation.py` | formation en réserve, hôpital, École et Forge, séjours, mémoires et transformations |
+| `formation.py` | formation en caserne militaire, hôpital, École et Forge, séjours, mémoires et transformations |
 | `cycle_linux.py` | gel Linux, capture privée, publication de générations et permissions des phases Survie |
 | `survie_admin.py` | diagnostic, dégel de secours et republication explicitement autorisée, sans rejeu métier |
 | `crypte.py` | collecteur privé Survie, recette pédagogique, cooldown et attribution différée |
@@ -125,10 +125,10 @@ retraites. Les fonctions isolées restent appelables séparément.
 réserves. `generaux.zones_generaux()` ajoute les homes et le repli. Ces descriptions
 communes sont utilisées par la recherche, l'audit et la préparation du plateau ;
 elles ne lisent ni ne modifient le disque. Une zone numérotée porte un champ
-`emplacement` ; une réserve n'en porte pas. Seules les places actives `1..4`
+`emplacement` ; une caserne militaire n'en porte pas. Seules les places actives `1..4`
 participent à la lecture des forces engagées. En Survie, les renforts alliés
 `territoire/joueur/renforts/5..20`, uniquement hors village, sont découverts et audités comme les autres
-généraux, avec leurs propriétaires séparés. Ils restent distincts de la réserve.
+généraux, avec leurs propriétaires séparés. Ils restent distincts de la caserne militaire.
 
 En Survie, ces descriptions incluent aussi `territoire/bot/renforts/`, sans
 emplacement de combat. L'inventaire de `survie.py` conserve tous les ennemis des
@@ -185,7 +185,7 @@ priorité liée à `j1` ou `j2`. Une préférence vide, invalide ou hors de `1..
 produit un avertissement et est traitée comme absente, sans réécrire la fiche.
 Les places déjà occupées ou réservées à l'arrivée restent indisponibles. Un général
 sans place libre entre son début de recherche et la capacité d'arrivée (`4` au
-village, `20` ailleurs) rejoint la réserve de son joueur si l'arrivée est le village.
+village, `20` ailleurs) rejoint la caserne militaire de son joueur si l'arrivée est le village.
 Ailleurs, il reste sur son territoire d'origine avec un avertissement, sans suppression
 ni repli ; les autres retraites possibles continuent. Aucun nouveau motif de fuite
 n'est ajouté. Les unités, identités, profils, ordres, blessures, statuts, fichiers et fatigue sont
@@ -496,7 +496,7 @@ du même type s'applique à la valeur contextuelle. Aucun attribut permanent de
 force n'est ajouté ; le champ historique `force` de la fiche reste inchangé.
 
 L'audit interdit toute cavalerie lourde construite manuellement, y compris dans
-le home et la réserve. Il vérifie l'attribution privée du général récompense et
+le home et la caserne militaire. Il vérifie l'attribution privée du général récompense et
 les unités de la référence publiée `unites_actions.json`, avant les déplacements
 de sanction. Une copie ou un nouveau marqueur d'équipement est supprimé ; une
 unité ancienne renommée ou déplacée entre blocs est conservée. Le rapprochement
@@ -564,13 +564,13 @@ Sous le gel de clôture, les identités vivantes sont relevées dans le champ
 L'audit supprime les seuls ajouts interdits et journalise la raison. Si un général
 a quitté une zone d'entraînement avec des ajouts, il revient à son chemin exact
 d'origine avec toutes ses unités, sans fatigue ni repli. Cela inclut les passages
-réserve/garnison. Depuis home, un général nouvellement créé ou déjà enregistré
+caserne militaire/garnison. Depuis home, un général nouvellement créé ou déjà enregistré
 dans la référence officielle précédente peut créer ses unités puis accéder
 immédiatement aux places et bâtiments autorisés du village, sans mouvement
 territorial. Le droit vaut aussi pour un général vide. La validation commune
 de sortie du home reste obligatoire : aucun saut direct vers un front, ni
 exemption des contrôles d'identité ou de collision. Les séjours complets des
-bâtiments et l'attente après entraînement en réserve restent applicables.
+bâtiments et l'attente après entraînement en caserne militaire restent applicables.
 
 Un rappel légal vers home peut être suivi d'entraînement à l'arrivée. Tout général
 rappelé doit rester au home jusqu'à la prochaine publication, même sans ajout
@@ -1525,7 +1525,7 @@ Deux jauges indépendantes déclenchent les niveaux :
 - **Combat** : un point par bataille territoriale personnellement combattue
   et survécue, cascades comprises. Deux points donnent un niveau.
 - **Formation** : un point par tour entier validé dans la caserne militaire
-  (dossier `village/<joueur>/reserve/`). Trois points donnent un niveau.
+  (dossier `village/<joueur>/caserne_militaire/`). Trois points donnent un niveau.
 
 Seule la jauge déclenchée revient à zéro. Les formations sont traitées avant
 les combats. `valider_evenement` conserve atomiquement jauges, niveau,
@@ -1586,7 +1586,7 @@ Les généraux zombies et les unités zombies ne bénéficient ni du moral ni de
 soins. Les anciennes valeurs de moral et de blessures restent enregistrées,
 mais ne permettent aucun sauvetage ni restauration des blessures zombies,
 y compris à l’Hôpital et par le Chaman. Les PC et les étiquettes compatibles
-restent applicables. Spore (conversion), Propagation (création) et la réserve
+restent applicables. Spore (conversion), Propagation (création) et la caserne militaire
 territoriale du Bouclier vivant conservent leurs règles spécifiques.
 
 Après chaque choc de blocs et chaque manœuvre, les pertes sont sélectionnées
@@ -1606,7 +1606,7 @@ l'affrontement suivant. Les blessés combattent sans pénalité supplémentaire.
 Une bataille complète correspond à toute la résolution d'un territoire pendant
 un tour, frontal, rangé et cascades compris. Les unités des généraux effectivement
 engagés sont suivies ; leurs survivantes gagnent une seule bataille, sans condition
-de victoire. Les unités de réserve non engagées ne gagnent rien. Le gain est appliqué
+de victoire. Les unités de caserne militaire non engagées ne gagnent rien. Le gain est appliqué
 en fin de résolution territoriale : le nouveau statut ne change pas rétroactivement
 la limite de blessures des affrontements déjà résolus. Les retraites Survie sont
 différées jusqu'après ce comptage. L'ID Survie `survie:<tour>:<territoire>` empêche
@@ -1669,7 +1669,7 @@ doivent également être présents et inchangés pendant le tour. Une entrée ta
 substitution invalide le séjour concerné. Modifier une demande pendant ACTIONS
 ne remplace pas celle du début. Une reprise ne réinitialise pas le début du séjour.
 
-La formation en réserve utilise les mêmes relevés et validations. Comme plusieurs
+La formation en caserne militaire utilise les mêmes relevés et validations. Comme plusieurs
 généraux partagent ce dossier, sa preuve conserve le périphérique et l'inode du
 parent, mais pas son ctime : l'arrivée d'un voisin n'annule pas le séjour.
 Le ctime du général lui-même reste contrôlé pour détecter sa sortie et son retour.
