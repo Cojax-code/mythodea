@@ -88,6 +88,16 @@ class Village(unittest.TestCase):
     def audit(self):
         self.securite.verifier_tous_les_deplacements(self.profil)
 
+    def test_ancienne_reserve_signalee_sans_perdre_de_general(self):
+        ancien = self.config.game_path / 'village/j1/reserve'
+        ancien.mkdir()
+        temoin = ancien / 'general99'
+        temoin.mkdir()
+        with self.assertRaisesRegex(RuntimeError, 'Ancienne caserne détectée'):
+            self.plateau.reparer_structure(self.profil)
+        self.assertTrue(temoin.is_dir())
+        self.assertTrue(ancien.is_dir())
+
     def test_structure_village_et_droits_separes_sans_generation(self):
         for joueur, uid in self.uids.items():
             base = self.config.game_path / "village" / joueur
