@@ -196,7 +196,7 @@ class NiveauxHomeForge(unittest.TestCase):
             self.assertEqual((fiche['nature'], fiche['trait_inne']), (nature, trait))
 
     def test_home_ancien_nouvelles_unites_toutes_activites_gratuites(self):
-        destinations = ('j1/reserve', 'j1/garnison/1', 'j1/hopital/1',
+        destinations = ('j1/caserne_militaire', 'j1/garnison/1', 'j1/hopital/1',
                         'ecole_officiers/1/j1', 'forge/1/j1')
         for numero, relatif in enumerate(destinations, 1):
             origine = self.general(numero=numero, territoire='home', nombre=1)
