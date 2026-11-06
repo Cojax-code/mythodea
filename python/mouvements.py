@@ -283,7 +283,7 @@ def planifier_positions_surnombre(arrivants, positions_occupees, territoire=None
         if place is None:
             message = (f"Avertissement : placement tactique impossible pour {general['joueur']}:{general['nom']}, "
                        f"aucune place libre entre {debut} et {capacite} ; "
-                       + ("accueil en réserve." if reserve else "reste sur son territoire."))
+                       + ("accueil en caserne militaire." if reserve else "reste sur son territoire."))
             rapports.afficher_et_ecrire(message)
             if territoire is not None:
                 rapports.ecrire_rapport_territoire(territoire, message)
@@ -296,7 +296,7 @@ def planifier_positions_surnombre(arrivants, positions_occupees, territoire=None
 def preparer_retraites_surnombre(arrivants, territoire, configuration, reservations=()):
     """Prépare les destinations d'une retraite dans la file alliée, sans déplacer.
 
-    Les occupants déjà présents gardent leur place. La réserve accueille le surplus au village.
+    Les occupants déjà présents gardent leur place. La caserne militaire accueille le surplus au village.
     Toutes les destinations sont vérifiées avant le premier déplacement.
     """
     if not arrivants:
@@ -347,7 +347,7 @@ def preparer_retraites_surnombre(arrivants, territoire, configuration, reservati
         for general in arrivants:
             if id(general) in places:
                 continue
-            destination = territoire_arrivee / general['joueur'] / 'reserve' / general['nom']
+            destination = territoire_arrivee / general['joueur'] / 'caserne_militaire' / general['nom']
             if destination.exists():
                 raise FileExistsError(destination)
             if not general['chemin'].is_dir():
