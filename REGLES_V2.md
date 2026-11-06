@@ -73,7 +73,7 @@ applicables. Une mémoire devenue incompatible bloque l'attribution
 sans perte d'état ; aucun remplacement silencieux n'est effectué.
 
 Deux batailles territoriales personnellement combattues et survécues donnent un
-niveau ; trois séjours complets en caserne militaire donnent un niveau par une jauge distincte.
+niveau ; trois clôtures de tour avec présence en caserne militaire donnent un niveau par une jauge distincte (entrée du tour incluse).
 Seule la jauge déclenchée revient à zéro. Les généraux zombies suivent leur règle
 spécifique de capacité, sans ces récompenses ordinaires.
 
