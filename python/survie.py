@@ -504,6 +504,7 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
     tour = cycle["tour"]
     etat.sauvegarder_cycle_survie({"tour": tour, "phase": "resolution"}, configuration)
     rapports.preparer_rapports(configuration)
+    rapports.preparer_activites(configuration, tour)
     rapports.afficher_et_ecrire(f"=== RÉSOLUTION TOUR {tour} / VAGUE {tour + 1} ===")
     controle_avant = etat.charger_controle_territoires(configuration)
     profil_audit = dict(configuration, tour_preparation=(tour == 0))
