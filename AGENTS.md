@@ -82,9 +82,9 @@ Pour le premier prototype Survie :
 - garder `repli` comme zone de **sanction** (anti-triche, duplication, déplacement
   illégal, collision interdite). La sanction de repli comporte un délai d'attente
   calculé selon la règle commune documentée dans `MYTHODEA_SPEC.md` ;
-- au village, conserver une `reserve/` séparée pour chaque joueur ; le passage
-  `reserve <-> garnison` est une réorganisation interne et ne consomme pas le
-  mouvement normal du général. La `reserve/` ne doit pas être confondue avec la
+- au village, conserver une `caserne_militaire/` séparée pour chaque joueur ; le passage
+  `caserne_militaire <-> garnison` est une réorganisation interne et ne consomme pas le
+  mouvement normal du général. La `caserne_militaire/` ne doit pas être confondue avec la
   zone tactique `renforts/`.
 
 ## Tests
