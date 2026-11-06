@@ -36,7 +36,9 @@ class Progression(unittest.TestCase):
                 self.assertEqual(fiche['moral'], 0)
                 orientation = nature.removesuffix('_hybride')
                 self.assertEqual(fiche['orientation_principale'], orientation)
-                self.assertEqual(fiche['points_commandement'], 11 if orientation == 'stratege' else 0)
+                self.assertEqual(fiche['points_commandement'], 0)
+                self.assertEqual(fiche['etiquettes'], {})
+                self.assertEqual(fiche['evolutions_acquises'], [])
 
     def test_distribution_ponderee_exacte(self):
         for nature in progression.RECOMPENSES:
