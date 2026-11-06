@@ -65,7 +65,7 @@ class Village(unittest.TestCase):
         if not reserve and int(place) >= 5:
             zone = zone / "renforts"
         elif territoire == "village":
-            zone = zone / ("reserve" if reserve else "garnison")
+            zone = zone / ("caserne_militaire" if reserve else "garnison")
         if not reserve:
             zone = zone / place
         return zone / nom
@@ -91,7 +91,7 @@ class Village(unittest.TestCase):
     def test_structure_village_et_droits_separes_sans_generation(self):
         for joueur, uid in self.uids.items():
             base = self.config.game_path / "village" / joueur
-            for relatif in (".", "garnison", "reserve", "garnison/1", "garnison/2", "garnison/3", "garnison/4"):
+            for relatif in (".", "garnison", "caserne_militaire", "garnison/1", "garnison/2", "garnison/3", "garnison/4"):
                 chemin = base / relatif
                 self.assertTrue(chemin.is_dir())
                 self.assertIn(call(chemin, uid, uid), self.chown.call_args_list)
