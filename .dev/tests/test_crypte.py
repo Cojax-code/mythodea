@@ -123,7 +123,7 @@ class Crypte(unittest.TestCase):
         self.reussir()
         self.creer()
         p = self.crypte.zone(self.profil, 'j1') / 'recompense'
-        (p / 'general1').rename(self.config.game_path / 'village/j1/reserve/general1')
+        (p / 'general1').rename(self.config.game_path / 'village/j1/caserne_militaire/general1')
         self.activer(7)
         with self.assertRaisesRegex(ValueError, 'tour 8'):
             self.message('start')
@@ -134,7 +134,7 @@ class Crypte(unittest.TestCase):
         self.activer(13)
         with self.assertRaisesRegex(ValueError, 'attente'):
             self.message('start')
-        (p / 'general2').rename(self.config.game_path / 'village/j1/reserve/general2')
+        (p / 'general2').rename(self.config.game_path / 'village/j1/caserne_militaire/general2')
         self.activer(12)
         with self.assertRaisesRegex(ValueError, 'tour 13'):
             self.message('start')
@@ -328,12 +328,12 @@ class Crypte(unittest.TestCase):
         self.reussir('j1')
         self.creer(3)
         (self.crypte.zone(self.profil, 'j1') / 'recompense/general1').rename(
-            self.config.game_path / 'village/j1/reserve/general1')
+            self.config.game_path / 'village/j1/caserne_militaire/general1')
         self.activer(4)
         self.reussir('j2')
         self.creer(4)
         (self.crypte.zone(self.profil, 'j2') / 'recompense/general1').rename(
-            self.config.game_path / 'village/j2/reserve/general1')
+            self.config.game_path / 'village/j2/caserne_militaire/general1')
         self.securite.verifier_tous_les_deplacements(self.profil)
         self.activer(7)
         with self.assertRaisesRegex(ValueError, 'tour 8'):
