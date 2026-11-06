@@ -382,7 +382,7 @@ class Surnombre(unittest.TestCase):
         self.etat.sauvegarder_generaux_fatigues({"j1:general1"})
         fichiers = {p.name: p.read_bytes() for p in arrivant.iterdir() if p.is_file()}
         resultat = self.reculer([arrivant], "est_1")
-        destination = self.config.game_path / 'village/j1/reserve/general1'
+        destination = self.config.game_path / 'village/j1/caserne_militaire/general1'
         self.assertEqual([p for _, p in resultat], [destination])
         self.assertFalse((self.config.game_path / 'village/j1/renforts').exists())
         self.assertTrue(reserve.exists())
