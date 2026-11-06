@@ -27,7 +27,7 @@ Deux jauges indépendantes apparaissent sur la fiche du général :
   personnellement affronté au moins un bloc adverse à chaque résolution.
   Plusieurs duels dans un même territoire ne comptent qu'une fois. Une défaite
   survécue ou une fuite après combat compte ; une fuite avant combat ne compte pas.
-- Trois tours complets dans `village/<joueur>/reserve/` donnent un niveau de
+- Trois tours complets dans `village/<joueur>/caserne_militaire/` donnent un niveau de
   formation. Ce dossier reste le nom technique de la caserne militaire.
 
 Seule la jauge ayant déclenché le niveau revient à zéro. La formation est traitée
@@ -51,7 +51,7 @@ Les blessures reviennent à zéro ; batailles, expérience et statuts sont conse
 Consulter `formation_resultat.txt` dans le dossier du général après publication.
 
 Une entrée pendant ACTIONS commence son séjour complet au début du tour suivant.
-Une sortie, même suivie d'un retour, annule le séjour. Les passages entre réserve,
+Une sortie, même suivie d'un retour, annule le séjour. Les passages entre caserne militaire,
 garnison et bâtiments restent des réorganisations internes au village sans coût
 de mouvement ; les déplacements entre territoires gardent leurs règles.
 
@@ -127,10 +127,10 @@ places et bâtiments autorisés du village sont accessibles sans coût territori
 y compris aux nouveaux généraux et à ceux déjà validés dans home au tour précédent,
 même après ajout d'unités. Aucun déplacement direct vers `est_1` ni aucune
 marche forcée ne permet de sauter cette étape. Les délais des bâtiments, l'attente
-après entraînement en réserve et celle d'un rappel du tour courant restent
+après entraînement en caserne militaire et celle d'un rappel du tour courant restent
 applicables ; les restrictions du tour 0 sont conservées.
 Une récompense peut effectuer un déplacement normal dès sa publication.
-Un fuyard arrivant au village rejoint la réserve si la garnison ne peut l'accueillir,
+Un fuyard arrivant au village rejoint la caserne militaire si la garnison ne peut l'accueillir,
 avec toutes ses unités et ses données.
 
 ## Ce qui attend encore une décision
