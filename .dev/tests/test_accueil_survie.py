@@ -273,7 +273,7 @@ class AccueilSurvie(unittest.TestCase):
         general = {'chemin': chemin, 'nom': chemin.name, 'joueur': 'j1', 'emplacement': '1'}
         self.assertEqual(self.mouvements.preparer_retraites_surnombre(
             [general], self.config.game_path / 'est_1', self.profil),
-            [(general, self.config.game_path / 'village/j1/reserve/general1')])
+            [(general, self.config.game_path / 'village/j1/caserne_militaire/general1')])
         self.assertTrue(chemin.exists())
         self.assertEqual(self.etat.charger_attentes_repli(self.profil), {})
 
