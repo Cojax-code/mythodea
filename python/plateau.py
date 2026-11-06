@@ -540,6 +540,19 @@ def reparer_structure(configuration=None):
         configuration = config.configuration_mode("classique")
     config.verifier_structure_actuelle(configuration)
 
+    # Ne jamais ignorer silencieusement des généraux encore rangés dans
+    # l'ancien emplacement. La migration d'une partie existante est manuelle.
+    for territoire in configuration['territoires']:
+        if territoire.name not in configuration['villages']:
+            continue
+        for joueur in configuration['joueurs']:
+            ancien = territoire / joueur / 'reserve'
+            if ancien.exists() or ancien.is_symlink():
+                raise RuntimeError(
+                    f'Ancienne caserne détectée : {ancien}. '
+                    'Arrêter la partie et migrer ce dossier vers caserne_militaire '
+                    'ou réinitialiser le plateau avant de démarrer la v2.0 mise à jour.')
+
     import formation
     formation.preparer_emplacements(configuration, migrer=False)
     for territory in configuration["territoires"]:
