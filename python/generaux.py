@@ -202,7 +202,7 @@ def lire_ordre_surnombre(general, position, configuration):
 
 
 def scanner_ordres_surnombre(configuration):
-    """Complète les généraux joueurs officiels, y compris home, réserve et repli."""
+    """Complète les généraux joueurs officiels, y compris home, caserne militaire et repli."""
     if configuration["mode"] != "survie":
         return
     for identifiant in etat.charger_positions_generaux():
@@ -217,7 +217,7 @@ def scanner_ordres_surnombre(configuration):
 def zones_generaux_territoire(territory, joueur, configuration=None):
     """Décrit les zones militaires, sans lire ni modifier le disque.
 
-    La réserve et la garnison ont la même position logique. Seules les zones
+    La caserne militaire et la garnison ont la même position logique. Seules les zones
     actives participent aux combats. Les renforts numérotés sont aussi audités.
     """
     if configuration is None:
@@ -232,7 +232,7 @@ def zones_generaux_territoire(territory, joueur, configuration=None):
         for emplacement in configuration["emplacements"]
     ]
     if village:
-        zones.append({"position": territory.name, "chemin": joueur_dir / "reserve"})
+        zones.append({"position": territory.name, "chemin": joueur_dir / "caserne_militaire"})
         zones.extend({'position': territory.name, 'chemin': joueur_dir / 'hopital' / place,
                       'emplacement': f'hopital/{place}', 'batiment': 'hopital'}
                      for place in configuration['emplacements_hopital'])
