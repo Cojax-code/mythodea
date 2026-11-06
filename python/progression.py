@@ -110,14 +110,12 @@ def nouvelles_caracteristiques(aleatoire=None):
     nature = tirer_pondere(NATURES, aleatoire)
     orientation = nature.removesuffix('_hybride')
     trait = tirer_pondere(TRAITS[orientation], aleatoire)
-    # Le stratège démarre avec sa première étiquette connue.
-    initiale = (list(catalogues.ETIQUETTES_COMBAT)[aleatoire.randint(0, len(catalogues.ETIQUETTES_COMBAT) - 1)]
-                if orientation == 'stratege' else None)
+    # Au niveau 0, seule l'identité du général est déterminée.
+    # Les statistiques, étiquettes et évolutions s'acquièrent par la progression.
     return dict(niveau=0, nature=nature, orientation_principale=orientation, trait_inne=trait,
-                points_commandement=gain_commandement(0, aleatoire) if orientation == 'stratege' else 0,
-                moral=0, evolutions_acquises=[], evolution_apprise=None,
+                points_commandement=0, moral=0, evolutions_acquises=[], evolution_apprise=None,
                 progression_combat=0, progression_formation=0,
-                etiquettes={initiale: 1} if initiale else {}, etiquettes_apprises_ecole=[])
+                etiquettes={}, etiquettes_apprises_ecole=[])
 
 
 def emplacements_etiquettes(niveau):
@@ -211,7 +209,7 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
     if orientation == 'instinctif' or hybride:
         resultat['moral'] = min(100, resultat['moral'] + gain_moral_naturel(niveau))
 
-    # Acquisitions garanties inchangées : création/N5/N10 ou N5 selon la
+    # Acquisitions garanties : N5/N10 ou N5 selon la
     # dominante. Les connaissances de roulette ne consomment pas ces paliers.
     # À partir du N15 pour les stratèges, et hors N5 pour les
     # instinctifs, la roulette ordinaire s'applique également aux paliers.
