@@ -34,6 +34,29 @@ def chemin_sortie(chemin):
     return repertoire / chemin.relative_to(config.rapport_dir) if repertoire else chemin
 
 
+
+def preparer_activites(configuration, tour):
+    """Crée un rapport privé neuf pour chaque joueur dans la génération du tour."""
+    import etat
+    for joueur in configuration['joueurs']:
+        chemin = configuration['game_path'] / 'village' / joueur / 'rapport_activites.txt'
+        etat.ecrire_prive(chemin, f"=== MYTHODEA — ACTIVITÉS DU TOUR {tour} ===\\n"
+                          "Aucune activité enregistrée pour le moment.\\n".replace('\\n', '\n'))
+
+
+def noter_activite(configuration, joueur, categorie, message):
+    """Ajoute un résultat officiel au rapport de son seul propriétaire."""
+    if joueur not in configuration['joueurs']:
+        raise ValueError('Joueur inconnu pour le rapport personnel.')
+    if not categorie or not message or any(c in categorie for c in '\\n\\r'):
+        raise ValueError('Notification d’activité invalide.')
+    chemin = configuration['game_path'] / 'village' / joueur / 'rapport_activites.txt'
+    if not chemin.is_file() or chemin.is_symlink():
+        raise RuntimeError('Rapport d’activités personnel absent ou invalide.')
+    with chemin.open('a', encoding='utf-8') as f:
+        f.write(f"[{categorie}] {str(message).replace(chr(10), ' ').replace(chr(13), ' ')}\\n".replace('\\n', '\n'))
+
+
 def ouvrir_suivi(configuration, gid):
     """Inode permanent, sans liens ; l'appelant sérialise les écritures."""
     from cycle_linux import sans_liens, synchroniser_dossier
