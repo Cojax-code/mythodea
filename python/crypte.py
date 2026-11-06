@@ -584,6 +584,10 @@ def _materialiser_site(c, tour):
         sauver(c, donnees)
         relatif = zone(c, j).relative_to(c['game_path']) / 'recompense'
         rapports.ecrire_rapport_court(f'{j} : {recette["nom"]} ({nom}) attend dans {relatif}/.')
+        rapport_personnel = c['game_path'] / 'village' / j / 'rapport_activites.txt'
+        if rapport_personnel.is_file():
+            rapports.noter_activite(c, j, 'CRYPTE',
+                f'{nom} ({recette["nom"]}) attribué ; récompense à récupérer dans {relatif}/.')
     generaux.scanner_ordres_surnombre(c)
 
 
