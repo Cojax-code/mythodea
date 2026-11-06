@@ -13,7 +13,7 @@ partie réelle : plateaux temporaires, processus de test et copies isolées uniq
   Le mécanisme existant satisfaisait cette règle : des tests le couvrent sans
   ajouter d'exemption permanente à l'audit commun.
 - Une retraite admissible vers le village utilise la garnison disponible, puis
-  `reserve` si aucune place ne convient. Identité, profil, ordres, fatigue et états
+  `caserne_militaire` si aucune place ne convient. Identité, profil, ordres, fatigue et états
   des soldats sont conservés. Les conditions de fuite ne changent pas.
 - Création des quatre natures selon 45/45/5/5, orientation principale permanente,
   traits et poids de récompenses conservés. Les hybrides peuvent apprendre des
@@ -48,7 +48,7 @@ une attribution explicite. Les autres déblocages restent réservés.
 Les écritures concurrentes du même emplacement sont toujours refusées ensemble ;
 leur départage et le remplacement d'un apprentissage personnel en attente restent
 à définir. Les généraux historiques sans profil ne reçoivent pas de tirage rétroactif.
-Le nom technique `reserve` est conservé.
+Le nom technique `caserne_militaire` est conservé.
 
 ## Permissions et sauvegardes
 
@@ -101,7 +101,7 @@ soldats enregistre la transformation de Forge sans remplacer leur UUID.
 | `python/commandement.py` | Éligibilité des hybrides au QG et contrôle des ordres appris |
 | `python/combats.py` | Sauvetage par le moral des hybrides |
 | `python/generaux.py` | Description commune des places d'École et de Forge |
-| `python/mouvements.py` | Accueil des fuyards en réserve et exclusion des bâtiments du placement tactique |
+| `python/mouvements.py` | Accueil des fuyards en caserne militaire et exclusion des bâtiments du placement tactique |
 | `python/formation.py` | Emplacements, migration, séjour de Forge et transformation conservant le soldat |
 | `python/securite.py` | Reconnaissance des cavaleries lourdes forgées officiellement |
 | `python/plateau.py` | Préparation des bâtiments et de leurs permissions |
@@ -110,9 +110,9 @@ soldats enregistre la transformation de Forge sans remplacer leur UUID.
 | `.dev/tests/test_complements_moteur.py` (nouveau) | 21 scénarios des nouvelles règles et de leurs protections |
 | `.dev/tests/test_progression.py` | Probabilités des quatre natures et exclusion des récompenses déjà acquises |
 | `.dev/tests/test_soldats_formation.py` | Chemin physique commun de l'École |
-| `.dev/tests/test_surnombre.py` | Accueil en réserve et conservation des données |
+| `.dev/tests/test_surnombre.py` | Accueil en caserne militaire et conservation des données |
 | `.dev/tests/test_village.py` | Groupe commun ajouté au simulateur de permissions |
-| `.dev/tests/test_accueil_survie.py` | Retraite en réserve et introduction malgré l'espacement existant |
+| `.dev/tests/test_accueil_survie.py` | Retraite en caserne militaire et introduction malgré l'espacement existant |
 | `.dev/tests/test_notifications_survie.py` | Vérification de l'annonce de consultation déjà existante |
 | `python/tests_linux/test_progression_isolee.py` | Confidentialité réelle des compartiments partagés |
 | `MYTHODEA_SPEC.md` | Règles, formats persistants, architecture et limites |
