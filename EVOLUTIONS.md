@@ -27,8 +27,10 @@ Deux jauges indépendantes apparaissent sur la fiche du général :
   personnellement affronté au moins un bloc adverse à chaque résolution.
   Plusieurs duels dans un même territoire ne comptent qu'une fois. Une défaite
   survécue ou une fuite après combat compte ; une fuite avant combat ne compte pas.
-- Trois tours complets dans `village/<joueur>/caserne_militaire/` donnent un niveau de
-  formation. Ce dossier reste le nom technique de la caserne militaire.
+- Trois clôtures de tour avec le général présent dans
+  `village/<joueur>/caserne_militaire/` donnent un niveau de formation.
+  L'entrée pendant ACTIONS compte dès la clôture de ce même tour ;
+  le compteur recommence à zéro après le troisième point.
 
 Seule la jauge ayant déclenché le niveau revient à zéro. La formation est traitée
 avant les combats. Chaque niveau donne la récompense prévue par la nature et le
@@ -50,7 +52,9 @@ Tous les généraux ayant passé un tour complet à l'hôpital sont soignés ens
 Les blessures reviennent à zéro ; batailles, expérience et statuts sont conservés.
 Consulter `formation_resultat.txt` dans le dossier du général après publication.
 
-Une entrée pendant ACTIONS commence son séjour complet au début du tour suivant.
+Pour l'hôpital, l'École et la Forge, une entrée pendant ACTIONS commence son séjour complet
+au début du tour suivant. La caserne militaire fait exception : elle attribue
+un point si le général est présent à la capture de fin de tour.
 Une sortie, même suivie d'un retour, annule le séjour. Les passages entre caserne militaire,
 garnison et bâtiments restent des réorganisations internes au village sans coût
 de mouvement ; les déplacements entre territoires gardent leurs règles.
