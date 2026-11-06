@@ -626,6 +626,7 @@ class Generations:
             formation.preparer(self.c)
             securite.memoriser_unites_actions(self.c, tour + 1)
             self.permissions_consultation()
+            self.proteger_activites()
             debut_consultation = self.horloge()
             rapports.publier_preparation(self.c, self.generation, self.gid,
                                          debut_consultation, defaite)
@@ -662,6 +663,8 @@ class Generations:
                 for p in [racine, *racine.rglob('*')]:
                     sans_liens(p)
                     os.chmod(p, 0o700 if p.is_dir() else 0o600)
+        # Les rapports personnels sont administrés par root et lisibles par leur seul joueur.
+        self.proteger_activites()
         # Les documents administrateur doivent rester lisibles par leur joueur.
         import crypte
         crypte.preparer(self.c)
@@ -672,6 +675,19 @@ class Generations:
         plateau.preparer_accueil(self.c, vague)
         import formation
         formation.preparer(self.c)
+
+    def proteger_activites(self):
+        """Root conserve l'écriture ; seul le groupe privé du joueur peut lire."""
+        for joueur in self.c['joueurs']:
+            chemin = self.game / 'village' / joueur / 'rapport_activites.txt'
+            if not chemin.exists():
+                continue
+            sans_liens(chemin)
+            if not chemin.is_file() or chemin.stat().st_nlink != 1:
+                raise RuntimeError('Rapport personnel non ordinaire ou lié.')
+            groupe = self.c['acteurs'][joueur]['groupe_linux']
+            os.chown(chemin, 0, grp.getgrnam(groupe).gr_gid)
+            os.chmod(chemin, 0o640)
 
     def erreur(self, tour, erreur):
         self.marquer(tour, 'recuperation', erreur=str(erreur))
