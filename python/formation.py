@@ -117,14 +117,14 @@ def commencer_sejour(tour, general, lieu, camp, preuve_presence,
     donnees = charger()
     if cle in donnees['sejours'] or cle in donnees['valides']:
         return False
-    if lieu not in ('ecole_officiers', 'hopital', 'forge', 'reserve'):
+    if lieu not in ('ecole_officiers', 'hopital', 'forge', 'caserne_militaire'):
         raise ValueError('Lieu de formation inconnu.')
     if not preuve_presence:
         raise ValueError('Preuve de présence moteur requise.')
     action, emplacement, evolution = 'soins', None, None
     if lieu == 'forge':
         action = 'forge'
-    if lieu == 'reserve':
+    if lieu == 'caserne_militaire':
         action = 'formation'
     if lieu == 'ecole_officiers':
         caracteristiques = progression.caracteristiques_general(general)
@@ -290,8 +290,8 @@ def occupants(configuration):
             if lieu == 'crypte_des_plaines':
                 continue
             if (zone['position'] in configuration['villages']
-                    and zone['chemin'].name == 'reserve'):
-                lieu = 'reserve'
+                    and zone['chemin'].name == 'caserne_militaire'):
+                lieu = 'caserne_militaire'
             if not lieu:
                 continue
             parent = zone['chemin']
@@ -301,7 +301,7 @@ def occupants(configuration):
             for chemin in parent.iterdir():
                 sans_liens(chemin)
                 if chemin.is_dir() and generaux.numero_general_depuis_nom(chemin.name) is not None:
-                    place = (joueur, chemin.name) if lieu == 'reserve' else zone['emplacement']
+                    place = (joueur, chemin.name) if lieu == 'caserne_militaire' else zone['emplacement']
                     places.setdefault((zone['position'], camp, place), []).append(
                         dict(joueur=joueur, nom=chemin.name, chemin=chemin,
                              lieu=lieu, camp=camp))
@@ -314,7 +314,7 @@ def preuve(chemin):
 
 
 def preuve_general(general):
-    if general.get('lieu') == 'reserve':
+    if general.get('lieu') == 'caserne_militaire':
         # L'arrivée d'un autre général ne rompt pas ce séjour. Le ctime du
         # général détecte sa propre sortie/retour ; l'inode du parent le situe.
         return [*preuve(general['chemin']), *preuve(general['chemin'].parent)[:2]]
@@ -587,10 +587,10 @@ def resoudre_tour(configuration, tour):
     # d'absence de sortie/retour et sont traités plus haut. Les reçus de
     # progression empêchent tout double gain lors d'une reprise.
     for identite, observation in cloture.items():
-        if observation['lieu'] != 'reserve' or observation.get('inscrit_ouverture', True):
+        if observation['lieu'] != 'caserne_militaire' or observation.get('inscrit_ouverture', True):
             continue
         general = presents.get(identite)
-        if (general and general['lieu'] == 'reserve'
+        if (general and general['lieu'] == 'caserne_militaire'
                 and observation['preuve'] == preuve_general(general)):
             progression.valider_evenement(general, 'formation', f'{tour}:{identite}')
     # Les copies des compteurs seront rafraîchies lors de la publication.
