@@ -168,7 +168,7 @@ class ComplementsMoteur(unittest.TestCase):
         self.terminer()
         self.assertFalse(list(general['chemin'].rglob('cavalerie_L*')))
         self.formation.ouvrir_tour(self.profil, 2)
-        ailleurs = self.config.game_path / 'village/j1/reserve/general1'
+        ailleurs = self.config.game_path / 'village/j1/caserne_militaire/general1'
         general['chemin'].rename(ailleurs)
         ailleurs.rename(general['chemin'])
         self.terminer(2)
@@ -218,7 +218,7 @@ class ComplementsMoteur(unittest.TestCase):
         self.assertTrue((ancien / 'notes.txt').exists())
 
     def test_nouveaux_generaux_acces_village_et_batiments_apres_creation_unites(self):
-        destinations = ('j1/reserve', 'j1/garnison/1', 'j1/hopital/1',
+        destinations = ('j1/caserne_militaire', 'j1/garnison/1', 'j1/hopital/1',
                         'ecole_officiers/1/j1', 'forge/1/j1')
         for numero, relatif in enumerate(destinations, 1):
             source = self.general(numero=numero, territoire='home', nombre=0)
@@ -315,7 +315,7 @@ class ComplementsMoteur(unittest.TestCase):
         mouvements = importlib.import_module('mouvements')
         general['emplacement'] = '1'
         destination = mouvements.retraite_surnombre(general, self.config.game_path / 'est_1', self.profil)
-        self.assertEqual(destination, self.config.game_path / 'village/j1/reserve/general1')
+        self.assertEqual(destination, self.config.game_path / 'village/j1/caserne_militaire/general1')
         self.assertEqual({p.relative_to(destination): p.read_bytes()
                           for p in destination.rglob('*') if p.is_file()}, fichiers)
         self.assertEqual(self.progression.caracteristiques_general(general), profil)
