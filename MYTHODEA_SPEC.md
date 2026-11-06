@@ -1524,8 +1524,9 @@ retirent les anciennes clés. Voir les règles de compatibilité dans `REGLES_V2
 Deux jauges indépendantes déclenchent les niveaux :
 - **Combat** : un point par bataille territoriale personnellement combattue
   et survécue, cascades comprises. Deux points donnent un niveau.
-- **Formation** : un point par tour entier validé dans la caserne militaire
-  (dossier `village/<joueur>/caserne_militaire/`). Trois points donnent un niveau.
+- **Formation** : un point à chaque clôture où le général est présent dans
+  la caserne militaire (dossier `village/<joueur>/caserne_militaire/`), y compris
+  lors de son tour d'entrée. Trois points donnent un niveau.
 
 Seule la jauge déclenchée revient à zéro. Les formations sont traitées avant
 les combats. `valider_evenement` conserve atomiquement jauges, niveau,
