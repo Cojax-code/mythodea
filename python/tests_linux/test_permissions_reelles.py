@@ -119,7 +119,7 @@ class PermissionsReelles(unittest.TestCase):
             self.assertEqual(p.stat().st_mode & 0o777, 0o700)
             self.assertNotEqual(self.en_joueur('j1', 'import os,sys; os.listdir(sys.argv[1])', p).returncode, 0)
         for p in (self.c['game_path'] / 'village/j1/garnison',
-                  self.c['game_path'] / 'village/j1/reserve',
+                  self.c['game_path'] / 'village/j1/caserne_militaire',
                   self.c['game_path'] / 'est_1/j1/renforts/5', self.c['repli_path'] / 'j1'):
             self.assertEqual(p.stat().st_mode & 0o777, 0o700)
 
