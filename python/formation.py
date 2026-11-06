@@ -534,6 +534,15 @@ def resoudre_tour(configuration, tour):
     donnees = charger()
     cloture = donnees.get('clotures', {}).get(str(tour), {})
     presents = {f"{g['joueur']}:{g['nom']}": g for g in occupants(configuration)}
+    # Les tests des bâtiments peuvent appeler ce module sans le pilote Survie.
+    # Le rapport personnel est alimenté uniquement s'il a été préparé pour le tour.
+    import rapports
+    def activite(general, categorie, message):
+        cible = configuration['game_path'] / 'village' / general['joueur'] / 'rapport_activites.txt'
+        if cible.is_file():
+            rapports.noter_activite(configuration, general['joueur'], categorie,
+                                  f"{general['nom']} : {message}")
+
     sejours = [(cle, s) for cle, s in donnees['sejours'].items() if s['tour'] == tour]
     complets = []
     for cle, sejour in sejours:
@@ -550,6 +559,7 @@ def resoudre_tour(configuration, tour):
             if general:
                 soldats.ecrire_copie(general['chemin'] / 'formation_resultat.txt',
                                      'Séjour incomplet : aucune validation.\n')
+                activite(general, 'BÂTIMENT', 'séjour incomplet : aucune validation.')
     if len(complets) != len(sejours):
         sauvegarder(donnees)
     sejours = complets
@@ -579,6 +589,9 @@ def resoudre_tour(configuration, tour):
             resultat = str(erreur)
         if general:
             soldats.ecrire_copie(general['chemin'] / 'formation_resultat.txt', resultat + '\n')
+            activite(general, {'formation': 'CASERNE MILITAIRE', 'lecture': 'ÉCOLE',
+                 'ecriture': 'ÉCOLE', 'soins': 'HÔPITAL', 'forge': 'FORGE',
+                 'chevalier': 'ÉCOLE'}[sejour['action']], resultat)
         restant = charger()
         restant['sejours'].pop(cle, None)
         sauvegarder(restant)
@@ -593,4 +606,5 @@ def resoudre_tour(configuration, tour):
         if (general and general['lieu'] == 'caserne_militaire'
                 and observation['preuve'] == preuve_general(general)):
             progression.valider_evenement(general, 'formation', f'{tour}:{identite}')
+            activite(general, 'CASERNE MILITAIRE', '+1 point de formation à la clôture.')
     # Les copies des compteurs seront rafraîchies lors de la publication.
