@@ -73,7 +73,7 @@ applicables. Une mémoire devenue incompatible bloque l'attribution
 sans perte d'état ; aucun remplacement silencieux n'est effectué.
 
 Deux batailles territoriales personnellement combattues et survécues donnent un
-niveau ; trois séjours complets en réserve donnent un niveau par une jauge distincte.
+niveau ; trois séjours complets en caserne militaire donnent un niveau par une jauge distincte.
 Seule la jauge déclenchée revient à zéro. Les généraux zombies suivent leur règle
 spécifique de capacité, sans ces récompenses ordinaires.
 
@@ -81,7 +81,7 @@ Les généraux zombies et les unités zombies ne bénéficient ni du moral ni de
 soins. Les anciennes valeurs de moral et de blessures restent enregistrées,
 mais ne permettent aucun sauvetage ni restauration des blessures zombies,
 y compris à l’Hôpital et par le Chaman. Les PC et les étiquettes compatibles
-restent applicables. Spore (conversion), Propagation (création) et la réserve
+restent applicables. Spore (conversion), Propagation (création) et la caserne militaire
 territoriale du Bouclier vivant conservent leurs règles spécifiques.
 
 ## Étiquettes
@@ -210,7 +210,7 @@ Aucun QG signifie aucun effet global. Plusieurs QG du même camp annulent tous
 les effets globaux de ce camp pour cette bataille, même si l'un disparaît ensuite.
 
 Seuls les généraux **effectivement engagés** sont inclus : positions actives au
-début, y compris les renforts déjà promus. Renforts encore en attente, réserve,
+début, y compris les renforts déjà promus. Renforts encore en attente, caserne militaire,
 bâtiments et home sont exclus. L'instantané reste le même pendant toute la
 bataille territoriale, y compris les cascades Survie. Les renforts engagés plus
 tard reçoivent les effets encore actifs ; leurs PC, Messagers ou déclarations QG
