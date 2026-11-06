@@ -68,7 +68,7 @@ def inventorier_unites_actions(configuration):
                                 'position': zone['position'],
                                 'entrainement': zone['position'] == 'home' or (
                                     zone['position'] in configuration['villages']
-                                    and parent.name == 'reserve'),
+                                    and parent.name == 'caserne_militaire'),
                                 'unites': unites}
     return resultat
 
@@ -214,7 +214,7 @@ def auditer_entrainement(configuration, positions, punis):
                     shutil.rmtree(unite)
             rapports.afficher_et_ecrire(
                 f'{identifiant} : {len(nouvelles)} nouvelle(s) unité(s) supprimée(s), '
-                'entraînement interdit hors home/réserve ; unités anciennes conservées.')
+                'entraînement interdit hors home/caserne militaire ; unités anciennes conservées.')
 
 
 def auditer_unites_speciales(configuration):
@@ -651,7 +651,7 @@ def securiser_emplacements_generaux(configuration=None, territoire=None):
     """Sanctionne tous les occupants d'une position en collision.
 
     En classique, les positions sont propres à chaque joueur. En Survie,
-    elles sont communes aux joueurs du même camp. La réserve est exclue.
+    elles sont communes aux joueurs du même camp. La caserne militaire est exclue.
     """
     if configuration is None:
         configuration = config.configuration_mode("classique")
