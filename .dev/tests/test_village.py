@@ -106,6 +106,7 @@ class Village(unittest.TestCase):
                 self.assertTrue(chemin.is_dir())
                 self.assertIn(call(chemin, uid, uid), self.chown.call_args_list)
                 self.assertIn(call(chemin, 0o700), self.chmod.call_args_list)
+            self.assertFalse((base / "reserve").exists())
             self.assertFalse((base / "1").exists())
             self.assertTrue((self.config.repli_path / joueur).is_dir())
             for territoire in ("est_1", "est_2", "est_3"):
