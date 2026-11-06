@@ -21,7 +21,7 @@ class EntrainementRappelSurvie(unittest.TestCase):
         zones = self.generaux.zones_generaux_territoire(
             self.config.game_path / territoire, joueur, self.profil)
         return next(z['chemin'] for z in zones if (
-            z['chemin'].name == 'reserve' if reserve else z.get('emplacement') == place)) / 'general1'
+            z['chemin'].name == 'caserne_militaire' if reserve else z.get('emplacement') == place)) / 'general1'
 
     def ajouter(self, chemin, numero=9):
         unite = chemin / 'avant' / f'infanterie{numero}'
@@ -122,7 +122,7 @@ class EntrainementRappelSurvie(unittest.TestCase):
                 self.assertFalse(nouvelle.exists())
                 self.assertTrue((chemin / 'arriere/infanterie77/arc').exists())
                 self.assertEqual(self.generaux.total_general_depuis_chemin(chemin), 2)
-        self.assertIn('entraînement interdit hors home/réserve',
+        self.assertIn('entraînement interdit hors home/caserne militaire',
                       self.config.rapport_long_path.read_text(encoding='utf-8'))
 
     def test_finalisation_et_copie_ne_contournent_pas_inventaire(self):
