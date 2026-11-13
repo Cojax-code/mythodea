@@ -7,7 +7,7 @@ Lister uniquement les généraux stockés en réserve.
 
 >>> COMMANDE VÉTÉRAN
 
-find {game_path}/village/{joueur}/reserve -maxdepth 1 -type d -name 'general*' -printf '%f\n' | sort
+find {game_path}/village/{joueur}/caserne_militaire -maxdepth 1 -type d -name 'general*' -printf '%f\n' | sort
 
 NOTE : Le filtre évite le bruit visuel et facilite le comptage rapide.
 
@@ -18,7 +18,7 @@ Examiner les métadonnées d'un général en réserve.
 
 >>> COMMANDE VÉTÉRAN
 
-stat -c 'nom=%n | propriétaire=%U | groupe=%G | droits=%A | modifié=%y' {game_path}/village/{joueur}/reserve/general1
+stat -c 'nom=%n | propriétaire=%U | groupe=%G | droits=%A | modifié=%y' {game_path}/village/{joueur}/caserne_militaire/general1
 
 NOTE : stat donne des informations utiles pour comprendre droits, propriétaire et dernière modification.
 

@@ -18,7 +18,7 @@ Regarder le contenu de la réserve.
 
 >>> COMMANDE
 
-ls -l {game_path}/village/{joueur}/reserve
+ls -l {game_path}/village/{joueur}/caserne_militaire
 
 NOTE : La réserve est une zone logistique du village.
 

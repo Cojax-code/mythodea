@@ -434,10 +434,13 @@ def attribuer_niveau(general, aleatoire=None, catalogue=None, choisir_evolution=
     identifiant = f"{general['joueur']}:{general['nom']}"
     if identifiant not in donnees:
         raise ValueError('Ancien général sans caractéristiques : migration explicite nécessaire.')
-    nouvelle, recompense = monter_niveau(donnees[identifiant], aleatoire, catalogue, choisir_evolution)
+    avant = donnees[identifiant]
+    nouvelle, recompense = monter_niveau(avant, aleatoire, catalogue, choisir_evolution)
     donnees[identifiant] = nouvelle
     sauvegarder(donnees)
     publier_fiche(general['chemin'], nouvelle)
+    import rapports
+    rapports.noter_progression(general, avant, nouvelle, 'attribution moteur', recompense)
     return recompense
 
 
@@ -457,6 +460,7 @@ def valider_evenement(general, voie, evenement, aleatoire=None):
     if cle in fiche.get('progressions_validees', {}):
         publier_fiche(general['chemin'], fiche)
         return False
+    avant = deepcopy(fiche)
     fiche = deepcopy(fiche)
     for source in SEUILS:
         fiche.setdefault(f'progression_{source}', 0)
@@ -472,4 +476,6 @@ def valider_evenement(general, voie, evenement, aleatoire=None):
     donnees[identite] = fiche
     sauvegarder(donnees)
     publier_fiche(general['chemin'], fiche)
+    import rapports
+    rapports.noter_progression(general, avant, fiche, voie, recompense)
     return True

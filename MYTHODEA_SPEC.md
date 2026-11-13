@@ -1128,6 +1128,35 @@ a réellement subi des pertes.
 
 ---
 
+### Rapport personnel d’activités Survie
+
+`village/<joueur>/rapport_activites.txt` est remplacé à chaque publication du tour.
+Il est préparé dans la génération privée avant l’audit et alimenté par les opérations
+validées : créations, jauges et niveaux, gains de PC/moral/étiquettes/évolutions,
+mémoires, soins effectifs, transformations, attributions et récupération de Crypte,
+refus et sanctions administratives. Les détails de combat gardent leurs rapports.
+Les événements sont des sorties, jamais une source des règles du moteur.
+
+Le fichier publié est `root:<groupe_joueur> 640` ; son parent `village/<joueur>`
+est `root:<groupe_joueur> 750` pour empêcher son remplacement par le joueur.
+Les sous-dossiers militaires conservent leurs propriétaires et droits existants.
+ACTIONS et CONSULTATION ne modifient pas le contenu du dernier rapport publié.
+La publication et la republication réutilisent les mêmes fichiers de la génération
+terminée ; elles ne rejouent pas les opérations ni les récompenses. Une résolution
+interrompue reste soumise à la récupération administrative existante.
+
+Les alertes personnelles réutilisent les contrôles SSH/TTY et l’observateur du
+minuteur pendant ACTIONS, au début puis environ toutes les dix secondes avant
+l’échéance. Les erreurs de syntaxe et les refus déjà connus à l’ouverture peuvent
+être signalés immédiatement au relevé, ainsi que les prérequis officiels manquants
+de la Forge. Les présences continues, conflits d’écriture,
+soins et transformations attendent l’audit de clôture. Aucun message de succès
+anticipé n’est envoyé. Les demandes sont lues sans liens, sur descripteurs ancrés,
+avec une limite de 4096 octets ; une modification concurrente attend le relevé suivant.
+La découverte des sessions pour ces alertes a un budget global de 0,5 seconde ;
+l’écriture TTY est non bloquante et une déconnexion n’arrête pas le cycle.
+Les annonces obligatoires avant gel conservent leur traitement distinct.
+
 ### Rapport d'exploration Survie
 
 `village/<joueur>/hotel_de_ville/rapport_exploration.txt` est une photographie
@@ -1507,7 +1536,9 @@ les rangs scolaires et les plafonds d'activation y sont définis.
 
 La création conserve les natures `stratege`, `instinctif`,
 `stratege_hybride` et `instinctif_hybride`. Nature, dominante et trait inné
-sont persistants. Les champs `niveau`, `nature`, `orientation_principale`,
+sont persistants. Les nouveaux profils commencent au niveau 0, sans PC, moral,
+étiquette ni évolution initiale ; les profils historiques restent conservés.
+Les champs `niveau`, `nature`, `orientation_principale`,
 `trait_inne`, `points_commandement`, `moral`, `evolutions_acquises`,
 `evolution_apprise`, `progression_combat`, `progression_formation` et `etiquettes`
 sont visibles dans `fiche.txt`. Le profil privé
@@ -1674,7 +1705,9 @@ La formation en caserne militaire utilise les mêmes relevés et validations. Co
 généraux partagent ce dossier, sa preuve conserve le périphérique et l'inode du
 parent, mais pas son ctime : l'arrivée d'un voisin n'annule pas le séjour.
 Le ctime du général lui-même reste contrôlé pour détecter sa sortie et son retour.
-Une arrivée pendant ACTIONS ne donne pas de point de formation pour ce tour.
+Une arrivée pendant ACTIONS donne un point dès cette clôture si le général est
+encore dans la caserne après audit. Les preuves sont relevées sur le plateau vivant ;
+elles ne sont pas comparées aux nouveaux inodes de la copie privée.
 
 Après l'audit de la génération privée, les soins valides remettent les blessures
 à zéro sans toucher aux batailles ni aux statuts. Toutes les unités admissibles
@@ -1698,13 +1731,19 @@ la roulette à la prochaine montée compatible ; s'il devient incompatible, la m
 est refusée sans perte d'état. Deux écritures concurrentes au même emplacement
 sont refusées ensemble, sans choisir un gagnant implicite. Le remplacement d'un
 apprentissage encore en attente reste refusé tant que sa règle n'est pas définie.
-Le résultat individuel est écrit dans `formation_resultat.txt`, jamais dans le
-rapport public. Une lecture d'étiquette l'apprend ou améliore directement son rang
+Le résultat individuel est publié dans `village/<joueur>/rapport_activites.txt`.
+Le moteur ne crée plus de fichier `formation_resultat.txt` ; les anciennes copies
+ne sont ni utilisées ni mises à jour. Une lecture d'étiquette l'apprend ou améliore directement son rang
 à la fin du séjour, selon les plafonds de `REGLES_V2.md`, sans remplacer une mémoire
 d'évolution en attente.
 
 `.systeme/formation.json` conserve les manuels par camp, séjours par
 `tour:joueur:generalN`, tours ouverts, relevés de clôture et validations consommées.
+Les champs optionnels `refus` (par `tour:joueur:generalN`) gardent les refus
+d’ouverture jusqu’au rapport ; `alertes` (par tour) évite de répéter une même
+alerte terminal après redémarrage. Ces sorties ne décident aucune règle.
+Le marqueur optionnel `incomplet_signale` d’une observation de clôture évite de
+répéter le message d’une arrivée tardive ; il ne participe pas à la validation du séjour.
 Le profil conserve les apprentissages validés pour prévenir un double traitement.
 Le manuel visible est `village/ecole_officiers/memoire_des_generaux.txt`, publié
 `root:<groupe_allie> 640` dans un dossier 750. Aucun `chattr` n'est utilisé.

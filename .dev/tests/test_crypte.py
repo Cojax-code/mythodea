@@ -12,6 +12,8 @@ from unittest.mock import patch
 
 import test_generations_survie
 
+CHMOD_REEL = os.chmod
+
 
 class Crypte(unittest.TestCase):
     gestion = test_generations_survie.GenerationsSurvie.gestion
@@ -402,6 +404,7 @@ class Crypte(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.survie.resoudre_tour_survie(self.profil, gestion=g)
 
+    @unittest.skipUnless(os.name == 'posix', 'Permissions Linux requises')
     def test_permissions_recompense_consultation_puis_actions(self):
         self.reussir()
         self.creer()
@@ -409,6 +412,10 @@ class Crypte(unittest.TestCase):
         parent = self.crypte.zone(self.profil, 'j1') / 'recompense'
         general = parent / 'general1'
         destination = self.config.game_path / 'village/j1/garnison/1'
+        # Ce scénario vérifie les modes réels ; le fixture général simule chmod.
+        self.contextes.enter_context(patch.object(os, 'chmod', side_effect=CHMOD_REEL))
+        for chemin in (parent, general, destination):
+            CHMOD_REEL(chemin, 0o700)
         gestion.permissions_consultation()
         for chemin in (parent, general, destination):
             self.assertEqual(chemin.stat().st_mode & 0o700, 0o500)
@@ -416,6 +423,21 @@ class Crypte(unittest.TestCase):
         for chemin in (parent, general, destination):
             self.assertEqual(chemin.stat().st_mode & 0o700, 0o700)
         self.assertTrue(general.exists())
+
+    def test_rapport_attribution_composition_recuperation_sans_doublon(self):
+        self.reussir()
+        self.etat.sauvegarder_cycle_survie(dict(tour=3, phase='resolution'), self.profil)
+        self.rapports.preparer_activites(self.profil, 3)
+        self.creer()
+        rapport = self.config.game_path / 'village/j1/rapport_activites.txt'
+        self.assertIn('20 unités de type cavalerie', rapport.read_text())
+        self.assertIn('10/5/5/0', rapport.read_text())
+        source = self.crypte.zone(self.profil, 'j1') / 'recompense/general1'
+        source.rename(self.config.game_path / 'village/j1/garnison/1/general1')
+        self.securite.verifier_tous_les_deplacements(self.profil)
+        self.securite.verifier_tous_les_deplacements(self.profil)
+        self.assertEqual(rapport.read_text().count('récupération constatée'), 1)
+        self.assertNotIn('general1', (self.config.game_path / 'village/j2/rapport_activites.txt').read_text())
 
     def test_recuperation_mv_puis_retour_interdit(self):
         self.reussir()

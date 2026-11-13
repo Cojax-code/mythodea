@@ -104,8 +104,8 @@ class Village(unittest.TestCase):
             for relatif in (".", "garnison", "caserne_militaire", "garnison/1", "garnison/2", "garnison/3", "garnison/4"):
                 chemin = base / relatif
                 self.assertTrue(chemin.is_dir())
-                self.assertIn(call(chemin, uid, uid), self.chown.call_args_list)
-                self.assertIn(call(chemin, 0o700), self.chmod.call_args_list)
+                self.assertIn(call(chemin, 0 if relatif == "." else uid, uid), self.chown.call_args_list)
+                self.assertIn(call(chemin, 0o750 if relatif == "." else 0o700), self.chmod.call_args_list)
             self.assertFalse((base / "reserve").exists())
             self.assertFalse((base / "1").exists())
             self.assertTrue((self.config.repli_path / joueur).is_dir())

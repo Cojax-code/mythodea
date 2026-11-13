@@ -505,6 +505,10 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
     etat.sauvegarder_cycle_survie({"tour": tour, "phase": "resolution"}, configuration)
     rapports.preparer_rapports(configuration)
     rapports.preparer_activites(configuration, tour)
+    reference = etat.charger_unites_actions(configuration) or {}
+    for identite in reference.get('premiers_deploiements', ()):
+        joueur, nom = identite.split(':')
+        rapports.noter_resultat(joueur, 'GÉNÉRAUX', f'{nom} : création officielle dans le home.', configuration)
     rapports.afficher_et_ecrire(f"=== RÉSOLUTION TOUR {tour} / VAGUE {tour + 1} ===")
     controle_avant = etat.charger_controle_territoires(configuration)
     profil_audit = dict(configuration, tour_preparation=(tour == 0))

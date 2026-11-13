@@ -218,6 +218,8 @@ def envoyer_general_au_repli(
         rapports.afficher_et_ecrire(
             f"Sanction de repli : {joueur}:{nom_general}, {delai} tour(s) d'attente."
         )
+        rapports.noter_resultat(joueur, 'INCIDENTS',
+            f'{nom_general} : sanction de repli, {delai} tour(s) d’attente.', configuration)
     return destination
 
 

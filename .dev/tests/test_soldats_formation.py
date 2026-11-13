@@ -330,7 +330,7 @@ class SoldatsFormation(unittest.TestCase):
             self.formation.preparer_demandes(general)
             (general['chemin'] / 'ecrire_ses_memoires.txt').write_text('e 001 201')
         self.formation.ouvrir_tour(self.profil, 1)
-        general['chemin'].rename(self.config.game_path / 'village/j1/reserve/general2')
+        general['chemin'].rename(self.config.game_path / 'village/j1/caserne_militaire/general2')
         self.formation.clore_tour(self.profil, 1)
         self.formation.resoudre_tour(self.profil, 1)
         self.assertEqual(self.formation.charger()['manuels']['allies']['001'], 201)

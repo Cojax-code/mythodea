@@ -180,22 +180,45 @@ class Linux:
             # les octets avant que sa slice soit gelée. Laisser tourner le relais.
             time.sleep(0.2)
 
-    def terminaux_ssh(self):
+    def alerter(self, messages):
+        """Envoi facultatif aux seuls UID concernés, sans attente de relais SSH."""
+        if self.geles or not messages:
+            return
+        try:
+            terminaux = self.terminaux_ssh(delai=0.5)
+        except (OSError, subprocess.SubprocessError, RuntimeError):
+            logging.warning('Découverte des terminaux indisponible pour les alertes.')
+            return
+        for uid, tty in set(terminaux):
+            if uid not in messages:
+                continue
+            try:
+                self.ecrire_terminal(uid, tty, messages[uid])
+            except OSError:
+                logging.warning('Alerte non livrée au terminal %s.', tty)
+
+    def terminaux_ssh(self, delai=None):
         """Sessions logind des joueurs ; aucun recours à utmp/wall."""
+        fin = None if delai is None else time.monotonic() + delai
+        def commande(args, **options):
+            restant = 5 if fin is None else min(5, fin - time.monotonic())
+            if restant <= 0:
+                raise subprocess.TimeoutExpired(args, delai)
+            return subprocess.run(args, timeout=restant, **options)
         comptes = {str(uid): self.configuration['acteurs'][j]['proprietaire_linux']
                    for j, uid in zip(self.configuration['joueurs'], self.uids)}
-        sessions = subprocess.run(['loginctl', 'list-sessions', '--no-legend', '--no-pager'],
-                                  capture_output=True, text=True, check=True, timeout=5)
+        sessions = commande(['loginctl', 'list-sessions', '--no-legend', '--no-pager'],
+                            capture_output=True, text=True, check=True)
         terminaux = set()
         for ligne in sessions.stdout.splitlines():
             champs = ligne.split()
             if len(champs) < 2 or champs[1] not in comptes:
                 continue
-            session = subprocess.run(
+            session = commande(
                 ['loginctl', 'show-session', champs[0], '--no-pager',
                  '-p', 'User', '-p', 'Name', '-p', 'Service',
                  '-p', 'State', '-p', 'TTY', '-p', 'Leader'],
-                capture_output=True, text=True, check=False, timeout=5)
+                capture_output=True, text=True, check=False)
             if session.returncode:
                 # Une déconnexion peut survenir entre l'inventaire et la lecture.
                 logging.warning('Session SSH %s indisponible : %s', champs[0], session.stderr.strip())
@@ -215,8 +238,8 @@ class Linux:
                 continue
             # Sur Debian 13, le Leader root est « sshd-session: joueur [priv] ».
             # Son enfant appartenant au joueur porte « sshd-session: joueur@pts/N ».
-            enfants = subprocess.run(['ps', '--ppid', leader, '-o', 'uid=,args='],
-                                     capture_output=True, text=True, check=False, timeout=5)
+            enfants = commande(['ps', '--ppid', leader, '-o', 'uid=,args='],
+                               capture_output=True, text=True, check=False)
             if enfants.returncode not in (0, 1):
                 raise RuntimeError(f'Lecture des enfants SSH impossible : {enfants.stderr.strip()}')
             motif = rf'sshd(?:-session)?: {re.escape(comptes[uid])}@(pts/[0-9]+)'
@@ -399,11 +422,35 @@ class Generations:
             maintenant = self.horloge()
             if cycle['phase'] == 'consultation':
                 rapports.diffuser(self.c, self.gid, maintenant, terminer=restant <= 0)
-            if cycle['phase'] == 'actions' and maintenant >= prochain_scan:
+            if cycle['phase'] == 'actions' and restant > 0 and maintenant >= prochain_scan:
                 defis.scanner(self.c, self.horloge)
+                self.alerter_batiments(cycle['tour'])
                 prochain_scan = maintenant + defis.INTERVALLE_SCAN
         minuterie.attendre_jusqua(cycle['echeance'], self.horloge, self.dormir,
             observer=observer)
+
+    def alerter_batiments(self, tour):
+        import formation
+        # Le backend de tests peut n'avoir que les annonces obligatoires.
+        envoyer = getattr(self.backend, 'alerter', None)
+        if envoyer is None:
+            return
+        donnees = formation.charger()
+        envoyees = donnees.setdefault('alertes', {}).setdefault(str(tour), [])
+        messages = {}
+        for alerte in formation.alertes_actions(self.c, tour):
+            texte = (f"[{alerte['categorie']}] {alerte['nom']} : "
+                     + rapports.texte_notification(alerte['message']))
+            cle = alerte['joueur'] + ':' + texte
+            if cle in envoyees:
+                continue
+            uid = pwd.getpwnam(self.c['acteurs'][alerte['joueur']]['proprietaire_linux']).pw_uid
+            messages.setdefault(uid, []).append(texte)
+            envoyees.append(cle)
+        if messages:
+            formation.sauvegarder(donnees)
+            envoyer({uid: '=== ALERTE MYTHODEA ===\n\n' + '\n'.join(lignes)
+                     for uid, lignes in messages.items()})
 
     def marquer(self, tour, phase, **autres):
         cycle = {'tour': tour, 'phase': phase, **autres}
@@ -680,13 +727,18 @@ class Generations:
         """Root conserve l'écriture ; seul le groupe privé du joueur peut lire."""
         for joueur in self.c['joueurs']:
             chemin = self.game / 'village' / joueur / 'rapport_activites.txt'
+            sans_liens(chemin.parent)
+            groupe = self.c['acteurs'][joueur]['groupe_linux']
+            gid = grp.getgrnam(groupe).gr_gid
+            # Sans cette protection, le joueur peut remplacer le fichier root.
+            os.chown(chemin.parent, 0, gid)
+            os.chmod(chemin.parent, 0o750)
             if not chemin.exists():
                 continue
             sans_liens(chemin)
             if not chemin.is_file() or chemin.stat().st_nlink != 1:
                 raise RuntimeError('Rapport personnel non ordinaire ou lié.')
-            groupe = self.c['acteurs'][joueur]['groupe_linux']
-            os.chown(chemin, 0, grp.getgrnam(groupe).gr_gid)
+            os.chown(chemin, 0, gid)
             os.chmod(chemin, 0o640)
 
     def erreur(self, tour, erreur):

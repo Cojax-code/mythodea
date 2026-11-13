@@ -50,7 +50,7 @@ Les places `1..20` sont disponibles par défaut. Chaque numéro est partagé
 logiquement entre j1 et j2 : ne pas occuper une place déjà prise par un allié.
 Tous les généraux ayant passé un tour complet à l'hôpital sont soignés ensemble.
 Les blessures reviennent à zéro ; batailles, expérience et statuts sont conservés.
-Consulter `formation_resultat.txt` dans le dossier du général après publication.
+Consulter `/game/village/<joueur>/rapport_activites.txt` après publication.
 
 Pour l'hôpital, l'École et la Forge, une entrée pendant ACTIONS commence son séjour complet
 au début du tour suivant. La caserne militaire fait exception : elle attribue
@@ -94,7 +94,7 @@ pas l'attente. Toutes les lectures se déroulent avant les écritures du même t
 Ainsi, apprendre et remplacer simultanément la même entrée conserve l'ancien ID
 sur la fiche de l'élève. Le manuel reste disponible aux autres généraux.
 
-Consulter `formation_resultat.txt`, puis vider la demande après traitement si
+Consulter `/game/village/<joueur>/rapport_activites.txt`, puis vider la demande après traitement si
 aucun nouveau séjour n'est souhaité. Deux écritures concurrentes de la même entrée
 sont refusées ensemble. Un apprentissage déjà en attente n'est pas écrasé.
 
@@ -120,7 +120,7 @@ Le cavalier doit déjà avoir été accepté dans l'état officiel du tour préc
 Un cavalier créé pendant le tour actuel est refusé, même équipé et présent dès
 le début du séjour. Copier ou renommer un dossier ne lui donne pas cette ancienneté.
 Le refus de transformation conserve le dossier et ses fichiers ; sa raison figure
-dans le rapport long et le bilan du séjour dans `formation_resultat.txt`.
+dans le rapport long et le bilan du séjour dans `/game/village/<joueur>/rapport_activites.txt`.
 Après un transfert entre partitions sans identité physique correspondante,
 attendre la prochaine publication officielle avant de commencer le séjour de Forge.
 
@@ -186,3 +186,8 @@ Les tests temporaires n'utilisent
 pas une vraie partie. Le test `python/tests_linux/test_progression_isolee.py`
 vérifie séparément les droits Linux avec root et des UID de processus, sans créer
 de comptes. Une validation sur Raspberry Pi reste à réaliser.
+
+Les rapports personnels sont remplacés à chaque publication. Les erreurs de demande
+détectables pendant ACTIONS apparaissent aussi dans le terminal SSH au relevé
+périodique (environ dix secondes). Cette alerte ne valide aucun apprentissage ;
+les séjours, soins et transformations sont confirmés seulement après résolution.

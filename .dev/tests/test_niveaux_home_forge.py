@@ -122,6 +122,7 @@ class NiveauxHomeForge(unittest.TestCase):
 
     def test_entree_en_caserne_pendant_actions_compte_des_premiere_cloture(self):
         # Aucun séjour n'est ouvert pour ce général au début du tour.
+        self.modules()
         self.formation.ouvrir_tour(self.profil, 1)
         general = self.creer(territoire='village', reserve=True)
         self.terminer(1)
@@ -219,10 +220,12 @@ class NiveauxHomeForge(unittest.TestCase):
             (unite / nom).write_text('équipement', encoding='utf-8')
         self.formation.ouvrir_tour(self.profil, 1)
         avant = {p.name: p.read_bytes() for p in unite.iterdir()}
+        self.etat.sauvegarder_cycle_survie(dict(tour=1, phase='resolution'), self.profil)
+        self.rapports.preparer_activites(self.profil, 1)
         self.terminer(1)
         self.assertEqual({p.name: p.read_bytes() for p in unite.iterdir()}, avant)
         self.assertIn('absence de validation officielle', self.config.rapport_long_path.read_text())
-        self.assertIn('unités conservées', (general['chemin'] / 'formation_resultat.txt').read_text())
+        self.assertIn('unités conservées', (self.config.game_path / 'village/j1/rapport_activites.txt').read_text())
         self.securite.memoriser_unites_actions(self.profil, 2)
         self.formation.ouvrir_tour(self.profil, 2)
         self.terminer(2)

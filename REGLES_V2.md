@@ -15,11 +15,15 @@ de son préfixe ; les apprentissages croisés ne changent ni sa nature ni son tr
 
 | Règle | Stratège, y compris hybride | Instinctif, y compris hybride |
 | --- | --- | --- |
-| PC initiaux | 11 à 20 | 0 |
+| PC initiaux | 0 | 0 |
 | Moral initial | 0 | 0 |
 | Gain naturel hors hybride | +2 à +4 PC à chaque niveau, aucun moral | +1 moral aux niveaux pairs, aucun PC |
-| Étiquettes automatiques garanties | Création, niveau 5, niveau 10 | Niveau 5 |
+| Étiquettes automatiques garanties | Niveau 5, niveau 10 | Niveau 5 |
 | Maximum d'étiquettes ordinaires actives | 3 | 1 |
+
+Au niveau 0, seuls la nature, la dominante et le trait sont tirés. Les PC et le
+moral valent zéro ; aucune étiquette ni évolution initiale n’est attribuée.
+Les profils des anciennes parties conservent leurs acquisitions historiques.
 
 Les deux natures hybrides gagnent **+2 à +4 PC à chaque niveau et +1 moral aux
 niveaux pairs**, quelle que soit leur dominante. Leur dominante conserve les

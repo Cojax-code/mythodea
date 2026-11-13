@@ -575,8 +575,9 @@ def reparer_structure(configuration=None):
             gid = grp.getgrnam(acteur["groupe_linux"]).gr_gid
             for dossier in dossiers:
                 dossier.mkdir(exist_ok=True)
-                os.chown(dossier, uid, gid)
-                os.chmod(dossier, 0o700)
+                personnel = dossier == joueur_dir and territory.name in configuration['villages']
+                os.chown(dossier, 0 if personnel else uid, gid)
+                os.chmod(dossier, 0o750 if personnel else 0o700)
 
     for joueur in configuration["joueurs"]:
         repli_joueur = configuration["repli_path"] / joueur

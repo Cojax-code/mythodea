@@ -31,7 +31,7 @@ Regarder si un nouveau général est apparu dans votre home.
 
 ls -l /home/{joueur}
 
-NOTE : Pour survivre aux vagues avenir, il faudra  préparer des nouveaux général pour soutenir celui qui a été affaibli. Les generaux Classique cad qui pop tout seul dans le home, sont limite a 5 par joueurs, et une apparition par tour. Attention les generaux ne se cumule pas dans le home donc meme si vous ne les utilisez pas, stocke les dans “reserve” afin de laisser els suivants se creer automatiquement
+NOTE : Pour survivre aux vagues avenir, il faudra  préparer des nouveaux général pour soutenir celui qui a été affaibli. Les generaux Classique cad qui pop tout seul dans le home, sont limite a 5 par joueurs, et une apparition par tour. Attention les generaux ne se cumule pas dans le home donc meme si vous ne les utilisez pas, stocke les dans “caserne_militaire” afin de laisser els suivants se creer automatiquement
 
 À chaque résolution, les forces du bot déjà présentes tentent d'abord d'avancer vers le village. Une nouvelle vague apparaît ensuite à l'est, puis les combats sont résolus sur les territoires où les deux camps se rencontrent.
 

@@ -49,10 +49,71 @@ def noter_activite(configuration, joueur, categorie, message):
     if not categorie or not message or any(c in categorie for c in '\n\r'):
         raise ValueError('Notification d’activité invalide.')
     chemin = configuration['game_path'] / 'village' / joueur / 'rapport_activites.txt'
-    if not chemin.is_file() or chemin.is_symlink():
+    from cycle_linux import sans_liens
+    sans_liens(chemin)
+    if not chemin.is_file() or chemin.stat().st_nlink != 1:
         raise RuntimeError('Rapport d’activités personnel absent ou invalide.')
-    with chemin.open('a', encoding='utf-8') as fichier:
-        fichier.write(f"[{categorie}] {str(message).replace(chr(10), ' ').replace(chr(13), ' ')}\n")
+    fd = os.open(chemin, os.O_WRONLY | os.O_APPEND | getattr(os, 'O_NOFOLLOW', 0)
+                 | getattr(os, 'O_NONBLOCK', 0))
+    with os.fdopen(fd, 'a', encoding='utf-8') as fichier:
+        infos = os.fstat(fichier.fileno())
+        if not stat.S_ISREG(infos.st_mode) or infos.st_nlink != 1:
+            raise RuntimeError('Rapport personnel non ordinaire ou lié.')
+        fichier.write(f"[{texte_notification(categorie)}] {texte_notification(message)}\n")
+
+
+def texte_notification(texte):
+    """Aucun contrôle de terminal provenant d'un nom ou d'une demande joueur."""
+    return ''.join(c if c.isprintable() else ' ' for c in str(texte))
+
+
+def noter_resultat(joueur, categorie, message, configuration=None):
+    """Sortie facultative des API communes, exclusivement pendant la résolution.
+
+    Les appels isolés/classiques sans rapport préparé gardent leur comportement.
+    Aucun événement ne modifie le dernier rapport publié pendant ACTIONS.
+    """
+    c = configuration if configuration is not None else dict(
+        game_path=config.racine_metier(), joueurs=config.joueurs)
+    if joueur not in c['joueurs']:
+        return
+    cycle = etat.charger_cycle_survie(c)
+    if not cycle or cycle['phase'] != 'resolution':
+        return
+    chemin = c['game_path'] / 'village' / joueur / 'rapport_activites.txt'
+    if chemin.exists():
+        noter_activite(c, joueur, categorie, message)
+
+
+def noter_progression(general, avant, apres, origine, recompense=None):
+    details = [f"{general['nom']} : origine {origine}"]
+    if origine in ('formation', 'combat'):
+        import progression
+        details.append(f"+1 point ; progression {apres['progression_' + origine]}/{progression.SEUILS[origine]}")
+    if apres['niveau'] != avant['niveau']:
+        details.append(f"niveau {apres['niveau']} gagné")
+    for cle, libelle in (('points_commandement', 'PC'), ('moral', 'moral')):
+        gain = apres[cle] - avant[cle]
+        if gain:
+            details.append(f"{libelle} +{gain}")
+    for nom, rang in apres.get('etiquettes', {}).items():
+        if rang != avant.get('etiquettes', {}).get(nom):
+            details.append(f"étiquette {nom}, niveau {rang}")
+    for evolution in apres['evolutions_acquises']:
+        if evolution not in avant['evolutions_acquises']:
+            details.append(f"évolution {evolution} obtenue")
+    if recompense:
+        details.append(f"récompense {recompense[0]} : {recompense[1]}" if isinstance(recompense, (tuple, list))
+                       else f"récompense évolution {recompense}")
+    noter_resultat(general['joueur'], 'CASERNE MILITAIRE' if origine == 'formation'
+                  else 'PROGRESSION', '; '.join(details) + '.')
+
+
+def noter_incident_general(chemin, message):
+    """Même convention de propriétaire que les profils des généraux du moteur."""
+    joueurs = [j for j in config.joueurs if j in chemin.parts]
+    if len(joueurs) == 1:
+        noter_resultat(joueurs[0], 'INCIDENTS', f'{chemin.name} : {message}')
 
 
 def ouvrir_suivi(configuration, gid):

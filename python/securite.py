@@ -176,6 +176,8 @@ def auditer_entrainement(configuration, positions, punis):
                 rapports.afficher_et_ecrire(
                     f'{identifiant} : départ refusé après rappel ; '
                     'rester au home jusqu’à la prochaine publication.')
+                rapports.noter_resultat(joueur, 'INCIDENTS',
+                    f'{chemin.name} : départ refusé après rappel ; attendre la publication au home.', configuration)
             continue
         origine_cle, origine = origines.get(identifiant, (None, {}))
         nouvelles = [chemin / relatif for relatif in unites_nouvelles_actions(origine, actuel)
@@ -208,6 +210,8 @@ def auditer_entrainement(configuration, positions, punis):
             rapports.afficher_et_ecrire(
                 f'{identifiant} : déplacement refusé après entraînement ; '
                 'retour à la zone de départ, attendre le tour suivant.')
+            rapports.noter_resultat(joueur, 'INCIDENTS',
+                f'{chemin.name} : déplacement refusé après entraînement ; retour à la zone de départ.', configuration)
         else:
             for unite in nouvelles:
                 if unite.exists():
@@ -215,6 +219,9 @@ def auditer_entrainement(configuration, positions, punis):
             rapports.afficher_et_ecrire(
                 f'{identifiant} : {len(nouvelles)} nouvelle(s) unité(s) supprimée(s), '
                 'entraînement interdit hors home/caserne militaire ; unités anciennes conservées.')
+            rapports.noter_resultat(joueur, 'INCIDENTS',
+                f'{chemin.name} : {len(nouvelles)} unité(s) rejetée(s), entraînement interdit hors '
+                'home/caserne militaire ; unités anciennes conservées.', configuration)
 
 
 def auditer_unites_speciales(configuration):
@@ -245,6 +252,9 @@ def auditer_unites_speciales(configuration):
                         rapports.afficher_et_ecrire(
                             f'{joueur}:{general.name} : unité spéciale {unite.name} supprimée, '
                             'origine officielle absente ou type falsifié.')
+                        rapports.noter_resultat(joueur, 'INCIDENTS',
+                            f'{general.name} : unité {unite.name} rejetée, origine officielle absente '
+                            'ou type falsifié.', configuration)
 
 
 def controler_coherence_territoires(configuration):
@@ -569,6 +579,8 @@ def securiser_generaux_dupliques(positions_avant, configuration=None):
                 f"{identifiant} est présent "
                 f"{len(occurrences)} fois."
             )
+            rapports.noter_resultat(joueur, 'INCIDENTS',
+                f'{nom_general} : duplication interdite constatée par l’audit.', configuration)
 
             ancienne_position = (
                 positions_avant.get(identifiant)
@@ -680,6 +692,8 @@ def securiser_emplacements_generaux(configuration=None, territoire=None):
             )
             for joueur, chemin_general in occupants:
                 identifiant = f"{joueur}:{chemin_general.name}"
+                rapports.noter_resultat(joueur, 'INCIDENTS',
+                    f'{chemin_general.name} : collision interdite sur l’emplacement {emplacement}.', configuration)
                 mouvements.envoyer_general_au_repli(
                     joueur, chemin_general.name, chemin_general, configuration
                 )
@@ -958,6 +972,9 @@ def verifier_tous_les_deplacements(configuration=None):
             rapports.afficher_et_ecrire(
                 f"Raison : {raison}"
             )
+            rapports.noter_resultat(joueur, 'INCIDENTS',
+                f'{nom_general} : déplacement interdit {origine} -> {position_actuelle}. Motif : {raison}',
+                configuration)
 
             mouvements.envoyer_general_au_repli(
                 joueur,

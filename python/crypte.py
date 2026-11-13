@@ -510,6 +510,14 @@ def auditer_recuperations(c):
                 mouvements.envoyer_general_au_repli(j, p.name, p, c)
                 punis.add(f'{j}:{p.name}')
         if fiche['en_attente'] and not (attente / fiche['en_attente']).exists():
+            nom = fiche['en_attente']
+            # Une disparition seule peut aussi être une suppression par le joueur.
+            import generaux
+            retrouve = any((z['chemin'] / nom).is_dir()
+                           for z in generaux.zones_generaux(j, c) if not z.get('crypte'))
+            rapports.noter_resultat(j, 'CRYPTE',
+                f'{nom} : récupération constatée par l’audit.' if retrouve else
+                f'{nom} : récompense absente de sa zone ; aucune récupération confirmée.', c)
             fiche['en_attente'] = None
     if chemin_etat(c).exists():
         sauver(c, donnees)
@@ -584,10 +592,11 @@ def _materialiser_site(c, tour):
         sauver(c, donnees)
         relatif = zone(c, j).relative_to(c['game_path']) / 'recompense'
         rapports.ecrire_rapport_court(f'{j} : {recette["nom"]} ({nom}) attend dans {relatif}/.')
-        rapport_personnel = c['game_path'] / 'village' / j / 'rapport_activites.txt'
-        if rapport_personnel.is_file():
-            rapports.noter_activite(c, j, 'CRYPTE',
-                f'{nom} ({recette["nom"]}) attribué ; récompense à récupérer dans {relatif}/.')
+        rapports.noter_resultat(j, 'CRYPTE',
+            f'{nom} ({recette["nom"]}) créé et attribué ; '
+            f'{sum(recette["blocs"])} unités de type {recette["unite"]}, '
+            f'blocs avant/droite/gauche/arrière : {"/".join(map(str, recette["blocs"]))} ; '
+            f'récompense à récupérer dans {relatif}/.', c)
     generaux.scanner_ordres_surnombre(c)
 
 
@@ -646,6 +655,8 @@ def livrer_plaines(c, joueur, donnees, demande):
     sauver(c, donnees)
     rapports.ecrire_rapport_court(
         f"Crypte des plaines : {joueur}:{demande['general']}, {nombre} {demande['recette']} livré(s). {raison}")
+    rapports.noter_resultat(joueur, 'CRYPTE DES PLAINES',
+        f"{demande['general']} : {nombre} {demande['recette']} livré(s). {raison}", c)
 
 
 class Collecteur:

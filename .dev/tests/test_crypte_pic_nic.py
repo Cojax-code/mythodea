@@ -188,7 +188,7 @@ class PicNic(unittest.TestCase):
             reussir()
             self.creer(tour)
             p = self.crypte.zone(self.profil, 'j1') / f'recompense/general{index + 1}'
-            p.rename(self.config.game_path / 'village/j1/reserve' / p.name)
+        p.rename(self.config.game_path / 'village/j1/caserne_militaire' / p.name)
             self.assertEqual(self.crypte.charger(self.profil)['j1']['dernier_tour'], tour)
 
     def test_pdf_pic_nic_et_marqueurs(self):

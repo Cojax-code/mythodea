@@ -242,7 +242,7 @@ class CombatsCamps(unittest.TestCase):
         self.territoire = self.config.game_path / "village"
         self.general("j2", blocs={"avant": (5, "arc")})
         self.general("bot", blocs={"avant": (2, "pique")})
-        reserve = self.territoire / "j1/reserve/general1"
+        reserve = self.territoire / "j1/caserne_militaire/general1"
         reserve.parent.mkdir(parents=True)
         self.generaux.creer_general(reserve, "general1")
         self.assertIsNone(self.forces()["allies"]["2"])
@@ -267,7 +267,7 @@ class CombatsCamps(unittest.TestCase):
     def test_reserve_armee_ne_conteste_pas_le_controle_du_bot(self):
         self.territoire = self.config.game_path / "village"
         general = self.general("j1", blocs={"avant": (5, "arc")}, ordre="1-2")
-        reserve = self.territoire / "j1/reserve/general1"
+        reserve = self.territoire / "j1/caserne_militaire/general1"
         reserve.parent.mkdir(parents=True)
         general.rename(reserve)
         self.assertEqual(self.generaux.controle_forces(self.forces()), "neutre")

@@ -152,6 +152,18 @@ class NotificationsSurvie(unittest.TestCase):
                 self.linux.annoncer('FIN')
             chercher.assert_not_called()
 
+    def test_alerte_personnelle_ignore_deconnexion_et_terminal_sature(self):
+        with patch.object(self.linux, 'terminaux_ssh', return_value=[
+                (1001, 'pts/1'), (1002, 'pts/2'), (1001, 'pts/3')]), \
+                patch.object(self.linux, 'ecrire_terminal', side_effect=BlockingIOError()) as ecrire, \
+                patch.object(self.cycle_linux.time, 'sleep') as dormir, self.assertLogs():
+            self.linux.alerter({1001: 'PRIVÉ j1'})
+        self.assertEqual(ecrire.call_count, 2)
+        self.assertTrue(all(c.args[0] == 1001 for c in ecrire.call_args_list))
+        dormir.assert_not_called()
+        with patch.object(self.linux, 'terminaux_ssh', side_effect=OSError('déconnecté')), self.assertLogs():
+            self.linux.alerter({1001: 'PRIVÉ j1'})
+
     def test_capture_et_publication_ecrivent_avant_chaque_gel(self):
         gel = GelSimule()
         gestion = self.cycle_linux.Generations(self.profil, gel)

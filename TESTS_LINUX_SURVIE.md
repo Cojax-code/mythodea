@@ -626,3 +626,34 @@ Ces simulations Windows ne valident pas les UID/GID ni l'accès réel de session
 Linux. Les vérifications ci-dessus restent nécessaires sur une machine Linux
 de test avant déploiement ; elles ne nécessitent aucun accès au Raspberry Pi
 pendant le développement.
+
+## Rapports personnels et alertes de bâtiments
+
+Test automatique avec de vrais UID Linux, sans comptes ajoutés ni accès à `/game` :
+
+```bash
+sudo python3 -B python/tests_linux/test_activites_permissions_isolees.py -v
+```
+
+Il crée uniquement un répertoire temporaire, vérifie la lecture du rapport du
+joueur, le refus de lecture adverse, d’écriture, de suppression et de renommage,
+puis le déplacement d’une récompense en ACTIONS et son refus en CONSULTATION.
+Ce dernier contrôle vérifie les modes prévus : comme pour les autres unités,
+le retrait d’écriture en CONSULTATION reste une mesure de confort, car le joueur
+possède ses dossiers militaires et peut changer leurs modes.
+
+Sur une machine Linux de test avec deux sessions SSH, vérifier aussi :
+
+1. Une demande scolaire mal formée produit une alerte dans les seules sessions
+   du joueur concerné, au relevé suivant (environ dix secondes), sans succès annoncé.
+2. Une fermeture du terminal ou un terminal saturé n’arrête pas le cycle.
+3. Pendant la résolution, le dernier rapport publié reste inchangé ; le nouveau
+   `village/<joueur>/rapport_activites.txt` apparaît seulement à publication.
+4. Trois clôtures en caserne donnent `1/3`, `2/3`, puis un niveau, y compris après
+   une arrivée pendant ACTIONS. Le rapport suivant remplace le précédent.
+5. La republication administrative d’une génération terminée conserve exactement
+   le rapport et les récompenses. Aucun `formation_resultat.txt` neuf n’est créé.
+
+Les scénarios automatisés complémentaires sont dans `.dev/tests/test_activites_survie.py`
+et `.dev/tests/test_notifications_survie.py`. Les sessions logind et le gel du
+Raspberry Pi demandent toujours leur validation sur la machine cible.

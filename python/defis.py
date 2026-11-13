@@ -333,4 +333,7 @@ def materialiser(c, tour):
         sauver(c, d)
         repondre(c, j, 'Une récompense divine vous attend dans la Crypte.')
         rapports.ecrire_rapport_court(f'{j} : {NOM_RECOMPENSE} ({nom}) attend dans village/{j}/crypte/recompense/.')
+        rapports.noter_resultat(j, 'CRYPTE',
+            f'{nom} ({NOM_RECOMPENSE}) créé et attribué : 20 cavaliers lourds dans avant ; '
+            f'récompense du défi à récupérer dans village/{j}/crypte/recompense/.', c)
     generaux.scanner_ordres_surnombre(c)

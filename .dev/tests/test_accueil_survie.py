@@ -172,9 +172,12 @@ class AccueilSurvie(unittest.TestCase):
                     self.assertNotIn(autre, texte)
                     self.assertNotIn('{joueur}', texte)
                     self.assertNotIn(str(self.racine), texte)
+                    self.assertNotIn('/reserve', texte)
                     # Le Word historique utilisait /home/game. Conserver ses empreintes
-                    # pour vérifier le texte ; seule la racine publiée a changé.
-                    historique = texte.replace('/game/', '/home/game/').replace(joueur, 'j1')
+                    # pour vérifier le texte, avec la racine et le nom de caserne
+                    # désormais canoniques dans les commandes publiées.
+                    historique = (texte.replace('/game/', '/home/game/').replace(joueur, 'j1')
+                                  .replace('/caserne_militaire', '/reserve'))
                     normalise = '\n'.join(ligne for ligne in historique.splitlines()
                                           if ligne.strip())
                     self.assertEqual(hashlib.sha256(normalise.encode('utf-8')).hexdigest(), empreinte)

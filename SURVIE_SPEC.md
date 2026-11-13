@@ -320,6 +320,15 @@ Linux ») et le Clocher. Une reprise d'une fenêtre existante ne répète pas ce
 L'absence de sessions n'empêche pas le lancement ; l'affichage administrateur reste
 inchangé.
 
+### Notifications personnelles
+
+Le bilan `village/<joueur>/rapport_activites.txt` est renouvelé à chaque publication,
+préparé en résolution privée et protégé contre lecture adverse et remplacement.
+Les erreurs immédiates utilisent l’observateur ACTIONS existant et les terminaux
+SSH du seul joueur concerné ; les résultats de fin de tour attendent la publication.
+Aucune surveillance supplémentaire n’est lancée. Les permissions, événements et
+limites de ces alertes sont décrits dans `MYTHODEA_SPEC.md`, section 15.
+
 ### Clocher
 
 Le clocher permet de consulter le temps restant de la fenêtre d'action du tour

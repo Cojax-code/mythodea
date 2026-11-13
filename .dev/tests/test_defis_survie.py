@@ -259,7 +259,7 @@ class DefisSurvie(unittest.TestCase):
         self.assertFalse(self.defi()['recompense_recue'])
         self.assertEqual(self.etat.lire_compteur_general('j1'), 1)
         self.securite.memoriser_unites_actions(self.profil, 1)
-        ancienne.rename(self.config.game_path / 'village/j1/reserve/general1')
+        ancienne.rename(self.config.game_path / 'village/j1/caserne_militaire/general1')
         self.securite.verifier_tous_les_deplacements(self.profil)
         self.materialiser()
         self.assertEqual(self.defi()['general'], 'general2')

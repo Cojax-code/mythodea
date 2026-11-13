@@ -90,7 +90,10 @@ class ProfilsCibles(unittest.TestCase):
                             progression.apprendre_etiquette(fiche, etiquette)
 
     def test_quota_scolaire_exclut_creation_paliers_et_roulette(self):
-        fiche = self.profil(niveau=4)
+        # Ancienne partie : l'étiquette de création reste acquise. Les nouveaux
+        # profils de niveau 0 n'en reçoivent plus depuis la règle validée.
+        fiche = self.profil(niveau=4, etiquettes={'infanterie': 1},
+                           etiquettes_permanentes=['infanterie'])
         for _ in range(2):  # Palier N5 puis roulette N6, en plus de la création.
             fiche, _ = progression.monter_niveau(fiche, Mock(randint=lambda a, b: b))
         self.assertEqual(len(fiche['etiquettes']), 3)

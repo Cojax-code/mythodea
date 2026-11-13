@@ -568,6 +568,7 @@ def lire_blocs_general(chemin_general):
                 unite.unlink()
 
             rapports.afficher_et_ecrire(f"Unité invalide supprimée : {unite.name}")
+            rapports.noter_incident_general(chemin_general, f'{bloc}/{unite.name} rejetée : unité invalide.')
 
         import unites as capacites
         soutiens = [u for u, t in zip(unites_trouvees, type_trouves)
@@ -606,6 +607,8 @@ def lire_blocs_general(chemin_general):
                     f"Bloc mixte invalide (égalité) : {bloc_dir}. "
                     f"{len(unites_trouvees)} unité(s) supprimée(s)."
                 )
+                rapports.noter_incident_general(chemin_general,
+                    f'{bloc} : bloc mixte à égalité, {len(unites_trouvees) + len(soutiens)} unités rejetées.')
                 continue
 
             type_majoritaire = types_majoritaires[0]
@@ -619,6 +622,8 @@ def lire_blocs_general(chemin_general):
                         f"Unité non cohérente supprimée : {unite} "
                         f"({type_unite}, bloc {type_majoritaire})."
                     )
+                    rapports.noter_incident_general(chemin_general,
+                        f'{bloc}/{unite.name} rejetée : type {type_unite} incompatible avec le bloc {type_majoritaire}.')
 
             blocs_general[bloc]["type"] = type_majoritaire
             blocs_general[bloc]["nombre"] = len(unites_conservees)
@@ -860,6 +865,8 @@ def verifier_limite_unites_general(chemin_general):
             rapports.afficher_et_ecrire(
                 f"Unité supprimée pour limite de général : {unite.name}"
             )
+            rapports.noter_incident_general(chemin_general,
+                f'{bloc}/{unite.name} rejetée : capacité du général dépassée ({limite} places).')
             surplus -= places
 
 

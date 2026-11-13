@@ -1,5 +1,6 @@
-"""Réserve et bâtiments : relevés vivants, validation privée et publication."""
+"""Caserne et bâtiments : relevés vivants, validation privée et publication."""
 import json
+import os
 import stat
 
 import catalogues
@@ -8,6 +9,8 @@ import soldats
 
 
 EMPLACEMENTS = ('001', '002', '003')
+CATEGORIES = {'caserne_militaire': 'CASERNE MILITAIRE', 'ecole_officiers': 'ÉCOLE DES OFFICIERS',
+              'hopital': 'HÔPITAL', 'forge': 'FORGE'}
 
 
 def preparer_emplacements(configuration, migrer=True):
@@ -167,6 +170,8 @@ def valider_sejour(tour, general, lieu, camp, preuve_presence, tour_termine=Fals
     identite = f"{general['joueur']}:{general['nom']}"
     cle = f'{tour}:{identite}'
     donnees = charger()
+    import rapports
+    message = None
     sejour = donnees['sejours'].get(cle)
     if not tour_termine or sejour is None or cle in donnees['valides']:
         return False
@@ -187,6 +192,7 @@ def valider_sejour(tour, general, lieu, camp, preuve_presence, tour_termine=Fals
                 and sejour['evolution'] not in officiel['evolutions_acquises']):
             raise ValueError('Autorisation d’écriture perdue.')
         manuel[sejour['emplacement']] = sejour['evolution']
+        message = f"Mémoire {sejour['emplacement']} écrite : ID {sejour['evolution']}."
     elif sejour['action'] == 'lecture':
         identifiant = manuel[sejour['emplacement']]
         if sejour['evolution'] is not None and identifiant != sejour['evolution']:
@@ -210,6 +216,10 @@ def valider_sejour(tour, general, lieu, camp, preuve_presence, tour_termine=Fals
             fiche.setdefault('apprentissages_valides', []).append(cle)
             progression.sauvegarder(officielles)
         progression.publier_fiche(general['chemin'], fiche)
+        message = f"Mémoire {sejour['emplacement']} lue : ID {identifiant}."
+        if identifiant in catalogues.ETIQUETTES_ECOLE:
+            nom = catalogues.ETIQUETTES_ECOLE[identifiant]
+            message += f" Étiquette {nom} apprise ou améliorée, niveau {fiche['etiquettes'][nom]}."
     elif sejour['action'] == 'forge':
         if unites is None:
             return False
@@ -220,13 +230,18 @@ def valider_sejour(tour, general, lieu, camp, preuve_presence, tour_termine=Fals
         if unites is None:
             return False
         import unites as capacites
+        avant = soldats.charger()
         capacites.transformer_chevaliers(general, cle, sejour['unites'], unites)
+        apres = soldats.charger()
+        nombre = sum(v.get('type') != avant.get(i, {}).get('type') for i, v in apres.items())
+        message = f"{nombre} unité(s) transformée(s) en chevalier ; identifiants et états conservés."
     else:
         # La présence du général ne prouve pas celle des unités : le pilote doit
         # relever séparément leur présence continue, avant toute copie privée.
         if unites is None:
             return False
         registre = soldats.charger()
+        soignes = blessures = 0
         import unites as capacites
         for identifiant, preuve in sejour['unites'].items():
             if not preuve or list(unites.get(identifiant, ())) != preuve:
@@ -246,12 +261,20 @@ def valider_sejour(tour, general, lieu, camp, preuve_presence, tour_termine=Fals
                     valeur['presence_hopital'] = suivi
                 if suivi['consecutifs'] < duree:
                     continue
+                if valeur.get('blessures', 0):
+                    soignes += 1
+                    blessures += valeur['blessures']
                 valeur['blessures'] = 0
                 valeur['dernier_soin'] = cle
         soldats.sauvegarder(registre)
+        message = f"{soignes} unité(s) effectivement soignée(s), {blessures} blessure(s) supprimée(s)."
+        if not soignes:
+            message += ' Aucun blessé admissible avec durée de soins et présence suffisantes.'
     donnees['valides'].append(cle)
     del donnees['sejours'][cle]
     sauvegarder(donnees)
+    if message:
+        rapports.noter_resultat(general['joueur'], CATEGORIES[lieu], f"{general['nom']} : {message}")
     return True
 
 
@@ -272,10 +295,81 @@ def publier_manuel(repertoire, camp, gid):
 
 
 def preparer_demandes(general):
-    for nom in ('ecrire_ses_memoires.txt', 'lire_les_memoires.txt', 'formation_resultat.txt'):
+    for nom in ('ecrire_ses_memoires.txt', 'lire_les_memoires.txt'):
         chemin = general['chemin'] / nom
         if not chemin.exists():
             soldats.ecrire_copie(chemin, '')
+
+
+def lire_demande(configuration, chemin):
+    """Lecture bornée, sans suivre de liens, même pendant les actions SSH."""
+    from cycle_linux import sans_liens
+    sans_liens(chemin)
+    dossier = None
+    try:
+        flags = os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0)
+        if os.name == 'posix':
+            dossier = os.open(configuration['game_path'], os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            parties = chemin.relative_to(configuration['game_path']).parts
+            for partie in parties[:-1]:
+                suivant = os.open(partie, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=dossier)
+                os.close(dossier)
+                dossier = suivant
+            fd = os.open(parties[-1], flags, dir_fd=dossier)
+        else:
+            fd = os.open(chemin, flags)
+        with os.fdopen(fd, 'rb') as fichier:
+            avant = os.fstat(fichier.fileno())
+            if not stat.S_ISREG(avant.st_mode) or avant.st_nlink != 1:
+                raise ValueError('Une demande doit être un fichier ordinaire sans lien physique.')
+            contenu = fichier.read(4097)
+            apres = os.fstat(fichier.fileno())
+            if (avant.st_size, avant.st_mtime_ns, avant.st_ctime_ns) != (
+                    apres.st_size, apres.st_mtime_ns, apres.st_ctime_ns):
+                raise OSError('Demande en cours de modification.')
+            if len(contenu) > 4096:
+                raise ValueError('Demande trop longue (maximum 4096 octets).')
+            try:
+                return contenu.decode('utf-8')
+            except UnicodeDecodeError as erreur:
+                raise ValueError('La demande doit être en UTF-8.') from erreur
+    finally:
+        if dossier is not None:
+            os.close(dossier)
+
+
+def alertes_actions(configuration, tour):
+    """Conseils immédiats ; aucun séjour, apprentissage ou résultat n'est validé."""
+    donnees = charger()
+    alertes = [dict(r, message='demande refusée à l’ouverture. Motif : ' + r['motif'])
+               for r in donnees.get('refus', {}).values() if r['tour'] == tour]
+    for general in occupants(configuration):
+        if general['lieu'] not in ('ecole_officiers', 'forge'):
+            continue
+        try:
+            if general['lieu'] == 'forge':
+                verifier_acces_forge(progression.charger().get(f"{general['joueur']}:{general['nom']}"))
+                continue
+            lecture = lire_demande(configuration, general['chemin'] / 'lire_les_memoires.txt')
+            if lecture.strip():
+                demande_lecture(lecture)
+            else:
+                ecriture = lire_demande(configuration, general['chemin'] / 'ecrire_ses_memoires.txt')
+                if ecriture.strip():
+                    _, evolution = demande_ecriture(ecriture)
+                    fiche = progression.charger().get(f"{general['joueur']}:{general['nom']}")
+                    if (fiche and evolution not in catalogues.ETIQUETTES_ECOLE
+                            and evolution not in fiche['evolutions_acquises']):
+                        raise ValueError('Le général ne possède pas cette évolution.')
+        except ValueError as erreur:
+            alertes.append(dict(joueur=general['joueur'], nom=general['nom'],
+                categorie=CATEGORIES[general['lieu']],
+                message=f'Demande actuelle invalide : {erreur} ' + (
+                    'Les demandes du séjour sont figées à l’ouverture.' if general['lieu'] == 'ecole_officiers'
+                    else 'La validation finale attend la clôture du tour.')))
+        except OSError:
+            continue  # Déplacement/écriture en cours : le prochain relevé réessaiera.
+    return alertes
 
 
 def occupants(configuration):
@@ -385,6 +479,12 @@ def unites_forge_validees(configuration, general):
     return resultat
 
 
+def verifier_acces_forge(fiche):
+    if (not fiche or progression.orientation_principale(fiche) != 'instinctif'
+            or 104 not in fiche['evolutions_acquises']):
+        raise ValueError('Forge refusée : orientation instinctive et technologie 104 requises.')
+
+
 def forger(general, sejour, initiales, finales, eligibles=()):
     """Renomme les soldats validés ; une recette refusée ne détruit rien."""
     import config
@@ -392,15 +492,15 @@ def forger(general, sejour, initiales, finales, eligibles=()):
     import rapports
     from cycle_linux import sans_liens
     fiche = progression.caracteristiques_general(general)
-    if (not fiche or progression.orientation_principale(fiche) != 'instinctif'
-            or 104 not in fiche['evolutions_acquises']):
-        raise ValueError('Forge refusée : orientation instinctive et technologie 104 requises.')
+    verifier_acces_forge(fiche)
     registre = soldats.charger()
     transformees = 0
     def refuser(unite, raison):
         rapports.ecrire_rapport_long(
             f"Forge refusée : {general['joueur']}:{general['nom']}, "
             f"{unite.parent.name}/{unite.name} : {raison} ; unité conservée.")
+        rapports.noter_resultat(general['joueur'], 'FORGE',
+            f"{general['nom']} : {unite.parent.name}/{unite.name}, refus : {raison} ; unité conservée.")
 
     for bloc in config.ordre_blocs:
         dossier = general['chemin'] / bloc
@@ -445,6 +545,10 @@ def forger(general, sejour, initiales, finales, eligibles=()):
                 f"Forge : {general['joueur']}:{general['nom']}, {bloc}/{unite.name} "
                 f"transformée en {destination.name} ; identité et états conservés.")
     soldats.sauvegarder(registre)
+    if transformees:
+        rapports.noter_resultat(general['joueur'], 'FORGE',
+            f"{general['nom']} : {transformees} cavalier(s) léger(s) transformé(s) en cavalerie lourde ; "
+            'identifiants, blessures, batailles et statuts conservés.')
     if not transformees:
         raise ValueError('Forge : aucune cavalerie légère validée au tour précédent avec '
                          'recette et séjour complets ; unités conservées. Voir le rapport long.')
@@ -502,7 +606,7 @@ def ouvrir_tour(configuration, tour):
                 # lecture valide ; l'intégrité des deux fichiers reste contrôlée.
                 textes[nom] = ('' if nom == 'ecrire_ses_memoires.txt'
                                and textes['lire_les_memoires.txt'].strip()
-                               else chemin.read_text(encoding='utf-8'))
+                               else lire_demande(configuration, chemin))
             unites = (relever_unites(general, initialiser=general['lieu'] != 'ecole_officiers')
                       if general['lieu'] in ('hopital', 'forge', 'ecole_officiers') else {})
             eligibles = unites_forge_validees(configuration, general) if general['lieu'] == 'forge' else ()
@@ -510,7 +614,11 @@ def ouvrir_tour(configuration, tour):
                              ecrire=textes['ecrire_ses_memoires.txt'], lire=textes['lire_les_memoires.txt'],
                              unites=unites, eligibles_forge=eligibles)
         except ValueError as erreur:
-            soldats.ecrire_copie(general['chemin'] / 'formation_resultat.txt', str(erreur) + '\n')
+            refus = charger()
+            refus.setdefault('refus', {})[f'{tour}:{identite}'] = dict(
+                tour=tour, joueur=general['joueur'], nom=general['nom'],
+                categorie=CATEGORIES[general['lieu']], motif=str(erreur))
+            sauvegarder(refus)
     donnees = charger()
     donnees.setdefault('tours_ouverts', []).append(tour)
     sauvegarder(donnees)
@@ -534,14 +642,20 @@ def resoudre_tour(configuration, tour):
     donnees = charger()
     cloture = donnees.get('clotures', {}).get(str(tour), {})
     presents = {f"{g['joueur']}:{g['nom']}": g for g in occupants(configuration)}
-    # Les tests des bâtiments peuvent appeler ce module sans le pilote Survie.
-    # Le rapport personnel est alimenté uniquement s'il a été préparé pour le tour.
     import rapports
     def activite(general, categorie, message):
-        cible = configuration['game_path'] / 'village' / general['joueur'] / 'rapport_activites.txt'
-        if cible.is_file():
-            rapports.noter_activite(configuration, general['joueur'], categorie,
-                                  f"{general['nom']} : {message}")
+        rapports.noter_resultat(general['joueur'], categorie,
+                               f"{general['nom']} : {message}", configuration)
+
+    refus_ouverture = {cle for cle, r in donnees.get('refus', {}).items() if r['tour'] == tour}
+    refus_traites = False
+    for cle, refus in list(donnees.get('refus', {}).items()):
+        if refus['tour'] == tour:
+            activite(refus, refus['categorie'], 'demande refusée : ' + refus['motif'])
+            del donnees['refus'][cle]
+            refus_traites = True
+    if refus_traites:
+        sauvegarder(donnees)
 
     sejours = [(cle, s) for cle, s in donnees['sejours'].items() if s['tour'] == tour]
     complets = []
@@ -556,10 +670,9 @@ def resoudre_tour(configuration, tour):
         else:
             # Une inscription annulée ne concurrence pas une écriture valide.
             donnees['sejours'].pop(cle, None)
-            if general:
-                soldats.ecrire_copie(general['chemin'] / 'formation_resultat.txt',
-                                     'Séjour incomplet : aucune validation.\n')
-                activite(general, 'BÂTIMENT', 'séjour incomplet : aucune validation.')
+            joueur, nom = sejour['identite'].split(':')
+            activite(dict(joueur=joueur, nom=nom), CATEGORIES[sejour['lieu']],
+                     'séjour incomplet ou annulé après audit : aucune validation.')
     if len(complets) != len(sejours):
         sauvegarder(donnees)
     sejours = complets
@@ -584,14 +697,11 @@ def resoudre_tour(configuration, tour):
                           if i in unites_presentes}
                 if valider_sejour(tour, general, general['lieu'], general['camp'],
                                   observation['preuve'], True, unites):
-                    resultat = 'Tour complet validé : ' + sejour['action'] + '.'
+                    resultat = None  # Les résultats précis viennent des opérations validées.
         except ValueError as erreur:
             resultat = str(erreur)
-        if general:
-            soldats.ecrire_copie(general['chemin'] / 'formation_resultat.txt', resultat + '\n')
-            activite(general, {'formation': 'CASERNE MILITAIRE', 'lecture': 'ÉCOLE',
-                 'ecriture': 'ÉCOLE', 'soins': 'HÔPITAL', 'forge': 'FORGE',
-                 'chevalier': 'ÉCOLE'}[sejour['action']], resultat)
+        if general and resultat:
+            activite(general, CATEGORIES[sejour['lieu']], resultat)
         restant = charger()
         restant['sejours'].pop(cle, None)
         sauvegarder(restant)
@@ -600,11 +710,23 @@ def resoudre_tour(configuration, tour):
     # d'absence de sortie/retour et sont traités plus haut. Les reçus de
     # progression empêchent tout double gain lors d'une reprise.
     for identite, observation in cloture.items():
-        if observation['lieu'] != 'caserne_militaire' or observation.get('inscrit_ouverture', True):
+        if observation.get('inscrit_ouverture', True):
             continue
         general = presents.get(identite)
-        if (general and general['lieu'] == 'caserne_militaire'
-                and observation['preuve'] == preuve_general(general)):
+        if observation['lieu'] != 'caserne_militaire':
+            if general and f'{tour}:{identite}' not in refus_ouverture and not observation.get('incomplet_signale'):
+                activite(general, CATEGORIES[observation['lieu']],
+                         'séjour incomplet : aucune inscription valide à l’ouverture du tour.')
+                restant = charger()
+                restant['clotures'][str(tour)][identite]['incomplet_signale'] = True
+                sauvegarder(restant)
+            elif f'{tour}:{identite}' in refus_ouverture:
+                restant = charger()
+                restant['clotures'][str(tour)][identite]['incomplet_signale'] = True
+                sauvegarder(restant)
+            continue
+        # Les inodes de la copie privée diffèrent de ceux relevés sous gel.
+        # L'audit a déjà retiré les identités et déplacements non autorisés.
+        if general and general['lieu'] == 'caserne_militaire':
             progression.valider_evenement(general, 'formation', f'{tour}:{identite}')
-            activite(general, 'CASERNE MILITAIRE', '+1 point de formation à la clôture.')
     # Les copies des compteurs seront rafraîchies lors de la publication.
