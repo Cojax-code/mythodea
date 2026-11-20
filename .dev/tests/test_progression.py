@@ -66,6 +66,7 @@ class Progression(unittest.TestCase):
 
     def test_recompenses_impossibles_exclues_et_redistribution(self):
         fiche = self.fiche()
+        fiche['moral'] = 100  # Le moral est désormais une récompense Stratège.
         fiche['etiquettes'] = dict.fromkeys(catalogues.ETIQUETTES_COMBAT, 1)
         # Épuiser aussi les unités ajoutées au catalogue V2 : ce scénario
         # vérifie la redistribution lorsqu'il ne reste que du commandement.
@@ -75,7 +76,7 @@ class Progression(unittest.TestCase):
         apres, recompense = progression.monter_niveau(fiche, Mock(randint=lambda a, b: b))
         self.assertEqual(recompense, ('maitrise_commandement', 10))
         self.assertEqual(apres['points_commandement'], 29)  # 15 + 4 naturels + 10
-        self.assertEqual(apres['moral'], 0)
+        self.assertEqual(apres['moral'], 100)
 
     def test_recompense_unite_najoute_pas_commandement(self):
         catalogue = {111: dict(categorie='unite', cible=1, disponible=True, natures=None)}
@@ -128,7 +129,7 @@ class Commandement(unittest.TestCase):
 
     def test_qg_egalite_destruction_sans_releve(self):
         a = dict(nature='stratege', points_commandement=20, qg=True, effectif_bloc_qg=1)
-        b = dict(nature='instinctif', points_commandement=1, qg=True, effectif_bloc_qg=4)
+        b = dict(nature='stratege_hybride', points_commandement=1, qg=True, effectif_bloc_qg=4)
         points = lambda g: g['points_commandement']
         self.assertIsNone(commandement.selectionner_qg([a, b], points))
         qg = commandement.QuartierGeneral([b], points)

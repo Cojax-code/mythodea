@@ -55,11 +55,14 @@ class ComplementsMoteur(unittest.TestCase):
             # Les deux statistiques font désormais partie de la roulette Hybride.
             self.assertIn(evolution, self.progression.evolutions_eligibles(fiche, apprentissage=False))
 
-    def test_qg_toute_nature_designee_sans_condition_de_pc(self):
+    def test_qg_stratege_non_zombie_sans_condition_de_pc(self):
         commandement = importlib.import_module('commandement')
         for nature in ('stratege', 'instinctif', 'stratege_hybride', 'instinctif_hybride'):
             qg = dict(nature=nature, points_commandement=0, qg=True, effectif_bloc_qg=1)
-            self.assertIs(commandement.selectionner_qg([qg], lambda g: 0), qg)
+            self.assertIs(commandement.selectionner_qg([qg], lambda g: 0),
+                          qg if nature.startswith('stratege') else None)
+            qg['etat_zombie'] = True
+            self.assertIsNone(commandement.selectionner_qg([qg], lambda g: 0))
 
     def test_moral_stratege_hybride_reel(self):
         general = self.creer(nature='stratege_hybride')

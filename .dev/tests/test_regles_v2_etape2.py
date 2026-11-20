@@ -18,7 +18,7 @@ class ProgressionEtape2(unittest.TestCase):
 
     def test_neuf_distributions_exactes_dans_la_montee_reelle(self):
         attendus = {
-            'stratege': [(50, 0, 15, 35), (45, 0, 15, 40), (25, 0, 40, 35)],
+            'stratege': [(40, 10, 15, 35), (35, 10, 15, 40), (15, 10, 40, 35)],
             'instinctif': [(10, 55, 20, 15), (10, 50, 20, 20), (10, 35, 40, 15)],
             'hybride': [(30, 30, 15, 25), (25, 30, 15, 30), (20, 20, 35, 25)],
         }

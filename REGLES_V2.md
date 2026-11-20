@@ -43,9 +43,9 @@ les unités. Les probabilités de roulette sont :
 
 | Nature / trait | PC | Moral | Unité | Étiquette |
 | --- | ---: | ---: | ---: | ---: |
-| Stratège charismatique | 50 % | 0 % | 15 % | 35 % |
-| Stratège leader | 45 % | 0 % | 15 % | 40 % |
-| Stratège inventeur | 25 % | 0 % | 40 % | 35 % |
+| Stratège charismatique | 40 % | 10 % | 15 % | 35 % |
+| Stratège leader | 35 % | 10 % | 15 % | 40 % |
+| Stratège inventeur | 15 % | 10 % | 40 % | 35 % |
 | Instinctif charismatique | 10 % | 55 % | 20 % | 15 % |
 | Instinctif leader | 10 % | 50 % | 20 % | 20 % |
 | Instinctif inventeur | 10 % | 35 % | 40 % | 15 % |
@@ -209,7 +209,9 @@ changée pendant l'audit et mérite une décision de conception.
 
 Le joueur crée `QG.txt` ou `qg.txt` dans le dossier du général choisi. Leur contenu
 est indifférent. Les deux graphies sur le même général comptent une seule fois.
-Toute nature peut être désignée ; aucune comparaison de PC ne choisit le QG.
+Seuls les Stratèges et les hybrides à dominante Stratège non zombies peuvent
+être désignés ; une déclaration incompatible est refusée. Aucune comparaison
+de PC ne choisit le QG.
 Aucun QG signifie aucun effet global. Plusieurs QG du même camp annulent tous
 les effets globaux de ce camp pour cette bataille, même si l'un disparaît ensuite.
 

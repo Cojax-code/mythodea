@@ -27,13 +27,19 @@ def global_armee(generaux, qg, messager_present=False):
 
 
 
+def qg_autorise(fiche):
+    return bool(fiche and not fiche.get('etat_zombie') and
+                fiche.get('nature') in ('stratege', 'stratege_hybride'))
+
+
 def selectionner_qg(candidats, points=None):
-    """API de sélection explicite : toute nature, aucun départage par les PC.
+    """API de sélection explicite : stratèges vivants, aucun départage par les PC.
 
     Le paramètre historique points est conservé pour les appelants externes,
     mais n'est plus consulté. Le pilote territorial lit les fichiers QG.
     """
-    eligibles = [g for g in candidats if g.get('qg') and g.get('effectif_bloc_qg', 0) > 0]
+    eligibles = [g for g in candidats if g.get('qg') and g.get('effectif_bloc_qg', 0) > 0
+                 and qg_autorise(g)]
     return eligibles[0] if len(eligibles) == 1 else None
 
 
@@ -129,6 +135,8 @@ def instantane_qg_territorial(qg, generaux_presents):
     fiche_qg = progression.caracteristiques_general(qg)
     if fiche_qg is None:
         return None
+    if not qg_autorise(fiche_qg):
+        raise ValueError('Le quartier général est réservé aux stratèges non zombies.')
     pc_initial = fiche_qg['points_commandement']
     pc_global = pc_qg_sur_territoire(qg, allies)
     fiche_globale = dict(fiche_qg, points_commandement=pc_global)

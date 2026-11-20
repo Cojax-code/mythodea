@@ -1588,7 +1588,8 @@ son premier engagement ; une lecture de capacité ne le fige pas. La sortie,
 même sur exception, restaure le contexte précédent. La bataille suivante relit
 les choix. L'instantané est transitoire et n'introduit aucun format persistant.
 
-`QG.txt` ou `qg.txt` désigne le QG, quelle que soit sa nature ; plusieurs QG du
+`QG.txt` ou `qg.txt` désigne un Stratège non zombie (hybride à dominante Stratège
+inclus) comme QG ; une nature incompatible est refusée. Plusieurs QG du
 même camp annulent son soutien. Les PC globaux et les effets des seules étiquettes
 actives sont figés depuis les participants initiaux. Un Messager occupe cinq
 places, ne combat pas, et ajoute une seule fois `somme(PC des autres alliés) // 10`

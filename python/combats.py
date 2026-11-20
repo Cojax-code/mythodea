@@ -176,6 +176,9 @@ def _contexte_qg_territorial(territoire, configuration):
             fichiers = tuple(_fichier_qg_valide(general['chemin'] / nom)
                             for nom in ('QG.txt', 'qg.txt'))
             if any(fichiers):
+                fiche = progression.caracteristiques_general(general)
+                if not commandement.qg_autorise(fiche):
+                    raise ValueError('Le quartier général exige un profil officiel stratège non zombie.')
                 declarations.setdefault(general['camp'], []).append(general)
         allies, malus, qg_identites = {}, {}, set()
         camps_allies, malus_par_origine, instantanes = {}, {}, {}

@@ -13,9 +13,9 @@ TRAITS = {
 }
 RECOMPENSES = {
     'stratege': {
-        'charismatique': {'commandement': 50, 'moral': 0, 'unite': 15, 'etiquette': 35},
-        'leader': {'commandement': 45, 'moral': 0, 'unite': 15, 'etiquette': 40},
-        'inventeur': {'commandement': 25, 'moral': 0, 'unite': 40, 'etiquette': 35},
+        'charismatique': {'commandement': 40, 'moral': 10, 'unite': 15, 'etiquette': 35},
+        'leader': {'commandement': 35, 'moral': 10, 'unite': 15, 'etiquette': 40},
+        'inventeur': {'commandement': 15, 'moral': 10, 'unite': 40, 'etiquette': 35},
     },
     'instinctif': {
         'charismatique': {'commandement': 10, 'moral': 55, 'unite': 20, 'etiquette': 15},
@@ -97,6 +97,24 @@ def gain_pc_naturel(aleatoire):
 def gain_moral_naturel(niveau):
     # +1 aux niveaux pairs (2, 4, 6...), sans tirage supplémentaire.
     return 1 if niveau % 2 == 0 else 0
+
+
+def appliquer_gains_naturels(fiche, aleatoire):
+    """Applique les seuls gains du niveau courant, sans tirer de récompense.
+
+    Le niveau doit déjà être incrémenté. Ne modifie pas la fiche reçue.
+    Les niveaux zombies sont traités séparément par monter_niveau.
+    """
+    resultat = deepcopy(fiche)
+    if resultat['niveau'] == 0 or resultat.get('etat_zombie'):
+        return resultat
+    orientation = orientation_principale(resultat)
+    hybride = resultat['nature'].endswith('_hybride')
+    if orientation == 'stratege' or hybride:
+        resultat['points_commandement'] += gain_pc_naturel(aleatoire)
+    if orientation == 'instinctif' or hybride:
+        resultat['moral'] = min(100, resultat['moral'] + gain_moral_naturel(resultat['niveau']))
+    return resultat
 
 
 def recompense_statistique(orientation, aleatoire):
@@ -204,10 +222,7 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
 
     orientation = orientation_principale(resultat)
     hybride = resultat['nature'].endswith('_hybride')
-    if orientation == 'stratege' or hybride:
-        resultat['points_commandement'] += gain_pc_naturel(aleatoire)
-    if orientation == 'instinctif' or hybride:
-        resultat['moral'] = min(100, resultat['moral'] + gain_moral_naturel(niveau))
+    resultat = appliquer_gains_naturels(resultat, aleatoire)
 
     # Acquisitions garanties : N5/N10 ou N5 selon la
     # dominante. Les connaissances de roulette ne consomment pas ces paliers.
