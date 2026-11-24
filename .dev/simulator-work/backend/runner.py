@@ -10,7 +10,7 @@ import sys
 import tempfile
 import stat
 
-from .schema import LOCK, validate, validate_generation, InvalidConfiguration
+from .schema import LOCK, validate, validate_generation, validate_reward, InvalidConfiguration
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -59,7 +59,7 @@ class Runner:
         return contents
 
     def command(self, operation, engine_path):
-        if operation not in ("simulate", "generate", "probe", "timeout-probe"):
+        if operation not in ("simulate", "generate", "natural", "reward", "options", "probe", "timeout-probe"):
             raise ValueError("Opération interne inconnue.")
         args = [shutil.which("bwrap"), "--unshare-all", "--unshare-user", "--unshare-pid", "--unshare-net",
                 "--uid", "0", "--gid", "0", "--die-with-parent", "--new-session", "--cap-drop", "ALL",
@@ -122,3 +122,15 @@ class Runner:
 
     def generate(self, payload):
         return self.execute('generate', validate_generation(payload))
+
+    def options(self):
+        return self.execute('options', {})
+
+    def natural(self, payload):
+        return self.execute('natural', validate_generation(payload))
+
+    def reward(self, payload):
+        result = self.execute('reward', validate_reward(payload))
+        if 'invalid_configuration' in result:
+            raise InvalidConfiguration(result['invalid_configuration'])
+        return result

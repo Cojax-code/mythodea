@@ -12,8 +12,23 @@ retraites et la fatigue de déplacement ne sont pas simulées. Les règles sont 
 ## Lancement sous WSL / Linux
 
 Prérequis : utilisateur **non root**, Python 3.11+, Git, Bubblewrap avec `--size`
-et espaces de noms utilisateur autorisés. Validation réalisée sous WSL Ubuntu,
-Python 3.14.4 et Bubblewrap 0.11.1. Depuis ce dépôt dans un terminal WSL :
+et espaces de noms utilisateur autorisés. Lancement vérifié sous WSL Ubuntu,
+Python 3.14.4 et Bubblewrap 0.11.1.
+
+Depuis la racine de **Mythodea-web**, dans un terminal **WSL / Linux** :
+
+```bash
+bash scripts/run_simulator.sh
+```
+
+Ouvrir **http://127.0.0.1:8080/simulateur.html** dans le navigateur Windows ou Linux ;
+arrêter avec `Ctrl+C`. Le lanceur utilise `.venv`, ou les dépendances déjà préparées
+dans `.runtime/deps`. Il ne sélectionne pas `.venv-linux`.
+Le moteur est recherché par défaut dans `.runtime/engine-3391613`.
+Si une ancienne variable `MYTHODEA_ENGINE_PATH` est définie, exécuter
+`unset MYTHODEA_ENGINE_PATH` pour revenir à ce chemin.
+
+Pour préparer le moteur lors d'une **première installation ou après une mise à jour du verrou** :
 
 ```bash
 python3 -m venv .venv
@@ -32,10 +47,12 @@ Une page HTML seule ou un hébergement statique ne suffit pas à lancer le backe
 
 ## Vérification
 
+Après une modification qui le justifie, avec l'environnement `.venv` préparé :
+
 ```bash
 .venv/bin/python -B -m unittest discover -s tests -v
 ```
 
-Les tests Linux exécutent réellement Bubblewrap, sans solution de repli non isolée.
-Le [dossier du simulateur](docs/simulateur.md) décrit le contrat API, les tests
-navigateur, les limites, l'audit et les vérifications avant publication.
+Le [dossier du simulateur](docs/simulateur.md) décrit aussi l'API, l'isolation et les
+tests navigateur ; le [guide d'hébergement](docs/hebergement-permanent.md) couvre
+les prérequis d'une publication permanente.

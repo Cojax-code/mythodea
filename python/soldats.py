@@ -283,7 +283,12 @@ def pertes(infos, survivants, moral=0, aleatoire=None, general=None):
                 unites.blessures_max(valeur['type'], valeur['batailles'])):
             valeur['blessures'] += 1
             publier(unite, identifiant, valeur)
-        elif etendards.proteger(general, unite, infos['type'], aleatoire):
+            if general is not None:
+                import rapports
+                rapports.afficher_et_ecrire(
+                    f"Moral {general['joueur']}/{general['nom']}/{unite.parent.name} : "
+                    f"{unite.name} sauvé ; {valeur['blessures']} blessure(s).")
+        elif etendards.proteger(general, unite, infos['type'], aleatoire, identifiant):
             # Une perte absorbée n'est pas une blessure permanente ni un soin.
             pass
         else:

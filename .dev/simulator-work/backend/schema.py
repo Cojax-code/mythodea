@@ -23,15 +23,31 @@ def army_generals(army):
 
 
 def integer(value, low, high, where):
-    if type(value) is not int or not low <= value <= high:
-        raise InvalidConfiguration(f'{where} : entier entre {low} et {high} requis.')
+    if type(value) is not int or value < low or (high is not None and value > high):
+        interval = f'entre {low} et {high}' if high is not None else f'au moins égal à {low}'
+        raise InvalidConfiguration(f'{where} : entier {interval} requis.')
+
+
+def selected_label_limit(nature, level):
+    """Parcours par défaut des anciens scénarios sans capacités explicites."""
+    return CATALOG['specific_states'][nature][level][0][0]
 
 
 def validate_profile(profile):
     if not isinstance(profile, dict):
         raise InvalidConfiguration('Profil invalide.')
     exact_keys(profile, ('level', 'nature', 'trait', 'pc', 'morale', 'labels', 'active', 'zombie', 'zombie_levels',
-                         *[k for k in ('permanent', 'active_slots', 'banner_level') if k in profile]), 'Profil')
+                         *[k for k in ('permanent', 'active_slots', 'banner_level', 'unlocked_evolutions', 'corpse_available', 'quest_heavy_cavalry') if k in profile]), 'Profil')
+    if 'unlocked_evolutions' in profile:
+        unlocked = profile['unlocked_evolutions']
+        if (not isinstance(unlocked, list) or len(unlocked) > 7
+                or any(type(i) is not int or i not in range(104, 111) for i in unlocked)
+                or len(unlocked) != len(set(unlocked))):
+            raise InvalidConfiguration('Déblocages invalides.')
+    if 'corpse_available' in profile and type(profile['corpse_available']) is not bool:
+        raise InvalidConfiguration('Disponibilité du cadavre booléenne requise.')
+    if 'quest_heavy_cavalry' in profile and type(profile['quest_heavy_cavalry']) is not bool:
+        raise InvalidConfiguration('Déblocage par quête booléen requis.')
     for key in ('level', 'pc', 'morale'):
         integer(profile[key], 0, CATALOG['limits'][key], key)
     if profile['nature'] not in CATALOG['natures'] or profile['trait'] not in CATALOG['traits']:
@@ -51,11 +67,41 @@ def validate_profile(profile):
         if (not isinstance(names, list) or not all(isinstance(n, str) for n in names)
                 or len(names) != len(set(names)) or not set(names) <= labels.keys()):
             raise InvalidConfiguration('Sélection d’étiquettes inconnue ou dupliquée.')
+    ordinary = [n for n in profile['active'] if not (profile['zombie'] and n == 'mort_vivant')]
+    if profile['zombie_levels'] > profile['level'] or (not profile['zombie'] and profile['zombie_levels']):
+        raise InvalidConfiguration('Niveaux après zombification incohérents.')
+    possibles = CATALOG['specific_states'][profile['nature']][profile['level'] - profile['zombie_levels']]
+    capacites = [profile.get('active_slots', 1), profile.get('banner_level', 0)]
+    if 'active_slots' not in profile and 'banner_level' not in profile:
+        capacites = possibles[0]
+    if capacites not in possibles:
+        raise InvalidConfiguration('Capacités spécifiques incompatibles avec le niveau et l’orientation.')
+    if len(ordinary) > capacites[0]:
+        raise InvalidConfiguration('Nombre d’étiquettes supérieur à la limite autorisée pour ce niveau et cette nature.')
 
 
 def validate_generation(payload):
-    exact_keys(payload, ('level', 'seed'), 'Génération')
+    if not isinstance(payload, dict):
+        raise InvalidConfiguration('Génération : objet JSON requis.')
+    exact_keys(payload, ('level', 'seed', *[k for k in ('nature', 'zombie', 'zombie_levels') if k in payload]), 'Génération')
     integer(payload['level'], 0, CATALOG['limits']['level'], 'Niveau')
+    if payload['seed'] is not None:
+        integer(payload['seed'], 0, 2**32 - 1, 'Graine')
+    if 'nature' in payload and payload['nature'] not in CATALOG['natures']:
+        raise InvalidConfiguration('Nature inconnue.')
+    if type(payload.get('zombie', False)) is not bool:
+        raise InvalidConfiguration('État zombie booléen requis.')
+    integer(payload.get('zombie_levels', 0), 0, payload['level'], 'Niveaux après zombification')
+    if payload.get('zombie_levels') and not payload.get('zombie'):
+        raise InvalidConfiguration('Niveaux après zombification incohérents.')
+    return payload
+
+
+def validate_reward(payload):
+    exact_keys(payload, ('profile', 'seed'), 'Récompense')
+    validate_profile(payload['profile'])
+    if payload['profile']['level'] >= CATALOG['limits']['level']:
+        raise InvalidConfiguration('Niveau maximal atteint.')
     if payload['seed'] is not None:
         integer(payload['seed'], 0, 2**32 - 1, 'Graine')
     return payload
@@ -107,7 +153,7 @@ def validate(payload):
             where = f"Camp {camp}, général {index}"
             if not isinstance(general, dict):
                 raise InvalidConfiguration('Général invalide.')
-            exact_keys(general, ('position', 'blocks', *[k for k in ('order', 'profile', 'qg', 'banner_block') if k in general]), where)
+            exact_keys(general, ('position', 'blocks', *[k for k in ('order', 'profile', 'qg', 'banner_block', 'qg_block') if k in general]), where)
             position = general["position"]
             if type(position) is not int or position not in range(1, 5) or position in occupied:
                 raise InvalidConfiguration(f"{where} : position unique entre 1 et 4 requise.")
@@ -121,6 +167,13 @@ def validate(payload):
             if general.get('banner_block') is not None:
                 if general['banner_block'] not in CATALOG['blocks'] or 'profile' not in general:
                     raise InvalidConfiguration('Un bloc et un profil explicite sont nécessaires pour l’étendard.')
+            if general.get('qg'):
+                profile = general['profile']
+                if (not isinstance(profile, dict) or profile.get('zombie') is not False
+                        or profile.get('nature') not in ('stratege', 'hybride')):
+                    raise InvalidConfiguration('Le quartier général est réservé aux stratèges.')
+            if 'qg_block' in general and general['qg_block'] not in CATALOG['blocks']:
+                raise InvalidConfiguration(f'{where} : bloc du QG inconnu.')
             if 'profile' in general:
                 validate_profile(general['profile'])
             validate_blocks(general['blocks'], where, general.get('profile'))

@@ -1,19 +1,23 @@
 # Simulateur Mythodea — rendre le service disponible 24 h/24
 
-## Situation actuelle (20 octobre 2026)
+## Version locale vérifiée le 3 novembre 2026
 
-Le simulateur n'est pas encore publié comme application web. Le site HTML peut
+Le lancement local est vérifié ; aucun déploiement public permanent n'est validé
+par cette vérification. Le site HTML peut
 être hébergé statiquement, mais son bouton « Lancer le combat » appelle
 `POST /api/simulator/run`, exécuté par le serveur Python Flask/Waitress.
 `backend/app.py` écoute **uniquement sur 127.0.0.1:8080** et sa liste
 `TRUSTED_HOSTS` n'accepte que localhost. Lancer la page sur GitHub Pages
 ne suffit pas : GitHub Pages ne fait pas tourner Python ni Bubblewrap.
 
-Le simulateur utilise un moteur Python officiel **figé** au commit décrit dans
-`backend/engine.lock.json` (préparation par `scripts/prepare_engine.py`).
-Le moteur `v2.0` actuel, comprenant Spore/Bouclier vivant, **n'est pas
-automatiquement inclus** dans le simulateur hébergé, même si le site ou le jeu
-sont mis à jour.
+Le simulateur utilise les 27 modules du moteur **87d36a5 + corrections locales**,
+verrouillés par SHA-256 dans `backend/engine.lock.json`. La progression actuelle,
+les étiquettes, QG/Messagers et les impasses sont synchronisés. La révision exacte
+et les limites figurent dans la [documentation du simulateur](simulateur.md).
+Les corrections restent sans commit : leur préparation exige le dépôt moteur
+local et `--working-tree`. Avant une installation depuis GitHub, créer le commit
+sur instruction explicite puis actualiser le verrou pour utiliser ses blobs Git.
+Les changements du moteur ne sont jamais intégrés automatiquement.
 
 ## Solution recommandée : hôte Linux permanent, HTTPS, proxy inverse
 
@@ -24,7 +28,7 @@ Bubblewrap et les espaces de noms utilisateur** est nécessaire.
    adresse joignable depuis Internet. Les offres qui interdisent Bubblewrap ou
    les espaces de noms utilisateur ne sont pas compatibles avec ce moteur
    sécurisé. Ne jamais désactiver l'isolation pour contourner ce problème.
-2. Installer Python 3.11+, Git, Bubblewrap et un environnement virtuel
+2. Installer Python 3.11+, Git, Bubblewrap avec `--size` et un environnement virtuel
    pour l'application, sous un compte Linux dédié non privilégié. Préparer
    l'environnement selon `README.md`.
 3. Préparer et vérifier l'empreinte du **moteur verrouillé**. Exécuter sur
@@ -37,7 +41,7 @@ Bubblewrap et les espaces de noms utilisateur** est nécessaire.
    pour accepter uniquement le véritable domaine public configuré, en plus
    de localhost si nécessaire. Garder les protections de taille de requête,
    la validation de schéma, le sandbox et les limites de ressources.
-6. Protéger la route `/api/simulator/run` par **limitation du débit**, quotas
+6. Protéger toutes les routes `/api/simulator/` (run, generate, natural, reward, options) par **limitation du débit**, quotas
    et éventuellement authentification : chaque requête lance un vrai calcul.
    Surveiller CPU, mémoire, espace disque et logs ; prévoir la mise à jour
    et la reprise en cas d'arrêt.
@@ -68,15 +72,16 @@ redémarrage et supervision, pas une garantie de 100 % de disponibilité.
 ## Mise à jour du moteur du simulateur
 
 **Ne pas remplacer seulement le hash verrouillé** : `engine.lock.json`, la
-préparation des modules et les schémas d'unités/ordres doivent être adaptés
+préparation des modules et les schémas d'unités/profils/étiquettes doivent être adaptés
 ensemble. Une nouvelle version du moteur nécessite une nouvelle campagne de
 tests et de comparaisons. Jusqu'à ce travail, afficher le simulateur comme une
 version de référence limitée, non comme une simulation complète de toutes les
 capacités de la V2.
 
-## Fiches d'ordres
+## Guide des étiquettes
 
-La page `fiches-ordres.html` fonctionne en statique, sans Python. Les
-propositions sont enregistrées en `localStorage` dans le navigateur qui les a
-créées, avec export/import JSON. **Elles ne sont pas synchronisées automatiquement
-entre appareils ni ajoutées au moteur.** Sauvegarder régulièrement le JSON.
+La page `etiquettes.html` présente les étiquettes. Les anciens ordres ne sont
+plus proposés dans le simulateur ; l'API refuse un champ `order` non vide.
+`fiches-ordres.html` n'est pas servie par le backend et ne doit plus être annoncée
+comme une fonction active. Les fiches statiques ne remplacent pas la validation
+des profils par le moteur du simulateur.

@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import random
+import shutil
 import sys
 import unittest
 from unittest.mock import Mock, patch
@@ -114,7 +115,10 @@ class Orientations(unittest.TestCase):
 
 
 class Etendards(unittest.TestCase):
-    setUp = support.SoldatsFormation.setUp
+    def setUp(self):
+        support.SoldatsFormation.setUp(self)
+        # Le support recharge config pour chaque plateau isolé.
+        self.enterContext(patch.object(etendards, 'config', self.config))
     activer = support.SoldatsFormation.activer
     general = support.SoldatsFormation.general
     modules = support.SoldatsFormation.modules
@@ -130,7 +134,138 @@ class Etendards(unittest.TestCase):
         # Les scénarios de consommation imposent un succès ; la distribution
         # réelle et les échecs sont vérifiés séparément sur les cent tickets.
         self.enterContext(patch.object(self.combats.random, 'randint', return_value=1))
+        self.enterContext(patch.object(etendards.random, 'randint', return_value=1))
         return g
+
+    def test_declaration_invalide_refusee_une_fois_sans_interrompre_territoire(self):
+        g = self.porteur(nombre=2)
+        (g['chemin'] / 'droite/etendard.txt').touch()
+        territoire = g['chemin'].parents[2]
+        with patch.object(self.rapports, 'noter_resultat') as rapport:
+            with self.combats._contexte_qg_territorial(territoire, self.profil):
+                self.assertIsNone(etendards.figer(g))
+                self.assertEqual(len(self.combats.supprimer_unites(self.infos(g), 0, g)), 2)
+                self.assertIsNone(etendards.figer(g))
+            self.assertEqual(rapport.call_count, 1)
+            self.assertIn('refusé', rapport.call_args.args[2])
+        self.assertIsNone(etendards._guerre.get())
+
+    def test_renommage_et_deplacement_general_conservent_les_charges(self):
+        g = self.porteur(niveau=2, nombre=1)
+        unite = self.infos(g)['unites'][0]
+        with etendards.guerre():
+            self.assertTrue(etendards.proteger(g, unite, 'archer'))
+            renomme = unite.with_name('infanterie99')
+            unite.rename(renomme)
+            destination = g['chemin'].with_name('deplacement') / g['nom']
+            destination.parent.mkdir()
+            g['chemin'].rename(destination)
+            g['chemin'] = destination
+            unite = destination / 'avant' / renomme.name
+            self.assertTrue(etendards.proteger(g, unite, 'archer'))
+            self.assertFalse(etendards.proteger(g, unite, 'archer'))
+
+    def test_remplacement_prive_conserve_uuid_et_aucune_recharge(self):
+        g = self.porteur(niveau=2, nombre=1)
+        unite = self.infos(g)['unites'][0]
+        with etendards.guerre():
+            self.assertTrue(etendards.proteger(g, unite, 'archer'))
+            temporaire = unite.with_name('copie')
+            shutil.copytree(unite, temporaire)
+            shutil.rmtree(unite)
+            temporaire.rename(unite)
+            with patch.object(self.config, 'dans_generation_privee', return_value=True):
+                self.assertTrue(etendards.proteger(g, unite, 'archer'))
+                self.assertFalse(etendards.proteger(g, unite, 'archer'))
+
+    def test_unite_remplacee_sans_identite_ne_vole_pas_de_charge(self):
+        g = self.porteur(nombre=2)
+        unite = self.infos(g)['unites'][0]
+        with etendards.guerre():
+            etendards.figer(g)
+            registre = self.soldats.charger()
+            identifiant = self.soldats.retrouver(unite, registre)
+            registre[identifiant]['detruit'] = True
+            self.soldats.sauvegarder(registre)
+            shutil.rmtree(unite)
+            unite.mkdir()
+            (unite / 'arc').touch()
+            self.assertFalse(etendards.proteger(g, unite, 'archer'))
+
+    def test_zombies_et_bouclier_exclus_sans_tirage(self):
+        g = self.porteur(nombre=1)
+        unite = self.infos(g)['unites'][0]
+        rng = Mock(randint=Mock(side_effect=AssertionError('Zombie protégé')))
+        with etendards.guerre():
+            for type_unite in ('zombie', 'Trop_gros_zombie'):
+                self.assertFalse(etendards.proteger(g, unite, type_unite, rng))
+
+    def test_palier_persiste_avant_fiche_et_reprise_sans_second_tirage(self):
+        g = self.creer(nature='hybride')
+        profils = progression.charger()
+        profils['j1:general1'].update(niveau=4, progression_combat=1, evolution_apprise=201)
+        progression.sauvegarder(profils)
+        rng = Mock(randint=lambda a, b: a)
+        with patch.object(progression, 'publier_fiche', side_effect=OSError('interruption')):
+            with self.assertRaises(OSError):
+                progression.valider_evenement(g, 'combat', 'palier', rng)
+        avant = progression.charger()['j1:general1']
+        self.assertEqual(avant['niveau'], 5)
+        self.assertEqual(avant['emplacements_etiquettes_actives'], 2)
+        self.assertEqual(avant['points_commandement'], 7)
+        with patch.object(rng, 'randint', side_effect=AssertionError('Rejeu')):
+            self.assertFalse(progression.valider_evenement(g, 'combat', 'palier', rng))
+        self.assertEqual(progression.charger()['j1:general1'], avant)
+
+    def test_anciens_zombies_conservent_capacites_sans_rattrapage(self):
+        for nature, places in [('stratege', 3), ('stratege_hybride', 3),
+                              ('instinctif', 1), ('instinctif_hybride', 1)]:
+            fiche = dict(nature=nature, niveau=25, etat_zombie=True, niveaux_zombie=3,
+                         etiquettes={'orc': 3}, moral=50, points_commandement=70)
+            apres = progression.migrer_profil(fiche, Mock(randint=Mock(side_effect=AssertionError)))
+            self.assertEqual(apres['emplacements_etiquettes_actives'], places)
+            self.assertEqual(apres['niveau_etendard'], 0)
+            self.assertEqual(apres['migration_orientations'], [])
+            self.assertEqual(progression.migrer_profil(apres), apres)
+
+    def test_choc_manoeuvres_et_generaux_successifs_partagent_la_guerre(self):
+        g = self.porteur(niveau=2, nombre=3)
+        for numero, bloc in ((1, 'avant'), (2, 'arriere')):
+            ennemi = self.general('bot', numero=numero, place=str(numero), nombre=1)
+            if bloc == 'arriere':
+                for unite in (ennemi / 'avant').iterdir():
+                    unite.rename(ennemi / 'arriere' / unite.name)
+        territoire = g['chemin'].parents[2]
+        with etendards.guerre():
+            initial = etendards.figer(g)
+            self.combats.resoudre_combat_range(territoire, self.profil)
+            self.assertIs(etendards.figer(g), initial)
+            self.assertTrue(any(n < 2 for n in initial['restantes'].values()))
+            self.assertFalse(initial['detruit'])
+        self.assertIsNone(etendards._guerre.get())
+
+    def test_capture_migration_privee_publication_et_reprise_sans_retirage(self):
+        from support_cycle import GelSimule
+        g = self.porteur(niveau=2, nombre=2, nature='hybride')
+        profils = progression.charger()
+        fiche = profils['j1:general1']
+        fiche.update(niveau=20, nature='stratege_hybride')
+        fiche.pop('version_progression')
+        fichier = self.config.game_path / '.systeme/progression.json'
+        fichier.write_text(json.dumps(profils), encoding='utf-8')
+        gestion = self.cycle_linux.Generations(self.profil, GelSimule())
+        gestion.preparer()
+        prive, homes = gestion.capturer(1)
+        with self.config.racines_generation(prive['game_path'], homes):
+            with patch.object(progression.aleatoire_progression, 'randint', return_value=100) as tirages:
+                migree = progression.charger()['j1:general1']
+                self.assertEqual(progression.charger()['j1:general1'], migree)
+                self.assertLessEqual(tirages.call_count, 4)
+                self.assertEqual((migree['emplacements_etiquettes_actives'], migree['niveau_etendard']), (3, 2))
+            self.assertEqual(progression.charger()['j1:general1']['version_progression'], 3)
+        # La génération privée conserve sa migration même après sortie du contexte.
+        contenu = json.loads((prive['game_path'] / '.systeme/progression.json').read_text())
+        self.assertEqual(contenu['j1:general1'], migree)
 
     def test_probabilites_exactes_charges_et_echec_sans_consommation(self):
         g = self.porteur(nombre=1)

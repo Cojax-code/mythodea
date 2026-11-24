@@ -140,9 +140,57 @@ header nav .help-dropdown a:hover, header nav .help-dropdown a:focus-visible { b
 header nav a[aria-current="page"] { text-decoration: underline; text-underline-offset: 5px; }
 @media (max-width: 650px) { header nav .help-dropdown { left: auto; right: 0; max-width: 90vw; } }
 
-/* Profils du simulateur : champs et ?tiquettes accessibles sur petit ?cran. */
+/* Profils du simulateur : champs et Étiquettes accessibles sur petit écran. */
 .sim-labels { margin: 1rem 0; }
 .sim-label-row { display: grid; grid-template-columns: minmax(7rem,1fr) 4rem auto 1.2rem auto 1.2rem; gap: .4rem; align-items: center; padding: .4rem 0; border-bottom: 1px solid #cbd5e1; }
 .sim-label-row input { min-width: 0; width: 100%; }
 .sim-general-body input[type=checkbox] { width: 1.2rem; height: 1.2rem; }
 @media(max-width: 500px) { .sim-label-row { grid-template-columns: 1fr 4rem; } }
+
+/* Configuration progressive : garder les contrôles associés sur petit écran. */
+.simulator [hidden] { display: none !important; }
+.simulator .sim-check { display: flex; align-items: center; gap: .6rem; margin: .6rem 0; }
+.simulator .sim-check input { width: auto; flex: 0 0 auto; }
+.simulator .sim-check label { margin: 0; }
+.simulator .sim-label-row { grid-template-columns: 1.2rem minmax(0, 1fr) auto 4.5rem; gap: .5rem; padding: .75rem 0; }
+.simulator .sim-label-row > label { margin: 0; }
+.simulator .sim-label-row > input[type=checkbox] { width: 1.2rem; height: 1.2rem; justify-self: center; }
+.simulator .sim-label-row > label:nth-child(2) { font-weight: 600; }
+.simulator .sim-label-row:not(.sim-known) > :nth-child(n+3) { visibility: hidden; }
+.simulator .sim-generation, .simulator .sim-unlocks { margin: .8rem 0; }
+
+
+/* Parcours progressif des généraux — présentation compacte. */
+.simulator .sim-general-body > .sim-step { padding: .8rem 0; border-top: 1px solid #d8e0e9; }
+.simulator .sim-general-body > .sim-step[hidden],
+.simulator .sim-general-body > .sim-optional[hidden] { display: none !important; }
+.simulator .sim-general-body > .sim-step h3 { margin: 0 0 .65rem; }
+.simulator .sim-general-body > .sim-step > button { margin-top: .65rem; }
+.simulator .sim-labels { margin: .35rem 0; }
+.simulator .sim-label-row { grid-template-columns: 1.2rem minmax(8rem, 1fr) auto 4.5rem; gap: .4rem .65rem; padding: .45rem .25rem; }
+.simulator .sim-label-row > small { grid-column: 2 / -1; font-size: .82rem; line-height: 1.35; }
+.simulator .sim-label-row:not(.sim-known) > small { visibility: visible; }
+.simulator .sim-random-settings { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-top: .65rem; }
+.simulator .sim-random-settings label { margin: 0; }
+.simulator .sim-random-settings select { max-width: 16rem; }
+@media(max-width:500px) { .simulator .sim-label-row { grid-template-columns: 1.2rem minmax(5rem,1fr) auto 3.3rem; } }
+
+
+/* Récompenses de progression : une ligne compacte par niveau. */
+.simulator .sim-level-rewards { margin: .65rem 0; }
+.simulator .sim-level-rewards > summary { cursor: pointer; font-weight: 600; }
+.simulator .sim-rewards-list { max-height: 22rem; overflow-y: auto; margin-top: .5rem; }
+.simulator .sim-reward-row { display: grid; grid-template-columns: 2.4rem minmax(8rem,1fr) minmax(7rem,1fr) 5rem; gap: .45rem; align-items: center; margin: .35rem 0; }
+.simulator .sim-reward-row > :first-child { font-weight: 600; font-size: .85rem; }
+.simulator .sim-reward-row > select, .simulator .sim-reward-row > input { min-width: 0; width: 100%; }
+.simulator .sim-reward-row > [hidden] { display: none; }
+@media(max-width:600px) { .simulator .sim-reward-row { grid-template-columns: 2.4rem minmax(6rem,1fr) minmax(6rem,1fr); } .simulator .sim-reward-row > input { grid-column: 2 / -1; } }
+
+
+/* Récompenses : catégorie, valeur et tirage optionnel sur la même ligne. */
+.simulator .sim-reward-row { grid-template-columns: 2.4rem minmax(7rem, 1fr) minmax(7rem, 1fr) 5rem auto; }
+.simulator .sim-reward-row > button { white-space: nowrap; padding: .35rem .55rem; }
+@media(max-width: 650px) {
+    .simulator .sim-reward-row { grid-template-columns: 2.4rem minmax(6rem, 1fr) minmax(6rem, 1fr); }
+    .simulator .sim-reward-row > button { grid-column: 2 / -1; justify-self: start; }
+}

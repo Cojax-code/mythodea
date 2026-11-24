@@ -78,7 +78,7 @@ nav .help-dropdown a:hover,nav .help-dropdown a:focus-visible{background:#41526d
             <button id="layout-button" type="button" class="sim-secondary sim-layout-button" aria-label="Afficher les camps verticalement" aria-pressed="false" title="Afficher les camps verticalement" hidden><span id="layout-icon" aria-hidden="true">▥</span></button>
         </div>
         <p>Configurez jusqu’à <strong>quatre généraux actifs par camp</strong>, leurs profils et leurs quatre blocs. Chaque général dispose de 20 places, avec une capacité supplémentaire selon son évolution zombie.</p>
-        <p class="sim-note">Chaque bataille utilise un plateau jetable, séparé des parties réelles. Choc initial, manœuvres et combat rangé sont résolus par le moteur officiel b31b842. OFF/OFF et OFF/DEF utilisent actuellement les mêmes règles de combat, sans bonus défensif.</p>
+        <p class="sim-note">Chaque bataille utilise un plateau jetable, séparé des parties réelles. Choc initial, manœuvres et combat rangé sont résolus par le moteur Python v2.0 synchronisé. En impasse complète, OFF/DEF requiert la retraite de l’attaquant et OFF/OFF celle des deux camps. Les retraites physiques restent non simulées, sans destination inventée.</p>
         <noscript><p class="sim-error">Activez JavaScript pour configurer les formations et lancer une simulation.</p></noscript>
         <p id="service-status" role="status">Chargement du catalogue du moteur…</p>
         <form id="simulation-form" novalidate hidden>
@@ -104,12 +104,12 @@ nav .help-dropdown a:hover,nav .help-dropdown a:focus-visible{background:#41526d
                 </div>
                 <p id="combat-mode-help" class="sim-muted">Le moteur officiel utilise actuellement les mêmes calculs dans les deux modes, sans bonus défensif. En OFF/DEF, échanger les camps échange aussi le rôle de défenseur.</p>
                 <div class="sim-actions">
-                    <button id="run-button" type="submit">Lancer la simulation</button>
+                    <button id="run-button" type="submit">Lancer le combat</button>
                     <button id="swap-button" type="button" class="sim-secondary">Échanger les camps</button>
                 </div>
-                <p class="sim-muted">Profils, PC, moral, étiquettes, QG et Messagers sont transmis au moteur. Sans fatigue, renforts en cascade ni retraites. Direction, terrain et fuite volontaire sont réservés à la v2.1. Les nouvelles décisions postérieures à b31b842 ne sont pas encore disponibles.</p>
-                <p id="validation" role="status"></p>
+                <div id="validation" class="sim-error" role="alert" hidden></div>
                 <p id="run-error" class="sim-error" role="alert" hidden></p>
+                <p class="sim-muted">Profils, PC, moral, étiquettes, QG et Messagers sont transmis au moteur. Sans fatigue, renforts en cascade ni retraites. Direction, terrain et fuite volontaire sont réservés à la v2.1. Roulette actualisée, gains hybrides, PC instinctifs et valeurs pouvant atteindre 0 % sont intégrés. L’emplacement zombie supplémentaire est réservé à mort_vivant.</p>
             </section>
         </form>
         <details id="results-panel" class="sim-panel">

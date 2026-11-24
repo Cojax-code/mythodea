@@ -22,6 +22,8 @@ def sync(source):
     lock['files'] = {p.name: hashlib.sha256(p.read_text(encoding='utf-8').encode()).hexdigest()
                      for p in sorted((source / 'python').glob('*.py'))}
     lock['snapshot'] = hashlib.sha256(json.dumps(lock['files'], sort_keys=True).encode()).hexdigest()
+    lock['revision'] = lock['snapshot']
+    lock.pop('source_state', None)
     catalog = lock['catalog']
     catalog.update(blocks=config.ordre_blocs, max_units=config.max_unites_par_general,
                    units=list(catalogues.UNITE_PAR_NOM),
@@ -35,6 +37,35 @@ def sync(source):
     catalog['label_rank_max'] = [progression.niveau_max_etiquette(n)
                                 for n in range(catalog['limits']['level'] + 1)]
     catalog['active_limits'] = {'stratege': 3, 'instinctif': 1, 'hybride': 3}
+    # Exporter les parcours officiels : le navigateur ne calcule aucune progression.
+    class Branche:
+        def __init__(self, haute):
+            self.haute = haute
+
+        def randint(self, minimum, maximum):
+            return maximum if self.haute else minimum
+
+    catalog['specific_states'] = {}
+    catalog['extra_roulette_levels'] = {}
+    for nature in progression.NATURES:
+        possibles = {(1, 0)}
+        niveaux = []
+        extras = []
+        for niveau in range(catalog['limits']['level'] + 1):
+            if niveau and niveau % 5 == 0:
+                suivants = set()
+                for places, etendard in possibles:
+                    for haute in (False, True):
+                        fiche = dict(nature=nature, emplacements_etiquettes_actives=places,
+                                     niveau_etendard=etendard)
+                        recompense, _ = progression.progression_specifique(fiche, Branche(haute))
+                        if recompense is None and niveau not in extras:
+                            extras.append(niveau)
+                        suivants.add((fiche['emplacements_etiquettes_actives'], fiche['niveau_etendard']))
+                possibles = suivants
+            niveaux.append(sorted(possibles))
+        catalog['specific_states'][nature] = niveaux
+        catalog['extra_roulette_levels'][nature] = extras
     lock_path.write_text(json.dumps(lock, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     print(f"Sources locales verrouillées : {lock['snapshot']}")
 

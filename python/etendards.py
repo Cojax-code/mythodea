@@ -67,17 +67,32 @@ def figer(general):
         return None
     identite = (general['joueur'], general['nom'])
     if identite not in contexte:
-        choix = declaration(general)
+        import rapports
         contexte[identite] = None
+        try:
+            choix = declaration(general)
+        except ValueError as erreur:
+            message = f"{general['joueur']}/{general['nom']} : étendard refusé : {erreur}"
+            rapports.afficher_et_ecrire(message)
+            rapports.noter_resultat(general['joueur'], 'ÉTENDARD', message)
+            return None
         if choix is not None:
             import generaux
-            import rapports
+            import soldats
             bloc, niveau = choix
             dossier = general['chemin'] / bloc
             unites = [u for u in dossier.iterdir() if generaux.identifier_unite(u) != 'inconnu']
             charges = catalogues.CHARGES_ETENDARDS[niveau]
             probabilite = catalogues.PROBABILITES_ETENDARDS[niveau]
-            restantes = {(u.stat().st_dev, u.stat().st_ino): charges for u in unites}
+            registre = soldats.charger()
+            restantes = {}
+            for unite in unites:
+                identifiant = soldats.retrouver(unite, registre, config.dans_generation_privee())
+                if identifiant is None:
+                    identifiant = soldats.enregistrer(unite, registre, generaux.identifier_unite(unite))
+                soldats.publier(unite, identifiant, registre[identifiant])
+                restantes[identifiant] = charges
+            soldats.sauvegarder(registre)
             contexte[identite] = dict(dossier=dossier, niveau=niveau,
                                       probabilite=probabilite, restantes=restantes, detruit=False)
             libelle = 'royal' if niveau == 2 else 'normal'
@@ -85,10 +100,15 @@ def figer(general):
                        f'{probabilite} % de sauvetage, {charges} charge(s) par unité pour cette guerre de territoire.')
             rapports.afficher_et_ecrire(message)
             rapports.noter_resultat(general['joueur'], 'ÉTENDARD', message)
-    return contexte[identite]
+    etendard = contexte[identite]
+    if etendard is not None:
+        # Un déplacement moteur conserve le bloc protégé et les identités,
+        # sans relire la déclaration ni renouveler les charges.
+        etendard['dossier'] = general['chemin'] / etendard['dossier'].name
+    return etendard
 
 
-def proteger(general, unite, type_unite, aleatoire=None):
+def proteger(general, unite, type_unite, aleatoire=None, identifiant=None):
     """Appelé seulement après l'échec du sauvetage par le moral."""
     import unites
     if general is None or unites.etiquette(type_unite, 'mort_vivant'):
@@ -96,8 +116,10 @@ def proteger(general, unite, type_unite, aleatoire=None):
     etendard = figer(general)
     if not etendard or etendard['detruit'] or unite.parent != etendard['dossier']:
         return False
-    info = unite.stat()
-    cle = (info.st_dev, info.st_ino)
+    if identifiant is None:
+        import soldats
+        identifiant = soldats.retrouver(unite, soldats.charger(), config.dans_generation_privee())
+    cle = identifiant
     restant = etendard['restantes'].get(cle, 0)
     if restant <= 0:
         return False

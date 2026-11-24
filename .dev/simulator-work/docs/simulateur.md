@@ -19,7 +19,7 @@ Chaque camp dispose de 1 à 4 généraux sur des positions distinctes de 1 à 4.
 La file est résolue par `combats.resoudre_combat_v15` ou
 `combats.resoudre_combat_off_def`. Les survivants peuvent affronter les généraux
 suivants. Chaque duel utilise le choc initial, les manœuvres et les capacités
-spéciales officielles. OFF/DEF ajoute les rôles au rapport, sans bonus défensif.
+spéciales officielles. OFF/DEF distingue le défenseur dans la décision d’impasse, sans bonus défensif.
 La configuration future d'engagement frontal par terrain n'est pas exposée.
 
 L'adaptateur crée les dossiers et les soldats via `generaux.creer_general` et
@@ -34,7 +34,8 @@ Les soldats démarrent sans blessures ni batailles passées ; le résultat disti
 les blessures avant les soins de fin de bataille et celles restant après soins.
 La progression de campagne, l'hôpital et les résurrections ne sont pas simulés.
 
-Le QG n'est jamais choisi automatiquement par ses PC. Une double déclaration
+Le QG est réservé aux Stratèges non zombies, hybrides à dominante Stratège inclus.
+Il n'est jamais choisi automatiquement par ses PC. Une double déclaration
 est refusée. Ses effets sont figés avec les généraux présents ; ils cessent à sa
 destruction, sans remplaçant. Le Messager ajoute une seule fois les PC calculés
 par le moteur ; son amplification ne s'applique pas aux bonus personnels du QG.
@@ -99,9 +100,30 @@ selon le code officiel, qui le ramène à zéro avant les effets de composition.
 `GET /api/simulator/catalog` fournit unités et définitions officielles, blocs,
 natures, traits, étiquettes, rang maximal par niveau, limites et commit.
 
-`POST /api/simulator/generate` reçoit `{"level":10,"seed":42}`. `seed:null`
-demande une nouvelle graine, renvoyée avec `profile` et `unlocked_evolutions`.
+`POST /api/simulator/options` reçoit un objet vide et fournit les évolutions
+admissibles et compatibilités obtenues par les API officielles, les capacités
+zombies par niveau et les limites de sélection du formulaire par niveau et nature.
+L’appel utilise le même worker isolé et le même verrou de concurrence.
+
+Le champ `unlocked_evolutions` déclare les acquisitions et ses IDs sont validés.
+Son absence ne débloque aucune unité évoluée. `quest_heavy_cavalry` est un booléen
+facultatif pour la Cavalerie lourde obtenue par quête. `corpse_available` déclare la condition
+spéciale du Gros zombie. Les restrictions de nature et d’état zombie sont contrôlées
+pour tous les profils, même sans ces champs.
+
+`POST /api/simulator/generate` reçoit `{"level":10,"seed":42}` ou ajoute
+`nature`, `zombie` et `zombie_levels` pour conserver le type choisi.
+`seed:null` demande une nouvelle graine, renvoyée avec le profil.
 La génération utilise le même bac à sable et le même verrou de concurrence.
+
+`POST /api/simulator/natural` accepte le même contrat que `generate` et renvoie
+uniquement `pc`, `morale`, `seed` et `engine_commit`. Les statistiques partent de
+zéro ; les récompenses sont ajoutées par le formulaire sans changer leurs choix.
+`POST /api/simulator/reward` reçoit `{"profile": <profil avant le niveau>, "seed": null}`.
+Il appelle `monter_niveau` et renvoie seulement `reward`, `seed` et `engine_commit`.
+Le bouton par niveau transmet les acquis des niveaux précédents ; la récompense
+tirée suit le trait, la dominante, les exclusions, les paliers et la règle zombie
+du moteur. Les deux routes utilisent le même worker Bubblewrap et les mêmes quotas.
 
 `POST /api/simulator/run` reçoit :
 
@@ -177,10 +199,18 @@ ni fonction modifiée du worker ne survit à sa destruction.
 
 ## Tests et lancement
 
+La synchronisation a été vérifiée sous WSL avec 52 tests Python réussis
+(20 ciblés, 31 autres régressions, puis un contrôle de préparation locale).
+Les deux parcours Chrome existants ont réussi, y compris les nouvelles vérifications
+des impasses et de la place zombie. Les tests de parité comparent directement
+le journal et les survivants avec le moteur Python sans adaptateur ni observateur.
+La dernière modification Survie ne change pas les fonctions utilisées par le
+simulateur classique ; les 27 empreintes ont été revérifiées après son intégration.
+
 Suivre le [README](../README.md) pour préparer WSL et le moteur. Sous WSL :
 
 ```bash
-export MYTHODEA_ENGINE_PATH="$PWD/.runtime/engine-b31b842"
+export MYTHODEA_ENGINE_PATH="$PWD/.runtime/engine-3391613"
 .venv/bin/python -B -m unittest discover -s tests -v
 ```
 
@@ -198,6 +228,8 @@ Chrome installé sur le système qui exécute Playwright :
 .venv/bin/python -m pip install playwright
 .venv/bin/python -B tests/browser_smoke.py --channel chrome
 .venv/bin/python -B tests/browser_modes.py --channel chrome
+.venv/bin/python -B tests/browser_configuration.py
+.venv/bin/python -B tests/browser_progression_audit.py
 ```
 
 Playwright peut aussi tourner sous Windows contre le serveur WSL sur localhost.
@@ -221,5 +253,3 @@ préservation des saisies, journal fidèle, modes et erreurs du serveur.
 - Confirmer les décisions de gameplay dans le moteur, mettre à jour ses références
   et régressions, puis préparer un nouveau verrou du simulateur. Ne jamais modifier
   les formules web pour anticiper une règle encore absente du moteur.
-
-Aucune publication, aucun commit ni push n'est effectué par cette mise à niveau.

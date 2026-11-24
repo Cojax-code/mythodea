@@ -11,10 +11,15 @@ def open_panel(page, identifier):
 
 
 def run(page):
-    with page.expect_response('**/api/simulator/run') as response:
-        page.locator('#run-button').click()
+    try:
+        with page.expect_response('**/api/simulator/run') as response:
+            page.locator('#run-button').click()
+    except Exception:
+        print('Validation:', page.locator('#validation').inner_text())
+        print('Invalid fields:', page.locator(':invalid').evaluate_all('es => es.map(e => [e.id, e.value, e.validationMessage])'))
+        raise
     assert response.value.status == 200, response.value.text()
-    expect(page.locator('#run-button')).to_have_text('Lancer la simulation')
+    expect(page.locator('#run-button')).to_have_text('Lancer le combat')
     expect(page.locator('#results')).to_be_visible()
     return response.value.json()
 
@@ -43,6 +48,7 @@ def main(url, channel):
         page.locator('#A-general-1-pc').fill('40')
         page.locator('#A-general-1-pc').fill('20')
         page.locator('#generals-A .sim-labels > summary').click()
+        page.locator('#A-general-1-label-infanterie-active').check()
         page.locator('#A-general-1-label-infanterie').fill('2')
         page.locator('#A-general-1-label-infanterie-active').check()
         page.locator('#A-general-1-qg').check()
@@ -58,13 +64,15 @@ def main(url, channel):
         assert run(page)['journal'] == first['journal']
         open_panel(page, 'camp-A')
         page.locator('#A-droite-count').fill('1')
-        expect(page.locator('#run-button')).to_be_disabled()
+        page.locator('#run-button').click()
+        expect(page.locator('#validation')).to_be_visible()
         expect(page.locator('#result-stale')).to_be_visible()
         page.locator('#A-droite-count').fill('0')
         # Quatre emplacements, permutation et conservation des profils.
         for _ in range(3): page.locator('#add-A').click()
         expect(page.locator('#add-A')).to_be_disabled()
-        expect(page.locator('#run-button')).to_be_disabled()
+        page.locator('#run-button').click()
+        expect(page.locator('#validation')).to_be_visible()
         for i in (2, 3, 4): page.locator(f'#A-{i}-avant-count').fill('10')
         page.locator('#A-general-1-position').select_option('4')
         expect(page.locator('#A-general-4-position')).to_have_value('1')

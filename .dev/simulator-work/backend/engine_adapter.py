@@ -71,8 +71,13 @@ def prepare(payload):
             # Fiche neutre, sans statistique supplémentaire ni tirage de création.
             (path / "fiche.txt").write_text(f"nom={name}\norientation=stratege\nstrategie=0\nforce=0\nexperience=0\n")
             generaux.creer_general(path, name)
-            fiche = engine_profile(general.get('profile'))
-            composition = validate_army(general, fiche)
+            from backend.schema import InvalidConfiguration
+            where = f'Camp {camp} — Général {index}'
+            try:
+                fiche = engine_profile(general.get('profile'))
+                composition = validate_army(general, fiche)
+            except InvalidConfiguration as exc:
+                raise InvalidConfiguration(f'{where} : {exc}') from exc
             if fiche is not None:
                 progression.enregistrer_creation(owner, name, fiche)
                 progression.publier_fiche(path, fiche)
@@ -80,8 +85,7 @@ def prepare(payload):
                 try:
                     progression.selection_etiquettes(fiche, path)
                 except ValueError as exc:
-                    from backend.schema import InvalidConfiguration
-                    raise InvalidConfiguration(str(exc)) from exc
+                    raise InvalidConfiguration(f'{where} : {exc}') from exc
             if general.get('qg'):
                 (path / 'QG.txt').touch()
             if general.get('banner_block'):
@@ -143,11 +147,12 @@ def simulate(payload):
     qgs = [commandement.instantane_qg_territorial(g, present) for g in present if (g['chemin'] / 'QG.txt').exists()]
     initial_ids = set(soldats.charger())
     event = 'simulateur:terrain1'
+    battle_result = {}
     with observer, soldats.bataille_complete(event, profile):
         if mode == "OFF/DEF":
-            combats.resoudre_combat_off_def(territory, "j1" if defender == "A" else "j2", profile)
+            combats.resoudre_combat_off_def(territory, "j1" if defender == "A" else "j2", profile, bilan=battle_result)
         else:
-            combats.resoudre_combat_v15(territory, profile)
+            combats.resoudre_combat_v15(territory, profile, bilan=battle_result)
         unites.terminer_territoire(territory, event, profile)
     health = soldier_summary(generals, soldats, initial_ids)
     healed = unites.soigner_victoire_territoriale(profile, territory, event)
@@ -167,19 +172,22 @@ def simulate(payload):
                           "advantage": combats.multiplicateur(detail[f"type_{key}"], detail[f"type_{other}"])}
                     for key, other in ((one, two), (two, one))
                 }
-    return json_safe({"engine_commit": LOCK["commit"], "python_version": platform.python_version(), "seed": seed,
+    return json_safe({"engine_commit": LOCK["commit"], "engine_snapshot": LOCK.get('snapshot'),
+            "engine_revision": LOCK.get('snapshot', LOCK['commit']), "battle_resolution": battle_result,
+            "python_version": platform.python_version(), "seed": seed,
             "configuration": payload, "outcome": outcome, "before": before, "after": after,
             "losses": {camp: before[camp]["total"] - after[camp]["total"] for camp in before},
             "engagements": engagements,
             'calculations': observer.calculations,
             'morale_observations': observer.morale,
+            'saves': observer.saves,
             "explanations": observer.explanations,
             'qg_initial': qgs, 'health_before_healing': health,
             'health': soldier_summary(generals, soldats, initial_ids), 'healed_by_shaman': healed,
             "journal": config.rapport_long_path.read_text(encoding="utf-8"),
             "conditions": {"mode": mode, "defender": defender, "fatigue": False,
                            "orders": [], 'reinforcements': False, 'retreats': False,
-                           'scope': 'territorial_player_battle', 'value_floor_percent': 1}})
+                           'scope': 'territorial_player_battle', 'value_floor_percent': 0}})
 
 
 def soldier_summary(generals, soldats, initial_ids):

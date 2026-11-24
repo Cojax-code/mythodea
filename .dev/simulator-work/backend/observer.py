@@ -16,6 +16,7 @@ class CombatObserver:
         self.originals = {}
         self.calculations = []
         self.morale = []
+        self.saves = []
 
     def annotate(self, kind, title, text, **facts):
         path = self.config.rapport_long_path
@@ -125,7 +126,7 @@ class CombatObserver:
         self.calculations.append(entries)
         self.annotate('bonuses', 'Bonus appliqués par le moteur',
                       ' ; '.join(f"{e['block']} ({e['unit']}) : base {e['base']}, avantage ×{e['advantage']}, bonus personnel + QG {e['bonus_percent']} %, malus chaman {e['malus_percent']} %." for e in entries)
-                      + ' Le moteur b31b842 conserve un plancher de valeur de 1 %.')
+                      + ' Le moteur applique un plancher de valeur de 0 %.')
         return self.originals['combat_bloc'](infos_1, infos_2, fatigue_1, fatigue_2,
                 bloc_1, bloc_2, fiche_1, fiche_2, general_1=general_1, general_2=general_2)
 
@@ -138,7 +139,24 @@ class CombatObserver:
                                 'unit': block['type'], 'morale': moral})
             self.annotate('morale', 'Moral effectif pour les sauvetages',
                           f"{general['joueur'] if general else ''} {general['nom'] if general else ''}, {block['type']} : moral effectif {moral}. La sélection et les blessures sont résolues par le moteur.")
-            return original(block, remaining, moral, aleatoire, general_pertes)
+            import etendards
+            before = self.combats.soldats.charger()
+            banner = etendards.figer(general_pertes) if general_pertes else None
+            charges = dict(banner['restantes']) if banner else {}
+            result = original(block, remaining, moral, aleatoire, general_pertes)
+            after = self.combats.soldats.charger()
+            for identifier, record in after.items():
+                previous = before.get(identifier, {})
+                if record['blessures'] > previous.get('blessures', 0):
+                    self.saves.append(dict(kind='morale', owner=general_pertes['joueur'],
+                                           general=general_pertes['nom'], soldier=identifier))
+            if banner:
+                for identifier, count in charges.items():
+                    if banner['restantes'][identifier] < count:
+                        self.saves.append(dict(kind='banner', owner=general_pertes['joueur'],
+                            general=general_pertes['nom'], soldier=identifier,
+                            remaining=banner['restantes'][identifier]))
+            return result
         self.combats.soldats.pertes = record
         try:
             return self.originals['supprimer_unites'](infos, survivors, general)

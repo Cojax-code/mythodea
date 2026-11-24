@@ -79,6 +79,16 @@ if __name__ == "__main__":
     elif sys.argv[1] == 'generate':
         from backend.profiles import generate
         result = generate(payload)
+    elif sys.argv[1] == 'options':
+        from backend.profiles import configuration_options
+        result = configuration_options()
+    elif sys.argv[1] in ('natural', 'reward'):
+        from backend.profiles import natural, reward
+        from backend.schema import InvalidConfiguration
+        try:
+            result = (natural if sys.argv[1] == 'natural' else reward)(payload)
+        except InvalidConfiguration as exc:
+            result = {'invalid_configuration': str(exc)}
     elif sys.argv[1] == "probe":
         result = probe(payload)
     elif sys.argv[1] == "timeout-probe":

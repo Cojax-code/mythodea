@@ -18,6 +18,7 @@ def engine_profile(profile):
                  etat_zombie=p['zombie'], niveaux_zombie=p['zombie_levels'])
     if p['zombie_levels'] > p['level'] or (not p['zombie'] and p['zombie_levels']):
         raise InvalidConfiguration('Niveaux après zombification incohérents.')
+    fiche['evolutions_acquises'] = p.get('unlocked_evolutions', [])
     try:
         progression.capacite_etiquettes_actives(fiche)
         # Reconstituer les états atteignables via les étapes du moteur : aucune
@@ -56,6 +57,16 @@ def validate_army(general, fiche):
     import progression
     import unites
     composition = composition_requested(general)
+    profile = general.get('profile')
+    if profile:
+        options = profile_options(fiche)
+        if not set(profile.get('unlocked_evolutions', [])) <= set(options['evolutions']):
+            raise InvalidConfiguration('Déblocage incompatible avec la nature du général.')
+        allowed = available_units(fiche, profile.get('corpse_available', False),
+                                  profile.get('quest_heavy_cavalry', False))
+        for block in composition.values():
+            if not set(block) <= set(allowed):
+                raise InvalidConfiguration('Unité incompatible avec le type du général ou les conditions du Gros zombie.')
     if unites.occupation(composition) > progression.capacite_maximale(fiche):
         raise InvalidConfiguration('Capacité dépassée : Messager = 5 places, Gros zombie = 10 places.')
     types = {t for bloc in composition.values() for t, n in bloc.items() if n}
@@ -94,13 +105,144 @@ def generate(payload):
     seed = payload['seed'] if payload['seed'] is not None else secrets.randbits(32)
     rng = random.Random(seed)
     fiche = progression.nouvelles_caracteristiques(rng)
-    for _ in range(payload['level']):
-        fiche, _ = progression.monter_niveau(fiche, rng)
-    return {'seed': seed, 'profile': {
+    # Tirage conditionné sur la nature choisie, via la création officielle :
+    # ni caractéristiques initiales ni probabilités de trait réinventées.
+    if 'nature' in payload:
+        while fiche['nature'] != payload['nature']:
+            fiche = progression.nouvelles_caracteristiques(rng)
+    history = []
+    def record(level, reward, slot='classique'):
+        if isinstance(reward, tuple) and len(reward) == 2:
+            kind, value = reward
+            category = ('commandement' if kind == 'maitrise_commandement' else
+                        'moral' if kind == 'force_caractere' else
+                        'etiquette' if kind in ('etiquette', 'etiquette_zombie') else '')
+            if category:
+                history.append({'level': level, 'slot': slot, 'kind': category, 'value': str(value)})
+        elif type(reward) is int and 104 <= reward <= 110:
+            history.append({'level': level, 'slot': slot, 'kind': 'unite', 'value': str(reward)})
+
+    zombie_levels = payload.get('zombie_levels', 0)
+    for level in range(1, payload['level'] - zombie_levels + 1):
+        fiche, reward = progression.monter_niveau(fiche, rng)
+        record(level, reward)
+        record(level, fiche['dernier_niveau']['supplementaire'], 'supplementaire')
+    if payload.get('zombie'):
+        fiche.update(etat_zombie=True, niveaux_zombie=0)
+        for level in range(payload['level'] - zombie_levels + 1, payload['level'] + 1):
+            fiche, reward = progression.monter_niveau(fiche, rng)
+            record(level, reward)
+    from pathlib import Path
+    from backend.schema import LOCK
+    # Le répertoire privé est vide : le moteur choisit sa sélection par défaut.
+    fiche = progression.selection_etiquettes(fiche, Path('/game'))
+    return {'seed': seed, 'engine_commit': LOCK['commit'],
+        'engine_revision': LOCK.get('revision', LOCK['commit']), 'profile': {
         'level': fiche['niveau'], 'nature': fiche['nature'], 'trait': fiche['trait_inne'],
         'pc': fiche['points_commandement'], 'morale': fiche['moral'],
-        'labels': fiche['etiquettes'],
+        'labels': fiche['etiquettes'], 'permanent': [],
         'active_slots': fiche['emplacements_etiquettes_actives'], 'banner_level': fiche['niveau_etendard'],
-        'active': list(fiche['etiquettes'])[:progression.capacite_etiquettes_actives(fiche)],
-        'zombie': False, 'zombie_levels': 0},
-        'unlocked_evolutions': fiche['evolutions_acquises']}
+        'active': fiche['etiquettes_actives'], 'zombie': bool(fiche.get('etat_zombie')),
+        'zombie_levels': fiche.get('niveaux_zombie', 0)},
+        'unlocked_evolutions': fiche['evolutions_acquises'],
+        'rewards': history}
+
+
+def profile_options(fiche):
+    """Données de formulaire calculées par les API du moteur verrouillé."""
+    import progression
+    import catalogues
+    eligible = progression.evolutions_eligibles(dict(fiche, evolutions_acquises=[]))
+    evolutions = {i: catalogues.UNITES[e['cible']]['nom']
+                  for i, e in eligible.items() if e['categorie'] == 'unite'}
+    return dict(evolutions=evolutions,
+                compatible_units=[u['nom'] for u in catalogues.UNITES.values()
+                                  if progression.compatible(fiche, u['natures'])])
+
+
+def available_units(fiche, corpse_available=False, quest_heavy_cavalry=False):
+    import unites
+    import catalogues
+    options = profile_options(fiche)
+    if fiche.get('etat_zombie'):
+        # Le rituel exige un zombie et un cadavre officiel non consommé.
+        # La campagne et ses preuves Linux ne sont pas simulées.
+        return ['zombie'] + (['Trop_gros_zombie'] if corpse_available else [])
+    unlocked = set(fiche.get('evolutions_acquises', []))
+    required = {catalogues.UNITES[e['cible']]['nom']: i
+                for i, e in catalogues.EVOLUTIONS.items()
+                if e['disponible'] and e['categorie'] == 'unite'}
+    return [name for name in options['compatible_units']
+            if not unites.etiquette(name, 'mort_vivant') and
+            (name not in required or required[name] in unlocked or
+             name == 'cavalerie_lourde' and quest_heavy_cavalry)]
+
+
+def configuration_options():
+    from backend.engine_adapter import load_engine
+    load_engine()
+    import progression
+    from backend.schema import CATALOG
+    result = {}
+    for nature in CATALOG['natures']:
+        fiche = progression.nouvelles_caracteristiques(random.Random(0))
+        fiche.update(nature=nature, evolutions_acquises=[])
+        options = profile_options(fiche)
+        from backend.schema import selected_label_limit
+        roulette = progression.evolutions_eligibles(fiche, apprentissage=False)
+        result[nature] = dict(options, roulette_evolutions={
+            i: options['evolutions'][i] for i, e in roulette.items() if e['categorie'] == 'unite'},
+            reward_weights=progression.RECOMPENSES[nature],
+            selected_label_limits=[
+            selected_label_limit(nature, level) for level in range(CATALOG['limits']['level'] + 1)])
+    fiche['etat_zombie'] = True
+    capacities = []
+    for level in range(CATALOG['limits']['level'] + 1):
+        fiche['niveaux_zombie'] = level
+        capacities.append(progression.capacite_maximale(fiche))
+    return dict(natures=result, zombie_capacities=capacities,
+                normal_capacity=progression.capacite_maximale(None))
+
+
+def natural(payload):
+    """Aucune roulette : mêmes gains naturels que monter_niveau, depuis zéro."""
+    from backend.engine_adapter import load_engine
+    from backend.schema import validate_generation, LOCK
+    import secrets
+    validate_generation(payload)
+    load_engine()
+    import progression
+    seed = payload['seed'] if payload['seed'] is not None else secrets.randbits(32)
+    rng = random.Random(seed)
+    fiche = progression.nouvelles_caracteristiques(random.Random(0))
+    fiche['nature'] = payload.get('nature', fiche['nature'])
+    for level in range(1, payload['level'] - payload.get('zombie_levels', 0) + 1):
+        fiche['niveau'] = level
+        fiche = progression.appliquer_gains_naturels(fiche, rng)
+    return dict(pc=fiche['points_commandement'], morale=fiche['moral'], seed=seed,
+                engine_commit=LOCK['commit'])
+
+
+def reward(payload):
+    """Un seul niveau tiré par la roulette officielle sur les acquis précédents."""
+    from backend.engine_adapter import load_engine
+    from backend.schema import validate_reward, LOCK
+    import secrets
+    validate_reward(payload)
+    load_engine()
+    import progression
+    seed = payload['seed'] if payload['seed'] is not None else secrets.randbits(32)
+    fiche = engine_profile(payload['profile'])
+    apres, result = progression.monter_niveau(fiche, random.Random(seed))
+    if isinstance(result, tuple):
+        kind, value = result
+        kind = {'maitrise_commandement': 'commandement', 'force_caractere': 'moral',
+                'etiquette_zombie': 'etiquette'}.get(kind, kind)
+    elif isinstance(result, int):
+        kind, value = 'unite', result
+    else:
+        kind, value = '', ''
+    supplement = apres.get('dernier_niveau', {}).get('supplementaire')
+    return dict(reward=dict(kind=kind, value=str(value)), seed=seed, engine_commit=LOCK['commit'],
+                supplementary=supplement, active_slots=apres['emplacements_etiquettes_actives'],
+                banner_level=apres['niveau_etendard'])

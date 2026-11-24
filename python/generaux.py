@@ -552,8 +552,8 @@ def lire_blocs_general(chemin_general):
 
         for unite in bloc_dir.iterdir():
             if unite.name == 'etendard.txt':
-                import etendards
-                etendards.declaration_valide(unite)
+                # Déclaration contrôlée par etendards, jamais une unité à nettoyer.
+                # La capture refuse toujours les liens avant copie.
                 continue
             type_unite = identifier_unite(unite)
 

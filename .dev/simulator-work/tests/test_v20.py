@@ -34,7 +34,7 @@ class ContractV20(unittest.TestCase):
     def test_profile_shape_and_untrusted_fields(self):
         engine = Mock()
         client = create_app(engine).test_client()
-        changes = [dict(pc=True), dict(pc=-1), dict(pc=1001), dict(level=51), dict(level=2.5),
+        changes = [dict(pc=True), dict(pc=-1), dict(pc=1.5), dict(level=51), dict(level=2.5),
                    dict(morale=101), dict(nature='../../game'), dict(trait=[]), dict(zombie=1),
                    dict(labels={'<script>': 1}), dict(labels={'infanterie': 4}),
                    dict(labels={'infanterie': True}), dict(active=['unknown']),
@@ -46,6 +46,23 @@ class ContractV20(unittest.TestCase):
             with self.subTest(change=change):
                 self.assertEqual(client.post('/api/simulator/run', json=data).status_code, 400)
         engine.run.assert_not_called()
+
+    def test_qg_reserved_for_strategists(self):
+        client = create_app(Mock(run=Mock(return_value={'ok': True}))).test_client()
+        for nature, zombie, accepted in (
+                ('stratege', False, True),
+                ('hybride', False, True),
+                ('instinctif', False, False),
+                ('hybride', True, False),
+                ('stratege', True, False)):
+            with self.subTest(nature=nature, zombie=zombie):
+                data = battle()
+                general = data['armies']['A']['generals'][0]
+                general['qg'] = True
+                general['profile']['nature'] = nature
+                general['profile']['zombie'] = zombie
+                status = client.post('/api/simulator/run', json=data).status_code
+                self.assertEqual(status, 200 if accepted else 400)
 
     def test_duplicate_qg_and_retired_order_rejected(self):
         client = create_app(Mock()).test_client()
@@ -110,6 +127,7 @@ class EngineV20(unittest.TestCase):
         qg['qg'] = True
         qg['profile'].update(labels={'infanterie': 2}, active=['infanterie'])
         ally['profile']['pc'] = 59
+        ally['profile']['unlocked_evolutions'] = [110]
         ally['blocks']['avant'].update(count=10, messengers=1)
         result = self.parity(data)
         self.assertEqual(result['qg_initial'][0]['pc_global'], 25)
@@ -130,15 +148,18 @@ class EngineV20(unittest.TestCase):
         self.assertFalse(result['after']['A']['generals'][0]['alive'])
         self.assertEqual(result['calculations'][1][0]['bonus_percent'], 30)
 
-    def test_chaman_extreme_malus_stays_on_official_one_percent_floor(self):
+    def test_chaman_extreme_malus_reaches_zero_and_decimates(self):
         data = battle()
         a, b = (data['armies'][c]['generals'][0] for c in ('A', 'B'))
         a['profile'].update(pc=100, labels={'chaman': 3}, active=['chaman'])
         b['profile']['nature'] = 'instinctif'
         b['blocks']['avant']['unit'] = 'orc_assaillant'
+        b['profile']['unlocked_evolutions'] = [107]
         result = self.parity(data)
         self.assertEqual(result['calculations'][0][1]['malus_percent'], 150)
-        self.assertEqual(result['conditions']['value_floor_percent'], 1)
+        self.assertEqual(result['conditions']['value_floor_percent'], 0)
+        self.assertEqual(result['after']['B']['total'], 0)
+        self.assertEqual(result['after']['A']['total'], result['before']['A']['total'])
 
     def test_cruelle_uses_effective_morale_and_preserves_engine_rounding(self):
         data = battle()
@@ -157,7 +178,9 @@ class EngineV20(unittest.TestCase):
         for unit in CATALOG['units']:
             data = battle()
             g = data['armies']['A']['generals'][0]
-            g['profile'].update(nature='stratege_hybride', morale=75)
+            g['profile'].update(nature='hybride', morale=75, unlocked_evolutions=list(range(104, 111)))
+            if unit in ('zombie', 'Trop_gros_zombie'):
+                g['profile'].update(zombie=True, corpse_available=True)
             g['blocks']['avant'].update(unit=unit, count=1 if unit in ('messager_du_QG', 'Trop_gros_zombie') else 10)
             if unit == 'Trop_gros_zombie':
                 g['blocks']['arriere'].update(unit='zombie', count=10)
@@ -173,7 +196,8 @@ class EngineV20(unittest.TestCase):
         data = battle(4, 4)
         for camp in data['armies'].values():
             for i, g in enumerate(camp['generals']):
-                g['profile'].update(pc=20+i*7, nature='stratege_hybride', morale=20,
+                g['profile'].update(pc=20+i*7, nature='hybride', morale=20,
+                                    unlocked_evolutions=[106, 109],
                                     labels={'infanterie': 2}, active=['infanterie'])
                 g['qg'] = i == 3
                 for block, unit in zip(g['blocks'], ('archer', 'piquier', 'orc_chaman', 'chevalier_clinquant')):
@@ -182,9 +206,8 @@ class EngineV20(unittest.TestCase):
 
     def test_engine_rejects_invalid_learning_capacity_and_units(self):
         client = create_app().test_client()
-        cases = [profile(nature='instinctif', level=0, labels={'orc': 1}, active=['orc']),
-                 profile(labels={'orc': 2}, permanent=['orc']),
-                 profile(nature='instinctif', labels={'orc': 1, 'humain': 1}),
+        cases = [profile(labels={'orc': 4}, permanent=['orc']),
+                 profile(nature='instinctif', labels={'orc': 1, 'humain': 1}, active=['orc', 'humain']),
                  profile(zombie=False, zombie_levels=2), profile(zombie=True, zombie_levels=11)]
         for p in cases:
             data = battle()

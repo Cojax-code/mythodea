@@ -7,7 +7,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from werkzeug.exceptions import BadRequest, RequestEntityTooLarge, UnsupportedMediaType
 
 from .runner import Runner, SimulationTimeout, SimulationUnavailable
-from .schema import CATALOG, LOCK, InvalidConfiguration, validate, validate_generation
+from .schema import CATALOG, LOCK, InvalidConfiguration, validate, validate_generation, validate_reward
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -30,25 +30,36 @@ def create_app(runner=None):
 
     @app.get("/api/simulator/catalog")
     def catalog():
-        return jsonify(**CATALOG, engine_commit=LOCK["commit"], engine_snapshot=LOCK.get('snapshot'), max_generals_per_camp=4, modes=["OFF/OFF", "OFF/DEF"],
+        return jsonify(**CATALOG, engine_commit=LOCK["commit"], engine_snapshot=LOCK.get('snapshot'), engine_revision=LOCK.get('snapshot', LOCK['commit']), max_generals_per_camp=4, modes=["OFF/OFF", "OFF/DEF"],
                        conditions={"mode": "OFF/OFF", "fatigue": False, "orders": [],
-                                   'reinforcements': False, 'retreats': False, 'value_floor_percent': 1})
+                                   'reinforcements': False, 'retreats': False, 'value_floor_percent': 0})
 
+    @app.post("/api/simulator/options")
     @app.post("/api/simulator/run")
     @app.post("/api/simulator/generate")
+    @app.post("/api/simulator/natural")
+    @app.post("/api/simulator/reward")
     def run():
         if request.headers.get("Sec-Fetch-Site") == "cross-site":
             return jsonify(error="Requête intersite refusée."), 403
         try:
-            generation = request.path.endswith('/generate')
-            payload = (validate_generation if generation else validate)(request.get_json())
+            operation = request.path.rsplit('/', 1)[-1]
+            options = request.path.endswith('/options')
+            payload = request.get_json()
+            if options:
+                from .schema import exact_keys
+                exact_keys(payload, (), 'Options')
+            else:
+                validator = {'generate': validate_generation, 'natural': validate_generation,
+                             'reward': validate_reward, 'run': validate}[operation]
+                payload = validator(payload)
         except (InvalidConfiguration, BadRequest, UnsupportedMediaType) as exc:
             message = str(exc) if isinstance(exc, InvalidConfiguration) else "Un corps JSON valide est requis."
             return jsonify(error=message), 400
         if not slot.acquire(blocking=False):
             return jsonify(error="Une simulation est en cours. Réessayez dans quelques secondes."), 429
         try:
-            return jsonify(engine.generate(payload) if generation else engine.run(payload))
+            return jsonify(engine.options() if options else getattr(engine, operation)(payload))
         except InvalidConfiguration as exc:
             return jsonify(error=str(exc)), 400
         except SimulationTimeout as exc:
