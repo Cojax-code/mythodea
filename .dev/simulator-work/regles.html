@@ -95,7 +95,7 @@ nav .help-dropdown a:hover,nav .help-dropdown a:focus-visible{background:#41526d
                 <li>Chaque joueur peut obtenir <strong>cinq généraux par création normale au maximum</strong>, à raison d'un par tour. <code>general1</code> est attribué automatiquement dans le home au début de la partie.</li>
                 <li>Les généraux de récompense sont <strong>hors du quota</strong> des cinq créations normales.</li>
                 <li>Un numéro de général attribué n'est jamais réutilisé, même après sa destruction.</li>
-                <li>La <code>fiche.txt</code> identifie le général et peut préciser son orientation (<code>stratege</code>, <code>combattant</code> ou <code>hybride</code>) et sa préférence <code>position_surnombre</code>.</li>
+                <li>La <code>fiche.txt</code> identifie le général et peut préciser son orientation (<code>stratege</code>, <code>instinctif</code> ou <code>hybride</code>) et sa préférence <code>position_surnombre</code>.</li>
                 <li>Un général qui perd toutes ses unités est détruit.</li>
             </ul>
             <h3>Progression et blessures — règles actives</h3>
@@ -173,7 +173,7 @@ nav .help-dropdown a:hover,nav .help-dropdown a:focus-visible{background:#41526d
             <h2>9. Commandement, étiquettes et décisions de surnombre</h2>
             <h3>QG, Messager et étiquettes actives</h3>
             <p>Le système des anciens <code>ordre.txt</code> et contre-ordres n'est plus actif en v2.0. Le QG est désigné par un fichier <code>QG.txt</code> (ou <code>qg.txt</code>) dans le dossier du général : un QG par camp et par bataille territoriale. Plusieurs désignations dans le même camp annulent ses effets globaux.</p>
-            <p>Les étiquettes connues ne sont pas forcément toutes actives. Le joueur choisit dans <code>etiquettes_actives.txt</code> leurs noms exacts, une par ligne ou séparés par des virgules : au plus trois chez le stratège, une chez l'instinctif. Un fichier absent active automatiquement les étiquettes connues dans la limite permise ; un fichier vide n'en active aucune. Le choix est figé au début de la bataille territoriale.</p>
+            <p>Les étiquettes connues ne sont pas forcément toutes actives. Le joueur choisit dans <code>etiquettes_actives.txt</code> leurs noms exacts, une par ligne ou séparés par des virgules : dans ses places débloquées : une au départ, jusqu'à trois chez le Stratège et l'Hybride, une chez l'Instinctif. Un fichier absent active automatiquement les étiquettes connues dans la limite permise ; un fichier vide n'en active aucune. Le choix est figé au début de la bataille territoriale.</p>
             <pre><code>distance
 humain
 cavalerie</code></pre>

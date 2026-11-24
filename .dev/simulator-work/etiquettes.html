@@ -21,10 +21,10 @@ nav .help-dropdown a{display:block;white-space:nowrap;padding:9px 12px;color:whi
 <main class="ordres-main">
 <section class="hero"><h2>Étiquettes de généraux</h2><p class="intro">Une étiquette apprise donne un avantage de combat, mais seules les étiquettes activées par le joueur sont prises en compte. Ce guide décrit les règles effectives de Mythodea v2.0.</p></section>
 <section><h2>Connaître, activer et améliorer</h2><div class="rules-grid">
-<div class="rule"><strong>Stratège</strong><p>Une étiquette à la création, une aux niveaux 5 et 10. Jusqu'à trois étiquettes actives.</p></div>
-<div class="rule"><strong>Instinctif</strong><p>Une étiquette obtenue au niveau 5 ; une seule active à la fois.</p></div>
-<div class="rule"><strong>Hybrides</strong><p>La limite suit l'orientation principale du général.</p></div>
-<div class="rule"><strong>Zombie</strong><p>À chaque niveau après transformation, 20 % de chance de connaître « mort_vivant », avec un emplacement spécial en plus.</p></div></div>
+<div class="rule"><strong>Stratège</strong><p>Une place active initiale ; deuxième au niveau 5, troisième au niveau 10. Aucun apprentissage automatique à ces paliers.</p></div>
+<div class="rule"><strong>Instinctif</strong><p>Une place active. Étendard normal au niveau 5, royal au niveau 10, en plus des récompenses classiques.</p></div>
+<div class="rule"><strong>Hybride</strong><p>Une place initiale ; tirage 50/50 des capacités Stratège ou Instinctif tous les cinq niveaux, avec basculement vers la branche inachevée. Trois places et étendard royal à 20.</p></div>
+<div class="rule"><strong>Zombie</strong><p>À chaque niveau après transformation, 20 % de chance de connaître « mort_vivant », avec un emplacement supplémentaire réservé à cette seule étiquette. Aucun nouveau supplément de palier.</p></div></div>
 <p>Pour choisir, créer <code>etiquettes_actives.txt</code> dans le dossier du général. Indiquer les identifiants exacts, une par ligne ou séparés par des virgules :</p>
 <pre><code>distance
 humain
@@ -40,6 +40,7 @@ cavalerie</code></pre>
 <div class="rule"><strong>Chaman</strong><p>Malus de valeur sur les unités Orcs ennemies.</p></div>
 <div class="rule"><strong>Cruelle</strong><p>Malus au moral adverse utilisé lors des sauvetages.</p></div></div>
 <p>Identifiants exacts : <code>infanterie</code>, <code>distance</code>, <code>cavalerie</code>, <code>humain</code>, <code>melee</code>, <code>orc</code>, <code>mort_vivant</code>, <code>noble</code>, <code>armure_legere</code>, <code>lourde</code>, <code>chaman</code>, <code>cruelle</code>.</p></section>
-<section><h2>QG et Messager</h2><p>Le joueur désigne le QG par <code>QG.txt</code> ou <code>qg.txt</code> dans le dossier du général. Plusieurs QG dans le même camp annulent le soutien global. Un QG transmet ses effets aux alliés engagés mais ne reçoit pas une deuxième copie de ses propres bonus.</p>
+<section><h2>Étendards</h2><p>Après déblocage, placer un seul <code>etendard.txt</code> dans un bloc. Le profil officiel choisit normal ou royal. Après échec du moral, chaque unité du bloc peut éviter une perte (deux pour le royal), sans blessure permanente. Les protections ne se partagent pas et ne se rechargent qu’à la guerre suivante. Le bloc anéanti perd le fichier ; une reconstruction ultérieure est gratuite. Les Zombies et le Bouclier vivant gardent leurs règles particulières.</p></section>
+<section><h2>QG et Messager</h2><p>Un Stratège ou Hybride non zombie peut être QG, même avec un étendard. Le joueur désigne le QG par <code>QG.txt</code> ou <code>qg.txt</code> dans le dossier du général. Plusieurs QG dans le même camp annulent le soutien global. Un QG transmet ses effets aux alliés engagés mais ne reçoit pas une deuxième copie de ses propres bonus.</p>
 <p>Le Messager occupe cinq places et donne un bonus non cumulable de 10 % des PC des autres généraux alliés engagés sur le territoire (arrondi à l'inférieur), uniquement pour le soutien global. Si le QG est détruit, ses effets globaux cessent sans effacer les bonus personnels des alliés.</p></section>
 <section><p><a href="regles.html">Retour aux règles</a> · <a href="bestiaire.html">Consulter le bestiaire</a></p></section></main></body></html>

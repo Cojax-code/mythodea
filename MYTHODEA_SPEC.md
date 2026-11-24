@@ -99,6 +99,7 @@ Responsabilités :
 | `progression.py` | caractéristiques officielles, tirages pondérés et montée de niveau configurable |
 | `commandement.py` | effets fractionnaires des étiquettes, instantané QG/Messager et répartition du soutien territorial |
 | `soldats.py` | identité individuelle, blessures, sauvetages et batailles survécues |
+| `etendards.py` | déclaration de bloc, instantané territorial, protection individuelle et destruction |
 | `formation.py` | formation en caserne militaire, hôpital, École et Forge, séjours, mémoires et transformations |
 | `cycle_linux.py` | gel Linux, capture privée, publication de générations et permissions des phases Survie |
 | `survie_admin.py` | diagnostic, dégel de secours et republication explicitement autorisée, sans rejeu métier |
@@ -1534,11 +1535,10 @@ naturels, les paliers, la roulette, les étiquettes et la progression zombie
 est [REGLES_V2.md](REGLES_V2.md). Les capacités croisées des hybrides,
 les rangs scolaires et les plafonds d'activation y sont définis.
 
-La création conserve les natures `stratege`, `instinctif`,
-`stratege_hybride` et `instinctif_hybride`. Nature, dominante et trait inné
-sont persistants. Les nouveaux profils commencent au niveau 0, sans PC, moral,
+La création utilise `stratege` (45 %), `instinctif` (45 %) et `hybride` (10 %),
+sans dominante. Nature et trait inné sont persistants. Les nouveaux profils commencent au niveau 0, sans PC, moral,
 étiquette ni évolution initiale ; les profils historiques restent conservés.
-Les champs `niveau`, `nature`, `orientation_principale`,
+Les champs `niveau`, `nature`, `emplacements_etiquettes_actives`, `niveau_etendard`,
 `trait_inne`, `points_commandement`, `moral`, `evolutions_acquises`,
 `evolution_apprise`, `progression_combat`, `progression_formation` et `etiquettes`
 sont visibles dans `fiche.txt`. Le profil privé
@@ -1549,8 +1549,8 @@ scolaires pour le quota, sans verrouiller leurs rangs. Les attributions automati
 en sont exemptées. À la lecture d'un ancien profil, les anciennes listes et reçus
 identifient ces exemptions ; une origine introuvable compte comme scolaire.
 Tous les noms et rangs acquis restent conservés, même si le quota est dépassé.
-La normalisation est sans écriture à la lecture ; les sauvegardes suivantes
-retirent les anciennes clés. Voir les règles de compatibilité dans `REGLES_V2.md`.
+La migration versionnée persiste une fois les capacités spécifiques rattrapées
+avant utilisation ; hors migration, la normalisation reste sans écriture. Voir les règles de compatibilité dans `REGLES_V2.md`.
 
 Deux jauges indépendantes déclenchent les niveaux :
 - **Combat** : un point par bataille territoriale personnellement combattue
@@ -1567,8 +1567,8 @@ et `combat:survie:<tour>:<territoire>` ; le profil suit ses propres reçus.
 Une répétition d'événement ne donne pas une nouvelle récompense et peut
 réparer la fiche visible après interruption.
 
-Une mémoire de l'École remplace la prochaine roulette applicable et reste
-en attente lors d'un palier garanti. Les tirages automatiques sont séparés
+Une mémoire de l'École remplace la prochaine récompense classique applicable,
+y compris aux paliers. Le supplément des multiples de cinq est indépendant. Les tirages automatiques sont séparés
 du générateur des combats. La reprise d'un cycle Survie interrompu pendant
 la résolution exige une récupération administrative sans rejouer les combats.
 Un tour classique interrompu n'a pas de reprise automatique.
@@ -1579,7 +1579,7 @@ Les rangs appris restent dans `progression.json`. `etiquettes_actives.txt`, dans
 le dossier du général, contient uniquement les noms exacts sélectionnés, séparés
 par lignes ou virgules. Un fichier vide désactive tout ; son absence active les
 étiquettes connues dans la limite applicable. Doublons, noms non appris et
-dépassements des limites trois/un selon l'orientation sont refusés.
+dépassements des places débloquées sont refusés (1 initiale ; maximum 3/1/3).
 
 `combats._contexte_qg_territorial()` ouvre un instantané de sélection via
 `progression.figer_selections_territoriales()` avant les duels. Il couvre choc,
@@ -1588,8 +1588,7 @@ son premier engagement ; une lecture de capacité ne le fige pas. La sortie,
 même sur exception, restaure le contexte précédent. La bataille suivante relit
 les choix. L'instantané est transitoire et n'introduit aucun format persistant.
 
-`QG.txt` ou `qg.txt` désigne un Stratège non zombie (hybride à dominante Stratège
-inclus) comme QG ; une nature incompatible est refusée. Plusieurs QG du
+`QG.txt` ou `qg.txt` désigne un Stratège ou Hybride non zombie comme QG ; une nature incompatible est refusée. Plusieurs QG du
 même camp annulent son soutien. Les PC globaux et les effets des seules étiquettes
 actives sont figés depuis les participants initiaux. Un Messager occupe cinq
 places, ne combat pas, et ajoute une seule fois `somme(PC des autres alliés) // 10`
@@ -1623,12 +1622,16 @@ restent applicables. Spore (conversion), Propagation (création) et la caserne m
 territoriale du Bouclier vivant conservent leurs règles spécifiques.
 
 Après chaque choc de blocs et chaque manœuvre, les pertes sont sélectionnées
-comme auparavant. Un instinctif, instinctif hybride ou stratège hybride disposant
+comme auparavant. Un Instinctif ou Hybride disposant
 de moral tire `pertes * moral // 100` candidats distincts
 parmi ces pertes. Chaque candidat sous sa limite de blessures est conservé et
 reçoit une blessure. Une tentative échouée n'est pas réattribuée. Les autres
 pertes sont supprimées ; listes, effectifs et rapports sont actualisés avant
-l'affrontement suivant. Les blessés combattent sans pénalité supplémentaire.
+l'affrontement suivant. Les blessés combattent sans pénalité supplémentaire. Après échec du moral,
+l'étendard absorbe une perte (deux pour le royal) par unité de son bloc et par guerre,
+sans blessure permanente ni soin. `etendards.py` garde cet état privé transitoire
+pendant toute la résolution. Voir placement, destruction et reconstruction dans
+`REGLES_V2.md` ; la sélection des blocs participant au combat reste inchangée.
 
 | Batailles survécues | Statut | Blessures maximales |
 | --- | --- | --- |
@@ -1758,9 +1761,8 @@ l'utilisation et les décisions de conception encore ouvertes.
 
 ### Transformation à la Forge
 
-Le général doit avoir une orientation principale instinctive et posséder l'évolution
-104 dans son profil officiel. Un stratège hybride ne peut pas fabriquer, même
-après avoir appris cette évolution. Après un tour complet, les cavaliers légers
+Le général doit être Instinctif ou Hybride et posséder l'évolution 104 dans son
+profil officiel. Après un tour complet, les cavaliers légers
 existants possédant `cheval`, `cuirasse`, `armure`, `casque`, `bouclier` sont renommés
 par le moteur en `cavalerie_LN`. Aucun coût ni ressource supplémentaire n'est ajouté.
 L'unité doit figurer dans la référence officiellement publiée au tour précédent

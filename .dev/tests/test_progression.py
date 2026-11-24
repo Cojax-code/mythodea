@@ -27,15 +27,15 @@ class Progression(unittest.TestCase):
 
     def test_nature_et_traits_aux_frontieres_exactes(self):
         for nature, tirage in (('stratege', 45), ('instinctif', 90),
-                              ('stratege_hybride', 95), ('instinctif_hybride', 100)):
+                              ('hybride', 91), ('hybride', 100)):
             for trait, valeur in (('charismatique', 50), ('leader', 51), ('inventeur', 100)):
                 rng = Mock()
                 rng.randint.side_effect = [tirage, valeur, 1, 1]
                 fiche = progression.nouvelles_caracteristiques(rng)
                 self.assertEqual((fiche['nature'], fiche['trait_inne'], fiche['niveau']), (nature, trait, 0))
                 self.assertEqual(fiche['moral'], 0)
-                orientation = nature.removesuffix('_hybride')
-                self.assertEqual(fiche['orientation_principale'], orientation)
+                self.assertNotIn('orientation_principale', fiche)
+                self.assertEqual(progression.orientation_principale(fiche), nature)
                 self.assertEqual(fiche['points_commandement'], 0)
                 self.assertEqual(fiche['etiquettes'], {})
                 self.assertEqual(fiche['evolutions_acquises'], [])

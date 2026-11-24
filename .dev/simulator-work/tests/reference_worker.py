@@ -45,10 +45,19 @@ for camp, owner in (("A", "j1"), ("B", "j2")):
         if 'profile' in entry:
             p = entry['profile']
             fiche = progression.nouvelles_caracteristiques(random.Random(0))
-            fiche.update(niveau=p['level'], nature=p['nature'], orientation_principale=p['nature'].removesuffix('_hybride'),
+            fiche.update(niveau=p['level'], nature=p['nature'],
                          trait_inne=p['trait'], points_commandement=p['pc'], moral=p['morale'],
-                         etiquettes=p['labels'], etiquettes_permanentes=p['permanent'],
+                         etiquettes=p['labels'],
                          etat_zombie=p['zombie'], niveaux_zombie=p['zombie_levels'])
+            if 'active_slots' in p:
+                fiche.update(emplacements_etiquettes_actives=p['active_slots'], niveau_etendard=p['banner_level'])
+            else:
+                for _ in range(min(4, (p['level'] - p['zombie_levels']) // 5)):
+                    # Cas historiques sans parcours hybride : privilégier la branche instinctive.
+                    class Instinct:
+                        def randint(self, a, b):
+                            return b
+                    progression.progression_specifique(fiche, Instinct())
             progression.enregistrer_creation(owner, name, fiche)
             progression.publier_fiche(path, fiche)
             (path / 'etiquettes_actives.txt').write_text('\n'.join(p['active']))
@@ -56,6 +65,8 @@ for camp, owner in (("A", "j1"), ("B", "j2")):
             (path / 'QG.txt').touch()
         for block in config.ordre_blocs:
             (path / block).mkdir()
+            if entry.get('banner_block') == block:
+                (path / block / 'etendard.txt').touch()
             formation = entry["blocks"][block]
             counts = {formation['unit']: formation['count']}
             counts['messager_du_QG'] = counts.get('messager_du_QG', 0) + formation.get('messengers', 0)

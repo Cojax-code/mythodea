@@ -36,28 +36,29 @@ nav .help-dropdown a:hover,nav .help-dropdown a:focus-visible{background:#41526d
 <h3>Soins</h3>
 <p>Après <strong>un tour complet</strong> à l'<a href="batiments.html">Hôpital</a>, les blessures sont remises à <strong>0</strong>. Le soldat conserve ses <strong>batailles survécues</strong> et son statut <strong>vétéran</strong> ou <strong>héroïque</strong>.</p>
 </section>
-<section id="generaux"><h2>Nature et caractère des généraux</h2><p>Chaque général débute au <strong>niveau 0</strong>. Son <strong>orientation de base</strong> et son <strong>trait inné</strong> sont déterminés lors de sa création et restent permanents.</p>
-<div class="scroll"><table><thead><tr><th>Orientation</th><th>Probabilité</th><th>Caractéristiques</th></tr></thead><tbody>
-<tr><td><strong>Stratège</strong></td><td>45 %</td><td>Progression des <strong>PC</strong>, une étiquette initiale, puis une aux niveaux 5 et 10.</td></tr>
-<tr><td><strong>Instinctif</strong></td><td>45 %</td><td>Progression du <strong>moral</strong>, une seule étiquette obtenue au niveau 5.</td></tr>
-<tr><td><strong>Stratège hybride</strong></td><td>5 %</td><td>Orientation de base <strong>stratège</strong> ; peut aussi apprendre les capacités instinctives à l'<strong>École des officiers</strong>.</td></tr>
-<tr><td><strong>Instinctif hybride</strong></td><td>5 %</td><td>Orientation de base <strong>instinctif</strong> ; peut apprendre des évolutions croisées à l'<strong>École des officiers</strong> et peut être désigné <strong>QG</strong>.</td></tr>
-</tbody></table></div>
-<p>Les deux orientations <strong>hybrides</strong> peuvent détenir des <strong>points de moral</strong> et des <strong>points de commandement</strong>. Toutefois, leur <strong>trait inné</strong>, leurs <strong>capacités initiales</strong> et les <strong>probabilités de récompenses naturelles</strong> suivent toujours leur orientation de base : stratège ou instinctif. Les tableaux ci-dessous s'appliquent donc aussi aux hybrides de même origine.</p>
-<h3>Probabilité du trait inné, selon la nature</h3><div class="scroll"><table><thead><tr><th>Nature</th><th>Charismatique</th><th>Leader</th><th>Inventeur</th></tr></thead><tbody><tr><th>Stratège</th><td>50 %</td><td>35 %</td><td>15 %</td></tr><tr><th>Instinctif</th><td>50 %</td><td>15 %</td><td>35 %</td></tr></tbody></table></div>
-<h3>Récompenses de niveau — roulette</h3>
-<p>Les gains naturels s'ajoutent à chaque niveau : +2 à +4 PC pour le stratège ; +1 moral aux niveaux pairs pour l'instinctif. À la création, un stratège possède 11 à 20 PC et sa première étiquette. Sa deuxième étiquette arrive au niveau 5, la troisième au niveau 10, puis la roulette reprend au niveau 15. Un instinctif reçoit une seule étiquette au niveau 5 et suit la roulette aux autres niveaux.</p>
-<div class="scroll"><table><thead><tr><th>Orientation</th><th>Trait</th><th>Poids récompense statistique</th><th>Poids nouvelle unité</th></tr></thead><tbody>
-<tr><td>Stratège</td><td>Charismatique</td><td>60</td><td>10</td></tr>
-<tr><td>Stratège</td><td>Leader</td><td>20</td><td>10</td></tr>
-<tr><td>Stratège</td><td>Inventeur</td><td>20</td><td>60</td></tr>
-<tr><td>Instinctif</td><td>Charismatique</td><td>60</td><td>25</td></tr>
-<tr><td>Instinctif</td><td>Leader</td><td>20</td><td>20</td></tr>
-<tr><td>Instinctif</td><td>Inventeur</td><td>20</td><td>70</td></tr>
-</tbody></table></div>
-<p>Ces chiffres sont des <strong>poids relatifs</strong>, pas des pourcentages. Les récompenses sont « Maîtrise du commandement » (+5 à +10 PC) et « Force de caractère » (+2 à +4 moral), selon l'orientation. Les unités déjà débloquées et les gains impossibles sont retirés du tirage. Les PC restent le dernier recours répétable.</p>
-<h3>Étiquettes connues et actives</h3>
-<p>Les étiquettes de combat sont <code>infanterie</code>, <code>distance</code>, <code>cavalerie</code>, <code>humain</code>, <code>melee</code>, <code>orc</code>, <code>mort_vivant</code>, <code>noble</code>, <code>armure_legere</code>, <code>lourde</code>, <code>chaman</code> et <code>cruelle</code>. Le joueur sélectionne les étiquettes actives dans <code>etiquettes_actives.txt</code>. Trois maximum chez un stratège, une chez un instinctif ; toutes doivent être connues. Les effets compatibles s'additionnent selon <strong>PC × 0,5 × rang</strong>. Les bonus du QG sont transmis aux alliés engagés ; un Messager ajoute 10 % des PC des autres généraux alliés au soutien global seulement.</p>
+<section id="generaux"><h2>Orientations et progression des généraux</h2>
+<p>Au niveau 0 : orientation et trait inné, 0 PC, 0 moral, aucune étiquette ni évolution. Trois orientations existent : Stratège (45 %), Instinctif (45 %) et Hybride (10 %), sans dominante.</p>
+<table><thead><tr><th>Orientation</th><th>PC naturels par niveau</th><th>Moral aux niveaux pairs</th><th>Traits : charismatique / leader / inventeur</th></tr></thead><tbody>
+<tr><td>Stratège</td><td>+2 à +4</td><td>Aucun</td><td>50 / 35 / 15 %</td></tr>
+<tr><td>Instinctif</td><td>Aucun</td><td>+1</td><td>50 / 15 / 35 %</td></tr>
+<tr><td>Hybride</td><td>+2 à +4</td><td>+1</td><td>50 / 25 / 25 %</td></tr></tbody></table>
+<p>Chaque niveau donne ses gains naturels et une récompense classique (roulette ou mémoire de l'École). Chaque multiple de cinq donne aussi une récompense spécifique, puis une seconde roulette lorsque toutes les capacités sont débloquées, y compris après le niveau 25.</p>
+<h3>Probabilités de roulette</h3><table><thead><tr><th>Orientation / trait</th><th>PC</th><th>Moral</th><th>Unité</th><th>Étiquette</th></tr></thead><tbody>
+<tr><td>Stratège charismatique</td><td>40 %</td><td>10 %</td><td>15 %</td><td>35 %</td></tr>
+<tr><td>Stratège leader</td><td>35 %</td><td>10 %</td><td>15 %</td><td>40 %</td></tr>
+<tr><td>Stratège inventeur</td><td>15 %</td><td>10 %</td><td>40 %</td><td>35 %</td></tr>
+<tr><td>Instinctif charismatique</td><td>10 %</td><td>55 %</td><td>20 %</td><td>15 %</td></tr>
+<tr><td>Instinctif leader</td><td>10 %</td><td>50 %</td><td>20 %</td><td>20 %</td></tr>
+<tr><td>Instinctif inventeur</td><td>10 %</td><td>35 %</td><td>40 %</td><td>15 %</td></tr>
+<tr><td>Hybride charismatique</td><td>30 %</td><td>30 %</td><td>15 %</td><td>25 %</td></tr>
+<tr><td>Hybride leader</td><td>25 %</td><td>30 %</td><td>15 %</td><td>30 %</td></tr>
+<tr><td>Hybride inventeur</td><td>20 %</td><td>20 %</td><td>35 %</td><td>25 %</td></tr>
+</tbody></table>
+<p>Les catégories indisponibles sont retirées et les poids restants redistribués proportionnellement. PC : +5 à +10 ; moral : +2 à +4, plafonné à 100. L'Hybride accède aux unités et apprentissages des deux orientations.</p>
+<h3>Places actives et étendards</h3>
+<p>Tous commencent avec une place active. Le Stratège débloque les deuxième et troisième aux niveaux 5 et 10. L'Instinctif conserve une place et débloque l'étendard normal puis royal. L'Hybride tire à 50/50 l'une de ces progressions aux niveaux 5, 10, 15 et 20 ; une branche terminée bascule vers l'autre. Chaque branche garde son ordre propre. Une place ne donne aucune nouvelle étiquette.</p>
+<p>Le fichier <code>etendard.txt</code> dans un seul bloc absorbe une perte par unité, deux pour le royal, après échec du moral. La protection dure toute la guerre territoriale et ne se recharge pas entre phases. Un bloc anéanti perd son étendard ; sa reconstruction ultérieure est gratuite. Un Hybride peut avoir simultanément QG et étendard.</p>
+<p>Connaissances, rangs, places débloquées et choix actifs sont distincts. Le fichier <code>etiquettes_actives.txt</code> choisit les étiquettes connues dans la limite débloquée. Les effets compatibles s'additionnent selon PC × 0,5 × rang. Les <a href="etiquettes.html">règles des étiquettes</a> détaillent la sélection et le QG.</p>
 <h3 id="generaux-zombies">Généraux zombies et progression</h3><p>Un général mort dispose d'une chance unique de <strong>5 %</strong> de ressusciter comme général zombie à la <a href="batiments.html#morgue">Morgue</a>. Chaque résurrection crée un cadavre officiel utilisable une seule fois pour un Trop gros zombie. La transformation est définitive. La capacité de base reste à <strong>20 places</strong>, puis augmente définitivement de <strong>2 places par niveau gagné après résurrection</strong>, avec, à chaque niveau, <strong>20 % de chance</strong> de débloquer l'étiquette spéciale <code>mort_vivant</code> tant qu'elle est inconnue.</p>
 <p>Les combats zombies utilisent leurs faiblesses habituelles (÷2 contre tous les adversaires, sauf exception particulière). La contamination par <code>spore</code> intervient après la résolution de l'affrontement, puis les Zombies créés sont régulés seulement lorsque tous les combats du territoire sont terminés.</p>
 <h3>Généraux spéciaux et récompenses</h3><p>Les généraux obtenus par les recettes de la <a href="batiments.html#crypte">Crypte</a> et par la <a href="quetes.html#cabane">cabane mystérieuse</a> possèdent des compositions particulières. Leur obtention dépend d'un défi, et non d'une probabilité de tirage.</p></section>

@@ -132,13 +132,13 @@ class CombatObserver:
     def casualties(self, infos, survivors, general=None):
         # Observer le moral transmis à soldats.pertes : aucun recalcul local.
         original = self.combats.soldats.pertes
-        def record(block, remaining, moral=0, aleatoire=None):
+        def record(block, remaining, moral=0, aleatoire=None, general_pertes=None):
             self.morale.append({'general': general['nom'] if general else None,
                                 'owner': general['joueur'] if general else None,
                                 'unit': block['type'], 'morale': moral})
             self.annotate('morale', 'Moral effectif pour les sauvetages',
                           f"{general['joueur'] if general else ''} {general['nom'] if general else ''}, {block['type']} : moral effectif {moral}. La sélection et les blessures sont résolues par le moteur.")
-            return original(block, remaining, moral, aleatoire)
+            return original(block, remaining, moral, aleatoire, general_pertes)
         self.combats.soldats.pertes = record
         try:
             return self.originals['supprimer_unites'](infos, survivors, general)

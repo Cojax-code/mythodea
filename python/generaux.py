@@ -551,6 +551,10 @@ def lire_blocs_general(chemin_general):
         a_supprimer = []
 
         for unite in bloc_dir.iterdir():
+            if unite.name == 'etendard.txt':
+                import etendards
+                etendards.declaration_valide(unite)
+                continue
             type_unite = identifier_unite(unite)
 
             if type_unite == "inconnu":

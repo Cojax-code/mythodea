@@ -22,7 +22,8 @@ class SelectionEtProgression(unittest.TestCase):
         self.selection = self.chemin / 'etiquettes_actives.txt'
 
     def test_syntaxe_absence_vide_et_connaissances_inchangees(self):
-        fiche = self.fiche(etiquettes={'infanterie': 1, 'distance': 2, 'cruelle': 1})
+        fiche = self.fiche(niveau=10, emplacements_etiquettes_actives=3,
+                           etiquettes={'infanterie': 1, 'distance': 2, 'cruelle': 1})
         avant = deepcopy(fiche)
         self.assertEqual(progression.selection_etiquettes(fiche, self.chemin)['etiquettes_actives'],
                          list(fiche['etiquettes']))
@@ -43,10 +44,11 @@ class SelectionEtProgression(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     progression.selection_etiquettes(fiche, self.chemin)
 
-    def test_limites_et_orientation_principale_des_hybrides(self):
+    def test_limites_des_emplacements_debloques(self):
         for nature in progression.NATURES:
-            maximum = 3 if nature.startswith('stratege') else 1
-            fiche = self.fiche(nature, etiquettes={'infanterie': 1, 'distance': 1, 'cruelle': 1, 'chaman': 1})
+            maximum = 1 if nature == 'instinctif' else 3
+            fiche = self.fiche(nature, niveau=20, emplacements_etiquettes_actives=maximum,
+                               etiquettes={'infanterie': 1, 'distance': 1, 'cruelle': 1, 'chaman': 1})
             for nombre in (maximum, maximum + 1):
                 with self.subTest(nature=nature, nombre=nombre):
                     noms = list(fiche['etiquettes'])[:nombre]
@@ -177,7 +179,8 @@ class SelectionEtProgression(unittest.TestCase):
     def test_emplacement_zombie_supplementaire_selectionnable(self):
         for nature in progression.NATURES:
             noms = ['infanterie', 'distance', 'cruelle'] if nature.startswith('stratege') else ['infanterie']
-            fiche = self.fiche(nature, etat_zombie=True, etiquettes=dict.fromkeys([*noms, 'mort_vivant'], 1))
+            fiche = self.fiche(nature, etat_zombie=True, emplacements_etiquettes_actives=len(noms),
+                               etiquettes=dict.fromkeys([*noms, 'mort_vivant'], 1))
             for choix in (noms, [*noms, 'mort_vivant'], ['mort_vivant'], []):
                 self.selection.write_text(','.join(choix), encoding='utf-8')
                 self.assertEqual(progression.selection_etiquettes(fiche, self.chemin)['etiquettes_actives'], choix)

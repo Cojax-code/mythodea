@@ -11,38 +11,45 @@ def engine_profile(profile):
     p = profile
     fiche = progression.nouvelles_caracteristiques(random.Random(0))
     fiche.update(niveau=p['level'], nature=p['nature'],
-                 orientation_principale=p['nature'].removesuffix('_hybride'),
                  trait_inne=p['trait'], points_commandement=p['pc'], moral=p['morale'],
-                 etiquettes={}, etiquettes_permanentes=[],
+                 etiquettes=dict(p['labels']),
+                 emplacements_etiquettes_actives=p.get('active_slots', 1),
+                 niveau_etendard=p.get('banner_level', 0),
                  etat_zombie=p['zombie'], niveaux_zombie=p['zombie_levels'])
     if p['zombie_levels'] > p['level'] or (not p['zombie'] and p['zombie_levels']):
         raise InvalidConfiguration('Niveaux après zombification incohérents.')
-    orientation = progression.orientation_principale(fiche)
-    max_permanent = (1 + min(2, p['level'] // 5) if orientation == 'stratege'
-                     else int(p['level'] >= 5))
-    if len(p['permanent']) > max_permanent:
-        raise InvalidConfiguration('Trop d’étiquettes permanentes pour ce niveau.')
-    for name in p['permanent']:
-        if p['labels'].get(name) != 1:
-            raise InvalidConfiguration('Une étiquette permanente conserve son rang 1.')
-        fiche['etiquettes'][name] = 1
-        fiche['etiquettes_permanentes'].append(name)
     try:
-        for name, rank in p['labels'].items():
-            if name in p['permanent']:
-                continue
-            if p['zombie'] and name == 'mort_vivant':
-                continue
-            for _ in range(rank):
-                fiche = progression.apprendre_etiquette(fiche, name)
-        if p['zombie'] and 'mort_vivant' in p['labels']:
-            fiche['etiquettes']['mort_vivant'] = 1
-            for _ in range(p['labels']['mort_vivant'] - 1):
-                fiche = progression.apprendre_etiquette(fiche, 'mort_vivant')
+        progression.capacite_etiquettes_actives(fiche)
+        # Reconstituer les états atteignables via les étapes du moteur : aucune
+        # table de progression parallèle dans l'adaptateur.
+        possibles = {(1, 0)}
+        niveau_vivant = p['level'] - p['zombie_levels']
+        for _ in range(min(4, niveau_vivant // 5)):
+            suivants = set()
+            for places, etendard in possibles:
+                for branche in (0, 1):
+                    candidat = dict(fiche, emplacements_etiquettes_actives=places, niveau_etendard=etendard)
+                    progression.progression_specifique(candidat, TirageBranche(branche))
+                    suivants.add((candidat['emplacements_etiquettes_actives'], candidat['niveau_etendard']))
+            possibles = suivants
+        if 'active_slots' not in p and 'banner_level' not in p:
+            places, etendard = sorted(possibles)[0]
+            fiche.update(emplacements_etiquettes_actives=places, niveau_etendard=etendard)
+        elif (fiche['emplacements_etiquettes_actives'], fiche['niveau_etendard']) not in possibles:
+            raise ValueError('Capacités spécifiques incompatibles avec le niveau et l’orientation.')
     except ValueError as exc:
         raise InvalidConfiguration(str(exc)) from exc
     # L'activation sera contrôlée par selection_etiquettes sur son vrai fichier.
     return fiche
+
+
+class TirageBranche:
+    """Explore les deux choix du moteur pour valider un scénario synthétique."""
+    def __init__(self, branche):
+        self.branche = branche
+
+    def randint(self, minimum, maximum):
+        return minimum if self.branche == 0 else maximum
 
 
 def validate_army(general, fiche):
@@ -92,6 +99,8 @@ def generate(payload):
     return {'seed': seed, 'profile': {
         'level': fiche['niveau'], 'nature': fiche['nature'], 'trait': fiche['trait_inne'],
         'pc': fiche['points_commandement'], 'morale': fiche['moral'],
-        'labels': fiche['etiquettes'], 'permanent': fiche['etiquettes_permanentes'],
-        'active': list(fiche['etiquettes']), 'zombie': False, 'zombie_levels': 0},
+        'labels': fiche['etiquettes'],
+        'active_slots': fiche['emplacements_etiquettes_actives'], 'banner_level': fiche['niveau_etendard'],
+        'active': list(fiche['etiquettes'])[:progression.capacite_etiquettes_actives(fiche)],
+        'zombie': False, 'zombie_levels': 0},
         'unlocked_evolutions': fiche['evolutions_acquises']}

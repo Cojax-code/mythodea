@@ -20,7 +20,8 @@ class ProgressionFinale(unittest.TestCase):
     def fiche(self, nature='stratege', **champs):
         return dict(dict(nature=nature, niveau=0, points_commandement=15, moral=0,
                          trait_inne='charismatique', evolutions_acquises=[],
-                         evolution_apprise=None, etiquettes={}), **champs)
+                         evolution_apprise=None, etiquettes={}, emplacements_etiquettes_actives=1,
+                         niveau_etendard=0, version_progression=progression.VERSION_PROGRESSION), **champs)
 
     def test_hybrides_gain_selon_statistique_apprise(self):
         for nature, evolution, recompense, pc, moral in (
@@ -34,16 +35,15 @@ class ProgressionFinale(unittest.TestCase):
             self.assertIsNone(apres['evolution_apprise'])
             self.assertEqual(fiche, avant)
 
-    def test_paliers_et_memoire_unite_conservee(self):
+    def test_paliers_et_memoire_unite_consommee_en_plus_du_specifique(self):
         for nature in progression.NATURES:
             fiche = self.fiche(nature, niveau=4, evolution_apprise=105)
             apres, recompense = progression.monter_niveau(fiche, random.Random(1))
-            self.assertEqual(recompense[0], 'etiquette')
-            self.assertEqual(apres['evolution_apprise'], 105)
-            apres, recompense = progression.monter_niveau(apres, random.Random(2))
             self.assertEqual(recompense, 105)
             self.assertIsNone(apres['evolution_apprise'])
             self.assertNotIn(105, progression.evolutions_eligibles(apres))
+            self.assertIsNotNone(apres['dernier_niveau']['supplementaire'])
+            self.assertEqual(apres['etiquettes'], {})
 
     def test_natures_paliers_plafonds_et_roulette_apres_n10(self):
         for nature in progression.NATURES:
@@ -52,11 +52,8 @@ class ProgressionFinale(unittest.TestCase):
             for niveau in range(1, 21):
                 precedent = fiche
                 fiche, recompense = progression.monter_niveau(fiche, random.Random(niveau))
-                palier = niveau in ((5, 10) if stratege else (5,))
-                if palier:
-                    self.assertEqual(recompense[0], 'etiquette')
-                    self.assertNotIn(recompense[1], precedent['etiquettes'])
-                    self.assertEqual(fiche['etiquettes'][recompense[1]], 1)
+                self.assertEqual(fiche['dernier_niveau']['classique'], recompense)
+                self.assertEqual(fiche['dernier_niveau']['supplementaire'] is not None, niveau % 5 == 0)
                 self.assertNotIn('etiquettes_permanentes', fiche)
                 self.assertLessEqual(fiche['moral'], 100)
                 if stratege:
@@ -122,6 +119,7 @@ class IntegrationFinale(unittest.TestCase):
                  camp=self.profil['acteurs'][joueur]['camp'])
         profils = self.progression.charger()
         profils[f'{joueur}:{chemin.name}'] = ProgressionFinale().fiche(
+            niveau=10, emplacements_etiquettes_actives=3,
             points_commandement=pc, etiquettes=etiquettes or {})
         self.progression.sauvegarder(profils)
         return g

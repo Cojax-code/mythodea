@@ -14,6 +14,7 @@ import rapports
 import progression
 import soldats
 import unites
+import etendards
 
 # Effets calculés une fois par duel, jamais persistés dans les fiches.
 _MALUS_MORAL_DUEL = ContextVar('mythodea_malus_moral_duel', default={})
@@ -144,6 +145,18 @@ def _fichier_qg_valide(chemin):
 
 @contextmanager
 def _contexte_qg_territorial(territoire, configuration):
+    with etendards.guerre():
+        forces = generaux.lire_forces_territoire(territoire, configuration)
+        for places in forces.values():
+            for general in places.values():
+                if general and generaux.general_a_des_unites(general):
+                    etendards.figer(general)
+        with _contexte_commandement_territorial(territoire, configuration):
+            yield
+
+
+@contextmanager
+def _contexte_commandement_territorial(territoire, configuration):
     """Fige les QG déclarés par QG.txt ou qg.txt au début du territoire."""
     import commandement
     forces = generaux.lire_forces_territoire(territoire, configuration)
@@ -259,6 +272,13 @@ def duel_valeurs_nulles(general_1, general_2):
 
 
 def combat_entre_generaux(general_1, general_2):
+    with etendards.guerre():
+        for general in (general_1, general_2):
+            etendards.figer(general)
+        return _duel_entre_generaux(general_1, general_2)
+
+
+def _duel_entre_generaux(general_1, general_2):
     jeton = _DUEL_IDENTITES.set((general_1, general_2))
     try:
         with unites.duel(general_1, general_2), effets_moral_duel(general_1, general_2):
@@ -266,6 +286,7 @@ def combat_entre_generaux(general_1, general_2):
     finally:
         _DUEL_IDENTITES.reset(jeton)
     for numero, general in enumerate((general_1, general_2), 1):
+        etendards.detruire_si_bloc_vide(general)
         _desactiver_qg_detruit(general)
         generaux.supprimer_general_si_vide(general)
         resultat[f'final_{numero}'] = generaux.total_general_depuis_chemin(general['chemin'])
@@ -1108,6 +1129,8 @@ def trouver_cible_faible(armee, joueur_ennemi):
 
 
 def supprimer_unites(infos, survivants, general=None):
+    if general is not None:
+        etendards.figer(general)
     caracteristiques = progression.caracteristiques_general(general) if general else None
     moral = 0
     if (caracteristiques and not caracteristiques.get('etat_zombie')
@@ -1120,7 +1143,7 @@ def supprimer_unites(infos, survivants, general=None):
         identite = (general['joueur'], general['nom'])
         pourcentage = _MALUS_MORAL_DUEL.get().get(identite, 0)
         moral = max(0, Fraction(moral) * max(0, 100 - pourcentage) / 100)
-    return soldats.pertes(infos, survivants, moral, random)
+    return soldats.pertes(infos, survivants, moral, random, general)
 
 
 def confrontation_directe(

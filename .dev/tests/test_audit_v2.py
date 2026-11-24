@@ -51,7 +51,7 @@ class AuditUnites(unittest.TestCase):
             fiche['nature'] = nature
             for apprentissage in (False, True):
                 eligibles = self.progression.evolutions_eligibles(fiche, apprentissage=apprentissage)
-                attendu = nature.startswith('instinctif') or (apprentissage and nature.endswith('_hybride'))
+                attendu = nature != 'stratege'
                 self.assertEqual({107, 108, 109} <= eligibles.keys(), attendu)
 
     def adversaire_zombie(self, nombre=1, bouclier=True):

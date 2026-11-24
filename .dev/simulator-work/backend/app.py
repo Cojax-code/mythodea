@@ -30,7 +30,7 @@ def create_app(runner=None):
 
     @app.get("/api/simulator/catalog")
     def catalog():
-        return jsonify(**CATALOG, engine_commit=LOCK["commit"], max_generals_per_camp=4, modes=["OFF/OFF", "OFF/DEF"],
+        return jsonify(**CATALOG, engine_commit=LOCK["commit"], engine_snapshot=LOCK.get('snapshot'), max_generals_per_camp=4, modes=["OFF/OFF", "OFF/DEF"],
                        conditions={"mode": "OFF/OFF", "fatigue": False, "orders": [],
                                    'reinforcements': False, 'retreats': False, 'value_floor_percent': 1})
 

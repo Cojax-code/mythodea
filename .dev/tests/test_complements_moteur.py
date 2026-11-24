@@ -31,15 +31,15 @@ class ComplementsMoteur(unittest.TestCase):
         self.formation.clore_tour(self.profil, tour)
         self.formation.resoudre_tour(self.profil, tour)
 
-    def test_probabilites_exactes_quatre_natures_et_traits(self):
+    def test_probabilites_exactes_trois_natures_et_traits(self):
         self.modules()
         obtenus = dict.fromkeys(self.progression.NATURES, 0)
         for tirage in range(1, 101):
             fiche = self.progression.nouvelles_caracteristiques(Mock(randint=Mock(side_effect=[tirage, 51, 1, 1])))
             obtenus[fiche['nature']] += 1
             self.assertEqual(fiche['trait_inne'], 'leader')
-            self.assertEqual(fiche['orientation_principale'], fiche['nature'].removesuffix('_hybride'))
-        self.assertEqual(obtenus, dict(stratege=45, instinctif=45, stratege_hybride=5, instinctif_hybride=5))
+            self.assertNotIn('orientation_principale', fiche)
+        self.assertEqual(obtenus, dict(stratege=45, instinctif=45, hybride=10))
 
     def test_apprentissages_croises_et_gains_sans_changement_nature_trait(self):
         self.modules()
@@ -48,7 +48,7 @@ class ComplementsMoteur(unittest.TestCase):
             fiche.update(nature=nature, niveau=1, moral=0, evolution_apprise=evolution)
             apres, identifiant = self.progression.monter_niveau(fiche, Mock(randint=lambda a, b: b))
             self.assertEqual((identifiant, apres['niveau'], apres['nature'], apres['trait_inne']),
-                             (('force_caractere', 4) if evolution == 202 else ('maitrise_commandement', 10), 2, nature, fiche['trait_inne']))
+                             (('force_caractere', 4) if evolution == 202 else ('maitrise_commandement', 10), 2, 'hybride', fiche['trait_inne']))
             self.assertEqual(apres['moral'], 5 if evolution == 202 else 1)
             self.assertEqual(apres['points_commandement'] - fiche['points_commandement'],
                              14 if evolution == 201 else 4)
@@ -60,7 +60,7 @@ class ComplementsMoteur(unittest.TestCase):
         for nature in ('stratege', 'instinctif', 'stratege_hybride', 'instinctif_hybride'):
             qg = dict(nature=nature, points_commandement=0, qg=True, effectif_bloc_qg=1)
             self.assertIs(commandement.selectionner_qg([qg], lambda g: 0),
-                          qg if nature.startswith('stratege') else None)
+                          qg if nature != 'instinctif' else None)
             qg['etat_zombie'] = True
             self.assertIsNone(commandement.selectionner_qg([qg], lambda g: 0))
 
@@ -154,8 +154,7 @@ class ComplementsMoteur(unittest.TestCase):
 
     def test_forge_sans_technologie_et_strateges_refuses(self):
         general = self.forge(technologie=False)
-        for tour, nature, acquis in ((1, 'instinctif', []), (2, 'stratege', [104]),
-                                      (3, 'stratege_hybride', [104])):
+        for tour, nature, acquis in ((1, 'instinctif', []), (2, 'stratege', [104])):
             profils = self.progression.charger()
             profils['j1:general1'].update(nature=nature, evolutions_acquises=acquis)
             self.progression.sauvegarder(profils)

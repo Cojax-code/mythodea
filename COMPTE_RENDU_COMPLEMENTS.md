@@ -1,3 +1,6 @@
+> Archive historique : les orientations, paliers et règles de QG ci-dessous sont
+> remplacés par les règles courantes de [REGLES_V2.md](REGLES_V2.md).
+
 # Compléments du moteur — compte rendu du 19 octobre 2026
 
 Les modifications sont locales, sans commit ni push. Aucun test n'a utilisé une

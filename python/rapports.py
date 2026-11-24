@@ -92,21 +92,44 @@ def noter_progression(general, avant, apres, origine, recompense=None):
         details.append(f"+1 point ; progression {apres['progression_' + origine]}/{progression.SEUILS[origine]}")
     if apres['niveau'] != avant['niveau']:
         details.append(f"niveau {apres['niveau']} gagné")
+        details.append(f"orientation {apres['nature']}")
+        details.append(f"{apres.get('emplacements_etiquettes_actives', 1)} emplacement(s) d’étiquettes actives débloqué(s)")
+    bilan = apres.get('dernier_niveau') if apres['niveau'] != avant['niveau'] else None
+    if bilan:
+        gains = bilan['gains_naturels']
+        details.append(f"gains naturels : PC +{gains['points_commandement']}, moral +{gains['moral']}")
     for cle, libelle in (('points_commandement', 'PC'), ('moral', 'moral')):
         gain = apres[cle] - avant[cle]
         if gain:
-            details.append(f"{libelle} +{gain}")
+            details.append(f"total {libelle} +{gain}")
     for nom, rang in apres.get('etiquettes', {}).items():
         if rang != avant.get('etiquettes', {}).get(nom):
             details.append(f"étiquette {nom}, niveau {rang}")
     for evolution in apres['evolutions_acquises']:
         if evolution not in avant['evolutions_acquises']:
             details.append(f"évolution {evolution} obtenue")
-    if recompense:
+    if bilan:
+        details.append(f"récompense classique : {decrire_recompense(bilan['classique'])}")
+        if bilan['supplementaire'] is not None:
+            details.append(f"récompense supplémentaire : {decrire_recompense(bilan['supplementaire'])}")
+        if bilan['basculement']:
+            details.append(f"basculement automatique : {bilan['basculement']}")
+    elif recompense:
         details.append(f"récompense {recompense[0]} : {recompense[1]}" if isinstance(recompense, (tuple, list))
                        else f"récompense évolution {recompense}")
     noter_resultat(general['joueur'], 'CASERNE MILITAIRE' if origine == 'formation'
                   else 'PROGRESSION', '; '.join(details) + '.')
+
+
+def decrire_recompense(recompense):
+    if not isinstance(recompense, (tuple, list)):
+        return f'évolution {recompense}'
+    nom, valeur = recompense
+    if nom == 'etendard':
+        return 'capacité étendard royal débloquée' if valeur == 2 else 'capacité étendard débloquée'
+    if nom == 'emplacement_actif':
+        return f'emplacement actif débloqué ({valeur} au total)'
+    return f'{nom} : {valeur}'
 
 
 def noter_incident_general(chemin, message):

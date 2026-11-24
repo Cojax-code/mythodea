@@ -2,30 +2,16 @@
 
 ## Référence et audit
 
-Le moteur est verrouillé sur `Cojax-code/mythodea`, branche `v2.0`, commit
-`b31b842d689d22b7efe4393010fccb6bc3a6aa77`. Ses sources sont extraites des objets
-Git et vérifiées avant chaque worker ; le dépôt moteur reste inchangé.
+Le simulateur utilise un instantané des sources locales de la branche `v2.0`,
+identifié par `snapshot` et les empreintes SHA-256 de `backend/engine.lock.json`.
+Le champ `commit` indique le commit de base, pas un commit contenant les changements
+locaux. `scripts/sync_engine.py --source ../..` exporte le catalogue officiel et
+renouvelle le verrou ; `scripts/prepare_engine.py --source ../..` prépare une copie
+vérifiée. Chaque worker contrôle les empreintes avant exécution dans Bubblewrap.
+Aucun calcul de combat n'est dupliqué dans le navigateur.
 
-Ce verrou décrit une version antérieure au nettoyage des profils. Ses anciennes
-options « permanentes » ne représentent plus les règles actuelles du moteur :
-toutes les étiquettes connues sont améliorables, et seules les nouvelles acquisitions
-scolaires comptent dans le quota de l'École (voir `REGLES_V2.md` à la racine du dépôt).
-La mise à niveau du moteur embarqué et de l'interface du simulateur reste distincte
-du nettoyage des profils ; les descriptions et exemples ci-dessous concernent
-uniquement le commit verrouillé.
-
-| Zone | Ancien simulateur (`6326a607`) | Version mise à niveau |
-| --- | --- | --- |
-| Sources Python | 19 modules | 27 modules, SHA-256 dans `backend/engine.lock.json` |
-| Camps | Profil Survie j1 contre bot | Profil classique j1 contre j2, territoire jetable `terrain1` |
-| Unités | Quatre types historiques | Douze types officiels, capacités et compatibilité de nature |
-| Généraux | Fiche neutre ; orientation seulement visuelle | Niveau, nature, trait, PC, moral, état zombie et sélection privée |
-| Étiquettes | Absentes du contrat de bataille | Connues, permanentes, actives et rangs ; validation par progression Python |
-| QG / Messager | Absents | QG explicite par camp, Messagers dans les blocs, instantané territorial |
-| Ordres | Ancien `1-2` | Refusé par l'API et retiré de l'interface |
-| Pertes | Différence d'effectifs | Bilan net, destructions, créations, conversions reçues, blessures avant/après soins |
-| Génération | Composition aléatoire seulement | Progression officielle jusqu'au niveau choisi et composition compatible |
-| Isolation | Bubblewrap, quotas et graine | Garanties conservées, vérification de fichiers renforcée, flux Spore initialisé |
+Trois orientations, progression classique et spécifique, places actives débloquées,
+étendards individuels et exceptions zombies proviennent du moteur commun.
 
 ## Bataille exécutée
 
@@ -64,19 +50,20 @@ rapport intégral et les survivants à un worker indépendant sans cet observate
 ## Profils synthétiques et limites
 
 La génération appelle `nouvelles_caracteristiques` puis `monter_niveau` pour chaque
-niveau demandé. Elle utilise les probabilités réellement présentes dans b31b842.
+niveau demandé. Elle utilise les probabilités du moteur verrouillé.
 Le bouton est réutilisable ; son résultat remplace le profil, pas les soldats.
 Le remplissage des unités est un tirage de composition local, sans résolution
 de combat, qui respecte les natures et exclut les soutiens du tirage automatique.
 Les Messagers et le Gros zombie se placent explicitement dans les blocs.
 
 Les PC peuvent être augmentés ou diminués ; changer le niveau manuellement ne
-recalcule pas le parcours. Les étiquettes permanentes restent au rang 1 ; les
-autres rangs sont limités par le niveau officiel. Les connaissances scolaires
-sont contrôlées via `apprendre_etiquette`, l'activation via `selection_etiquettes`.
-Les profils manuels servent aux expériences : leur carrière et l'acquisition
-historique de chaque unité ne sont pas reconstituées. La compatibilité de nature
-est contrôlée, y compris l'apprentissage croisé des hybrides.
+recalcule pas le parcours. Les connaissances et rangs sont des données synthétiques,
+sans supposer une origine scolaire : une étiquette peut aussi provenir de la roulette.
+Les champs `active_slots` et `banner_level` représentent les capacités débloquées.
+L'adaptateur vérifie les parcours possibles en appelant les étapes spécifiques du
+moteur ; l'activation passe par `selection_etiquettes`. `banner_block` choisit un bloc
+ou vaut `null` ; son fichier est contrôlé par `etendards.declaration`.
+L'ancien champ facultatif `permanent` est accepté comme métadonnée sans effet.
 
 Bornes du service, sans modification du jeu : niveaux 0–50, PC 0–1000, moral
 0–100, au plus huit généraux. Capacité ordinaire de 20 places ; capacité zombie
@@ -94,15 +81,11 @@ cycle de décisions officiel ; aucune de ces fonctions n'est affichée comme act
 Le comparateur théorique dans l'autre onglet conserve ses limites affichées et
 ne constitue pas le moteur du simulateur de bataille.
 
-## Décisions en attente et points à examiner dans le moteur
+## Limites conservées
 
-Sur instruction du propriétaire, les décisions postérieures à b31b842 restent
-**indisponibles** ici : nouvelle roulette des instinctifs, gains naturels doubles
-des hybrides, probabilités proposées à confirmer, plancher de valeur à 0 %,
-emplacement zombie exclusivement réservé à `mort_vivant`, disparition des effets
-globaux après retraite de surnombre acceptée du QG, abandon des migrations de
-sauvegardes expérimentales. Le moteur conserve son plancher de **1 %** et ses
-règles actuelles ; aucune adaptation du simulateur ne les anticipe.
+Les règles communes sont celles de `REGLES_V2.md` : le plancher de valeur est 0 %,
+les capacités hybrides et les étendards sont actifs. Les règles encore ouvertes du
+Bouclier vivant restent ouvertes ; sa résistance spéciale ne reçoit pas l'étendard.
 
 Point de revue, sans correction locale : `bouclier_vivant._puissance_bloc_adverse`
 emploie valeur de base et avantage de type pour les chocs contre le bouclier,
@@ -133,7 +116,7 @@ La génération utilise le même bac à sable et le même verrou de concurrence.
       "profile": {
         "level": 10, "nature": "stratege", "trait": "leader",
         "pc": 40, "morale": 0, "zombie": false, "zombie_levels": 0,
-        "labels": {"infanterie": 2}, "permanent": [], "active": ["infanterie"]
+        "labels": {"infanterie": 2}, "active_slots": 3, "banner_level": 0, "active": ["infanterie"]
       },
       "blocks": {
         "avant": {"unit": "archer", "count": 15, "messengers": 1, "shield": false},

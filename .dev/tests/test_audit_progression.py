@@ -47,13 +47,13 @@ class AuditProgression(unittest.TestCase):
             fiche = dict(nature=nature, moral=0, evolutions_acquises=[])
             roulette = progression.evolutions_eligibles(fiche, apprentissage=False)
             self.assertIn(106, roulette)
-            self.assertEqual(104 in roulette, nature.startswith('instinctif'))
+            self.assertEqual(104 in roulette, nature in ('instinctif', 'hybride'))
         self.assertEqual(catalogues.UNITES[10]['places'], 5)
 
     def test_instantane_qg_refuse_nature_interdite(self):
         from unittest.mock import patch
         qg = dict(joueur='j1', nom='general1', camp='allies')
-        for nature, zombie in (('instinctif', False), ('instinctif_hybride', False), ('stratege', True)):
+        for nature, zombie in (('instinctif', False), ('hybride', True), ('stratege', True)):
             with patch.object(progression, 'caracteristiques_general',
                               return_value=dict(nature=nature, etat_zombie=zombie)):
                 with self.assertRaises(ValueError):

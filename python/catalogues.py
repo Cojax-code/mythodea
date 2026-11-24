@@ -4,6 +4,11 @@ Ne jamais recycler un identifiant supprimé. La valeur de fabrication est une
 référence documentaire, distincte de la valeur de combat individuelle.
 """
 
+# Réglages d'équilibrage : niveau officiel -> probabilité et charges par unité.
+# Le royal remplace le normal ; les deux lignes ne s'additionnent jamais.
+PROBABILITES_ETENDARDS = {1: 30, 2: 50}
+CHARGES_ETENDARDS = {1: 1, 2: 2}
+
 UNITES = {
     1: dict(nom='archer', prefixe='infanterie', recette=('arc',), fabrication=5, valeur_combat=5,
             etiquettes=('infanterie', 'distance'), forces=('piquier',),

@@ -25,7 +25,7 @@ class SimulationTimeout(RuntimeError):
 
 class Runner:
     def __init__(self, engine=None, timeout=10):
-        default_engine = ROOT / '.runtime' / f"engine-{LOCK['commit'][:7]}"
+        default_engine = ROOT / '.runtime' / f"engine-{LOCK.get('snapshot', LOCK['commit'])[:7]}"
         self.engine = Path(engine or os.environ.get("MYTHODEA_ENGINE_PATH", default_engine)).absolute()
         self.timeout = timeout
 

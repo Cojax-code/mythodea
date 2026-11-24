@@ -480,9 +480,9 @@ def unites_forge_validees(configuration, general):
 
 
 def verifier_acces_forge(fiche):
-    if (not fiche or progression.orientation_principale(fiche) != 'instinctif'
+    if (not fiche or not progression.compatible(fiche, ('instinctif',))
             or 104 not in fiche['evolutions_acquises']):
-        raise ValueError('Forge refusée : orientation instinctive et technologie 104 requises.')
+        raise ValueError('Forge refusée : orientation instinctive ou hybride et technologie 104 requises.')
 
 
 def forger(general, sejour, initiales, finales, eligibles=()):

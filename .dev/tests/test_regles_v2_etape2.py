@@ -68,7 +68,7 @@ class ProgressionEtape2(unittest.TestCase):
             fiche = self.fiche(nature, niveau=20)
             for _ in catalogues.ETIQUETTES_COMBAT:
                 precedentes = dict(fiche['etiquettes'])
-                fiche, recompense = progression.monter_niveau(fiche, Mock(randint=lambda a, b: b))
+                fiche, recompense = progression.recompense_classique(fiche, Mock(randint=lambda a, b: b))
                 self.assertEqual(recompense[0], 'etiquette')
                 self.assertNotIn(recompense[1], precedentes)
                 self.assertEqual(fiche['etiquettes'][recompense[1]], 1)
@@ -96,17 +96,17 @@ class ProgressionEtape2(unittest.TestCase):
             fiche, gain = progression.monter_niveau(fiche, Mock(randint=lambda a, b: b))
             self.assertEqual(gain, ('maitrise_commandement', 10))
 
-    def test_paliers_garantis_meme_si_limite_activation_atteinte(self):
+    def test_paliers_specifiques_sans_acquisition_et_memoire_classique_consommee(self):
         for nature in progression.NATURES:
             for niveau in ((4, 9) if nature.startswith('stratege') else (4,)):
                 fiche = self.fiche(nature, niveau=niveau, evolution_apprise=105,
                                    etiquettes=dict.fromkeys(('infanterie', 'distance', 'melee', 'orc'), 1))
                 apres, gain = progression.monter_niveau(fiche, random.Random(13))
-                self.assertEqual(gain[0], 'etiquette')
-                self.assertEqual(len(apres['etiquettes']), 5)
+                self.assertEqual(gain, 105)
+                self.assertEqual(apres['etiquettes'], fiche['etiquettes'])
                 self.assertNotIn('etiquettes_permanentes', apres)
-                self.assertEqual(apres['etiquettes'][gain[1]], 1)
-                self.assertEqual(apres['evolution_apprise'], 105)
+                self.assertIsNotNone(apres['dernier_niveau']['supplementaire'])
+                self.assertIsNone(apres['evolution_apprise'])
 
     def test_ecole_conserve_rangs_et_capacite_scolaire_sans_plafond_total_par_nature(self):
         for nature in progression.NATURES:
@@ -149,7 +149,8 @@ class ProgressionEtape2(unittest.TestCase):
                 for connue in (False, True):
                     # mort_vivant en premier doit laisser toutes les places ordinaires libres.
                     noms = (['mort_vivant'] if connue else []) + ordinaires
-                    fiche = self.fiche(nature, etat_zombie=True, etiquettes=dict.fromkeys(noms, 1))
+                    fiche = self.fiche(nature, etat_zombie=True, emplacements_etiquettes_actives=maximum,
+                                       etiquettes=dict.fromkeys(noms, 1))
                     for choisies in (ordinaires, (['mort_vivant'] if connue else []) + ordinaires):
                         selection.write_text(','.join(choisies), encoding='utf-8')
                         with self.assertRaises(ValueError):
@@ -214,7 +215,7 @@ class CombatsEtape2(unittest.TestCase):
         for n in range(10):
             self.speciale(a, 'orc_archer', n)
         profils = self.progression.charger()
-        profils['j1:general1'].update(nature='instinctif', moral=100)
+        profils['j1:general1'].update(nature='instinctif', moral=100, emplacements_etiquettes_actives=1)
         self.progression.sauvegarder(profils)
         armee = {g['joueur']: self.generaux.lire_blocs_general(g['chemin']) for g in (a, b)}
         # Le traitement racial/moral existant reste seul responsable du sauvetage.

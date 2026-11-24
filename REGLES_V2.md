@@ -9,37 +9,42 @@ anciennes, consulter l'historique Git du dépôt plutôt qu'un document de règl
 
 ## Progression
 
-Les natures à la création sont stratège (45 %), instinctif (45 %), stratège hybride
-(5 %) et instinctif hybride (5 %). L'orientation principale d'un hybride est celle
-de son préfixe ; les apprentissages croisés ne changent ni sa nature ni son trait.
+Trois orientations existent : Stratège (45 %), Instinctif (45 %) et Hybride (10 %).
+L'Hybride est indépendant, sans dominante. Au niveau 0, seuls l'orientation et
+le trait sont déterminés : 0 PC, 0 moral, aucune étiquette ni évolution.
 
-| Règle | Stratège, y compris hybride | Instinctif, y compris hybride |
-| --- | --- | --- |
-| PC initiaux | 0 | 0 |
-| Moral initial | 0 | 0 |
-| Gain naturel hors hybride | +2 à +4 PC à chaque niveau, aucun moral | +1 moral aux niveaux pairs, aucun PC |
-| Étiquettes automatiques garanties | Niveau 5, niveau 10 | Niveau 5 |
-| Maximum d'étiquettes ordinaires actives | 3 | 1 |
+| Orientation | PC naturels par niveau | Moral naturel aux niveaux pairs | Places actives initiales / maximum |
+| --- | --- | --- | --- |
+| Stratège | +2 à +4 | Aucun | 1 / 3 |
+| Instinctif | Aucun | +1 | 1 / 1 |
+| Hybride | +2 à +4 | +1 | 1 / 3 |
 
-Au niveau 0, seuls la nature, la dominante et le trait sont tirés. Les PC et le
-moral valent zéro ; aucune étiquette ni évolution initiale n’est attribuée.
-Les profils des anciennes parties conservent leurs acquisitions historiques.
+Les gains naturels sont indépendants des récompenses. Le moral est plafonné à 100.
+Les traits charismatique/leader/inventeur suivent les poids 50/35/15, 50/15/35
+et 50/25/25, respectivement pour ces trois orientations.
 
-Les deux natures hybrides gagnent **+2 à +4 PC à chaque niveau et +1 moral aux
-niveaux pairs**, quelle que soit leur dominante. Leur dominante conserve les
-règles de création, de paliers, d'activation, d'unités et de fabrication.
-Les connaissances ne sont pas plafonnées à trois ou une étiquette.
+Chaque niveau non zombie attribue ses gains naturels et sa récompense classique
+(roulette ou mémoire de l'École). Chaque multiple de cinq donne **en plus** une
+récompense spécifique, puis une seconde roulette lorsque les capacités sont complètes.
+Aucune étiquette n'est garantie aux niveaux 5 et 10.
 
-Le moral est plafonné à 100. Les étiquettes de palier sont attribuées au rang 1
-et peuvent être améliorées à l'École. Un palier apprend une étiquette encore inconnue, même
-si les places actives sont remplies. Si aucune n'est disponible, il utilise la
-roulette normale. Le stratège utilise donc la roulette aux niveaux 15, 20, etc.,
-l'instinctif à tous les niveaux sauf son éventuelle attribution au niveau 5.
+| Palier | Stratège | Instinctif | Hybride |
+| --- | --- | --- | --- |
+| 5 | Deuxième place active | Étendard normal | Tirage spécifique 50/50 |
+| 10 | Troisième place active | Étendard royal | Tirage spécifique 50/50 |
+| 15 et 20 | Roulette supplémentaire | Roulette supplémentaire | Tirage spécifique 50/50 |
+| 25 et chaque multiple de 5 suivant | Roulette supplémentaire | Roulette supplémentaire | Roulette supplémentaire si toutes les capacités sont débloquées |
 
-Les traits natifs suivent les poids 50/35/15 (charismatique/leader/inventeur)
-chez le stratège et 50/15/35 chez l'instinctif, hybrides inclus selon leur dominante.
-Charismatique privilégie les statistiques, Leader les étiquettes et Inventeur
-les unités. Les probabilités de roulette sont :
+Le tirage hybride choisit Stratège ou Instinctif à 50/50. Chaque branche avance
+indépendamment : deuxième puis troisième place ; étendard normal puis royal.
+Une branche terminée bascule automatiquement vers l'autre, sans perdre la récompense.
+La première récompense instinctive donne toujours le normal, même tardivement.
+Un parcours complet termine les quatre étapes à 20. Une capacité exceptionnellement
+manquante est traitée au prochain palier avant conversion en roulette.
+Une place active ne donne aucune connaissance ni amélioration de rang.
+Les connaissances ne sont pas plafonnées par les places actives.
+
+Les probabilités de roulette sont inchangées :
 
 | Nature / trait | PC | Moral | Unité | Étiquette |
 | --- | ---: | ---: | ---: | ---: |
@@ -53,13 +58,14 @@ les unités. Les probabilités de roulette sont :
 | Hybride leader | 25 % | 30 % | 15 % | 30 % |
 | Hybride inventeur | 20 % | 20 % | 35 % | 25 % |
 
-Chaque ligne totalise 100 %. Les deux hybrides utilisent la ligne Hybride.
+Chaque ligne totalise 100 %. L'Hybride utilise sa propre ligne.
 La récompense PC donne +5 à +10, y compris à l'instinctif ; le moral donne +2 à +4,
 plafonné à 100. Aucun plafond de PC n'est prévu par le moteur.
-L'unité est choisie parmi les évolutions compatibles avec la dominante et encore
-inconnues. Les apprentissages croisés d'unités restent propres à l'École.
+L'unité est choisie parmi les évolutions compatibles et encore inconnues.
+L'Hybride accède aux deux orientations par roulette comme à l'École, ainsi qu'à
+la Forge avec la technologie 104 et les autres conditions habituelles.
 L'étiquette est choisie parmi les entrées inconnues de `ETIQUETTES_COMBAT`,
-actuellement toutes compatibles avec les quatre natures, au rang 1.
+actuellement toutes compatibles avec les trois orientations, au rang 1.
 
 Une catégorie indisponible est retirée et ses probabilités sont redistribuées
 proportionnellement entre les catégories restantes de poids positif. Le moral
@@ -70,7 +76,7 @@ Si toutes les catégories accessibles sont épuisées, +5 à +10 PC restent le d
 recours répétable, même pour un instinctif.
 
 Une évolution mémorisée à l'École remplace la roulette du prochain niveau
-applicable. Elle est conservée lorsqu'un palier attribue une étiquette.
+applicable, y compris aux multiples de cinq ; elle ne remplace jamais le supplément.
 Pour un hybride, une mémoire de moral donne +2 à +4 moral et une mémoire de PC
 +5 à +10 PC, indépendamment de sa nature ; ses deux gains naturels restent
 applicables. Une mémoire devenue incompatible bloque l'attribution
@@ -105,8 +111,9 @@ Dans son dossier, le joueur peut créer `etiquettes_actives.txt` et inscrire
 les noms des étiquettes apprises, une par ligne ou séparés par des virgules.
 Seules celles choisies contribuent au combat, y compris aux effets du QG.
 Une sélection vide désactive tous les effets d'étiquettes.
-Le stratège (et son hybride) peut activer au plus trois étiquettes,
-l'instinctif (et son hybride) une seule. Le moteur refuse les noms inconnus,
+Le nombre actif est limité aux places effectivement débloquées dans le profil privé :
+une au départ, au plus trois pour Stratège et Hybride, une pour Instinctif.
+Le moteur refuse les noms inconnus,
 les doublons, les dépassements de capacité et les fichiers liés ou non ordinaires.
 La capture Survie vérifie ces fichiers avant copie, car une copie physique ferait
 perdre la preuve d'un lien physique. Les connaissances et leurs rangs restent
@@ -124,7 +131,7 @@ dispose d'un tirage indépendant de 20 % pour l'apprendre au niveau 1.
 Cette étiquette spéciale dispose d'un emplacement actif supplémentaire au zombie,
 **exclusivement réservé à `mort_vivant`**. Sans acquisition ou sans sélection de
 `mort_vivant`, aucune étiquette ordinaire supplémentaire n'est autorisée.
-Sans fichier de sélection, les premières trois/une étiquettes ordinaires connues
+Sans fichier de sélection, les premières étiquettes ordinaires connues dans la limite débloquée
 sont actives, ainsi que `mort_vivant` si connue, quel que soit son ordre d'acquisition.
 Le zombie garde ses deux places de capacité par niveau et n'a aucune roulette ordinaire.
 
@@ -209,7 +216,7 @@ changée pendant l'audit et mérite une décision de conception.
 
 Le joueur crée `QG.txt` ou `qg.txt` dans le dossier du général choisi. Leur contenu
 est indifférent. Les deux graphies sur le même général comptent une seule fois.
-Seuls les Stratèges et les hybrides à dominante Stratège non zombies peuvent
+Seuls les Stratèges et les Hybrides non zombies peuvent
 être désignés ; une déclaration incompatible est refusée. Aucune comparaison
 de PC ne choisit le QG.
 Aucun QG signifie aucun effet global. Plusieurs QG du même camp annulent tous
@@ -248,15 +255,53 @@ La désignation exige un fichier ordinaire sans lien symbolique ou physique ;
 les deux graphies sont contrôlées. La capture Survie refuse le lien **avant** la
 copie, qui ferait sinon perdre la preuve de son existence.
 
+## Étendards
+
+Un seul fichier ordinaire `etendard.txt`, sans lien symbolique ou physique, est
+placé dans l'un des quatre blocs du général. Son contenu ne choisit pas son type :
+le profil officiel autorise le normal (1) ou le royal (2). Un double placement ou
+une capacité absente est refusé. La capture contrôle les liens avant copie.
+L'Hybride peut conserver son QG : `QG.txt` reste au niveau du général, avec sa portée
+et sa destruction historiques ; l'étendard reste propre à son bloc.
+
+Après sélection habituelle des pertes, le moteur tente d'abord les sauvetages par
+le moral et respecte les limites de blessures (vétéran, héroïque et bonus d'unité).
+Si le moral échoue, l'étendard absorbe la perte : une fois par unité pour le normal,
+deux pour le royal, jamais trois. Un sauvetage par le moral ne consomme rien.
+L'absorption n'ajoute ni ne soigne de blessure permanente.
+
+La protection est figée pour toute la guerre territoriale : choc, manœuvres,
+frontal, rangé et cascades. Un renfort la fige à son arrivée au combat.
+Le compteur individuel ne se partage ni avec une autre unité, ni un autre bloc,
+ni un autre général. Modifier ou reconstruire le marqueur en cours de guerre
+ne recharge rien. La guerre suivante renouvelle les protections sans soigner.
+Un bloc ne subit que les pertes des combats auxquels il participe.
+
+L'anéantissement du bloc détruit immédiatement le marqueur. La capacité reste
+acquise ; le joueur peut recréer gratuitement le fichier pendant une préparation
+ultérieure. Une capacité royale reconstruit directement un étendard royal.
+Les généraux et unités zombies, ainsi que le Bouclier vivant, conservent leurs
+mécanismes particuliers et ne reçoivent pas cette protection. Les généraux zombies
+ne reçoivent aucune nouvelle récompense spécifique ou supplémentaire.
+
 ## Compatibilité et décisions ouvertes
 
 Les états privés existants restent l'autorité. Un général sans profil reste
 sans récompense ; une montée explicite ou une désignation QG sans caractéristiques
-officielles réclame une migration définie. Les anciens profils ne reçoivent pas
-de compensation rétroactive pour les paliers déjà passés.
+officielles réclame une migration définie. Les profils existants sont migrés une
+seule fois : `stratege_hybride` et `instinctif_hybride` deviennent `hybride`, sans
+dominante. Statistiques, unités, traits, connaissances, rangs et apprentissages
+sont conservés. Les capacités spécifiques des paliers atteints sont rattrapées ;
+les Hybrides tirent chaque étape avec basculement. Aucun gain naturel, aucune
+roulette classique ou supplémentaire historique n'est rejoué. Les zombies gardent
+leur ancienne capacité active sans recevoir les nouveaux déblocages.
+Les champs privés `emplacements_etiquettes_actives`, `niveau_etendard` (0/1/2),
+`version_progression=3` et le reçu `migration_orientations` empêchent un nouveau
+tirage. La première lecture d'un registre ancien sauvegarde atomiquement la migration
+avant utilisation ; les suivantes sont sans écriture.
 
 Les nouvelles connaissances utilisent le dictionnaire `etiquettes` existant ;
-une récompense de palier ou de roulette est renvoyée sous la forme `('etiquette', nom)` et
+une récompense d'étiquette par roulette est renvoyée sous la forme `('etiquette', nom)` et
 enregistrée comme les autres récompenses dans les reçus privés existants.
 La liste interne `etiquettes_apprises_ecole` conserve uniquement les acquisitions
 scolaires pour calculer le quota ; elle n'est pas publiée dans `fiche.txt` et
@@ -267,9 +312,10 @@ restent lisibles dans les reçus, sans être réécrites ni rejouées.
 Sans origine retrouvable, une connaissance est comptée comme scolaire. Les noms
 et les rangs existants sont conservés, même au-delà des plafonds actuels : seules
 les futures acquisitions scolaires et améliorations sont contrôlées.
-La lecture normalise en mémoire sans écrire ; la prochaine sauvegarde ou
-publication utilise le profil nettoyé. Aucun parcours de migration d'une partie
-existante n'est déclenché automatiquement hors de ces opérations habituelles.
+Hors migration versionnée ci-dessus, le nettoyage reste en mémoire jusqu'à la
+prochaine sauvegarde ou publication. `dernier_niveau` et le `bilan` du reçu privé
+distinguent gains naturels, récompense classique, supplément et basculement.
+Le retour historique de `monter_niveau` conserve la seule récompense classique.
 Les anciennes sélections zombies utilisant la place spéciale pour une étiquette
 ordinaire supplémentaire sont désormais refusées et doivent être corrigées par
 le joueur. Les connaissances restent intactes. Une même graine reproduit les

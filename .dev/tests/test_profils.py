@@ -32,7 +32,8 @@ class ProfilsCibles(unittest.TestCase):
     def test_creation_champs_actuels_sans_historiques(self):
         chemin = self.general()
         fiche = self.generaux.lire_fiche_general(chemin)
-        attendus = {'nom', 'nature', 'orientation_principale', 'trait_inne', 'niveau',
+        attendus = {'nom', 'nature', 'trait_inne', 'niveau',
+                    'emplacements_etiquettes_actives', 'niveau_etendard',
                     'points_commandement', 'moral', 'progression_combat', 'progression_formation',
                     'evolutions_acquises', 'evolution_apprise', 'etiquettes'}
         self.assertEqual(set(fiche), attendus)

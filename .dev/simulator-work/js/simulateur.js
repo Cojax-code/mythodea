@@ -5,7 +5,7 @@
     const unitNames = {archer: "Archers", piquier: "Piquiers", cavalier: "Cavaliers", cavalerie_lourde: "Cavalerie lourde"};
     const blockNames = {avant: "Avant", droite: "Droite", gauche: "Gauche", arriere: "Arrière"};
     const camps = ["A", "B"];
-    const orientations = {stratege: "Stratège", instinctif: "Instinctif", stratege_hybride: "Stratège hybride", instinctif_hybride: "Instinctif hybride"};
+    const orientations = {stratege: "Stratège", instinctif: "Instinctif", hybride: "Hybride"};
     const maxActivePositions = 4;
     const armies = {A: [], B: []};
     const mobile = matchMedia("(max-width: 800px)");
@@ -26,7 +26,8 @@
     function newGeneral(camp, initial = false) {
         const position = [1, 2, 3, 4].find(value => !armies[camp].some(g => g.position === value));
         return {id: nextGeneralId++, position, open: true, orientation: "stratege", qg: false,
-            profile: {level: 0, nature: "stratege", trait: "leader", pc: 0, morale: 0, labels: {}, permanent: [], active: [], zombie: false, zombie_levels: 0},
+            banner_block: null,
+            profile: {level: 0, nature: "stratege", trait: "leader", pc: 0, morale: 0, labels: {}, active: [], active_slots: 1, banner_level: 0, zombie: false, zombie_levels: 0},
             blocks: Object.fromEntries(catalog.blocks.map(block => [block, {
                 unit: camp === "A" ? "archer" : "piquier", count: initial && block === "avant" ? "20" : "0"
             }]))};
@@ -39,17 +40,17 @@
             general.orientation = general.orientationInput.value;
             const p = general.profile;
             p.nature = general.orientation;
-            for (const key of ["level", "pc", "morale", "zombie_levels"]) p[key] = Number(general.profileControls[key].value);
+            for (const key of ["level", "pc", "morale", "zombie_levels", "active_slots", "banner_level"]) p[key] = Number(general.profileControls[key].value);
             p.trait = general.profileControls.trait.value;
             p.zombie = general.profileControls.zombie.checked;
             general.qg = general.profileControls.qg.checked;
-            p.labels = {}; p.permanent = []; p.active = [];
+            general.banner_block = general.profileControls.banner_block.value || null;
+            p.labels = {}; p.active = [];
             for (const [name, inputs] of Object.entries(general.labelControls)) {
                 const rank = Number(inputs.rank.value);
                 if (rank > 0) {
                     p.labels[name] = rank;
                     if (inputs.active.checked) p.active.push(name);
-                    if (inputs.permanent.checked) p.permanent.push(name);
                 }
             }
             for (const block of catalog.blocks) {
@@ -109,7 +110,7 @@
     function configuration() {
         return {
             armies: Object.fromEntries(camps.map(camp => [camp, {generals: armies[camp].map(general => ({
-                position: general.position, qg: general.qg, profile: general.profile, blocks: combatBlocks(general)
+                position: general.position, qg: general.qg, banner_block: general.banner_block, profile: general.profile, blocks: combatBlocks(general)
             }))}])),
             seed: seedValue(),
             mode: $("combat-mode").value,
@@ -149,9 +150,9 @@
                 for (const [name, inputs] of Object.entries(general.labelControls)) {
                     inputs.rank.max = catalog.label_rank_max[general.profile.level] || 1;
                     inputs.active.disabled = Number(inputs.rank.value) === 0 || (!inputs.active.checked && general.profile.active.length >= maxActive);
-                    generalValid = generalValid && inputs.rank.checkValidity() && (!inputs.permanent.checked || Number(inputs.rank.value) === 1);
+                    generalValid = generalValid && inputs.rank.checkValidity();
                 }
-                general.labelsSummary.textContent = `${general.profile.active.length} / ${maxActive} actives · permanentes : rang 1 · validation des connaissances par le moteur`;
+                general.labelsSummary.textContent = `${general.profile.active.length} / ${maxActive} actives · ${general.profile.active_slots} emplacement(s) débloqué(s) · validation par le moteur`;
                 valid = valid && generalValid;
                 campTotal += total;
                 general.summary.textContent = `Position ${general.position} · ${total} / ${capacity} places · N${general.profile.level} · ${general.profile.pc} PC · ${orientations[general.orientation]}${general.qg ? " · QG" : ""}${generalValid ? "" : " · saisie à vérifier"}`;
@@ -178,11 +179,11 @@
 
     function compatible(unit, profile) {
         const natures = catalog.unit_details[unit].natures;
-        return !natures || profile.nature.endsWith("_hybride") || natures.includes(profile.nature);
+        return !natures || profile.nature === "hybride" || natures.includes(profile.nature);
     }
 
     function activeLimit(profile) {
-        return catalog.active_limits[profile.nature] + Number(profile.zombie && "mort_vivant" in profile.labels);
+        return profile.active_slots + Number(profile.zombie && profile.active.includes("mort_vivant"));
     }
 
     function buildProfile(body, camp, general, index) {
@@ -190,9 +191,10 @@
         const p = general.profile;
         const controls = general.profileControls = {};
         const grid = node("div", undefined, "sim-options-grid");
-        for (const [key, title, max] of [["level", "Niveau", catalog.limits.level], ["pc", "Points de commandement (PC)", catalog.limits.pc], ["morale", "Moral", catalog.limits.morale], ["zombie_levels", "Niveaux gagnés après zombification", catalog.limits.level]]) {
+        for (const [key, title, max] of [["level", "Niveau", catalog.limits.level], ["pc", "Points de commandement (PC)", catalog.limits.pc], ["morale", "Moral", catalog.limits.morale], ["zombie_levels", "Niveaux gagnés après zombification", catalog.limits.level], ["active_slots", "Emplacements actifs débloqués", 3], ["banner_level", "Étendard débloqué (0 : aucun, 1 : normal, 2 : royal)", 2]]) {
             const input = node("input");
             Object.assign(input, {id: `${prefix}-${key}`, type: "number", min: "0", max: String(max), step: "1", required: true, value: p[key]});
+            if (key === "active_slots") input.min = "1";
             const label = node("label", title); label.htmlFor = input.id;
             const field = node("div"); field.append(label, input); grid.append(field); controls[key] = input;
         }
@@ -210,6 +212,14 @@
             if (controls.qg.checked) for (const other of armies[camp]) if (other !== general) other.profileControls.qg.checked = false;
             update();
         });
+        const banner = node("select"); banner.id = `${prefix}-banner-block`;
+        for (const [value, title] of [["", "Aucun étendard placé"], ...Object.entries(blockNames)]) {
+            const option = node("option", title); option.value = value; banner.append(option);
+        }
+        banner.value = general.banner_block || "";
+        controls.banner_block = banner;
+        const bannerLabel = node("label", "Bloc portant l’étendard"); bannerLabel.htmlFor = banner.id;
+        grid.append(bannerLabel, banner);
         body.append(grid);
         const generate = node("button", "Générer un général à ce niveau", "sim-secondary");
         generate.type = "button"; generate.id = `${prefix}-generate`;
@@ -234,7 +244,7 @@
         const details = node("details", undefined, "sim-labels");
         const summary = node("summary", "Étiquettes connues et actives");
         const labelsSummary = node("p", "", "sim-muted"); general.labelsSummary = labelsSummary;
-        details.append(summary, labelsSummary, node("p", "Rang 0 : inconnue. Les étiquettes permanentes restent au rang 1. Le moteur contrôle les limites d’apprentissage et d’activation."));
+        details.append(summary, labelsSummary, node("p", "Rang 0 : inconnue. Les connaissances, leurs rangs et les emplacements actifs sont indépendants. La génération suit la progression officielle."));
         general.labelControls = {};
         for (const name of Object.keys(catalog.labels)) {
             const row = node("div", undefined, "sim-label-row");
@@ -242,7 +252,7 @@
             const label = node("label", name.replaceAll("_", " ")); label.htmlFor = rank.id;
             row.append(label, rank);
             const inputs = {rank};
-            for (const [key, text] of [["active", "Active"], ["permanent", "Permanente"]]) {
+            for (const [key, text] of [["active", "Active"]]) {
                 const input = node("input"); Object.assign(input, {type: "checkbox", id: `${rank.id}-${key}`, checked: p[key].includes(name)});
                 const caption = node("label", text); caption.htmlFor = input.id;
                 row.append(caption, input); inputs[key] = input;

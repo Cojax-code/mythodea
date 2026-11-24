@@ -28,7 +28,10 @@ def integer(value, low, high, where):
 
 
 def validate_profile(profile):
-    exact_keys(profile, ('level', 'nature', 'trait', 'pc', 'morale', 'labels', 'permanent', 'active', 'zombie', 'zombie_levels'), 'Profil')
+    if not isinstance(profile, dict):
+        raise InvalidConfiguration('Profil invalide.')
+    exact_keys(profile, ('level', 'nature', 'trait', 'pc', 'morale', 'labels', 'active', 'zombie', 'zombie_levels',
+                         *[k for k in ('permanent', 'active_slots', 'banner_level') if k in profile]), 'Profil')
     for key in ('level', 'pc', 'morale'):
         integer(profile[key], 0, CATALOG['limits'][key], key)
     if profile['nature'] not in CATALOG['natures'] or profile['trait'] not in CATALOG['traits']:
@@ -36,13 +39,15 @@ def validate_profile(profile):
     if type(profile['zombie']) is not bool:
         raise InvalidConfiguration('État zombie booléen requis.')
     integer(profile['zombie_levels'], 0, CATALOG['limits']['level'], 'Niveaux zombie')
+    integer(profile.get('active_slots', 1), 1, 3, 'Emplacements actifs')
+    integer(profile.get('banner_level', 0), 0, 2, 'Capacité d’étendard')
     labels = profile['labels']
     if not isinstance(labels, dict) or not set(labels) <= CATALOG['labels'].keys():
         raise InvalidConfiguration('Étiquettes inconnues.')
     for rank in labels.values():
         integer(rank, 1, CATALOG['label_rank_max'][profile['level']], 'Rang')
     for key in ('permanent', 'active'):
-        names = profile[key]
+        names = profile.get(key, [])
         if (not isinstance(names, list) or not all(isinstance(n, str) for n in names)
                 or len(names) != len(set(names)) or not set(names) <= labels.keys()):
             raise InvalidConfiguration('Sélection d’étiquettes inconnue ou dupliquée.')
@@ -102,7 +107,7 @@ def validate(payload):
             where = f"Camp {camp}, général {index}"
             if not isinstance(general, dict):
                 raise InvalidConfiguration('Général invalide.')
-            exact_keys(general, ('position', 'blocks', *[k for k in ('order', 'profile', 'qg') if k in general]), where)
+            exact_keys(general, ('position', 'blocks', *[k for k in ('order', 'profile', 'qg', 'banner_block') if k in general]), where)
             position = general["position"]
             if type(position) is not int or position not in range(1, 5) or position in occupied:
                 raise InvalidConfiguration(f"{where} : position unique entre 1 et 4 requise.")
@@ -113,6 +118,9 @@ def validate(payload):
                 raise InvalidConfiguration('Désignation QG booléenne requise.')
             if general.get('qg') and 'profile' not in general:
                 raise InvalidConfiguration('Le QG doit avoir un profil explicite.')
+            if general.get('banner_block') is not None:
+                if general['banner_block'] not in CATALOG['blocks'] or 'profile' not in general:
+                    raise InvalidConfiguration('Un bloc et un profil explicite sont nécessaires pour l’étendard.')
             if 'profile' in general:
                 validate_profile(general['profile'])
             validate_blocks(general['blocks'], where, general.get('profile'))

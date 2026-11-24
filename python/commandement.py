@@ -29,7 +29,7 @@ def global_armee(generaux, qg, messager_present=False):
 
 def qg_autorise(fiche):
     return bool(fiche and not fiche.get('etat_zombie') and
-                fiche.get('nature') in ('stratege', 'stratege_hybride'))
+                progression.orientation_principale(fiche) in ('stratege', 'hybride'))
 
 
 def selectionner_qg(candidats, points=None):

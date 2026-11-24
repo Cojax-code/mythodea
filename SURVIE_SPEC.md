@@ -1654,6 +1654,10 @@ tirage et conserve les étiquettes ordinaires. Elle dispose d'un emplacement act
 supplémentaire exclusivement réservé à `mort_vivant`, jamais à une étiquette
 ordinaire ; les règles de sélection de `REGLES_V2.md` s'appliquent.
 
+Les généraux zombies ne reçoivent aucune nouvelle récompense spécifique ou
+supplémentaire des multiples de cinq. Les étendards ne protègent ni les unités
+zombies ni le Bouclier vivant ; sa résistance spéciale reste inchangée.
+
 Les généraux zombies et les unités zombies ne bénéficient ni du moral ni des
 soins. Les anciennes valeurs de moral et de blessures restent enregistrées,
 mais ne permettent aucun sauvetage ni restauration des blessures zombies,

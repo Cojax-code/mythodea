@@ -8,6 +8,7 @@ import uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
 from fractions import Fraction
+import etendards
 
 
 _participants = ContextVar('soldats_bataille_complete', default=None)
@@ -17,6 +18,12 @@ _bataille = ContextVar('identite_bataille_complete', default=None)
 
 @contextmanager
 def bataille_complete(identifiant=None, configuration=None):
+    with etendards.guerre(), _bataille_complete(identifiant, configuration):
+        yield
+
+
+@contextmanager
+def _bataille_complete(identifiant=None, configuration=None):
     """Une résolution territoriale ; les duels n'incrémentent aucun compteur."""
     participants = set()
     jeton = _participants.set(participants)
@@ -248,7 +255,7 @@ def synchroniser(configuration, publication=False):
     sauvegarder(donnees)
 
 
-def pertes(infos, survivants, moral=0, aleatoire=None):
+def pertes(infos, survivants, moral=0, aleatoire=None, general=None):
     """Sélection collective puis sauvetages distincts, sans réattribuer un échec."""
     import config
     import generaux
@@ -276,6 +283,9 @@ def pertes(infos, survivants, moral=0, aleatoire=None):
                 unites.blessures_max(valeur['type'], valeur['batailles'])):
             valeur['blessures'] += 1
             publier(unite, identifiant, valeur)
+        elif etendards.proteger(general, unite, infos['type'], aleatoire):
+            # Une perte absorbée n'est pas une blessure permanente ni un soin.
+            pass
         else:
             supprimes.append(f"{unite.name} ({infos['type']})")
             shutil.rmtree(unite)
@@ -295,6 +305,8 @@ def pertes(infos, survivants, moral=0, aleatoire=None):
             infos['soutiens'] = []
     if donnees:
         sauvegarder(donnees)
+    if general is not None:
+        etendards.detruire_si_bloc_vide(general)
     return supprimes
 
 

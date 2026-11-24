@@ -1,33 +1,34 @@
 {
   "repository": "https://github.com/Cojax-code/mythodea.git",
   "branch": "v2.0",
-  "commit": "b31b842d689d22b7efe4393010fccb6bc3a6aa77",
+  "commit": "3391613a4dcd81798b947754a69dd6b745e89d50",
   "files": {
     "bouclier_vivant.py": "011427c00884482cac642884250b70bcb79760f988546c4413e93367725ff44f",
-    "catalogues.py": "ab01e9a259dcdcf2004683d9da6a5e76c797da550f1fd50a711a3ebe7f8654ae",
-    "combats.py": "560ce2929f1e0f9dfa285f2d1be06be30eff6c83c14e210cca6de03d39970639",
-    "commandement.py": "112a29799f112d761a030b2e4914a8de9f4b8208aa6cfde09dfe4c6fd395891e",
-    "config.py": "8b2f32c59eada096272f848ab75b4e9b91cfb51637736abe94023ba1a2f1f126",
-    "crypte.py": "e27a9cdb6bba61e4b9c6cef305fb4b3d9881506b3890f0154ea3572289345e9d",
+    "catalogues.py": "5fe43842d0b0cf34e84fa8061454eb57ea1b553cd17a16c289128f65bd950d99",
+    "combats.py": "308d942765e99a2579e2556ea21c84015ba43a5dbaf20acffbacfdc15dfd005c",
+    "commandement.py": "58c0f8e7c54515873062ed54368976c92a637057590d73ecee5588a4ae05fce2",
+    "config.py": "a1be4c60d4ed2411435a20cc632762d29ab93201ff63a7674d7ed819d0dc0a9a",
+    "crypte.py": "60725564d8fe5e7a70b6c1068f1980430131c13901ec147bc1fb73aa9b0efb4f",
     "crypte_client.py": "b2ac046cd0bf29c4dd07139b4351feea05fee5b796e68ba2c83319164bbb4814",
     "crypte_installer.py": "89de86f7dad6db67c6e38366daf530b52a13fc6a6f1582dba20570e770cb089c",
-    "cycle_linux.py": "1017a79315e65d4ed3b5425a8e1b878a9c1f36ed4f0e58e5df2abcc1af62d805",
-    "defis.py": "debb0e5afc2f66bd76cfeb522356d8773c08693220948f87220b93f450140288",
+    "cycle_linux.py": "62104056bace07f754264562f6aab6ecdc8d098607f1b5bcce58a17c1f203c3a",
+    "defis.py": "3969aa0ceb18529468de581e5986ee119b94b4886d206f40b136c61e4ddcefea",
     "etat.py": "7341f5ffde641836146715913cecdb1c80920cb099459b7e92c61e573aece847",
-    "formation.py": "19aeafe853af172c60a112dfeeadf12d39d3aa8bc6f1cd5a5643047e7e0650cb",
-    "generaux.py": "d65d59dfdf452e6ebdeeb3435f0bac194ac03d2a9277f99a173d935af55d9a9c",
+    "etendards.py": "a12bea1837b25c4b8df9aa2e66f125c76499474356f663fe4c5cfd0d479dffa2",
+    "formation.py": "920f69bb1cacbe3173bd4bd4905600af9862a375e87d62e272fca10405373830",
+    "generaux.py": "3ed84685a3d3c032e301ab0f80489db112db3e6ae03157528ced7c0bb2c53d2c",
     "minuterie.py": "89320c7f6a17035f004f188d00da8b0d41568871ef3c7d50a9a26b5ebea777d8",
     "morgue.py": "76ab744a3ed908216fd56da47cf1fe7daae8da16337763a48fa8bbd8d385c4ac",
-    "mouvements.py": "35fab2c9a54641301b8d51caab15763ee6a2145c3c89b968d92d6f32d3312b79",
+    "mouvements.py": "75b5d81505b6c1fcff553676f63a8be510bb3b92525c818f6c5076ec139b4398",
     "mythodea_v_1_5.py": "6490a00c482f5d1f2b9b76586d54ecdbd36487c57efca3b9b2de63da5118ef7f",
-    "plateau.py": "aba581f47316a5cbe224821e99c762890695ec2beeb9768c65487b4c85e758e8",
-    "progression.py": "6bfe157e0d66345a21b0be3e21fee03dbdd9371df09b63f030f39ebf9bbdd6c9",
-    "rapports.py": "6ddd176bc70670f96782f6e14941cc55edf74cde8f9682b142d0c08565e5effe",
-    "securite.py": "13c9e37b6938156ecb03a9ec4783c49dab4464f6a4cec17eefea9f020637c098",
-    "soldats.py": "3cc3c5fb40bf6bc8eab93274f717b07bf83e8fb3eb9c26e677b30512a5d2b4aa",
-    "survie.py": "3820cf01fa62b718e58e2c380915444090033d72b16bed99c8fef1f685e2bf94",
+    "plateau.py": "5c02fa65995aebde7a224ddd2ee133e1294ddb6c16ac7cb257b799ae70c80f3a",
+    "progression.py": "3d98a8a651a9aeb46cb60633e700bac0d04e41e3045dbcf519369e0e677443f6",
+    "rapports.py": "a0413db55aefa5e3e47469d96ae2cb2546db3217975a19e3bde03cf4cd72d124",
+    "securite.py": "c261cfc34b275a20d33aae96b7a3be23df7fc5febc76513e6733ade55fc3e07a",
+    "soldats.py": "c63a7ce8f98912dd9c243bb4eb29c62dcf1659b517eb7f4d435f4b5208eb82b2",
+    "survie.py": "f530199eac86f3a76e0a03bfd2fe85afb4ef4bd291af4437cfe91cb86c83303c",
     "survie_admin.py": "d9f4b62d1021992030ef8581203be49667f21c25b3680fccc7f49025f7eb2b60",
-    "unites.py": "3cb4266e0efee9b60860176ae6fa5a8b74ca74b913f82b1ecefce70264ea391d",
+    "unites.py": "34b5ac57ad931c29ab42313a2ca4035518bfb8ce44ebd09b1605234503530a31",
     "vagues.py": "fc12111a5d4b787083f9d9406841afc640f3a65f6d8dce1dc559abd18b6b26c4",
     "victoire.py": "eb8b22b54bdef1d5bda1dd646452cb39ef799cc158f9f0e781db50180e109a13"
   },
@@ -233,6 +234,7 @@
           "moral_par_unite"
         ],
         "natures": [
+          "stratege",
           "instinctif"
         ],
         "blessures": 2,
@@ -498,8 +500,7 @@
     "natures": [
       "stratege",
       "instinctif",
-      "stratege_hybride",
-      "instinctif_hybride"
+      "hybride"
     ],
     "traits": [
       "charismatique",
@@ -567,8 +568,93 @@
     "active_limits": {
       "stratege": 3,
       "instinctif": 1,
-      "stratege_hybride": 3,
-      "instinctif_hybride": 1
+      "hybride": 3
+    },
+    "nature_weights": {
+      "stratege": 45,
+      "instinctif": 45,
+      "hybride": 10
+    },
+    "trait_weights": {
+      "stratege": {
+        "charismatique": 50,
+        "leader": 35,
+        "inventeur": 15
+      },
+      "instinctif": {
+        "charismatique": 50,
+        "leader": 15,
+        "inventeur": 35
+      },
+      "hybride": {
+        "charismatique": 50,
+        "leader": 25,
+        "inventeur": 25
+      }
+    },
+    "reward_weights": {
+      "stratege": {
+        "charismatique": {
+          "commandement": 40,
+          "moral": 10,
+          "unite": 15,
+          "etiquette": 35
+        },
+        "leader": {
+          "commandement": 35,
+          "moral": 10,
+          "unite": 15,
+          "etiquette": 40
+        },
+        "inventeur": {
+          "commandement": 15,
+          "moral": 10,
+          "unite": 40,
+          "etiquette": 35
+        }
+      },
+      "instinctif": {
+        "charismatique": {
+          "commandement": 10,
+          "moral": 55,
+          "unite": 20,
+          "etiquette": 15
+        },
+        "leader": {
+          "commandement": 10,
+          "moral": 50,
+          "unite": 20,
+          "etiquette": 20
+        },
+        "inventeur": {
+          "commandement": 10,
+          "moral": 35,
+          "unite": 40,
+          "etiquette": 15
+        }
+      },
+      "hybride": {
+        "charismatique": {
+          "commandement": 30,
+          "moral": 30,
+          "unite": 15,
+          "etiquette": 25
+        },
+        "leader": {
+          "commandement": 25,
+          "moral": 30,
+          "unite": 15,
+          "etiquette": 30
+        },
+        "inventeur": {
+          "commandement": 20,
+          "moral": 20,
+          "unite": 35,
+          "etiquette": 25
+        }
+      }
     }
-  }
+  },
+  "source_mode": "working-tree",
+  "snapshot": "539e3d1b9c30d6be842e26d618e083e6c653c05498148d28b4fac80a6758068d"
 }

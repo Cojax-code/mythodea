@@ -3,11 +3,9 @@
 Les nouveaux généraux reçoivent un niveau 0, une nature et un trait permanent.
 Leurs champs apparaissent dans `fiche.txt`. Les anciennes fiches restent lisibles ;
 les champs historiques inutilisés sont retirés à leur prochaine publication.
-Les natures sont stratège (45 %), instinctif (45 %), stratège hybride (5 %) et
-instinctif hybride (5 %). Les hybrides gardent les traits et les limites d'activation
-de leur orientation principale, mais utilisent la roulette Hybride et gagnent
-naturellement PC et moral. Les probabilités et les acquisitions d'étiquettes sont
-définies dans [REGLES_V2.md](REGLES_V2.md). L'École conserve l'apprentissage croisé.
+Les orientations sont Stratège (45 %), Instinctif (45 %) et Hybride (10 %), sans
+dominante. L'Hybride gagne naturellement PC et moral et accède aux évolutions des
+deux orientations. Les tables sont dans [REGLES_V2.md](REGLES_V2.md).
 La référence de fabrication des trois unités ordinaires vaut 5. La propriété
 distincte `valeur_combat` vaut également 5 pour les quatre types actuels.
 Un bloc de 10 archers a une puissance de base de 50. Les avantages, la fatigue
@@ -37,6 +35,29 @@ avant les combats. Chaque niveau donne la récompense prévue par la nature et l
 trait ; un apprentissage de l'École remplace le tirage du prochain niveau.
 Les validations privées empêchent de réattribuer le même point ou la même récompense
 lors d'une reprise. Les compteurs visibles ne peuvent pas modifier l'état officiel.
+
+## Places actives et étendards
+
+Tous commencent avec une place active, indépendante des connaissances et des rangs.
+Les Stratèges débloquent les deuxième et troisième places aux niveaux 5 et 10.
+Les Instinctifs débloquent l'étendard puis le royal à ces niveaux. Les Hybrides tirent
+une branche à 50/50 à chaque multiple de cinq, avec basculement si elle est terminée ;
+les quatre étapes sont terminées à 20. La récompense classique reste attribuée à
+chaque niveau. Après les déblocages, chaque multiple de cinq donne une seconde roulette.
+Les zombies conservent leur progression particulière.
+
+Après déblocage, pendant une préparation, placer un seul étendard dans un bloc :
+
+```bash
+touch /game/village/j1/garnison/1/general1/avant/etendard.txt
+```
+
+Son type dépend du profil officiel. Après échec du moral, il absorbe une perte par
+unité (deux pour le royal), renouvelée seulement à la guerre suivante. Il ne soigne
+pas les blessures. Un bloc anéanti perd le fichier ; sa reconstruction ultérieure
+est gratuite. Un Hybride peut aussi désigner son QG habituel.
+Les profils existants rattrapent une seule fois leurs capacités spécifiques passées,
+sans rejouer les autres gains ni perdre leurs acquisitions.
 
 ## Aller à l'hôpital
 
@@ -106,7 +127,7 @@ exemptées. Une amélioration ne consomme aucune place supplémentaire.
 ## Transformer des cavaliers à la Forge
 
 La Forge accueille un seul général, dans `/game/village/forge/1/j1/` ou le
-compartiment `j2/`. Il doit être instinctif ou instinctif hybride et posséder
+compartiment `j2/`. Il doit être Instinctif ou Hybride et posséder
 la technologie 104 dans ses évolutions acquises.
 
 Avant son tour complet, équiper les cavaliers existants avec les quatre fichiers
@@ -145,8 +166,7 @@ avec toutes ses unités et ses données.
   vivant et d'éventuelles règles de moral supplémentaires.
 - Le départage de deux écritures simultanées et le remplacement d'un apprentissage
   en attente ; actuellement ces cas sont refusés explicitement.
-- La migration des caractéristiques des généraux déjà existants. Aucun tirage
-  rétroactif ni gain d'expérience antérieure n'est appliqué.
+- La migration des généraux sans aucun profil officiel reste à définir.
 
 Les QG, leurs étiquettes actives, le Messager et la désactivation dès acceptation
 d'une retraite de surnombre suivent [REGLES_V2.md](REGLES_V2.md).

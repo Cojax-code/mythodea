@@ -173,7 +173,7 @@ class NiveauxHomeForge(unittest.TestCase):
         self.assertEqual(fiche['progressions_validees']['formation:1:j1:general1']['recompense'][0], 'force_caractere')
         recompense = fiche['progressions_validees']['combat:survie:1:village']['recompense']
         self.assertIn(recompense[0] if isinstance(recompense, list) else recompense,
-                      ('maitrise_commandement', 'force_caractere', 'etiquette', 105, 110))
+                      ('maitrise_commandement', 'force_caractere', 'etiquette', 104, 105, 106, 107, 108, 109, 110))
         self.formation.resoudre_tour(self.profil, 1)
         self.progression.valider_evenement(general, 'combat', 'survie:1:village')
         self.assertEqual(self.fiche(general), fiche)
@@ -192,9 +192,8 @@ class NiveauxHomeForge(unittest.TestCase):
             fiche = self.fiche(general)
             recompense = fiche['progressions_validees']['combat:b']['recompense']
             self.assertIn(recompense[0] if isinstance(recompense, list) else recompense,
-                          ('maitrise_commandement', 'force_caractere', 'etiquette', 105, 110) if numero == 1 else
-                          ('maitrise_commandement', 'force_caractere', 'etiquette', 104, 105, 106, 107, 108, 109))
-            self.assertEqual((fiche['nature'], fiche['trait_inne']), (nature, trait))
+                          ('maitrise_commandement', 'force_caractere', 'etiquette', 104, 105, 106, 107, 108, 109, 110))
+            self.assertEqual((fiche['nature'], fiche['trait_inne']), ('hybride', trait))
 
     def test_home_ancien_nouvelles_unites_toutes_activites_gratuites(self):
         destinations = ('j1/caserne_militaire', 'j1/garnison/1', 'j1/hopital/1',

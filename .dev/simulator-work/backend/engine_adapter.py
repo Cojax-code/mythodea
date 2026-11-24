@@ -84,6 +84,14 @@ def prepare(payload):
                     raise InvalidConfiguration(str(exc)) from exc
             if general.get('qg'):
                 (path / 'QG.txt').touch()
+            if general.get('banner_block'):
+                (path / general['banner_block'] / 'etendard.txt').touch()
+                import etendards
+                try:
+                    etendards.declaration(dict(joueur=owner, nom=name, chemin=path))
+                except ValueError as exc:
+                    from backend.schema import InvalidConfiguration
+                    raise InvalidConfiguration(str(exc)) from exc
             for block, counts in composition.items():
                 for unit_type, count in counts.items():
                     for number in range(1, count + 1):

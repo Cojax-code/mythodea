@@ -10,6 +10,7 @@ import catalogues
 TRAITS = {
     'stratege': {'charismatique': 50, 'leader': 35, 'inventeur': 15},
     'instinctif': {'charismatique': 50, 'leader': 15, 'inventeur': 35},
+    'hybride': {'charismatique': 50, 'leader': 25, 'inventeur': 25},
 }
 RECOMPENSES = {
     'stratege': {
@@ -29,18 +30,19 @@ RECOMPENSES = {
     },
 }
 
-NATURES = {'stratege': 45, 'instinctif': 45,
-           'stratege_hybride': 5, 'instinctif_hybride': 5}
+NATURES = {'stratege': 45, 'instinctif': 45, 'hybride': 10}
+VERSION_PROGRESSION = 3
 SEUILS = {'combat': 2, 'formation': 3}
 # Les récompenses ne modifient pas la suite des tirages des combats.
 aleatoire_progression = random.Random()
 CHAMPS_HISTORIQUES = frozenset(('orientation', 'strategie', 'force', 'experience',
-                               'etiquettes_permanentes'))
+                               'etiquettes_permanentes', 'orientation_principale'))
 
 
 def normaliser_profil(fiche):
     """Retire les anciennes clés sans modifier les connaissances ni leurs rangs."""
     resultat = deepcopy(fiche)
+    resultat['nature'] = orientation_principale(resultat)
     anciennes = resultat.pop('etiquettes_permanentes', [])
     for nom in anciennes:
         # Les attributions automatiques historiques étaient au rang 1.
@@ -61,13 +63,69 @@ def normaliser_profil(fiche):
 
 
 def orientation_principale(fiche):
-    # Dérivée de la nature officielle immuable, jamais d'un fichier joueur.
-    return fiche['nature'].removesuffix('_hybride')
+    """Compatibilité de l'API : l'Hybride est une orientation sans dominante."""
+    nature = fiche['nature']
+    return 'hybride' if nature in ('stratege_hybride', 'instinctif_hybride') else nature
 
 
 def compatible(fiche, natures, apprentissage=True):
-    return (natures is None or orientation_principale(fiche) in natures or
-            (apprentissage and fiche['nature'] in ('stratege_hybride', 'instinctif_hybride')))
+    orientation = orientation_principale(fiche)
+    return (natures is None or orientation in natures or
+            (orientation == 'hybride' and bool(set(natures) & {'stratege', 'instinctif'})))
+
+
+def capacite_etiquettes_actives(fiche):
+    """Les places débloquées sont distinctes des connaissances et de leurs rangs."""
+    maximum = 1 if orientation_principale(fiche) == 'instinctif' else 3
+    places = fiche.get('emplacements_etiquettes_actives', 1)
+    if type(places) is not int or not 1 <= places <= maximum:
+        raise ValueError('Nombre officiel d’emplacements actifs invalide.')
+    return places
+
+
+def progression_specifique(fiche, aleatoire):
+    """Une étape disponible, sans roulette ni gain naturel ; modifie la copie fournie."""
+    orientation = orientation_principale(fiche)
+    disponibles = []
+    if orientation in ('stratege', 'hybride') and fiche['emplacements_etiquettes_actives'] < 3:
+        disponibles.append('stratege')
+    if orientation in ('instinctif', 'hybride') and fiche['niveau_etendard'] < 2:
+        disponibles.append('instinctif')
+    if not disponibles:
+        return None, None
+    tiree = (tirer_pondere({'stratege': 50, 'instinctif': 50}, aleatoire)
+             if orientation == 'hybride' else orientation)
+    branche = tiree if tiree in disponibles else disponibles[0]
+    basculement = f'{tiree} → {branche}' if branche != tiree else None
+    if branche == 'stratege':
+        fiche['emplacements_etiquettes_actives'] += 1
+        recompense = ('emplacement_actif', fiche['emplacements_etiquettes_actives'])
+    else:
+        fiche['niveau_etendard'] += 1
+        recompense = ('etendard', fiche['niveau_etendard'])
+    return recompense, basculement
+
+
+def migrer_profil(fiche, aleatoire=None):
+    """Rattrape une fois les capacités, sans rejouer les anciennes récompenses."""
+    resultat = normaliser_profil(fiche)
+    if resultat.get('version_progression') == VERSION_PROGRESSION:
+        return resultat
+    aleatoire = aleatoire_progression if aleatoire is None else aleatoire
+    resultat.update(emplacements_etiquettes_actives=1, niveau_etendard=0)
+    rattrapage = []
+    if resultat.get('etat_zombie'):
+        # Conservation de l'ancienne capacité, sans nouvelle récompense zombie.
+        resultat['emplacements_etiquettes_actives'] = (
+            3 if fiche['nature'] in ('stratege', 'stratege_hybride') else 1)
+    else:
+        for _ in range(min(4, resultat.get('niveau', 0) // 5)):
+            recompense, basculement = progression_specifique(resultat, aleatoire)
+            if recompense is not None:
+                rattrapage.append(dict(recompense=list(recompense), basculement=basculement))
+    resultat['migration_orientations'] = rattrapage
+    resultat['version_progression'] = VERSION_PROGRESSION
+    return resultat
 
 
 def tirer_pondere(poids, aleatoire=None):
@@ -109,7 +167,7 @@ def appliquer_gains_naturels(fiche, aleatoire):
     if resultat['niveau'] == 0 or resultat.get('etat_zombie'):
         return resultat
     orientation = orientation_principale(resultat)
-    hybride = resultat['nature'].endswith('_hybride')
+    hybride = orientation == 'hybride'
     if orientation == 'stratege' or hybride:
         resultat['points_commandement'] += gain_pc_naturel(aleatoire)
     if orientation == 'instinctif' or hybride:
@@ -126,14 +184,16 @@ def recompense_statistique(orientation, aleatoire):
 def nouvelles_caracteristiques(aleatoire=None):
     aleatoire = random if aleatoire is None else aleatoire
     nature = tirer_pondere(NATURES, aleatoire)
-    orientation = nature.removesuffix('_hybride')
+    orientation = nature
     trait = tirer_pondere(TRAITS[orientation], aleatoire)
     # Au niveau 0, seule l'identité du général est déterminée.
     # Les statistiques, étiquettes et évolutions s'acquièrent par la progression.
-    return dict(niveau=0, nature=nature, orientation_principale=orientation, trait_inne=trait,
+    return dict(niveau=0, nature=nature, trait_inne=trait,
                 points_commandement=0, moral=0, evolutions_acquises=[], evolution_apprise=None,
                 progression_combat=0, progression_formation=0,
-                etiquettes={}, etiquettes_apprises_ecole=[])
+                etiquettes={}, etiquettes_apprises_ecole=[],
+                emplacements_etiquettes_actives=1, niveau_etendard=0,
+                version_progression=VERSION_PROGRESSION)
 
 
 def emplacements_etiquettes(niveau):
@@ -206,9 +266,14 @@ def evolutions_eligibles(fiche, catalogue=None, apprentissage=True):
 
 
 def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None):
-    """Gain naturel, puis étiquette aux paliers N5/N10 autorisés ou roulette."""
+    """Gains naturels, récompense classique, puis supplément tous les cinq niveaux.
+
+    Le retour historique reste la récompense classique. Le bilan complet privé
+    accompagne le profil et le reçu atomique de l'événement.
+    """
     aleatoire = random if aleatoire is None else aleatoire
-    resultat = normaliser_profil(fiche)
+    resultat = migrer_profil(fiche, aleatoire)
+    resultat.pop('dernier_niveau', None)
     resultat['niveau'] += 1
     niveau = resultat['niveau']
     if resultat.get('etat_zombie'):
@@ -220,28 +285,26 @@ def monter_niveau(fiche, aleatoire=None, catalogue=None, choisir_evolution=None)
                 return resultat, ('etiquette_zombie', 'mort_vivant')
         return resultat, None
 
-    orientation = orientation_principale(resultat)
-    hybride = resultat['nature'].endswith('_hybride')
+    avant = resultat
     resultat = appliquer_gains_naturels(resultat, aleatoire)
-
-    # Acquisitions garanties : N5/N10 ou N5 selon la
-    # dominante. Les connaissances de roulette ne consomment pas ces paliers.
-    # À partir du N15 pour les stratèges, et hors N5 pour les
-    # instinctifs, la roulette ordinaire s'applique également aux paliers.
-    palier_etiquette = ((orientation == 'stratege' and niveau in (5, 10))
-                         or (orientation == 'instinctif' and niveau == 5))
-    if palier_etiquette:
-        disponibles = [nom for nom in catalogues.ETIQUETTES_COMBAT
-                       if nom not in resultat.get('etiquettes', {})]
-        if disponibles:
-            choix = disponibles[aleatoire.randint(0, len(disponibles) - 1)]
-            resultat.setdefault('etiquettes', {})[choix] = 1
-            return resultat, ('etiquette', choix)
-        # Si toutes les étiquettes sont connues, roulette normale.
+    gains = {cle: resultat[cle] - avant[cle] for cle in ('points_commandement', 'moral')}
+    resultat, classique = recompense_classique(resultat, aleatoire, catalogue, choisir_evolution)
+    supplementaire, basculement = None, None
+    if niveau % 5 == 0:
+        supplementaire, basculement = progression_specifique(resultat, aleatoire)
+        if supplementaire is None:
+            resultat, supplementaire = recompense_classique(
+                resultat, aleatoire, catalogue, choisir_evolution)
+    resultat['dernier_niveau'] = dict(niveau=niveau, gains_naturels=gains,
+        classique=classique, supplementaire=supplementaire, basculement=basculement)
+    return resultat, classique
 
 
-    # Une évolution mémorisée à l'École remplace la roulette du prochain
-    # niveau où aucune étiquette de palier n'est attribuée.
+def recompense_classique(fiche, aleatoire, catalogue=None, choisir_evolution=None):
+    """Une mémoire compatible ou une roulette ; aucun gain naturel ni palier."""
+    resultat = deepcopy(fiche)
+    orientation = orientation_principale(resultat)
+    hybride = orientation == 'hybride'
     manuel = resultat.get('evolution_apprise')
     eligibles = evolutions_eligibles(
         resultat, catalogue, apprentissage=manuel is not None)
@@ -310,13 +373,18 @@ def charger():
     import config
     chemin = config.racine_metier() / '.systeme/progression.json'
     donnees = json.loads(chemin.read_text(encoding='utf-8')) if chemin.exists() else {}
-    return {identite: normaliser_profil(fiche) for identite, fiche in donnees.items()}
+    migration = any(f.get('version_progression') != VERSION_PROGRESSION for f in donnees.values())
+    resultat = {identite: migrer_profil(fiche) for identite, fiche in donnees.items()}
+    if migration:
+        # Persister avant toute utilisation : relire ne doit jamais retirer les dés.
+        sauvegarder(resultat)
+    return resultat
 
 
 def sauvegarder(donnees):
     import config
     import etat
-    donnees = {identite: normaliser_profil(fiche) for identite, fiche in donnees.items()}
+    donnees = {identite: migrer_profil(fiche) for identite, fiche in donnees.items()}
     etat.ecrire_prive(config.racine_metier() / '.systeme/progression.json',
                       json.dumps(donnees, ensure_ascii=False) + '\n')
 
@@ -353,8 +421,7 @@ def selection_etiquettes(fiche, chemin_general):
         raise ValueError('Sélection sous un dossier lié interdite.')
     resultat = deepcopy(fiche)
     connues = resultat.get('etiquettes', {})
-    orientation = orientation_principale(resultat)
-    maximum = 3 if orientation == 'stratege' else 1
+    maximum = capacite_etiquettes_actives(resultat)
     speciale = {'mort_vivant'} if resultat.get('etat_zombie') else set()
     try:
         info = selection.lstat()
@@ -432,7 +499,8 @@ def publier_fiche(chemin_general, caracteristiques):
     lignes = [l for l in lignes if l.split('=', 1)[0].strip()
               not in caracteristiques.keys() | CHAMPS_HISTORIQUES]
     for cle, valeur in caracteristiques.items():
-        if cle in ('apprentissages_valides', 'progressions_validees', 'etiquettes_apprises_ecole'):
+        if cle in ('apprentissages_valides', 'progressions_validees', 'etiquettes_apprises_ecole',
+                   'version_progression', 'migration_orientations', 'dernier_niveau'):
             continue  # Journal de reprise privé, sans utilité dans la fiche joueur.
         if isinstance(valeur, list):
             valeur = ','.join(map(str, valeur))
@@ -488,6 +556,8 @@ def valider_evenement(general, voie, evenement, aleatoire=None):
         fiche[jauge] = 0
     fiche.setdefault('progressions_validees', {})[cle] = {
         'niveau': fiche['niveau'], 'recompense': recompense}
+    if fiche['niveau'] != avant['niveau'] and 'dernier_niveau' in fiche:
+        fiche['progressions_validees'][cle]['bilan'] = deepcopy(fiche['dernier_niveau'])
     donnees[identite] = fiche
     sauvegarder(donnees)
     publier_fiche(general['chemin'], fiche)
