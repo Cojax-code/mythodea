@@ -238,13 +238,16 @@ class Etendards(unittest.TestCase):
         territoire = g['chemin'].parents[2]
         with etendards.guerre():
             initial = etendards.figer(g)
-            self.combats.resoudre_combat_range(territoire, self.profil)
+            with patch.object(self.combats, 'combat_entre_generaux',
+                              wraps=self.combats.combat_entre_generaux) as duels:
+                self.combats.resoudre_combat_range(territoire, 'OFF/OFF', self.profil)
+            self.assertEqual(duels.call_count, 2)
             self.assertIs(etendards.figer(g), initial)
             self.assertTrue(any(n < 2 for n in initial['restantes'].values()))
             self.assertFalse(initial['detruit'])
         self.assertIsNone(etendards._guerre.get())
 
-    def test_capture_migration_privee_publication_et_reprise_sans_retirage(self):
+    def test_capture_migration_privee_publication_et_relecture_sans_retirage(self):
         from support_cycle import GelSimule
         g = self.porteur(niveau=2, nombre=2, nature='hybride')
         profils = progression.charger()
@@ -256,7 +259,9 @@ class Etendards(unittest.TestCase):
         gestion = self.cycle_linux.Generations(self.profil, GelSimule())
         gestion.preparer()
         prive, homes = gestion.capturer(1)
-        with self.config.racines_generation(prive['game_path'], homes):
+        with self.config.racines_generation(prive['game_path'], homes), \
+                self.rapports.preparation_privee(gestion.generation / 'rapports'):
+            self.rapports.preparer_rapports(prive)
             with patch.object(progression.aleatoire_progression, 'randint', return_value=100) as tirages:
                 migree = progression.charger()['j1:general1']
                 self.assertEqual(progression.charger()['j1:general1'], migree)
@@ -266,6 +271,81 @@ class Etendards(unittest.TestCase):
         # La génération privée conserve sa migration même après sortie du contexte.
         contenu = json.loads((prive['game_path'] / '.systeme/progression.json').read_text())
         self.assertEqual(contenu['j1:general1'], migree)
+        self.cycle_linux.ecrire_json(gestion.generation / 'resultat.json', {'tour': 1})
+        public, stage = gestion.preparer_publication()
+        gestion.publier(1, public, stage, False)
+        with patch.object(progression.aleatoire_progression, 'randint',
+                          side_effect=AssertionError('Migration rejouée après publication')):
+            self.assertEqual(progression.charger()['j1:general1'], migree)
+            progression.publier_fiche(g['chemin'], migree)
+            self.assertEqual(progression.charger()['j1:general1'], migree)
+
+    def test_frontal_et_cascade_surnombre_sans_recharge(self):
+        g = self.porteur(niveau=2, nombre=20)
+        (g['chemin'] / 'ordre_surnombre.txt').write_text('2\n')
+        self.profil['configurations_terrain'] = {'est_3': {'attaque_frontale': True}}
+        for numero in range(1, 6):
+            self.general('bot', numero=numero, nombre=1)
+        resoudre = self.combats.resoudre_combat_range
+        observations = []
+
+        def observer(*args, **kwargs):
+            etendard = etendards.figer(g)
+            if observations:
+                self.assertIs(etendard, observations[-1][0])
+                self.assertEqual(etendard['restantes'], observations[-1][1])
+            resultat = resoudre(*args, **kwargs)
+            observations.append((etendard, dict(etendard['restantes'])))
+            return resultat
+
+        with patch.object(self.combats, 'resoudre_combat_range', side_effect=observer):
+            resultat = self.survie.resoudre_cascade(self.config.game_path / 'est_3', self.profil)
+        self.assertEqual(resultat['affrontements'], 2)
+        self.assertEqual(len(observations), 2)
+        self.assertTrue(any(n < 2 for n in observations[0][1].values()))
+        self.assertIsNone(etendards._guerre.get())
+        with etendards.guerre():
+            self.assertEqual(set(etendards.figer(g)['restantes'].values()), {2})
+
+    def test_destruction_general_epuise_etendard_avant_suppression(self):
+        g = self.porteur(nombre=1)
+        for numero in range(1, 3):
+            self.general('bot', numero=numero, nombre=1)
+        with patch.object(self.rapports, 'noter_resultat') as rapport:
+            self.combats.resoudre_combat_range(self.config.game_path / 'est_3', 'OFF/OFF', self.profil)
+        self.assertFalse(g['chemin'].exists())
+        destructions = [c for c in rapport.call_args_list if 'détruit : bloc anéanti' in c.args[2]]
+        self.assertEqual(len(destructions), 1)
+        self.assertIsNone(etendards._guerre.get())
+
+    def test_rapports_distinguent_gains_supplement_basculement_et_protections(self):
+        g = self.porteur(nombre=1, nature='hybride')
+        profils = progression.charger()
+        profils['j1:general1'].update(niveau=14, progression_combat=1,
+                                     emplacements_etiquettes_actives=3, evolution_apprise=201)
+        progression.sauvegarder(profils)
+        self.etat.sauvegarder_cycle_survie({'tour': 1, 'phase': 'resolution'}, self.profil)
+        self.rapports.preparer_activites(self.profil, 1)
+        sorties = self.racine / 'rapports_prives'
+        with self.rapports.preparation_privee(sorties):
+            self.rapports.preparer_rapports(self.profil)
+            progression.valider_evenement(g, 'combat', 'rapport-palier', Mock(randint=lambda a, b: a))
+            with etendards.guerre():
+                for _ in range(3):
+                    self.combats.supprimer_unites(self.infos(g), 0, g)
+        personnel = (self.config.game_path / 'village/j1/rapport_activites.txt').read_text()
+        for fragment in ('gains naturels : PC +2, moral +0', 'récompense classique',
+                         'récompense supplémentaire', 'étendard royal débloquée',
+                         'basculement automatique : stratege → instinctif',
+                         'bloc avant : étendard royal', 'détruit : bloc anéanti'):
+            self.assertIn(fragment, personnel)
+        detail = (sorties / 'rapport_long.txt').read_text()
+        for fragment in ('infanterie1 sauvé ; 1 charge', 'infanterie1 sauvé ; 0 charge',
+                         'détruit : bloc anéanti'):
+            self.assertIn(fragment, detail)
+        for chemin in (sorties / 'rapport_court.txt',
+                       self.config.game_path / 'village/j2/rapport_activites.txt'):
+            self.assertNotIn('general1', chemin.read_text())
 
     def test_probabilites_exactes_charges_et_echec_sans_consommation(self):
         g = self.porteur(nombre=1)

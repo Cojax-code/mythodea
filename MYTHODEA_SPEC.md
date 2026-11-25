@@ -1628,9 +1628,11 @@ parmi ces pertes. Chaque candidat sous sa limite de blessures est conservé et
 reçoit une blessure. Une tentative échouée n'est pas réattribuée. Les autres
 pertes sont supprimées ; listes, effectifs et rapports sont actualisés avant
 l'affrontement suivant. Les blessés combattent sans pénalité supplémentaire. Après échec du moral,
-l'étendard absorbe une perte (deux pour le royal) par unité de son bloc et par guerre,
-sans blessure permanente ni soin. `etendards.py` garde cet état privé transitoire
-pendant toute la résolution. Voir placement, destruction et reconstruction dans
+l'étendard peut absorber une perte (deux pour le royal) par unité de son bloc et
+par guerre, avec 30 % de réussite (50 % pour le royal), sans blessure permanente
+ni soin. Seuls les succès consomment une charge. `etendards.py` garde cet état
+privé transitoire par identité officielle du soldat pendant toute la résolution,
+y compris les déplacements moteur. Voir placement, destruction et reconstruction dans
 `REGLES_V2.md` ; la sélection des blocs participant au combat reste inchangée.
 
 | Batailles survécues | Statut | Blessures maximales |

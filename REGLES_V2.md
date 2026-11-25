@@ -260,20 +260,26 @@ copie, qui ferait sinon perdre la preuve de son existence.
 Un seul fichier ordinaire `etendard.txt`, sans lien symbolique ou physique, est
 placé dans l'un des quatre blocs du général. Son contenu ne choisit pas son type :
 le profil officiel autorise le normal (1) ou le royal (2). Un double placement ou
-une capacité absente est refusé. La capture contrôle les liens avant copie.
+une capacité absente est refusé : aucun bonus n'est accordé pour cette guerre,
+le refus est rapporté et les combats continuent. La capture contrôle les liens
+avant copie et refuse les objets non ordinaires.
 L'Hybride peut conserver son QG : `QG.txt` reste au niveau du général, avec sa portée
 et sa destruction historiques ; l'étendard reste propre à son bloc.
 
 Après sélection habituelle des pertes, le moteur tente d'abord les sauvetages par
 le moral et respecte les limites de blessures (vétéran, héroïque et bonus d'unité).
-Si le moral échoue, l'étendard absorbe la perte : une fois par unité pour le normal,
-deux pour le royal, jamais trois. Un sauvetage par le moral ne consomme rien.
+Si le moral échoue, l'étendard tente d'absorber la perte avec une probabilité de
+30 % pour le normal et de 50 % pour le royal. Chaque unité dispose d'un sauvetage
+réussi pour le normal, de deux pour le royal, jamais trois. Un échec ne consomme
+aucune charge ; aucun tirage n'a lieu lorsque les charges sont épuisées.
+Un sauvetage par le moral ne consomme rien.
 L'absorption n'ajoute ni ne soigne de blessure permanente.
 
 La protection est figée pour toute la guerre territoriale : choc, manœuvres,
 frontal, rangé et cascades. Un renfort la fige à son arrivée au combat.
 Le compteur individuel ne se partage ni avec une autre unité, ni un autre bloc,
-ni un autre général. Modifier ou reconstruire le marqueur en cours de guerre
+ni un autre général. Il suit l'identité officielle du soldat malgré un renommage
+ou un déplacement réalisé par le moteur. Modifier ou reconstruire le marqueur en cours de guerre
 ne recharge rien. La guerre suivante renouvelle les protections sans soigner.
 Un bloc ne subit que les pertes des combats auxquels il participe.
 
