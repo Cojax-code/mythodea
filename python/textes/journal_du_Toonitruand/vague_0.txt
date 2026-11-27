@@ -59,7 +59,7 @@ Consulter le Clocher.
 
 >>> COMMANDE
 
-cat {game_path}/village/clocher/etat_tour.txt
+cat {game_path}/village/clocher/etat_tour.log
 
 NOTE : Le Clocher indique l'état actuel du cycle et le temps restant.
 

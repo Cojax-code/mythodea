@@ -28,9 +28,11 @@ def installer(c, destination, profil):
                f'_crypte_socket={shlex.quote(str(c["game_path"] / ".systeme/communication/crypte.sock"))}\n'
                + scanner + '\n' + (source / 'bash/crypte_transport.sh').read_text(encoding='utf-8'))
     for p, texte in ((destination / 'crypte_client.py', (source / 'python/crypte_client.py').read_text(encoding='utf-8')),
+                     (destination / 'replay.bash', (source / 'bash/replay.sh').read_text(encoding='utf-8')),
                      (destination / 'crypte.bash', contenu),
                      (profil, 'if [ -n "${BASH_VERSION-}" ]; then\n'
-                      '  case $- in *i*) . ' + shlex.quote(str(destination / 'crypte.bash')) + ' ;; esac\nfi\n')):
+                      '  case $- in *i*) . ' + shlex.quote(str(destination / 'crypte.bash'))
+                      + '; . ' + shlex.quote(str(destination / 'replay.bash')) + ' ;; esac\nfi\n')):
         etat.ecrire_prive(p, texte)
         os.chmod(p, 0o644)
 

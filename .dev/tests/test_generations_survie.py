@@ -124,7 +124,7 @@ class GenerationsSurvie(unittest.TestCase):
             return original(source, destination, verifier, **options)
         with patch.object(self.cycle_linux, 'copier', side_effect=lent):
             g.capturer(1)
-        self.assertIn('PROLONGATION TECHNIQUE', (self.config.game_path / 'village/clocher/suivi_tour.log').read_text())
+        self.assertIn('PROLONGATION TECHNIQUE', (self.config.game_path / 'village/clocher/etat_tour.log').read_text())
         self.assertFalse(self.gel.gele)
 
     def test_seuil_capture_provoque_recuperation(self):
@@ -157,17 +157,17 @@ class GenerationsSurvie(unittest.TestCase):
         self.assertTrue(journal['operations'])
         self.assertEqual(self.etat.charger_cycle_survie(self.profil)['phase'], 'recuperation')
 
-    def test_clocher_log_append_et_photographie_courante(self):
+    def test_clocher_photographie_courante_sans_historique(self):
         g = self.gestion()
         g.afficher(3, 'actions', 94)
-        log = self.config.game_path / 'village/clocher/suivi_tour.log'
-        with log.open('r', encoding='utf-8') as lecteur:
-            lecteur.read()
-            g.afficher(3, 'consultation', 52)
-            self.assertIn('CONSULTATION', lecteur.read())
-        courant = (log.parent / 'etat_tour.txt').read_text()
+        log = self.config.game_path / 'village/clocher/etat_tour.log'
+        self.assertIn('ACTIONS', log.read_text())
+        g.afficher(3, 'consultation', 52)
+        courant = log.read_text()
+        self.assertIn('CONSULTATION', courant)
         self.assertIn('00:52', courant)
         self.assertNotIn('ACTIONS', courant)
+        self.assertEqual([p.name for p in log.parent.iterdir()], ['etat_tour.log'])
 
     def test_contexte_prive_retabli_meme_sur_exception(self):
         ancien = self.config.chemin_etat('positions_generaux_path')
@@ -184,7 +184,7 @@ class GenerationsSurvie(unittest.TestCase):
         self.assertEqual(cycle['phase'], 'consultation')
         self.assertEqual(cycle['generation_active'], g.generation.name)
         self.assertEqual(resultat['vague'], 2)
-        self.assertIn((self.config.rapport_long_path, 0o600), [c.args for c in self.chmod.call_args_list])
+        self.assertIn((self.config.rapport_long_path.with_suffix('.tmp'), 0o600), [c.args for c in self.chmod.call_args_list])
         self.assertIn((self.config.rapport_court_path, 0o640), [c.args for c in self.chmod.call_args_list])
 
     def test_verrou_ancien_non_supprime(self):
@@ -233,7 +233,7 @@ class GenerationsSurvie(unittest.TestCase):
                     self.assertNotIn(nom, chemin.read_text(encoding='utf-8').lower(), str(chemin))
         self.assertEqual({p.stem for p in self.config.rapports_territoires_dir.glob('*.txt')},
                          {'village', 'est_1', 'est_2', 'est_3'})
-        for nom in ('etat_tour.txt', 'suivi_tour.log'):
+        for nom in ('etat_tour.log',):
             self.assertTrue((self.config.game_path / 'village/clocher' / nom).is_file())
 
     def test_plateau_ou_rapports_classiques_refuses_sans_modification(self):

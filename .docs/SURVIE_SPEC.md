@@ -186,7 +186,7 @@ Structure visible du prototype :
 ```text
 /game/
 ├── village/
-│   ├── clocher/{etat_tour.txt,suivi_tour.log}
+│   ├── clocher/etat_tour.log
 │   ├── j1/                         # même structure pour j2/
 │   │   ├── garnison/1..4/
 │   │   ├── caserne_militaire/
@@ -194,6 +194,7 @@ Structure visible du prototype :
 │   │   │   ├── journal_du_Toonitruand/vague_0.txt ... vague_N.txt  # N ≤ 10, vagues atteintes
 │   │   │   ├── journal_du_veteran/vague_0.txt ... vague_N.txt     # mêmes vagues atteintes
 │   │   │   ├── rapport.txt
+│   │   │   ├── rapport_activites.txt
 │   │   │   ├── rapport_exploration.txt
 │   │   │   ├── bestiaire/          # fiches des unités débloquées seulement
 │   │   │   └── courrier/{envoie_message.txt,reception_message.txt,liste_requetes.txt}
@@ -333,7 +334,7 @@ inchangé.
 
 ### Notifications personnelles
 
-Le bilan `village/<joueur>/rapport_activites.txt` est renouvelé à chaque publication,
+Le bilan `village/<joueur>/hotel_de_ville/rapport_activites.txt` est renouvelé à chaque publication,
 préparé en résolution privée et protégé contre lecture adverse et remplacement.
 Les erreurs immédiates utilisent l’observateur ACTIONS existant et les terminaux
 SSH du seul joueur concerné ; les résultats de fin de tour attendent la publication.
@@ -346,21 +347,15 @@ Le clocher permet de consulter le temps restant de la fenêtre d'action du tour
 courant. Le timer clôt cette fenêtre ; le clocher ne contient pas lui-même la
 logique de résolution du tour.
 
-Deux fichiers sous `/game/village/clocher/` sont lisibles par le groupe allié :
-
-- `etat_tour.txt` : photographie courante remplacée atomiquement, pour `cat` ;
-- `suivi_tour.log` : inode stable alimenté par append, pour `tail -f`.
-
-Ils indiquent `TOUR`, `PHASE` et `TEMPS RESTANT` pendant les fenêtres temporisées,
-avec une actualisation par seconde. Pendant la capture, ils annoncent
-`FIN DU TOUR`, `RESOLUTION EN COURS`, `JOUEURS GELES`, `PAUSE : 10 secondes`, puis
-`PROLONGATION TECHNIQUE` si nécessaire. Le log n'est pas remplacé entre les tours. Le Clocher commun est exclu des
-captures privées ; la publication remplace uniquement les espaces des acteurs du
-village et préserve le Clocher vivant, y compris lors d'une récupération.
+Le fichier `/game/village/clocher/etat_tour.log`, lisible par le groupe allié,
+est remplacé atomiquement à chaque actualisation. Il indique `TOUR`, `PHASE`
+et `TEMPS RESTANT` pendant les fenêtres temporisées. Pendant la capture, il
+indique le gel confirmé et l'opération en cours. Aucun historique de phases
+n'est écrit. Le Clocher est exclu de la capture et préservé à publication.
 
 ```bash
-cat /game/village/clocher/etat_tour.txt
-tail -f /game/village/clocher/suivi_tour.log
+cat /game/village/clocher/etat_tour.log
+watch -n 1 cat /game/village/clocher/etat_tour.log
 ```
 
 Le Clocher complète l'annonce écrite directement par root sur les terminaux SSH
@@ -593,8 +588,9 @@ La phase d'action dure **120 secondes (2 minutes) par défaut**, y compris au to
 
 Un tour comprend une fenêtre d'action joueurs puis sa résolution automatique.
 À son expiration : annonce directe sur les TTY SSH, annonce au Clocher, gel réel confirmé de j1/j2,
-capture cohérente, puis dégel. Le gel dure **au moins 10 secondes**, même si la
-copie finit avant. Une capture plus longue prolonge le gel et l'annonce au Clocher.
+capture cohérente, puis dégel dès les contrôles finaux terminés. Le minimum
+facultatif `--duree-gel` vaut **0 seconde par défaut**. Une valeur positive
+ajoute une attente après capture ; elle ne remplace aucun contrôle de sécurité.
 Le seuil de sécurité est configurable (`--seuil-capture`), avec une valeur
 **provisoire de 120 secondes**, à mesurer sur Raspberry Pi avant validation définitive.
 Son dépassement abandonne la capture et exige une récupération administrative.
@@ -1011,7 +1007,7 @@ défaut appropriée à sa situation de création.
 Le scan utilise la **position actuelle** au moment de recréer le fichier : `2`
 dans la caserne militaire ou la garnison du village, `1` dans toute autre zone (home et repli
 compris). Il ne remplace pas un choix existant. Une valeur vide ou invalide est
-signalée dans le rapport long et utilise le défaut du lieu, sans réécrire le fichier.
+signalée dans les archives administratives et utilise le défaut du lieu, sans réécrire le fichier.
 Le fichier appartient au joueur, en `600`, et ne modifie jamais `ordre.txt`.
 
 La retraite tactique de surnombre ne doit pas devenir une téléportation punitive
@@ -1172,20 +1168,35 @@ du home restent un bac à sable. Le rappel volontaire depuis le repli est refus�
 
 ## 14. Rythme visible des combats
 
-En mode Survie, les combats ne doivent pas être affichés comme une résolution
-instantanée. Le joueur doit pouvoir suivre les étapes de la bataille et le développeur
-doit pouvoir repérer plus facilement un comportement anormal.
+Deux lectures complémentaires sont disponibles, sans modifier la résolution :
 
-Les délais d'affichage doivent être configurables et désactivables pour les tests
-automatiques.
+- `suivi_combats.log` est conservé sous `/game/rapport/`. Il est renouvelé par
+  troncature à chaque publication en gardant son inode pour `tail -f`. Le plan
+  privé durable précède la troncature ; sa reprise peut répéter cette étape
+  tant qu'aucun événement n'a été écrit. Ensuite, le préfixe exact des octets
+  déjà diffusés permet la reprise, même au milieu d'un caractère UTF-8.
+- `replay /game/rapport/territoires/est_1.txt` permet une relecture à la demande
+  dans le terminal courant. `export MYTHODEA_DELAI=0.5` règle la pause par ligne,
+  `0` la neutralise et Ctrl+C interrompt la lecture.
 
-Les journaux sont alimentés pendant la résolution privée puis rendus visibles
-à publication. `tail -f` sur un ancien inode ne suit pas son remplacement ;
-rouvrir les documents publiés après le gel. Les observations privées ne sont
-pas diffusées en direct aux joueurs.
+Le suivi conserve le territoire devant chaque ligne et exclut les territoires
+sans affrontement. Il présente les généraux, les forces initiales, les chocs,
+les manœuvres puis le résultat et le récapitulatif de chaque affrontement.
+Les tableaux territoriaux gardent leur forme. La météo n'est jamais diffusée.
+Les sorties privées ne deviennent accessibles qu'à publication.
 
-Le ralentissement concerne la présentation et l'enchaînement des étapes ; il ne doit
-pas modifier les règles mathématiques du moteur de combat.
+`replay` est une fonction Bash chargée par le profil installé avec la Crypte ;
+les nouvelles connexions SSH la reçoivent automatiquement. Elle utilise les droits
+du joueur, sans sudo, et isole son trap Ctrl+C dans un sous-shell. Elle ne modifie
+ni DEBUG, ni PROMPT_COMMAND, ni les hooks Crypte du shell parent. Une lecture
+pendant une recette reste une commande supplémentaire : les règles de la Crypte
+s'appliquent normalement. Le fichier ouvert reste celui du début de la lecture ;
+relancer la commande après publication pour consulter le nouveau tour.
+
+L'alternative offre choix du moment, vitesse individuelle et répétition, sans
+second terminal. Elle demande une action du joueur et n'assure pas de diffusion
+commune automatique. Le suivi moteur est donc conservé : sa suppression pourra
+être décidée après essais SSH. Les délais restent neutralisables dans les tests.
 
 ---
 

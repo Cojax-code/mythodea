@@ -552,7 +552,7 @@ def forger(general, sejour, initiales, finales, eligibles=()):
             'identifiants, blessures, batailles et statuts conservés.')
     if not transformees:
         raise ValueError('Forge : aucune cavalerie légère validée au tour précédent avec '
-                         'recette et séjour complets ; unités conservées. Voir le rapport long.')
+                         'recette et séjour complets ; unités conservées.')
 
 
 def migrer_ancienne_ecole(configuration):

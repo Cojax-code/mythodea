@@ -35,7 +35,7 @@ class VaguesEst(unittest.TestCase):
             "positions_generaux_path": ".systeme/positions_generaux.txt",
             "fatigue_generaux_path": ".systeme/fatigue_generaux.txt",
             "controle_territoires_path": ".systeme/controle_territoires.txt",
-            "repli_path": "repli", "rapport_long_path": "rapport/rapport_long.txt",
+            "repli_path": "repli", "rapport_long_path": ".systeme/archives.log",
             "rapports_territoires_dir": "rapport/territoires",
         }.items():
             setattr(self.config, nom, self.config.game_path / relatif)

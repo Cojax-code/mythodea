@@ -3,13 +3,13 @@ Vague 2 - Suivre le cycle du bot en direct
 ----------------------------------------------------------
 
 CONSEIL
-Suivre le Clocher en continu tout en filtrant les changements de phase.
+Suivre l'état actuel du Clocher avec une actualisation par seconde.
 
 >>> COMMANDE VÉTÉRAN
 
-tail -F {game_path}/village/clocher/suivi_tour.log | grep --line-buffered -Ei 'actions|résolution|consultation|vague|combat'
+watch -n 1 cat {game_path}/village/clocher/etat_tour.log
 
-NOTE : tail -F continue à suivre le fichier même s'il est recréé. --line-buffered évite que grep retarde l'affichage.
+NOTE : watch relit le fichier à chaque actualisation. Ctrl+C termine la consultation.
 
 ----------------------------------------------------------
 

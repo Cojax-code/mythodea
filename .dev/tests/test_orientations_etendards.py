@@ -259,6 +259,7 @@ class Etendards(unittest.TestCase):
         gestion = self.cycle_linux.Generations(self.profil, GelSimule())
         gestion.preparer()
         prive, homes = gestion.capturer(1)
+        self.etat.sauvegarder_cycle_survie(dict(tour=1, phase='resolution'), prive)
         with self.config.racines_generation(prive['game_path'], homes), \
                 self.rapports.preparation_privee(gestion.generation / 'rapports'):
             self.rapports.preparer_rapports(prive)
@@ -271,7 +272,7 @@ class Etendards(unittest.TestCase):
         # La génération privée conserve sa migration même après sortie du contexte.
         contenu = json.loads((prive['game_path'] / '.systeme/progression.json').read_text())
         self.assertEqual(contenu['j1:general1'], migree)
-        self.cycle_linux.ecrire_json(gestion.generation / 'resultat.json', {'tour': 1})
+        self.cycle_linux.ecrire_json(gestion.generation / 'resultat.json', {'tour': 1, 'resolution_terminee': True})
         public, stage = gestion.preparer_publication()
         gestion.publier(1, public, stage, False)
         with patch.object(progression.aleatoire_progression, 'randint',
@@ -333,18 +334,18 @@ class Etendards(unittest.TestCase):
             with etendards.guerre():
                 for _ in range(3):
                     self.combats.supprimer_unites(self.infos(g), 0, g)
-        personnel = (self.config.game_path / 'village/j1/rapport_activites.txt').read_text()
+        personnel = (self.config.game_path / 'village/j1/hotel_de_ville/rapport_activites.txt').read_text()
         for fragment in ('gains naturels : PC +2, moral +0', 'récompense classique',
                          'récompense supplémentaire', 'étendard royal débloquée',
                          'basculement automatique : stratege → instinctif',
                          'bloc avant : étendard royal', 'détruit : bloc anéanti'):
             self.assertIn(fragment, personnel)
-        detail = (sorties / 'rapport_long.txt').read_text()
+        detail = (sorties / 'archives.log').read_text()
         for fragment in ('infanterie1 sauvé ; 1 charge', 'infanterie1 sauvé ; 0 charge',
                          'détruit : bloc anéanti'):
             self.assertIn(fragment, detail)
         for chemin in (sorties / 'rapport_court.txt',
-                       self.config.game_path / 'village/j2/rapport_activites.txt'):
+                       self.config.game_path / 'village/j2/hotel_de_ville/rapport_activites.txt'):
             self.assertNotIn('general1', chemin.read_text())
 
     def test_probabilites_exactes_charges_et_echec_sans_consommation(self):

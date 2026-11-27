@@ -29,6 +29,7 @@ class RapportsPrives(unittest.TestCase):
             self.rapports.preparer_rapports(self.profil)
             self.rapports.ecrire_rapport_long('SECRET GENERAL — ordre personnel')
             self.rapports.ecrire_rapport_court('BILAN VALIDÉ')
+            self.rapports.ecrire_rapport_territoire('est_1', '--- Engagement 1 : j1 general1 <-> bot general1 ---')
             self.rapports.ecrire_rapport_territoire('est_1', 'CHOC INITIAL — événement unique')
         self.cycle_linux.ecrire_json(repertoire / 'resultat.json', dict(tour=1))
         self.rapports.publier_preparation(self.profil, repertoire, g.gid, 100)
@@ -101,14 +102,38 @@ class RapportsPrives(unittest.TestCase):
         self.rapports.diffuser(self.profil, g.gid, 400, terminer=True)
         self.assertEqual(self.suivi().read_bytes(), avant)
 
-    def test_deux_tours_meme_inode_historique_conserve(self):
+    def test_interruption_avant_et_apres_troncature_du_nouveau_tour(self):
+        g, _ = self.preparer()
+        self.rapports.diffuser(self.profil, g.gid, 200, terminer=True)
+        attendu = self.suivi().read_bytes()
+        nouveau = 'g000002-123456789abc'
+        with patch.object(self.rapports, 'reinitialiser_suivi', side_effect=RuntimeError('avant troncature')):
+            with self.assertRaisesRegex(RuntimeError, 'avant troncature'):
+                self.preparer(nouveau)
+        self.assertEqual(self.suivi().read_bytes(), attendu)
+        plan = self.config.game_path / '.systeme/diffusion_rapports.json'
+        original = self.etat.ecrire_prive
+
+        def panne(chemin, texte):
+            if chemin == plan and not json.loads(texte).get('reinitialiser'):
+                raise RuntimeError('après troncature')
+            return original(chemin, texte)
+
+        with patch.object(self.etat, 'ecrire_prive', side_effect=panne):
+            with self.assertRaisesRegex(RuntimeError, 'après troncature'):
+                self.rapports.diffuser(self.profil, g.gid, 300, terminer=True)
+        self.assertEqual(self.suivi().read_bytes(), b'')
+        self.rapports.diffuser(self.profil, g.gid, 400, terminer=True)
+        self.assertEqual(self.suivi().read_bytes(), attendu)
+
+    def test_deux_tours_meme_inode_historique_efface(self):
         g, _ = self.preparer()
         inode = self.suivi().stat().st_ino
         self.rapports.diffuser(self.profil, g.gid, 200, terminer=True)
         avant = self.suivi().read_bytes()
         g, _ = self.preparer('g000002-123456789abc')
         self.rapports.diffuser(self.profil, g.gid, 300, terminer=True)
-        self.assertEqual(self.suivi().read_bytes(), avant + avant)
+        self.assertEqual(self.suivi().read_bytes(), avant)
         self.assertEqual(self.suivi().stat().st_ino, inode)
 
     def test_journal_divergent_refuse_sans_effacement(self):

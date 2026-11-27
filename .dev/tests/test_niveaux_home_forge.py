@@ -224,7 +224,7 @@ class NiveauxHomeForge(unittest.TestCase):
         self.terminer(1)
         self.assertEqual({p.name: p.read_bytes() for p in unite.iterdir()}, avant)
         self.assertIn('absence de validation officielle', self.config.rapport_long_path.read_text())
-        self.assertIn('unités conservées', (self.config.game_path / 'village/j1/rapport_activites.txt').read_text())
+        self.assertIn('unités conservées', (self.config.game_path / 'village/j1/hotel_de_ville/rapport_activites.txt').read_text())
         self.securite.memoriser_unites_actions(self.profil, 2)
         self.formation.ouvrir_tour(self.profil, 2)
         self.terminer(2)

@@ -3,13 +3,13 @@ Vague 2 - Le cycle du bot et un nouveau général
 ----------------------------------------------------------
 
 CONSEIL
-Suivre les étapes du cycle en direct.
+Consulter la phase actuelle du cycle.
 
 >>> COMMANDE
 
-tail -f {game_path}/village/clocher/suivi_tour.log
+cat {game_path}/village/clocher/etat_tour.log
 
-NOTE : Vous pouvez interrompre tail avec Ctrl+C pour revenir au terminal.
+NOTE : Relancez cette commande pour consulter l'état actualisé du tour.
 
 ----------------------------------------------------------
 

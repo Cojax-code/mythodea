@@ -350,6 +350,7 @@ class Generations:
         for chemin in (self.game, *self.homes.values()):
             sans_liens(chemin)
         etat.preparer_systeme_survie(self.c)
+        rapports.migrer_anciens_rapports(self.c)
         dossier_prive(self.game / '.systeme/generations')
         dossier_prive(self.home_stage)
         # Une partition dédiée /game n'oblige pas à déplacer les homes.
@@ -387,17 +388,10 @@ class Generations:
             texte += detail + '\n'
         repertoire = self.game / 'village/clocher'
         repertoire.mkdir(parents=True, exist_ok=True)
-        courant = repertoire / 'etat_tour.txt'
+        courant = repertoire / 'etat_tour.log'
         etat.ecrire_prive(courant, texte)
         os.chown(courant, 0, self.gid)
         os.chmod(courant, 0o640)
-        suivi = repertoire / 'suivi_tour.log'
-        sans_liens(suivi)
-        fd = os.open(suivi, os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, 'O_NOFOLLOW', 0), 0o600)
-        with os.fdopen(fd, 'a', encoding='utf-8') as f:
-            os.chown(suivi, 0, self.gid)
-            os.chmod(suivi, 0o640)
-            f.write(texte + '\n')
 
     def annoncer_debut(self):
         messages = {}
@@ -409,7 +403,7 @@ class Generations:
                 f'Votre village :\n{village}\n\nCommencez par l’Hôtel de Ville :\n\n'
                 f'Débutant :\ncat {village}/hotel_de_ville/journal_du_Toonitruand/vague_0.txt\n\n'
                 f'À l’aise avec Linux :\ncat {village}/hotel_de_ville/journal_du_veteran/vague_0.txt\n\n'
-                f'Le Clocher indique l’état du tour :\n\ncat {self.game}/village/clocher/etat_tour.txt')
+                f'Le Clocher indique l’état du tour :\n\ncat {self.game}/village/clocher/etat_tour.log')
         self.backend.annoncer(messages)
 
     def attendre(self, cycle):
@@ -480,8 +474,9 @@ class Generations:
             if int(ecoule) != derniere[0]:
                 self.backend.verifier_gel()
                 self.afficher(tour, 'capture', detail='FIN DES ACTIONS\nCAPTURE EN COURS\nJOUEURS GELES\n'
-                              + ('PROLONGATION TECHNIQUE' if ecoule >= self.c['duree_gel_secondes']
-                                 else 'PAUSE : 10 secondes'))
+                              + ('CAPTURE SÉCURISÉE EN COURS' if self.c['duree_gel_secondes'] == 0
+                                 else 'PROLONGATION TECHNIQUE' if ecoule >= self.c['duree_gel_secondes']
+                                 else f"MINIMUM CONFIGURÉ : {self.c['duree_gel_secondes']:g} secondes"))
                 derniere[0] = int(ecoule)
         try:
             generaux.migrer_infos_generaux(self.c, verifier)
@@ -679,6 +674,7 @@ class Generations:
             debut_consultation = self.horloge()
             rapports.publier_preparation(self.c, self.generation, self.gid,
                                          debut_consultation, defaite)
+            rapports.publier_archives(self.c, self.generation)
             journal['termine'] = True
             ecrire_json(fichier, journal)
             self.marquer(tour, 'defaite' if defaite else 'consultation',
@@ -728,13 +724,14 @@ class Generations:
     def proteger_activites(self):
         """Root conserve l'écriture ; seul le groupe privé du joueur peut lire."""
         for joueur in self.c['joueurs']:
-            chemin = self.game / 'village' / joueur / 'rapport_activites.txt'
-            sans_liens(chemin.parent)
+            chemin = self.game / 'village' / joueur / 'hotel_de_ville/rapport_activites.txt'
             groupe = self.c['acteurs'][joueur]['groupe_linux']
             gid = grp.getgrnam(groupe).gr_gid
             # Sans cette protection, le joueur peut remplacer le fichier root.
-            os.chown(chemin.parent, 0, gid)
-            os.chmod(chemin.parent, 0o750)
+            for parent in (chemin.parent.parent, chemin.parent):
+                sans_liens(parent)
+                os.chown(parent, 0, gid)
+                os.chmod(parent, 0o750)
             if not chemin.exists():
                 continue
             sans_liens(chemin)

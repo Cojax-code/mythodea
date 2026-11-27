@@ -72,10 +72,13 @@ mythodea/
 │       ├── test_surnombre.py
 │       └── test_cycle_survie.py
 ├── README.md
-├── REGLES_V2.md
-├── SURVIE_SPEC.md
-├── TESTS_LINUX_SURVIE.md
-└── MYTHODEA_SPEC.md
+├── AGENTS.md
+└── .docs/
+    ├── REGLES_V2.md
+    ├── SURVIE_SPEC.md
+    ├── EVOLUTIONS.md
+    ├── TESTS_LINUX_SURVIE.md
+    └── MYTHODEA_SPEC.md
 ```
 
 Responsabilités :
@@ -222,7 +225,7 @@ Le point d'entrée accepte `--mode classique` (valeur par défaut) et `--mode su
 L'option `--afficher-configuration` affiche le profil sans lancer de tour ni importer
 les modules dépendant d'Unix. `bash bash/start.sh --mode survie` lance le cycle Est.
 `--duree-action` configure la durée en secondes (120 par défaut),
-`--duree-consultation` la consultation (60), `--duree-gel` le minimum de gel (10),
+`--duree-consultation` la consultation (60), `--duree-gel` le minimum facultatif de gel (0),
 et `--seuil-capture` le seuil de sécurité (120, provisoire à mesurer sur Raspberry Pi).
 Le seuil doit dépasser le minimum de gel. Les trois durées de phase peuvent être
 neutralisées avec 0 en test. `--tours` limite les résolutions ; ces options sont
@@ -877,7 +880,7 @@ orage
 neige
 ```
 
-La météo est commune au tour mais n'a actuellement aucun effet de gameplay.
+La météo est commune au tour mais n’a actuellement aucun effet de gameplay. Sa génération et son stockage sont conservés ; elle ne figure dans aucun rapport ni dans les archives.
 
 ---
 
@@ -1128,7 +1131,6 @@ Rapports :
 
 ```text
 rapport_court.txt
-rapport_long.txt
 territoires/<territoire>.txt
 ```
 
@@ -1136,13 +1138,52 @@ territoires/<territoire>.txt
 
 Informations publiques et synthèse du tour.
 
-### Rapport long
+### Archives administratives
 
-Journal technique détaillé utile au développement et au diagnostic.
+`/game/.systeme/archives.log` centralise les résultats validés, en `root:root 600`.
+Il est absent des annonces joueurs et cumule les vagues jusqu'au reset complet.
+Chaque bloc est encadré par `=== VAGUE N DEBUT ===` et `=== VAGUE N FIN ===`.
+Entre ces marqueurs, chaque ligne est un objet JSON UTF-8 autonome, avec
+`vague`, `categorie` et les champs disponibles (`joueur`, `territoire`, `message`,
+`resultat`, `etat`, etc.). Les retours à la ligne des valeurs sont échappés par JSON.
+Les catégories `TECHNIQUE`, `COMBAT`, `ETAT_FINAL`, les notifications personnelles
+et `VALIDATION` conservent les détails du moteur et l'identifiant de génération.
+Aucun effet de gameplay n'est ajouté pour fournir une donnée manquante.
+
+La résolution prépare un fragment dans sa génération privée. À publication,
+une résolution terminée et un numéro de vague cohérent sont exigés. Le cumul
+est remplacé atomiquement (fichier temporaire privé, fsync, rename, fsync dossier),
+sous le verrou du cycle. Le bloc complet sert de reçu : une republication identique
+ne rajoute rien ; un bloc divergent pour la même vague est refusé. Une interruption
+avant remplacement conserve l'ancien cumul ; après remplacement elle conserve
+le bloc complet. Le coût de ce choix simple est une réécriture du cumul par vague.
+Les archives restent hors des états métier recopiés pendant capture/publication.
+Le mode classique prépare aussi ses sorties et archive les tours terminés sous
+un verrou dédié ; il conserve ses limites historiques de récupération du plateau.
+
+Extraction d'une vague, depuis le compte administrateur :
+
+```bash
+sudo sed -n '/^=== VAGUE 5 DEBUT ===$/,/^=== VAGUE 5 FIN ===$/p' /game/.systeme/archives.log
+sudo grep '"categorie": "COMBAT"' /game/.systeme/archives.log
+```
+
+À la mise à jour, le dernier journal technique existant est importé une seule fois
+avec une empreinte SHA-256, sans météo et avec `vague: null` (numéro inconnu), puis
+retiré de l'espace joueur. Les noms de fichiers retirés ne restent dans le code
+que dans cette migration. Les générations incomplètes de l'ancienne version
+nécessitent leur ancien moteur et une sauvegarde ; ne pas les rejouer avec le nouveau.
+Les API internes `ecrire_rapport_long` et `rapport_long_path` restent des points de
+compatibilité pour les adaptateurs du simulateur ; elles désignent les archives,
+et ne créent aucun rapport long indépendant.
 
 ### Rapport territorial
 
-Rapport lisible de bataille. Terminologie officielle :
+Chaque territoire, même sans combat, reçoit un fichier neuf à chaque tour.
+Aucun historique ni météo n'y figure. Les tableaux, les symboles ○ / × et les
+notations `20 → 15` sont conservés. Les détails des engagements précèdent le
+tableau récapitulatif pour permettre une lecture progressive sans révélation anticipée.
+Terminologie officielle :
 
 ```text
 ENGAGEMENT FRONTAL
@@ -1163,7 +1204,7 @@ a réellement subi des pertes.
 
 ### Rapport personnel d’activités Survie
 
-`village/<joueur>/rapport_activites.txt` est remplacé à chaque publication du tour.
+`village/<joueur>/hotel_de_ville/rapport_activites.txt` est remplacé à chaque publication du tour.
 Il est préparé dans la génération privée avant l’audit et alimenté par les opérations
 validées : créations, jauges et niveaux, gains de PC/moral/étiquettes/évolutions,
 mémoires, soins effectifs, transformations, attributions et récupération de Crypte,
@@ -1344,7 +1385,7 @@ Responsabilités des API :
   commun, puis publication sous un second gel. Il ouvre la consultation ou constate
   la défaite. Il n'attend pas l'expiration du timer d'action ; les tests l'appellent
   directement avec un contrôleur de gel et des horloges injectés, sans attente réelle.
-  Le minimum de gel réel reste appliqué en production. Il n'ouvre pas les actions suivantes.
+  Le gel réel reste obligatoire ; aucun délai minimal artificiel ne s’applique par défaut. Il n'ouvre pas les actions suivantes.
 - `survie.lancer_partie_survie(configuration=None, nombre_tours=None, horloge=None,
   dormir=None)` pilote l'ouverture, l'attente, la résolution, l'affichage du rapport
   et l'ouverture suivante. Il s'arrête à la défaite, à une interruption ou après le
@@ -1773,7 +1814,7 @@ la roulette à la prochaine montée compatible ; s'il devient incompatible, la m
 est refusée sans perte d'état. Deux écritures concurrentes au même emplacement
 sont refusées ensemble, sans choisir un gagnant implicite. Le remplacement d'un
 apprentissage encore en attente reste refusé tant que sa règle n'est pas définie.
-Le résultat individuel est publié dans `village/<joueur>/rapport_activites.txt`.
+Le résultat individuel est publié dans `village/<joueur>/hotel_de_ville/rapport_activites.txt`.
 Le moteur ne crée plus de fichier `formation_resultat.txt` ; les anciennes copies
 ne sont ni utilisées ni mises à jour. Une lecture d'étiquette l'apprend ou améliore directement son rang
 à la fin du séjour, selon les plafonds de `REGLES_V2.md`, sans remplacer une mémoire
@@ -1819,7 +1860,7 @@ Les fichiers, UUID, batailles, blessures et statuts sont conservés ; seules les
 données de type et de localisation changent dans le registre privé. Une recette,
 autorisation ou présence invalide ne supprime pas l'unité. Une conversion validée
 apparaît dans le rapport court du tour ; le résultat du séjour est aussi individuel.
-Les refus par cavalier sont expliqués dans le rapport long ; le résultat individuel
+Les refus par cavalier sont expliqués dans les archives administratives ; le résultat individuel
 signale un séjour sans transformation. L'audit commun des créations illégales reste
 distinct : un refus de Forge n'autorise pas le recrutement dans un bâtiment interdit.
 Une unité déjà lourde n'est pas transformée à nouveau. Le combat réutilise les

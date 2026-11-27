@@ -3,6 +3,7 @@
 Les modules sont importés sans lancer main(), avec un état neuf pour chaque test.
 """
 import importlib
+import json
 import random
 import sys
 import tempfile
@@ -71,7 +72,7 @@ class Regressions(unittest.TestCase):
             "repli_path": "repli",
             "rapport_dir": "rapport",
             "rapport_court_path": "rapport/rapport_court.txt",
-            "rapport_long_path": "rapport/rapport_long.txt",
+            "rapport_long_path": ".systeme/archives.log",
             "rapports_territoires_dir": "rapport/territoires",
         }.items():
             setattr(self.config, nom, jeu / relatif)
@@ -260,8 +261,9 @@ class Regressions(unittest.TestCase):
 
     def engagements_journal(self):
         return [
-            ligne for ligne in self.config.rapport_long_path.read_text(encoding="utf-8").splitlines()
-            if ligne.startswith("Engagement :")
+            json.loads(ligne)['message']
+            for ligne in self.config.rapport_long_path.read_text(encoding="utf-8").splitlines()
+            if json.loads(ligne).get('message', '').startswith("Engagement :")
         ]
 
     def test_selection_range_par_emplacement_et_relais_apres_destruction(self):

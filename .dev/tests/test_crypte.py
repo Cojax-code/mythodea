@@ -378,8 +378,8 @@ class Crypte(unittest.TestCase):
         rapports.preparer_activites(self.profil, 3)
         rapports.noter_activite(self.profil, 'j1', 'CASERNE MILITAIRE',
                                'general1 : +1 formation')
-        premier = self.profil['game_path'] / 'village/j1/rapport_activites.txt'
-        autre = self.profil['game_path'] / 'village/j2/rapport_activites.txt'
+        premier = self.profil['game_path'] / 'village/j1/hotel_de_ville/rapport_activites.txt'
+        autre = self.profil['game_path'] / 'village/j2/hotel_de_ville/rapport_activites.txt'
         self.assertIn('+1 formation', premier.read_text(encoding='utf-8'))
         self.assertNotIn('+1 formation', autre.read_text(encoding='utf-8'))
         rapports.preparer_activites(self.profil, 4)
@@ -429,7 +429,7 @@ class Crypte(unittest.TestCase):
         self.etat.sauvegarder_cycle_survie(dict(tour=3, phase='resolution'), self.profil)
         self.rapports.preparer_activites(self.profil, 3)
         self.creer()
-        rapport = self.config.game_path / 'village/j1/rapport_activites.txt'
+        rapport = self.config.game_path / 'village/j1/hotel_de_ville/rapport_activites.txt'
         self.assertIn('20 unités de type cavalerie', rapport.read_text())
         self.assertIn('10/5/5/0', rapport.read_text())
         source = self.crypte.zone(self.profil, 'j1') / 'recompense/general1'
@@ -437,7 +437,7 @@ class Crypte(unittest.TestCase):
         self.securite.verifier_tous_les_deplacements(self.profil)
         self.securite.verifier_tous_les_deplacements(self.profil)
         self.assertEqual(rapport.read_text().count('récupération constatée'), 1)
-        self.assertNotIn('general1', (self.config.game_path / 'village/j2/rapport_activites.txt').read_text())
+        self.assertNotIn('general1', (self.config.game_path / 'village/j2/hotel_de_ville/rapport_activites.txt').read_text())
 
     def test_recuperation_mv_puis_retour_interdit(self):
         self.reussir()

@@ -308,7 +308,7 @@ sudo -u j1 ls /game/.systeme
 sudo -u j1 ls /game/.systeme/communication
 sudo -u j1 cat /game/.systeme/cycle_survie.json
 sudo -u j2 sh -c 'echo interdit >> /game/.systeme/compteur_general_j2.txt'
-sudo -u j1 cat /game/rapport/rapport_long.txt
+sudo -u j1 cat /game/.systeme/archives.log
 ```
 
 Contrôler les états privés et les informations alliées depuis l'administrateur :
@@ -316,8 +316,8 @@ Contrôler les états privés et les informations alliées depuis l'administrate
 ```bash
 sudo find /game/.systeme -maxdepth 1 -type f -exec stat -c '%U:%G %a %n' {} +
 sudo stat -c '%U:%G %a %n' /game/est_3/bot /game/.systeme /game/.systeme/generations
-sudo stat -c '%U:%G %a %n' /game/rapport /game/rapport/rapport_court.txt /game/village/clocher /game/village/clocher/etat_tour.txt
-sudo -u j1 cat /game/village/clocher/etat_tour.txt
+sudo stat -c '%U:%G %a %n' /game/rapport /game/rapport/rapport_court.txt /game/village/clocher /game/village/clocher/etat_tour.log
+sudo -u j1 cat /game/village/clocher/etat_tour.log
 sudo -u j2 cat /game/rapport/rapport_court.txt
 ```
 
@@ -328,16 +328,16 @@ Informations alliées :
 
 ## Observer clôture, résolution et consultation
 
-Dans une session joueur, suivre le Clocher, puis interrompre seulement `tail` avec
+Dans une session joueur, suivre le Clocher, puis interrompre seulement `watch` avec
 Ctrl+C pour revenir au shell :
 
 ```bash
-tail -f /game/village/clocher/suivi_tour.log
+watch -n 1 cat /game/village/clocher/etat_tour.log
 ```
 
 À expiration : l'annonce directe arrive dans chaque terminal SSH avant le gel,
-sans attendre le dégel pour apparaître. Le terminal est suspendu au moins
-10 secondes, puis reprend pendant la résolution privée. Depuis l'administrateur,
+sans attendre le dégel pour apparaître. Le terminal est suspendu pendant la capture cohérente, puis reprend dès les
+contrôles finaux terminés, sans minimum de 10 secondes. Depuis l'administrateur,
 pendant la capture :
 
 ```bash
@@ -346,8 +346,8 @@ sudo cat /sys/fs/cgroup/user.slice/user-$(id -u j2).slice/cgroup.events
 sudo cat /game/.systeme/gel_survie.json
 ```
 
-Attendre `frozen 1` ; le gel est effectif, pas simplement un `sleep`. Si la capture
-dépasse 10 secondes, le Clocher annonce sa prolongation. Le seuil de 120 secondes
+Attendre `frozen 1` ; le gel est effectif, pas simplement un `sleep`. Le Clocher indique la capture en cours ; avec un minimum facultatif positif,
+il indique sa prolongation si nécessaire. Le seuil de 120 secondes
 est provisoire et configurable avec `--seuil-capture` : mesurer sur le Raspberry Pi.
 
 Pendant la résolution, les joueurs sont dégelés. Ils ne peuvent pas atteindre
@@ -361,7 +361,7 @@ Après le second gel de publication, dans chaque session joueur :
 
 ```bash
 cd ~
-cat /game/village/clocher/etat_tour.txt
+cat /game/village/clocher/etat_tour.log
 ls -l general1/info/ordre_surnombre.txt
 test -w general1/info/ordre_surnombre.txt
 grep 'contrôle final' /game/rapport/rapport_court.txt
@@ -374,7 +374,8 @@ le tour clôturé indépendamment de cette mesure de consultation.
 
 Un FD ou cwd conservé vise encore l'ancien inode. Un éditeur peut aussi réouvrir
 un chemin absolu : refermer les anciens éditeurs puis rouvrir les fichiers publiés.
-Les rapports restent hors des générations ; `suivi_tour.log` garde son inode.
+Les rapports joueurs sont publiés hors des générations. Le Clocher est remplacé
+atomiquement ; seul `suivi_combats.log` garde son inode, avec troncature par tour.
 
 ## Récupération administrative
 
@@ -735,7 +736,7 @@ Sur une machine Linux de test avec deux sessions SSH, vérifier aussi :
    du joueur concerné, au relevé suivant (environ dix secondes), sans succès annoncé.
 2. Une fermeture du terminal ou un terminal saturé n’arrête pas le cycle.
 3. Pendant la résolution, le dernier rapport publié reste inchangé ; le nouveau
-   `village/<joueur>/rapport_activites.txt` apparaît seulement à publication.
+   `village/<joueur>/hotel_de_ville/rapport_activites.txt` apparaît seulement à publication.
 4. Trois clôtures en caserne donnent `1/3`, `2/3`, puis un niveau, y compris après
    une arrivée pendant ACTIONS. Le rapport suivant remplace le précédent.
 5. La republication administrative d’une génération terminée conserve exactement
@@ -744,3 +745,52 @@ Sur une machine Linux de test avec deux sessions SSH, vérifier aussi :
 Les scénarios automatisés complémentaires sont dans `.dev/tests/test_activites_survie.py`
 et `.dev/tests/test_notifications_survie.py`. Les sessions logind et le gel du
 Raspberry Pi demandent toujours leur validation sur la machine cible.
+
+## Rapports, archives et lecture progressive
+
+Après installation de cette version, réinstaller les fonctions officielles puis
+ouvrir une nouvelle session SSH (la commande ne réinitialise pas la partie) :
+
+```bash
+sudo python3 python/crypte_installer.py
+```
+
+Dans chaque session joueur :
+
+```bash
+cat /game/village/$USER/hotel_de_ville/rapport.txt
+cat /game/village/$USER/hotel_de_ville/rapport_activites.txt
+cat /game/village/$USER/hotel_de_ville/rapport_exploration.txt
+export MYTHODEA_DELAI=0.5
+replay /game/rapport/territoires/est_1.txt
+```
+
+Interrompre `replay` avec Ctrl+C, puis le relancer. Vérifier ensuite une recette
+Crypte complète : hooks, historique et récompense doivent rester opérationnels.
+Une lecture ajoutée au milieu d'une recette doit en revanche invalider la séquence.
+Vérifier sur le Raspberry Pi les deux joueurs et leurs sessions SSH simultanées.
+
+Sur deux tours, avec puis sans combat, vérifier le renouvellement de tous les
+rapports territoriaux, du suivi et des activités ; seuls les combats du dernier
+tour figurent dans le suivi. Les tableaux et les notations ○ / × et `20 → 15`
+restent présents ; les détails précèdent les bilans. Vérifier les XP de formation
+et de combat même sans niveau, les gains naturels, récompenses et capacités avec
+les profils privés. Le moteur utilise deux jauges distinctes, aucun XP global
+supplémentaire n'est créé. Vérifier les colonnes ennemies, compositions et forces
+hors combat dans l'exploration.
+
+Depuis l'administration, après publication :
+
+```bash
+sudo stat -c '%U:%G %a' /game/.systeme/archives.log
+sudo sed -n '/^=== VAGUE 2 DEBUT ===$/,/^=== VAGUE 2 FIN ===$/p' /game/.systeme/archives.log
+sudo -u j1 cat /game/.systeme/archives.log
+sudo -u j2 sh -c 'echo interdit >> /game/.systeme/archives.log'
+sudo -u j2 cat /game/village/j1/hotel_de_ville/rapport_activites.txt
+```
+
+Attendus : `root:root 600`, une seule vague extraite, puis trois refus. Le reset
+complet supprime les archives avec tous les autres états de partie. Les interruptions
+avant/après remplacement des archives et pendant troncature/diffusion sont injectées
+sur des plateaux temporaires par les tests ; ne pas simuler une panne sur la partie
+réelle. Une reprise administrative ne doit ajouter ni vague ni notification en double.

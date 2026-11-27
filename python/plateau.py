@@ -71,7 +71,7 @@ def lancer_bataille_v15():
     # Le rapport court ne reçoit que les
     # informations publiques.
     #
-    # Le rapport long et le rapport territorial
+    # Les archives et le rapport territorial
     # reçoivent les informations détaillées.
 
     rapports.afficher_et_ecrire(
@@ -136,12 +136,7 @@ def lancer_bataille_v15():
         )
 
         # Rapport territorial lisible.
-        rapports.chemin_rapport_territoire(
-            territory
-        ).write_text(
-            "",
-            encoding="utf-8"
-        )
+        rapports.vider_rapport(rapports.chemin_rapport_territoire(territory))
 
         rapports.ecrire_rapport_territoire(
             territory,
@@ -158,10 +153,6 @@ def lancer_bataille_v15():
         rapports.ecrire_rapport_territoire(
             territory,
             ""
-        )
-        rapports.ecrire_rapport_territoire(
-            territory,
-            f"Météo            : {rapports.meteo_tour}"
         )
         rapports.ecrire_rapport_territoire(
             territory,

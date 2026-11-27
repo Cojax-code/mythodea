@@ -77,7 +77,7 @@ class PermissionsReelles(unittest.TestCase):
             'fatigue_generaux_path': '.systeme/fatigue_generaux.txt',
             'controle_territoires_path': '.systeme/controle_territoires.txt', 'repli_path': 'repli',
             'meteo_path': '.systeme/meteo.txt', 'rapport_dir': 'rapport',
-            'rapport_long_path': 'rapport/rapport_long.txt', 'rapport_court_path': 'rapport/rapport_court.txt',
+            'rapport_long_path': '.systeme/archives.log', 'rapport_court_path': 'rapport/rapport_court.txt',
             'rapports_territoires_dir': 'rapport/territoires'}.items():
             setattr(config, nom, config.game_path / relatif)
         self.c = config.configuration_mode('survie')
@@ -173,7 +173,7 @@ class PermissionsReelles(unittest.TestCase):
         for ancien in ('systeme', 'clocher', 'communication'):
             self.assertFalse((game / ancien).exists())
         for j in ('j1', 'j2'):
-            for nom in ('etat_tour.txt', 'suivi_tour.log'):
+            for nom in ('etat_tour.log',):
                 p = game / 'village/clocher' / nom
                 self.assertEqual(self.en_joueur(j, 'import sys; open(sys.argv[1]).read()', p).returncode, 0)
             village = game / 'village' / j

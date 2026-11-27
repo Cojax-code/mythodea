@@ -154,6 +154,8 @@ class Modes(unittest.TestCase):
                 simulation = Mock()
                 setattr(module, fonction, simulation)
                 journal.attach_mock(simulation, fonction)
+        from contextlib import nullcontext
+        sys.modules["rapports"].archives_classiques = nullcontext
         sys.modules["victoire"].verifier_victoire.return_value = vainqueur
         return journal
 

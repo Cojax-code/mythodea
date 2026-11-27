@@ -36,7 +36,7 @@ class Village(unittest.TestCase):
             "fatigue_generaux_path": ".systeme/fatigue_generaux.txt",
             "controle_territoires_path": ".systeme/controle_territoires.txt",
             "repli_path": "repli",
-            "rapport_long_path": "rapport/rapport_long.txt",
+            "rapport_long_path": ".systeme/archives.log",
         }.items():
             setattr(self.config, nom, self.config.game_path / relatif)
         (self.config.game_path / ".systeme").mkdir(parents=True)

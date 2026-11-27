@@ -192,6 +192,8 @@ rm() {
 
     def test_reset_cache_permissions_homes_crypte_et_idempotence(self):
         inode = self.game.stat().st_ino
+        (self.game / '.systeme').mkdir(exist_ok=True)
+        (self.game / '.systeme/archives.log').write_text('ancienne partie')
         for legacy in ('systeme', 'clocher', 'communication', '.systeme/generations/ancienne',
                        'village/j1/poste', 'village/j2/clocher', 'village/j1/renforts'):
             (self.game / legacy).mkdir(parents=True, exist_ok=True)

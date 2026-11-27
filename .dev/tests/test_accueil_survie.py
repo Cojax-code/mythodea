@@ -36,7 +36,7 @@ class AccueilSurvie(unittest.TestCase):
             texte = (journal / 'vague_0.txt').read_text(encoding='utf-8')
             self.assertTrue(texte.startswith('\n'), 'Une ligne vide doit précéder le titre')
             self.assertIn(f'ls -l /home/{j}', texte)
-            self.assertIn('village/clocher/etat_tour.txt', texte)
+            self.assertIn('village/clocher/etat_tour.log', texte)
         self.plateau.preparer_accueil(self.profil, 1)
         journal = self.hotel() / 'journal_du_Toonitruand'
         self.assertEqual({p.name for p in journal.iterdir()}, {'vague_0.txt', 'vague_1.txt'})
@@ -153,7 +153,7 @@ class AccueilSurvie(unittest.TestCase):
         empreintes_valides = (
             'b73a50d4340d964ab576bb4f69bebd44f77a507b260c6aa8b18fa8614aaa167d',
             '7d37b50ac0f44bc14c38458c7a55728c579ff6843b037792da0b1ca107198a6c',
-            'd7b1120717de57793c899369ed837870bc6a3beea2a8901e10cdbf62741c3f13',
+            'df7ffdbdef2408e529e016eae508d368cc533d60379d3ed526652ebfecb75d4b',
             'f6c13c8950e90f2a83216eefa890a12c64b76d4a1e104191c7fc222d7c279066',
             '834a4c6dd06d830781b66d130a7f32419f565e0028653480afd429210b0e5aca',
             '7d3b1eca970b2d094b5c3cdc94a114d96b7ad4a757950778027b7cd6056f20d5',
@@ -272,10 +272,9 @@ class AccueilSurvie(unittest.TestCase):
         gestion = self.cycle_linux.Generations(self.profil, gel)
         gestion.preparer()
         gestion.afficher(1, 'actions', 0)
-        log = self.config.game_path / 'village/clocher/suivi_tour.log'
-        inode = log.stat().st_ino
+        log = self.config.game_path / 'village/clocher/etat_tour.log'
         self.survie.resoudre_tour_survie(self.profil, gestion=gestion)
-        self.assertEqual(log.stat().st_ino, inode)
+        self.assertIn("CONSULTATION", log.read_text())
         self.assertFalse((gestion.generation / 'capture/game/village/clocher').exists())
         for j in self.profil['joueurs']:
             self.assertEqual((self.hotel(j) / 'rapport.txt').read_bytes(),
@@ -323,7 +322,7 @@ class AccueilSurvie(unittest.TestCase):
         self.profil.update(duree_phase_action_secondes=0, duree_consultation_secondes=0)
         def verifier(gestion):
             self.verifier_journal(0)
-            self.assertTrue((gestion.game / 'village/clocher/etat_tour.txt').exists())
+            self.assertTrue((gestion.game / 'village/clocher/etat_tour.log').exists())
         with patch.object(self.cycle_linux.Generations, 'annoncer_debut', autospec=True,
                           side_effect=verifier) as annonce:
             self.survie.lancer_partie_survie(self.profil, 1)

@@ -4,9 +4,9 @@ Ce fichier définit les règles de travail pour les agents qui modifient Mythode
 
 ## Avant toute modification
 
-1. Lire `MYTHODEA_SPEC.md`.
-2. Pour la progression, les étiquettes ou le QG, lire aussi `REGLES_V2.md`.
-3. Pour toute modification du mode Survie ou de la V2.0, lire aussi `SURVIE_SPEC.md`.
+1. Lire `.docs/MYTHODEA_SPEC.md`.
+2. Pour la progression, les étiquettes ou le QG, lire aussi `.docs/REGLES_V2.md`.
+3. Pour toute modification du mode Survie ou de la V2.0, lire aussi `.docs/SURVIE_SPEC.md`.
 4. Inspecter les fichiers réellement concernés avant de proposer une modification.
 5. Vérifier les tests existants liés à la zone modifiée.
 6. Ne jamais supposer une règle de gameplay qui n'est pas documentée ou explicitement demandée.
@@ -56,11 +56,11 @@ au maximum le même moteur : généraux, mouvements, combats, étiquettes,
 commandement, sécurité et rapports.
 
 Pour la V2.0, ne pas dupliquer une règle du moteur dans du code spécifique au mode
-Survie si elle peut rester commune. Les règles encore ouvertes dans `SURVIE_SPEC.md`
+Survie si elle peut rester commune. Les règles encore ouvertes dans `.docs/SURVIE_SPEC.md`
 doivent rester ouvertes jusqu'à décision explicite.
 
 Pour Survie, respecter le périmètre Est et les règles de zones, de coopération,
-de renforts et de retraites de [SURVIE_SPEC.md](SURVIE_SPEC.md).
+de renforts et de retraites de [SURVIE_SPEC.md](.docs/SURVIE_SPEC.md).
 `repli` reste une sanction ; la caserne militaire du village est distincte des
 renforts tactiques. Les noms techniques `generalN`, les propriétaires Linux et
 les identités persistantes ne doivent pas être déduits des noms d'affichage.
@@ -101,11 +101,11 @@ réelle sous Linux lorsqu'une modification touche ces aspects.
 
 `README.md` est destiné aux humains et doit rester court et accessible.
 
-`MYTHODEA_SPEC.md` est la référence technique et gameplay du moteur commun.
+`.docs/MYTHODEA_SPEC.md` est la référence technique et gameplay du moteur commun.
 
-`SURVIE_SPEC.md` décrit le cycle, les zones et les mécanismes propres à Survie.
-`REGLES_V2.md` est la référence des tables de progression, étiquettes et QG.
-`EVOLUTIONS.md` est le guide joueur ; `TESTS_LINUX_SURVIE.md` contient les procédures.
+`.docs/SURVIE_SPEC.md` décrit le cycle, les zones et les mécanismes propres à Survie.
+`.docs/REGLES_V2.md` est la référence des tables de progression, étiquettes et QG.
+`.docs/EVOLUTIONS.md` est le guide joueur ; `.docs/TESTS_LINUX_SURVIE.md` contient les procédures.
 Corriger une règle documentaire à sa source et utiliser des liens dans les autres
 guides. L'historique Git remplace les comptes rendus de tâches terminées.
 

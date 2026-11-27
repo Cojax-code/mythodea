@@ -12,6 +12,13 @@ def lancer_survie(configuration, nombre_tours=None):
 
 def resoudre_tour_classique():
     config.verifier_structure_actuelle(config.configuration_mode('classique'))
+    import rapports
+    with rapports.archives_classiques():
+        _resoudre_tour_classique()
+    rapports.afficher_fin_de_tour()
+
+
+def _resoudre_tour_classique():
     # Les imports Unix restent réservés à l'exécution réelle du moteur.
     import generaux
     import plateau
@@ -46,8 +53,6 @@ def resoudre_tour_classique():
     else:
         plateau.lancer_bataille_v15()
 
-    rapports.afficher_fin_de_tour()
-
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Mythodea : sélection du mode de jeu")
@@ -59,7 +64,7 @@ def main(argv=None):
     parser.add_argument('--duree-consultation', type=float, default=None,
                         help='consultation en secondes (défaut : 60)')
     parser.add_argument('--duree-gel', type=float, default=None,
-                        help='gel minimum de capture (défaut : 10)')
+                        help='gel minimum facultatif de capture (défaut : 0)')
     parser.add_argument('--seuil-capture', type=float, default=None,
                         help='seuil de sécurité de capture, provisoirement 120 secondes')
     parser.add_argument(

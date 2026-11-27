@@ -142,8 +142,7 @@ rapport_court_path = (
 )
 
 rapport_long_path = (
-    rapport_dir
-    / "rapport_long.txt"
+    game_path / ".systeme" / "archives.log"
 )
 
 rapports_territoires_dir = (
@@ -254,7 +253,7 @@ def configuration_mode(mode):
         "acces_morgue": 'premiere_apparition',
         "duree_phase_action_secondes": duree_action,
         "duree_consultation_secondes": 60,
-        "duree_gel_secondes": 10,
+        "duree_gel_secondes": 0,
         "seuil_capture_secondes": 120,
         "groupe_allie": "mythodea_allies",
         # Seuls les camps joueurs inscrits ici peuvent lire les lieux conquis.

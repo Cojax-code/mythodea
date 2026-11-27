@@ -1,6 +1,7 @@
 """Combats communs entre camps, sur des forces préparées sans vagues."""
 import contextlib
 import importlib
+import json
 import random
 import sys
 import tempfile
@@ -36,7 +37,7 @@ class CombatsCamps(unittest.TestCase):
             "fatigue_generaux_path": ".systeme/fatigue_generaux.txt",
             "controle_territoires_path": ".systeme/controle_territoires.txt",
             "meteo_path": ".systeme/meteo.txt", "repli_path": "repli",
-            "rapport_dir": "rapport", "rapport_long_path": "rapport/rapport_long.txt",
+            "rapport_dir": "rapport", "rapport_long_path": ".systeme/archives.log",
             "rapport_court_path": "rapport/rapport_court.txt",
             "rapports_territoires_dir": "rapport/territoires",
         }.items():
@@ -82,7 +83,8 @@ class CombatsCamps(unittest.TestCase):
 
     def engagements(self):
         texte = self.config.rapport_long_path.read_text(encoding="utf-8")
-        return [ligne for ligne in texte.splitlines() if ligne.startswith("Engagement :")]
+        return [json.loads(ligne)["message"] for ligne in texte.splitlines()
+                if json.loads(ligne).get("message", "").startswith("Engagement :")]
 
     def duel_joueur_bot(self, joueur):
         joueur_path = self.general(joueur, blocs={"avant": (5, "arc")})

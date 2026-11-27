@@ -19,7 +19,7 @@ class ActivitesSurvie(unittest.TestCase):
     forge = test_complements_moteur.ComplementsMoteur.forge
 
     def rapport(self, joueur='j1'):
-        return self.config.game_path / 'village' / joueur / 'rapport_activites.txt'
+        return self.config.game_path / 'village' / joueur / 'hotel_de_ville/rapport_activites.txt'
 
     def resolution(self, tour=1):
         self.modules()
@@ -50,6 +50,7 @@ class ActivitesSurvie(unittest.TestCase):
             self.assertNotIn('general1', self.rapport('j2').read_text())
             if tour == 3:
                 self.assertIn('niveau 1 gagné', texte)
+                self.assertNotIn('emplacement(s) d’étiquettes actives débloqué(s)', texte)
                 self.assertIn('récompense', texte)
         self.assertFalse(list(self.config.game_path.rglob('formation_resultat.txt')))
 
@@ -159,7 +160,7 @@ class ActivitesSurvie(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'interruption'):
                 self.survie.resoudre_tour_survie(self.profil, gestion=gestion)
         self.assertEqual(self.rapport().read_bytes(), ancien)
-        prive = gestion.generation / 'travail/game/village/j1/rapport_activites.txt'
+        prive = gestion.generation / 'travail/game/village/j1/hotel_de_ville/rapport_activites.txt'
         self.assertIn('+1 point', prive.read_text())
         with self.assertRaises(RuntimeError):
             self.survie.resoudre_tour_survie(self.profil, gestion=gestion)
@@ -188,7 +189,7 @@ class ActivitesSurvie(unittest.TestCase):
                 patch.object(self.rapports, 'publier_rapports_exploration', side_effect=OSError('panne')):
             with self.assertRaisesRegex(OSError, 'panne'):
                 self.survie.resoudre_tour_survie(self.profil, gestion=gestion)
-        attendu = (gestion.generation / 'travail/game/village/j1/rapport_activites.txt').read_bytes()
+        attendu = (gestion.generation / 'travail/game/village/j1/hotel_de_ville/rapport_activites.txt').read_bytes()
         admin = importlib.import_module('survie_admin')
         with patch.object(admin.cycle_linux, 'Linux', return_value=GelSimule()), \
                 patch.object(self.formation, 'resoudre_tour', side_effect=AssertionError('séjour rejoué')), \

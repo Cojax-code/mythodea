@@ -4,6 +4,9 @@ import os
 import grp
 import json
 import stat
+import re
+import uuid
+import hashlib
 from contextlib import contextmanager
 from contextvars import ContextVar
 
@@ -15,6 +18,8 @@ territoire_rapport_actuel = None
 meteo_tour = None
 _groupe_lecture = ContextVar('groupe_lecture_rapports', default=None)
 _preparation = ContextVar('preparation_privee_rapports', default=None)
+_vague = ContextVar('vague_rapports', default=None)
+_tableaux = {}
 
 
 @contextmanager
@@ -23,14 +28,18 @@ def preparation_privee(repertoire):
     from cycle_linux import dossier_prive
     dossier_prive(repertoire)
     jeton = _preparation.set(repertoire)
+    vague = _vague.set(None)
     try:
         yield
     finally:
         _preparation.reset(jeton)
+        _vague.reset(vague)
 
 
 def chemin_sortie(chemin):
     repertoire = _preparation.get()
+    if repertoire and chemin == config.rapport_long_path:
+        return repertoire / 'archives.log'
     return repertoire / chemin.relative_to(config.rapport_dir) if repertoire else chemin
 
 
@@ -38,8 +47,13 @@ def chemin_sortie(chemin):
 def preparer_activites(configuration, tour):
     """Crée un rapport privé neuf pour chaque joueur dans la génération du tour."""
     for joueur in configuration['joueurs']:
-        chemin = configuration['game_path'] / 'village' / joueur / 'rapport_activites.txt'
-        etat.ecrire_prive(chemin, f"=== MYTHODEA — ACTIVITÉS DU TOUR {tour} ===\n")
+        chemin = configuration['game_path'] / 'village' / joueur / 'hotel_de_ville/rapport_activites.txt'
+        etat.ecrire_prive(chemin, f"=== RAPPORT D'ACTIVITÉS — VAGUE {tour + 1} (TOUR {tour}) ===\n")
+        ancien = chemin.parent.parent / chemin.name
+        from cycle_linux import sans_liens
+        sans_liens(ancien)
+        if ancien.exists():
+            ancien.unlink()
 
 
 def noter_activite(configuration, joueur, categorie, message):
@@ -48,7 +62,7 @@ def noter_activite(configuration, joueur, categorie, message):
         raise ValueError('Joueur inconnu pour le rapport personnel.')
     if not categorie or not message or any(c in categorie for c in '\n\r'):
         raise ValueError('Notification d’activité invalide.')
-    chemin = configuration['game_path'] / 'village' / joueur / 'rapport_activites.txt'
+    chemin = configuration['game_path'] / 'village' / joueur / 'hotel_de_ville/rapport_activites.txt'
     from cycle_linux import sans_liens
     sans_liens(chemin)
     if not chemin.is_file() or chemin.stat().st_nlink != 1:
@@ -60,6 +74,7 @@ def noter_activite(configuration, joueur, categorie, message):
         if not stat.S_ISREG(infos.st_mode) or infos.st_nlink != 1:
             raise RuntimeError('Rapport personnel non ordinaire ou lié.')
         fichier.write(f"[{texte_notification(categorie)}] {texte_notification(message)}\n")
+    archiver_evenement(categorie, joueur=joueur, message=texte_notification(message))
 
 
 def texte_notification(texte):
@@ -78,9 +93,12 @@ def noter_resultat(joueur, categorie, message, configuration=None):
     if joueur not in c['joueurs']:
         return
     cycle = etat.charger_cycle_survie(c)
+    if cycle is None and _preparation.get() is not None:
+        archiver_evenement(categorie, joueur=joueur, message=texte_notification(message))
+        return
     if not cycle or cycle['phase'] != 'resolution':
         return
-    chemin = c['game_path'] / 'village' / joueur / 'rapport_activites.txt'
+    chemin = c['game_path'] / 'village' / joueur / 'hotel_de_ville/rapport_activites.txt'
     if chemin.exists():
         noter_activite(c, joueur, categorie, message)
 
@@ -89,11 +107,14 @@ def noter_progression(general, avant, apres, origine, recompense=None):
     details = [f"{general['nom']} : origine {origine}"]
     if origine in ('formation', 'combat'):
         import progression
-        details.append(f"+1 point ; progression {apres['progression_' + origine]}/{progression.SEUILS[origine]}")
+        details.append(f"+1 point d'expérience (XP {origine}) ; progression {apres['progression_' + origine]}/{progression.SEUILS[origine]}")
     if apres['niveau'] != avant['niveau']:
-        details.append(f"niveau {apres['niveau']} gagné")
+        details.append(f"niveau {apres['niveau']} gagné ({avant['niveau']} → {apres['niveau']})")
         details.append(f"orientation {apres['nature']}")
-        details.append(f"{apres.get('emplacements_etiquettes_actives', 1)} emplacement(s) d’étiquettes actives débloqué(s)")
+    if apres.get('emplacements_etiquettes_actives', 1) > avant.get('emplacements_etiquettes_actives', 1):
+        details.append(f"{apres['emplacements_etiquettes_actives']} emplacement(s) d’étiquettes actives débloqué(s)")
+    if apres.get('niveau_etendard', 0) > avant.get('niveau_etendard', 0):
+        details.append(decrire_recompense(('etendard', apres['niveau_etendard'])))
     bilan = apres.get('dernier_niveau') if apres['niveau'] != avant['niveau'] else None
     if bilan:
         gains = bilan['gains_naturels']
@@ -101,7 +122,7 @@ def noter_progression(general, avant, apres, origine, recompense=None):
     for cle, libelle in (('points_commandement', 'PC'), ('moral', 'moral')):
         gain = apres[cle] - avant[cle]
         if gain:
-            details.append(f"total {libelle} +{gain}")
+            details.append(f"total {libelle} {gain:+d} ({avant[cle]} → {apres[cle]})")
     for nom, rang in apres.get('etiquettes', {}).items():
         if rang != avant.get('etiquettes', {}).get(nom):
             details.append(f"étiquette {nom}, niveau {rang}")
@@ -164,7 +185,7 @@ def publier_preparation(configuration, generation, gid, debut, defaite=False):
     import minuterie
     intervalle = minuterie.valider_duree(configuration.get('delai_evenements_combats_secondes', 1))
     source = generation / 'rapports'
-    fichiers = ['rapport_court.txt', 'rapport_long.txt',
+    fichiers = ['rapport_court.txt',
                 *(f'territoires/{t.name}.txt' for t in configuration['territoires'])]
     for relatif in fichiers:
         sans_liens(source / relatif)
@@ -178,22 +199,39 @@ def publier_preparation(configuration, generation, gid, debut, defaite=False):
     plan = configuration['game_path'] / '.systeme/diffusion_rapports.json'
     precedent = json.loads(plan.read_text(encoding='utf-8')) if plan.exists() else None
     if precedent and precedent['generation'] == generation.name:
+        reinitialiser_suivi(configuration, gid, precedent, plan)
         return  # Ne réinitialiser ni le point de départ ni le journal à la reprise.
-    if precedent:
-        diffuser(configuration, gid, debut, terminer=True)
     evenements = [f"=== TOUR {json.loads((generation / 'resultat.json').read_text())['tour']} ===\n"]
-    evenements.extend(json.loads(ligne) for ligne in
-                      (source / 'evenements.jsonl').read_text(encoding='utf-8').splitlines())
+    prepares = [json.loads(ligne) for ligne in
+                (source / 'evenements.jsonl').read_text(encoding='utf-8').splitlines()]
+    combats = {ligne.split(']', 1)[0] for ligne in prepares if '--- Engagement ' in ligne}
+    evenements.extend(ligne for ligne in prepares if ligne.split(']', 1)[0] in combats)
     duree = 0 if defaite else configuration['duree_consultation_secondes']
     intervalle = min(intervalle, duree / max(1, len(evenements) - 1))
     with ouvrir_suivi(configuration, gid) as fichier:
         infos = os.fstat(fichier.fileno())
         donnees = dict(generation=generation.name, debut=debut, intervalle=intervalle,
-                       position=infos.st_size, device=infos.st_dev, inode=infos.st_ino,
-                       evenements=evenements)
-    # Le plan immuable est durable AVANT le premier append. À la reprise,
+                       position=0, device=infos.st_dev, inode=infos.st_ino,
+                       reinitialiser=True, evenements=evenements)
+    # Le plan et son étape d'initialisation sont durables avant le premier append.
     # les octets déjà écrits font foi, même après une écriture partielle.
     etat.ecrire_prive(plan, json.dumps(donnees, ensure_ascii=False) + '\n')
+    reinitialiser_suivi(configuration, gid, donnees, plan)
+
+
+def reinitialiser_suivi(configuration, gid, donnees, plan):
+    if donnees.get('reinitialiser'):
+        # Le plan durable précède la troncature. Une interruption dans cette
+        # étape peut la répéter : aucun événement n'est encore diffusé.
+        with ouvrir_suivi(configuration, gid) as fichier:
+            infos = os.fstat(fichier.fileno())
+            if (infos.st_dev, infos.st_ino) != (donnees['device'], donnees['inode']):
+                raise RuntimeError('Journal de combat remplacé : récupération requise.')
+            fichier.truncate(0)
+            fichier.flush()
+            os.fsync(fichier.fileno())
+        donnees['reinitialiser'] = False
+        etat.ecrire_prive(plan, json.dumps(donnees, ensure_ascii=False) + '\n')
 
 
 def diffuser(configuration, gid, maintenant, terminer=False):
@@ -206,6 +244,7 @@ def diffuser(configuration, gid, maintenant, terminer=False):
     if not plan.exists():
         return
     donnees = json.loads(plan.read_text(encoding='utf-8'))
+    reinitialiser_suivi(configuration, gid, donnees, plan)
     evenements = [texte.encode('utf-8') for texte in donnees['evenements']]
     intervalle = donnees['intervalle']
     nombre = len(evenements) if terminer or intervalle == 0 else min(
@@ -239,8 +278,8 @@ def droits_allies(gid):
 
 def proteger_rapport(chemin):
     gid = _groupe_lecture.get()
-    if gid is not None:
-        technique = _preparation.get() is not None or chemin.name == config.rapport_long_path.name
+    technique = _preparation.get() is not None or chemin.name == 'archives.log'
+    if gid is not None or technique:
         os.chown(chemin, 0, 0 if technique else gid)
         os.chmod(chemin, 0o600 if technique else 0o640)
 
@@ -248,6 +287,7 @@ def proteger_rapport(chemin):
 def vider_rapport(chemin):
     """Garde l'inode pour les lecteurs tail ; privé dès la création."""
     chemin = chemin_sortie(chemin)
+    chemin.parent.mkdir(parents=True, exist_ok=True)
     mode = 0o600 if _groupe_lecture.get() is not None or _preparation.get() else 0o666
     fd = os.open(chemin, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, 'O_NOFOLLOW', 0), mode)
     try:
@@ -470,14 +510,155 @@ def ajouter_ligne_fichier(chemin, texte):
         )
 
 
-def ecrire_rapport_long(texte):
-    # Rapport complet réservé au développement,
-    # aux tests et au futur système de renseignement.
+def archiver_evenement(categorie, **champs):
+    """JSON par ligne : les valeurs et retours à la ligne restent délimitables."""
+    donnees = dict(vague=_vague.get(), categorie=categorie, **champs)
+    ajouter_ligne_fichier(config.rapport_long_path,
+                         json.dumps(donnees, ensure_ascii=False))
 
-    ajouter_ligne_fichier(
-        config.rapport_long_path,
-        texte
-    )
+
+def ecrire_rapport_long(texte):
+    """API technique commune conservée pour les adaptateurs du simulateur."""
+    for ligne in str(texte).split('\n'):
+        archiver_evenement('TECHNIQUE', territoire=territoire_rapport_actuel, message=ligne)
+
+
+def publier_archives(configuration, generation):
+    """Valide un bloc entier par remplacement atomique sous le verrou du cycle.
+
+    Le contenu déjà installé est le reçu : aucune fenêtre append/curseur.
+    La reprise de la même génération est sans effet ; une divergence est refusée.
+    """
+    from cycle_linux import sans_liens
+    resultat = json.loads((generation / 'resultat.json').read_text(encoding='utf-8'))
+    if not resultat.get('resolution_terminee'):
+        raise RuntimeError('Archives refusées : résolution incomplète.')
+    vague = resultat['tour'] + 1
+    source = generation / 'rapports/archives.log'
+    sans_liens(source)
+    lignes = source.read_text(encoding='utf-8').splitlines()
+    for ligne in lignes:
+        if json.loads(ligne)['vague'] != vague:
+            raise RuntimeError('Vague incohérente dans les archives préparées.')
+    debut, fin = f'=== VAGUE {vague} DEBUT ===\n', f'=== VAGUE {vague} FIN ===\n'
+    bloc = (debut + json.dumps(dict(vague=vague, categorie='VALIDATION',
+             generation=generation.name), ensure_ascii=False) + '\n'
+             + '\n'.join(lignes) + '\n' + fin)
+    destination = configuration['game_path'] / '.systeme/archives.log'
+    sans_liens(destination)
+    if destination.exists() and (not destination.is_file() or destination.stat().st_nlink != 1):
+        raise RuntimeError('Archives non ordinaires ou liées.')
+    ancien = destination.read_text(encoding='utf-8') if destination.exists() else ''
+    if debut in ancien:
+        present = debut + ancien.split(debut, 1)[1].split(fin, 1)[0] + fin
+        if present != bloc or fin not in ancien:
+            raise RuntimeError('Archives divergentes : récupération requise.')
+        return
+    etat.ecrire_prive(destination, ancien + bloc)
+
+
+def migrer_anciens_rapports(configuration):
+    """Seules références aux anciens fichiers : retrait lors d'une mise à jour."""
+    from cycle_linux import sans_liens
+    racine = configuration['game_path']
+    ancien = racine / 'rapport/rapport_long.txt'
+    sans_liens(ancien)
+    if ancien.exists():
+        if not ancien.is_file() or ancien.stat().st_nlink != 1 or ancien.stat().st_uid != 0:
+            raise RuntimeError('Ancien journal technique non sûr : intervention requise.')
+        contenu = ancien.read_text(encoding='utf-8')
+        empreinte = hashlib.sha256(contenu.encode('utf-8')).hexdigest()
+        destination = racine / '.systeme/archives.log'
+        sans_liens(destination)
+        precedent = destination.read_text(encoding='utf-8') if destination.exists() else ''
+        marqueur = json.dumps(dict(vague=None, categorie='MIGRATION', sha256=empreinte), ensure_ascii=False)
+        if marqueur not in precedent.splitlines():
+            lignes = [json.dumps(dict(vague=None, categorie='TECHNIQUE_HISTORIQUE', message=ligne),
+                                 ensure_ascii=False) for ligne in contenu.splitlines()
+                      if not re.search(r'm[ée]t[ée]o', ligne, re.I)]
+            etat.ecrire_prive(destination, precedent + marqueur + '\n' + '\n'.join(lignes) + '\n')
+        ancien.unlink()
+    for nom in ('etat_tour.txt', 'suivi_tour.log'):
+        chemin = racine / 'village/clocher' / nom
+        sans_liens(chemin)
+        if chemin.exists():
+            if not chemin.is_file() or chemin.stat().st_nlink != 1:
+                raise RuntimeError('Ancien état du tour non ordinaire ou lié.')
+            chemin.unlink()
+    for joueur in configuration.get('joueurs', ()):
+        ancien = racine / 'village' / joueur / 'rapport_activites.txt'
+        sans_liens(ancien)
+        if ancien.exists():
+            destination = ancien.parent / 'hotel_de_ville' / ancien.name
+            sans_liens(destination)
+            if not ancien.is_file() or ancien.stat().st_nlink != 1:
+                raise RuntimeError('Ancien rapport personnel non ordinaire ou lié.')
+            if not destination.exists():
+                etat.ecrire_prive(destination, ancien.read_text(encoding='utf-8'))
+                gid = grp.getgrnam(configuration['acteurs'][joueur]['groupe_linux']).gr_gid
+                os.chown(destination, 0, gid)
+                os.chmod(destination, 0o640)
+            ancien.unlink()
+        # Les conseils déjà distribués gardent leurs textes, sauf les chemins
+        # devenus inutilisables. Le modèle courant remplace ces seuls conseils.
+        hotel = racine / 'village' / joueur / 'hotel_de_ville'
+        for nom in ('journal_du_Toonitruand', 'journal_du_veteran'):
+            for numero in (0, 2):
+                document = hotel / nom / f'vague_{numero}.txt'
+                sans_liens(document)
+                if not document.exists():
+                    continue
+                contenu = document.read_text(encoding='utf-8')
+                if not any(ancien in contenu for ancien in ('etat_tour.txt', 'suivi_tour.log')):
+                    continue
+                modele = Path(__file__).resolve().parent / 'textes' / nom / document.name
+                public = configuration.get('game_public_path', config.game_public_path)
+                texte = modele.read_text(encoding='utf-8').replace('{joueur}', joueur).replace('{game_path}', str(public))
+                etat.ecrire_prive(document, '\n' + texte)
+                gid = grp.getgrnam(configuration['acteurs'][joueur]['groupe_linux']).gr_gid
+                os.chown(document, 0, gid)
+                os.chmod(document, 0o640)
+
+
+def archiver_etat_final(configuration, vague):
+    photographie = lire_etat_exploration(configuration, vague)
+    for territoire in photographie['territoires']:
+        archiver_evenement('ETAT_FINAL', territoire=territoire['nom'], etat=territoire)
+
+
+@contextmanager
+def archives_classiques():
+    """Prépare les sorties classiques avant de valider leur bloc administratif."""
+    from cycle_linux import dossier_prive, sans_liens
+    import fcntl
+    systeme = config.game_path / '.systeme'
+    dossier_prive(systeme)
+    verrou = systeme / 'verrou_archives_classiques'
+    sans_liens(verrou)
+    fd = os.open(verrou, os.O_WRONLY | os.O_CREAT | getattr(os, 'O_NOFOLLOW', 0), 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        migrer_anciens_rapports(config.configuration_mode('classique'))
+        archive = config.rapport_long_path
+        sans_liens(archive)
+        ancien = archive.read_text(encoding='utf-8') if archive.exists() else ''
+        tour = max(map(int, re.findall(r'^=== VAGUE (\d+) FIN ===$', ancien, re.M)), default=0)
+        generation = systeme / 'generations' / f'c{tour:06}-{uuid.uuid4().hex[:12]}'
+        dossier_prive(generation.parent)
+        dossier_prive(generation)
+        with preparation_privee(generation / 'rapports'):
+            _vague.set(tour + 1)
+            yield
+            archiver_etat_final(config.configuration_mode('classique'), tour + 1)
+        etat.ecrire_prive(generation / 'resultat.json', json.dumps(dict(
+            tour=tour, resolution_terminee=True)))
+        for source in (generation / 'rapports').rglob('*.txt'):
+            destination = config.rapport_dir / source.relative_to(generation / 'rapports')
+            etat.ecrire_prive(destination, source.read_text(encoding='utf-8'))
+            os.chmod(destination, 0o644)
+        publier_archives(dict(game_path=config.game_path), generation)
+    finally:
+        os.close(fd)
 
 
 def ecrire_rapport_court(texte):
@@ -488,6 +669,7 @@ def ecrire_rapport_court(texte):
         config.rapport_court_path,
         texte
     )
+    archiver_evenement('RESUME', message=str(texte))
 
 
 def chemin_rapport_territoire(territoire):
@@ -513,6 +695,10 @@ def ecrire_rapport_territoire(
     # Écrit une information dans le rapport
     # détaillé d'un territoire.
 
+    tableau = _tableaux.get(Path(territoire).name)
+    if tableau and tableau['ouvert']:
+        tableau['lignes'].append(texte)
+        return
     chemin = chemin_rapport_territoire(
         territoire
     )
@@ -535,7 +721,7 @@ def definir_territoire_rapport(territoire):
     #
     # À partir de cet instant, afficher_et_ecrire()
     # écrit à la fois dans :
-    # - rapport_long.txt ;
+    # - les archives administratives ;
     # - le rapport du territoire concerné.
 
     global territoire_rapport_actuel
@@ -558,7 +744,7 @@ def afficher_et_ecrire(texte):
     # Journal technique complet.
     #
     # Les détails du moteur sont conservés uniquement
-    # dans rapport_long.txt. Le rapport territorial est
+    # dans les archives administratives. Le rapport territorial est
     # alimenté séparément avec des informations synthétiques.
 
     ecrire_rapport_long(texte)
@@ -578,6 +764,7 @@ def ecrire_entete_tableau_affrontements(
     colonne_numero,
     camps=("j1", "j2")
 ):
+    _tableaux[Path(territoire).name] = dict(ouvert=True, lignes=[])
     bordure = "+------+--------------------------+-----+--------------------------+"
 
     ecrire_rapport_territoire(territoire, bordure)
@@ -593,6 +780,7 @@ def ecrire_fin_tableau_affrontements(territoire):
         territoire,
         "+------+--------------------------+-----+--------------------------+"
     )
+    _tableaux[Path(territoire).name]['ouvert'] = False
 
 
 def ecrire_ligne_affrontement_territoire(
@@ -747,6 +935,10 @@ def ecrire_detail_engagement(territoire, etiquette, resultat):
         f"--- Engagement {etiquette} : "
         f"{joueurs[0]} {nom_1} <-> {joueurs[1]} {nom_2} ---"
     )
+    ecrire_rapport_territoire(territoire,
+        f"Forces initiales : {joueurs[0]} {resultat['initial_1']} | {joueurs[1]} {resultat['initial_2']}")
+    archiver_evenement('COMBAT', territoire=Path(territoire).name,
+                      engagement=etiquette, resultat=resultat)
 
     ecrire_rapport_territoire(territoire, "")
     ecrire_rapport_territoire(territoire, "CHOC INITIAL")
@@ -784,6 +976,10 @@ def ecrire_detail_engagement(territoire, etiquette, resultat):
 
 def ecrire_details_engagements(territoire, engagements):
     if not engagements:
+        tableau = _tableaux.pop(Path(territoire).name, None)
+        if tableau:
+            for ligne in tableau['lignes']:
+                ecrire_rapport_territoire(territoire, ligne)
         return
 
     ecrire_rapport_territoire(territoire, "")
@@ -798,113 +994,54 @@ def ecrire_details_engagements(territoire, engagements):
             etiquette,
             resultat
         )
+    tableau = _tableaux.pop(Path(territoire).name, None)
+    if tableau:
+        ecrire_rapport_territoire(territoire, 'RÉCAPITULATIF DES AFFRONTEMENTS')
+        for ligne in tableau['lignes']:
+            ecrire_rapport_territoire(territoire, ligne)
 
 
 def preparer_rapports(configuration=None):
-    # Prépare tous les rapports du nouveau tour.
-    #
-    # Les rapports du tour précédent sont effacés.
-    # Une nouvelle météo est ensuite générée.
-
-    global meteo_tour
-    global territoire_rapport_actuel
-
+    """Renouvelle tous les rapports joueurs ; la météo reste strictement interne."""
+    global meteo_tour, territoire_rapport_actuel
     territoire_rapport_actuel = None
-
-    chemin_sortie(config.rapport_dir).mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    chemin_sortie(config.rapports_territoires_dir).mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    # Effacer les rapports généraux.
+    _tableaux.clear()
+    cycle = etat.charger_cycle_survie(configuration) if configuration is not None else None
+    if cycle:
+        _vague.set(cycle['tour'] + 1)
+    chemin_sortie(config.rapport_dir).mkdir(parents=True, exist_ok=True)
+    chemin_sortie(config.rapports_territoires_dir).mkdir(parents=True, exist_ok=True)
     vider_rapport(config.rapport_court_path)
-
+    # Ce fichier est un fragment privé ; le cumul n'est écrit qu'à validation.
     vider_rapport(config.rapport_long_path)
-
-    # Préparer un rapport pour chaque territoire.
-    territoires = config.territoires if configuration is None else configuration["territoires"]
-    for territory in territoires:
-        chemin = chemin_rapport_territoire(
-            territory
-        )
-
-        vider_rapport(chemin)
-
-    # Générer la météo commune au tour.
+    if _preparation.get():
+        etat.ecrire_prive(_preparation.get() / 'evenements.jsonl', '')
+    territoires = config.territoires if configuration is None else configuration['territoires']
+    for territoire in territoires:
+        vider_rapport(chemin_rapport_territoire(territoire))
+        ecrire_rapport_territoire(territoire, f"=== RAPPORT DE {territoire.name.upper()} ===")
+        ecrire_rapport_territoire(territoire, '')
     meteo_tour = etat.choisir_meteo_tour()
+    etat.sauvegarder_meteo(meteo_tour)
+    ecrire_rapport_court('=== RÉSUMÉ DU TOUR ===')
+    ecrire_rapport_court('')
+    archiver_evenement('DEBUT_RESOLUTION')
 
-    etat.sauvegarder_meteo(
-        meteo_tour
-    )
 
-    # ------------------------------------------
-    # Rapport court public
-    # ------------------------------------------
-
-    ecrire_rapport_court(
-        "=== RÉSUMÉ DU TOUR ==="
-    )
-
-    ecrire_rapport_court("")
-
-    ecrire_rapport_court(
-        f"MÉTÉO : {meteo_tour}"
-    )
-
-    ecrire_rapport_court("")
-
-    # ------------------------------------------
-    # Rapport long complet
-    # ------------------------------------------
-
-    ecrire_rapport_long(
-        "=== RAPPORT LONG DU TOUR ==="
-    )
-
-    ecrire_rapport_long("")
-
-    ecrire_rapport_long(
-        f"Météo du tour : {meteo_tour}"
-    )
-
-    ecrire_rapport_long(
-        "Effet actuel de la météo : aucun"
-    )
-
-    ecrire_rapport_long("")
-
-    # ------------------------------------------
-    # Rapports territoriaux
-    # ------------------------------------------
-
-    for territory in territoires:
-        ecrire_rapport_territoire(
-            territory,
-            (
-                f"=== RAPPORT DE "
-                f"{territory.name.upper()} ==="
-            )
-        )
-
-        ecrire_rapport_territoire(
-            territory,
-            ""
-        )
-
-        ecrire_rapport_territoire(
-            territory,
-            f"Météo : {meteo_tour}"
-        )
-
-        ecrire_rapport_territoire(
-            territory,
-            ""
-        )
+def commandes_consultation(configuration):
+    racine = configuration['game_path']
+    hotel = f'{racine}/village/$USER/hotel_de_ville'
+    return ("=== CONSULTATION DES RAPPORTS ===\n\n"
+            "Rapports personnels :\n"
+            f"Rapport court : cat {hotel}/rapport.txt\n"
+            f"Activités : cat {hotel}/rapport_activites.txt\n"
+            f"Exploration : cat {hotel}/rapport_exploration.txt\n\n"
+            "Rapports de combat :\n"
+            f"Combats détaillés : cat {racine}/rapport/territoires/est_1.txt\n"
+            f"Lecture à la demande : replay {racine}/rapport/territoires/est_1.txt\n"
+            f"Journal progressif : tail -f {racine}/rapport/suivi_combats.log\n\n"
+            "État du tour :\n"
+            f"État actuel : cat {racine}/village/clocher/etat_tour.log")
 
 
 def afficher_fin_de_tour(configuration=None):
@@ -938,26 +1075,9 @@ def afficher_fin_de_tour(configuration=None):
     print("=" * 48)
     print()
 
-    print("Rapport long complet :")
-    print(
-        f"cat {config.rapport_long_path}"
-    )
-
-    print()
-
-    print("Exemple de rapport territorial :")
-    exemple = ('terrain1' if configuration is None or configuration['mode'] == 'classique'
-               else configuration['territoires'][0].name)
-    print(
-        "cat "
-        f"{config.rapports_territoires_dir / (exemple + '.txt')}"
-    )
-
-    print()
-
-    print("Liste des rapports territoriaux :")
-    print(
-        f"ls {config.rapports_territoires_dir}/"
-    )
-
+    if configuration is not None and configuration['mode'] == 'survie':
+        print(commandes_consultation(configuration))
+    else:
+        print(f"Combats détaillés : cat {config.rapports_territoires_dir / 'terrain1.txt'}")
+        print(f"Liste des rapports : ls {config.rapports_territoires_dir}/")
     print()

@@ -434,7 +434,6 @@ def _ouvrir_tour_survie(configuration, horloge=None):
     if 'generation_active' in precedent:
         cycle['generation_active'] = precedent['generation_active']
     etat.sauvegarder_cycle_survie(cycle, configuration)
-    rapports.afficher_et_ecrire(f"Tour {tour} : fenêtre d'action de {duree:g} secondes.")
     return cycle
 
 
@@ -483,10 +482,7 @@ def _clore_tour_survie(configuration, gestion, aleatoire=None):
                 'Les combats sont terminés et les rapports sont disponibles.\n'
                 f"Vous avez {configuration['duree_consultation_secondes']:g} secondes pour consulter les rapports.\n"
                 'Il est impossible de fabriquer des unités pendant cette phase.\n\n'
-                f'Rapport court : cat {configuration["game_path"]}/village/$USER/hotel_de_ville/rapport.txt\n'
-                f'Suivi des phases : tail -f {configuration["game_path"]}/village/clocher/suivi_tour.log\n'
-                f'Combats détaillés : cat {configuration["game_path"]}/rapport/territoires/est_1.txt\n'
-                f'Journal progressif : tail -f {configuration["game_path"]}/rapport/suivi_combats.log'
+                + rapports.commandes_consultation(configuration)
             )
         return resultat
     except BaseException as erreur:
@@ -563,6 +559,7 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
     rapports.ecrire_rapport_court(f"Fin du tour {tour} — vague {tour + 1}.")
     plateau.preparer_accueil(configuration, tour + 1,
                             rapports.chemin_sortie(config.rapport_court_path).read_text(encoding='utf-8'))
+    rapports.archiver_etat_final(configuration, tour + 1)
     etat.sauvegarder_cycle_survie(
         {"tour": tour if defaite else tour + 1, "phase": "defaite" if defaite else "a_preparer"},
         configuration)
