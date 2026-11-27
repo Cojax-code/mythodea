@@ -276,7 +276,7 @@ class Regressions(unittest.TestCase):
         for joueur, nom, emplacement, nombre in scenario:
             general = self.general(joueur, nom, "terrain1", emplacement)
             self.autoriser(joueur, nom, "terrain1", compteur=3)
-            (general / "ordre.txt").write_text("", encoding="utf-8")
+            (general / "info/ordre.txt").write_text("", encoding="utf-8")
             for n in range(nombre):
                 self.unite(general, "avant", f"infanterie{n}", "arc")
         self.tour_sans_generation()

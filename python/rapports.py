@@ -340,7 +340,7 @@ def lire_etat_exploration(configuration, vague):
                         chemins.append(enfant)
                 chemins.sort(key=lambda p: generaux.numero_general_depuis_nom(p.name))
                 for general in chemins:
-                    sans_liens(general / 'fiche.txt')
+                    sans_liens(generaux.chemin_info(general, 'fiche.txt'))
                     blocs = generaux.lire_composition_general(general)
                     total = sum(sum(types.values()) for types in blocs.values())
                     infos = {'nom': general.name, 'joueur': joueur,

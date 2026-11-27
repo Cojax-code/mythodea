@@ -142,7 +142,8 @@ class ProgressionEtape2(unittest.TestCase):
     def test_emplacement_zombie_exclusif_mort_vivant_et_selection_par_defaut(self):
         with tempfile.TemporaryDirectory() as dossier:
             chemin = Path(dossier)
-            selection = chemin / 'etiquettes_actives.txt'
+            (chemin / 'info').mkdir()
+            selection = chemin / 'info/etiquettes_actives.txt'
             for nature in progression.NATURES:
                 maximum = 3 if nature.startswith('stratege') else 1
                 ordinaires = ['infanterie', 'distance', 'melee', 'cruelle'][:maximum + 1]
@@ -197,7 +198,7 @@ class CombatsEtape2(unittest.TestCase):
         qg = self.combattant(pc=120, etiquettes={'chaman': 1})
         allie = self.combattant('j2', place='2', pc=80, etiquettes={'chaman': 1})
         adverse = self.combattant('bot')
-        (qg['chemin'] / 'QG.txt').touch()
+        (qg['chemin'] / 'info/QG.txt').touch()
         a, b = dict(type='orc_archer', nombre=10), dict(type='orc_archer', nombre=10)
         with self.contexte():
             fiche = self.progression.caracteristiques_general(allie)
@@ -286,7 +287,7 @@ class CombatsEtape2(unittest.TestCase):
 
     def test_impasse_retraite_differee_qg_desactive_avant_deplacement(self):
         a, b = self.paire_nulle()
-        (a['chemin'] / 'QG.txt').touch()
+        (a['chemin'] / 'info/QG.txt').touch()
         reservations = []
         with self.contexte():
             resultat = self.survie.resoudre_cascade(self.config.game_path / 'est_3', self.profil,
@@ -327,7 +328,7 @@ class CombatsEtape2(unittest.TestCase):
 
     def test_renfort_promu_apres_duel_frontal_reprend_avant_impasse(self):
         a, b = self.paire_nulle()
-        (a['chemin'] / 'ordre_surnombre.txt').write_text('2', encoding='utf-8')
+        (a['chemin'] / 'info/ordre_surnombre.txt').write_text('2', encoding='utf-8')
         self.combattant(numero=2, place='2', nombre=1)
         self.combattant('bot', numero=2, nombre=1)
         for numero in (3, 4):
@@ -342,7 +343,7 @@ class CombatsEtape2(unittest.TestCase):
 
     def test_etiquette_roulette_persiste_rejeu_ne_redonne_rien_selection_preservee(self):
         g = self.combattant(etiquettes={'infanterie': 1})
-        (g['chemin'] / 'etiquettes_actives.txt').write_text('infanterie', encoding='utf-8')
+        (g['chemin'] / 'info/etiquettes_actives.txt').write_text('infanterie', encoding='utf-8')
         profils = self.progression.charger()
         profils['j1:general1'].update(progression_combat=1)
         self.progression.sauvegarder(profils)
@@ -359,7 +360,7 @@ class CombatsEtape2(unittest.TestCase):
         qg = self.combattant(etiquettes={'infanterie': 1})
         allie = self.combattant('j2', place='2', nombre=10, pc=100)
         self.speciale(allie, 'messager_du_QG', bloc='arriere')
-        (qg['chemin'] / 'QG.txt').touch()
+        (qg['chemin'] / 'info/QG.txt').touch()
         with self.contexte():
             self.combats.desactiver_qg_retraite(allie)
             self.assertEqual(self.combats._effets_transmis(allie), {('valeur', 'infanterie'): 15})
@@ -372,7 +373,7 @@ class CombatsEtape2(unittest.TestCase):
         renfort = self.combattant('j2', numero=2, place='5', pc=900)
         self.speciale(allie, 'messager_du_QG', bloc='arriere')
         for g in (qg, adverse, renfort):
-            (g['chemin'] / 'QG.txt').touch()
+            (g['chemin'] / 'info/QG.txt').touch()
         with self.contexte():
             self.assertEqual(self.combats._effets_transmis(allie)[('valeur', 'infanterie')], 15)
             self.assertEqual(self.combats._effets_transmis(adverse, ennemi=True)[('malus_moral_adverse', None)], 15)
@@ -399,7 +400,7 @@ class CombatsEtape2(unittest.TestCase):
         allie = self.combattant('j2', place='2', nombre=10, ordre=2, pc=100,
                                etiquettes={'infanterie': 1})
         self.speciale(allie, 'messager_du_QG', bloc='arriere')
-        (qg['chemin'] / 'QG.txt').touch()
+        (qg['chemin'] / 'info/QG.txt').touch()
         for numero in range(1, 6):
             self.combattant('bot', numero=numero, nombre=1, equipement='pique')
         if refus:

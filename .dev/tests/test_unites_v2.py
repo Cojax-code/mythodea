@@ -563,8 +563,8 @@ class CryptePlaines(unittest.TestCase):
         fiches['j1:general1']['evolutions_acquises'] = []
         fiches['j1:general2']['evolutions_acquises'] = [108]
         self.progression.sauvegarder(fiches)
-        with (self.beneficiaire['chemin'] / 'fiche.txt').open('a') as fichier:
-            fichier.write('\nevolutions_acquises=108\n')
+        with (self.beneficiaire['chemin'] / 'info/fiche.txt').open('a') as fichier:
+            fichier.write('\ndebloque=108\n')
         with self.assertRaisesRegex(ValueError, 'personnellement'):
             self.crypte.verifier_connaissance_plaines(self.plaines, 'j1', 108)
         self.assertTrue(autre.exists())

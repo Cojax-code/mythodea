@@ -1,7 +1,7 @@
 # Généraux, blessures et formation
 
 Les nouveaux généraux reçoivent un niveau 0, une nature et un trait permanent.
-Leurs champs apparaissent dans `fiche.txt`. Les anciennes fiches restent lisibles ;
+Leurs champs apparaissent dans `info/fiche.txt`. Les anciennes fiches restent lisibles ;
 les champs historiques inutilisés sont retirés à leur prochaine publication.
 Les orientations sont Stratège (45 %), Instinctif (45 %) et Hybride (10 %), sans
 dominante. L'Hybride gagne naturellement PC et moral et accède aux évolutions des
@@ -95,7 +95,7 @@ Le manuel commun possède seulement trois emplacements, `001`, `002`, `003` :
 cat /game/village/ecole_officiers/memoire_des_generaux.txt
 ```
 
-Dans le dossier du général, préparer **une seule demande** avant le début du
+Dans le dossier `info/` du général, préparer **une seule demande** avant le début du
 tour complet de présence :
 
 ```bash

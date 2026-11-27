@@ -41,7 +41,8 @@ for camp, owner in (("A", "j1"), ("B", "j2")):
         name = f"general{index}"
         path = territory / owner / str(entry["position"]) / name
         path.mkdir(parents=True)
-        (path / "fiche.txt").write_text(f"nom={name}\norientation=stratege\nstrategie=0\nforce=0\nexperience=0\n")
+        (path / 'info').mkdir(mode=0o700)
+        (path / "info/fiche.txt").write_text(f"nom={name}\norientation=stratege\nstrategie=0\nforce=0\nexperience=0\n")
         if 'profile' in entry:
             p = entry['profile']
             fiche = progression.nouvelles_caracteristiques(random.Random(0))
@@ -60,9 +61,9 @@ for camp, owner in (("A", "j1"), ("B", "j2")):
                     progression.progression_specifique(fiche, Instinct())
             progression.enregistrer_creation(owner, name, fiche)
             progression.publier_fiche(path, fiche)
-            (path / 'etiquettes_actives.txt').write_text('\n'.join(p['active']))
+            (path / 'info/etiquettes_actives.txt').write_text('\n'.join(p['active']))
         if entry.get('qg'):
-            (path / 'QG.txt').touch()
+            (path / 'info/QG.txt').touch()
         for block in config.ordre_blocs:
             (path / block).mkdir()
             if entry.get('banner_block') == block:

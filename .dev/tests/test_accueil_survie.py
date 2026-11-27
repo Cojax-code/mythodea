@@ -146,7 +146,7 @@ class AccueilSurvie(unittest.TestCase):
         # Seules les lignes vides de mise en page sont ignorées. Les espaces,
         # accents, guillemets, accolades Bash et antislashs restent significatifs.
         empreintes_word = (
-            'ef005c2c6adcaa12a03fdc0da67668dc40a4c783faae1a97672ac583501caa01',
+            'b73a50d4340d964ab576bb4f69bebd44f77a507b260c6aa8b18fa8614aaa167d',
             '61296835cc6f0e26e18c4aab88256a55ae75148bc39d0915db9e91d00b772484',
             'd7b1120717de57793c899369ed837870bc6a3beea2a8901e10cdbf62741c3f13',
             'f6c13c8950e90f2a83216eefa890a12c64b76d4a1e104191c7fc222d7c279066',
@@ -154,7 +154,7 @@ class AccueilSurvie(unittest.TestCase):
             '7d3b1eca970b2d094b5c3cdc94a114d96b7ad4a757950778027b7cd6056f20d5',
             'e7cbe2553e852261a8c404d60b9a1294ad0e6fec219a132aa2ebe43f4d73fb49',
             '2295098f4f227d574be0ac9001cba6fed824ed24a3db361539ffb379c36ad87a',
-            '9d7def71326d5da8ddb4781cef9180c37981742f824f13d633cd6cc9eade44f5',
+            '8ac145caae6233ebccfd3bdcc75c44419063f0ba28b0489857adfad25e94733d',
             '45bbb0845a31ad0ca2c351dcc5777b0c5d4e17a3bcc50ee6c92b9363ec86d04e',
             '6ed6a30b7924da7262f09fb16491cc4def8653b9f16d68ae4c40885f7aa3be0d',
         )
@@ -176,6 +176,8 @@ class AccueilSurvie(unittest.TestCase):
                     # Le Word historique utilisait /home/game. Conserver ses empreintes
                     # pour vérifier le texte, avec la racine et le nom de caserne
                     # désormais canoniques dans les commandes publiées.
+                    # Vagues 0 et 8 : empreintes actualisées pour info/ et ses
+                    # champs publics, corrections demandées après les tests Pi.
                     historique = (texte.replace('/game/', '/home/game/').replace(joueur, 'j1')
                                   .replace('/caserne_militaire', '/reserve'))
                     normalise = '\n'.join(ligne for ligne in historique.splitlines()
@@ -271,7 +273,7 @@ class AccueilSurvie(unittest.TestCase):
 
     def test_preference_5_ne_deborde_pas_au_village(self):
         chemin = self.general(territoire='est_1')
-        with (chemin / 'fiche.txt').open('a') as f:
+        with (chemin / 'info/fiche.txt').open('a') as f:
             f.write('\nposition_surnombre=5\n')
         general = {'chemin': chemin, 'nom': chemin.name, 'joueur': 'j1', 'emplacement': '1'}
         self.assertEqual(self.mouvements.preparer_retraites_surnombre(

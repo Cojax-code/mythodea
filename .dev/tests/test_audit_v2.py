@@ -18,7 +18,7 @@ class AuditUnites(unittest.TestCase):
 
     def test_ordres_malformes_ne_bloquent_pas_le_tour(self):
         g = self.creer(nombre=0)
-        ordre = g['chemin'] / 'ordre.txt'
+        ordre = g['chemin'] / 'info/ordre.txt'
         for texte in ('²-2', '1-' + '9' * 5000, '1-2-²', '1-2\n\udcff'):
             with self.subTest(texte=texte[:20]):
                 ordre.write_bytes(texte.encode('utf-8', errors='surrogateescape'))
@@ -26,7 +26,7 @@ class AuditUnites(unittest.TestCase):
 
     def test_ancien_ordre_nactive_aucune_tactique(self):
         g = self.creer(numero=12, nombre=1)
-        (g['chemin'] / 'ordre.txt').write_text('2-1-3')
+        (g['chemin'] / 'info/ordre.txt').write_text('2-1-3')
         lecture = self.generaux.lire_generaux_territoire(self.config.game_path / 'est_3', self.profil)
         self.assertNotIn('ordres', lecture['j1']['1'])
         self.assertNotIn(1003, self.combats.catalogues.EVOLUTIONS)

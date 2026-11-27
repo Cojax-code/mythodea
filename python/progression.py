@@ -416,7 +416,8 @@ def selection_etiquettes(fiche, chemin_general):
     """
     import os
     import stat
-    selection = chemin_general / 'etiquettes_actives.txt'
+    from generaux import chemin_info
+    selection = chemin_info(chemin_general, 'etiquettes_actives.txt')
     if any(parent.is_symlink() for parent in selection.parents):
         raise ValueError('Sélection sous un dossier lié interdite.')
     resultat = deepcopy(fiche)
@@ -484,11 +485,40 @@ def enregistrer_creation(joueur, nom, caracteristiques):
     return deepcopy(donnees[identifiant])
 
 
+# Le registre privé et les API métier gardent leurs clés historiques.
+CHAMPS_PUBLICS = {'evolution_apprise': 'apprentissage_niveau_suivant',
+                 'evolutions_acquises': 'debloque'}
+
+
+def renommer_champs_publics(texte):
+    """Compatibilité de la copie joueur, sans attribuer ni rejouer une évolution."""
+    valeurs = {}
+    lignes = texte.splitlines(keepends=True)
+    for ligne in lignes:
+        cle, separateur, valeur = ligne.partition('=')
+        if separateur:
+            valeurs[cle.strip()] = valeur.strip()
+    for ancien, nouveau in CHAMPS_PUBLICS.items():
+        if ancien in valeurs and nouveau in valeurs and valeurs[ancien] != valeurs[nouveau]:
+            raise RuntimeError(f'Champs de fiche contradictoires : {nouveau}')
+    resultat = []
+    for ligne in lignes:
+        cle, separateur, valeur = ligne.partition('=')
+        if separateur and cle.strip() in CHAMPS_PUBLICS:
+            cible = CHAMPS_PUBLICS[cle.strip()]
+            if cible not in valeurs:
+                resultat.append(cible + '=' + valeur)
+        else:
+            resultat.append(ligne)
+    return ''.join(resultat)
+
+
 def publier_fiche(chemin_general, caracteristiques):
     """Publie les champs moteur et retire les clés historiques devenues inutiles."""
     import os
     import stat
-    chemin = chemin_general / 'fiche.txt'
+    from generaux import chemin_info
+    chemin = chemin_info(chemin_general, 'fiche.txt')
     for p in (chemin, *chemin.parents):
         if p.is_symlink():
             raise RuntimeError(f'Fiche liée interdite : {chemin}')
@@ -497,7 +527,7 @@ def publier_fiche(chemin_general, caracteristiques):
     lignes = chemin.read_text(encoding='utf-8').splitlines() if chemin.exists() else []
     caracteristiques = normaliser_profil(caracteristiques)
     lignes = [l for l in lignes if l.split('=', 1)[0].strip()
-              not in caracteristiques.keys() | CHAMPS_HISTORIQUES]
+              not in caracteristiques.keys() | CHAMPS_HISTORIQUES | set(CHAMPS_PUBLICS.values())]
     for cle, valeur in caracteristiques.items():
         if cle in ('apprentissages_valides', 'progressions_validees', 'etiquettes_apprises_ecole',
                    'version_progression', 'migration_orientations', 'dernier_niveau'):
@@ -506,7 +536,7 @@ def publier_fiche(chemin_general, caracteristiques):
             valeur = ','.join(map(str, valeur))
         elif valeur is None:
             valeur = ''
-        lignes.append(f'{cle}={valeur}')
+        lignes.append(f'{CHAMPS_PUBLICS.get(cle, cle)}={valeur}')
     fd = os.open(chemin, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, 'O_NOFOLLOW', 0), 0o600)
     with os.fdopen(fd, 'w', encoding='utf-8') as fichier:
         fichier.write('\n'.join(lignes) + '\n')

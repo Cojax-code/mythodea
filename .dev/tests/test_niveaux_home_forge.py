@@ -155,7 +155,7 @@ class NiveauxHomeForge(unittest.TestCase):
         with patch.object(self.progression, 'monter_niveau', side_effect=AssertionError('double récompense')):
             self.assertFalse(self.progression.valider_evenement(general, 'combat', 'une-bataille'))
         self.assertEqual(self.fiche(general), avant)
-        texte = (general['chemin'] / 'fiche.txt').read_text()
+        texte = (general['chemin'] / 'info/fiche.txt').read_text()
         self.assertIn('niveau=1', texte)
         self.assertNotIn('progressions_validees', texte)
 
@@ -289,7 +289,7 @@ class NiveauxHomeForge(unittest.TestCase):
         fiche = self.fiche(general)
         self.assertEqual((fiche['niveau'], fiche['progression_combat']), (1, 0))
         self.assertEqual(fiche['progressions_validees']['combat:survie:1:est_3']['recompense'][0], 'maitrise_commandement')
-        self.assertIn('niveau=1', (general['chemin'] / 'fiche.txt').read_text())
+        self.assertIn('niveau=1', (general['chemin'] / 'info/fiche.txt').read_text())
 
     def test_recompenses_epuisees_pc_dernier_recours(self):
         general = self.creer(nature='instinctif')

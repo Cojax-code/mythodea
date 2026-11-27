@@ -21,6 +21,9 @@ Afficher seulement les dossiers composant votre général.
 find /home/{joueur}/general1 -maxdepth 2 -type d -printf '%P\n' | sort
 
 NOTE : Avec %P, le chemin est affiché relativement à general1, ce qui rend la structure plus lisible.
+La racine ne contient que les quatre blocs et info/. Fiche, QG, sélection d'étiquettes et demandes de mémoires se trouvent dans info/ ; les chemins des unités restent identiques.
+Lire la fiche : cat /home/{joueur}/general1/info/fiche.txt
+Champs publics : debloque (évolutions acquises), apprentissage_niveau_suivant (mémoire remplaçant une prochaine récompense classique).
 
 ----------------------------------------------------------
 

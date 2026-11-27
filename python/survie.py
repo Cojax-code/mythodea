@@ -229,7 +229,7 @@ def creer_vague_est(numero, configuration=None, aleatoire=None):
         chemin = destination_ennemi(territoire, nom, configuration)
         # Réserver le numéro avant l'écriture : un numéro ne sera jamais réutilisé.
         generaux.creer_general(chemin, nom)
-        fiche = chemin / "fiche.txt"
+        fiche = generaux.chemin_info(chemin, 'fiche.txt')
         with fiche.open("a", encoding="utf-8") as fichier:
             fichier.write(f"\nfaction=est\nvague={numero}\n"
                           f"nom_affichage={composition['nom_affichage']}\n")

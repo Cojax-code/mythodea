@@ -293,6 +293,14 @@ Le village n'a pas de renforts alliés 5..20. Le repli reste hors combat. Un ter
 contesté par rattrapage affiche les deux camps sans provoquer de nouveau combat.
 
 La photographie initiale est prise sous gel bref, avant ACTIONS du tour 0.
+Ce gel technique initial est silencieux : aucune annonce de préparation du rapport
+ni de gel temporaire ne précède le message de bienvenue. Les annonces et gels
+de capture et de publication des résolutions ordinaires restent inchangés.
+
+Les généraux joueurs et ennemis suivent l'arborescence commune : quatre blocs
+militaires à la racine, autres éléments dans `info/`. La migration des anciennes
+parties et les nouveaux noms publics de fiche sont décrits dans `MYTHODEA_SPEC.md`,
+section 5. Les captures privées, publications et reprises conservent cette arborescence.
 Les suivantes sont reconstruites après le remplacement complet de la génération,
 avant la fin du gel de publication et l'ouverture de CONSULTATION. Les lectures
 ne réparent, nettoient ni déplacent rien. Le texte précédent est remplacé, sans
@@ -807,7 +815,7 @@ Ce nom d'affichage ne doit pas casser les fonctions communes qui valident actuel
 les noms canoniques `generalN`. L'implémentation doit donc séparer l'identité
 technique du général de son nom affiché dans les rapports si nécessaire.
 
-La `fiche.txt` d'un général ennemi contient en plus :
+La `info/fiche.txt` d'un général ennemi contient en plus :
 
 ```text
 faction=est

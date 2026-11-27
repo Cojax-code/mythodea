@@ -107,7 +107,7 @@ l'amélioration par roulette reste une décision ouverte. Lorsque toutes les
 étiquettes sont connues, cette catégorie est retirée du tirage. L'amélioration
 des rangs reste assurée par l'École selon ses règles existantes.
 
-Dans son dossier, le joueur peut créer `etiquettes_actives.txt` et inscrire
+Dans le dossier `info/` du général, le joueur peut créer `etiquettes_actives.txt` et inscrire
 les noms des étiquettes apprises, une par ligne ou séparés par des virgules.
 Seules celles choisies contribuent au combat, y compris aux effets du QG.
 Une sélection vide désactive tous les effets d'étiquettes.
@@ -214,7 +214,7 @@ changée pendant l'audit et mérite une décision de conception.
 
 ## QG et Messager
 
-Le joueur crée `QG.txt` ou `qg.txt` dans le dossier du général choisi. Leur contenu
+Le joueur crée `QG.txt` ou `qg.txt` dans le dossier `info/` du général choisi. Leur contenu
 est indifférent. Les deux graphies sur le même général comptent une seule fois.
 Seuls les Stratèges et les Hybrides non zombies peuvent
 être désignés ; une déclaration incompatible est refusée. Aucune comparaison
@@ -263,7 +263,7 @@ le profil officiel autorise le normal (1) ou le royal (2). Un double placement o
 une capacité absente est refusé : aucun bonus n'est accordé pour cette guerre,
 le refus est rapporté et les combats continuent. La capture contrôle les liens
 avant copie et refuse les objets non ordinaires.
-L'Hybride peut conserver son QG : `QG.txt` reste au niveau du général, avec sa portée
+L'Hybride peut conserver son QG : `info/QG.txt` reste propre au général, avec sa portée
 et sa destruction historiques ; l'étendard reste propre à son bloc.
 
 Après sélection habituelle des pertes, le moteur tente d'abord les sauvetages par

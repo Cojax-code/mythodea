@@ -21,6 +21,7 @@ def resoudre_tour_classique():
 
     rapports.preparer_rapports()
     plateau.reparer_structure()
+    generaux.migrer_infos_generaux(config.configuration_mode('classique'))
 
     # Une seule génération par joueur, au même moment du tour qu'en V1.5.
     # Réparer le plateau séparément ne doit plus créer de généraux.

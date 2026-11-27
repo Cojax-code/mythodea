@@ -56,7 +56,7 @@ class ActivitesSurvie(unittest.TestCase):
     def test_sejour_quitte_et_refus_ouverture_conserves_sans_doublon(self):
         g = self.creer(territoire='village', place='ecole_officiers/1', nature='stratege')
         self.formation.preparer_demandes(g)
-        (g['chemin'] / 'lire_les_memoires.txt').write_text('a 999 201')
+        (g['chemin'] / 'info/lire_les_memoires.txt').write_text('a 999 201')
         self.formation.ouvrir_tour(self.profil, 1)
         alertes = self.formation.alertes_actions(self.profil, 1)
         self.assertTrue(any('refusée' in a['message'] for a in alertes))
@@ -68,7 +68,7 @@ class ActivitesSurvie(unittest.TestCase):
         self.formation.resoudre_tour(self.profil, 1)
         self.assertEqual(self.rapport().read_bytes(), avant)
         self.assertIn('emplacement 001..003', avant.decode())
-        (g['chemin'] / 'lire_les_memoires.txt').write_text('001')
+        (g['chemin'] / 'info/lire_les_memoires.txt').write_text('001')
         self.formation.ouvrir_tour(self.profil, 2)
         g['chemin'].rename(self.config.game_path / 'village/j1/garnison/1/general1')
         self.formation.clore_tour(self.profil, 2)
@@ -168,7 +168,7 @@ class ActivitesSurvie(unittest.TestCase):
     def test_alertes_actions_ciblees_et_dedoublonnees_apres_reprise(self):
         g = self.creer(territoire='village', place='ecole_officiers/1')
         self.formation.preparer_demandes(g)
-        (g['chemin'] / 'lire_les_memoires.txt').write_text('999')
+        (g['chemin'] / 'info/lire_les_memoires.txt').write_text('999')
         backend = GelSimule()
         backend.alerter = Mock()
         gestion = self.cycle_linux.Generations(self.profil, backend)
@@ -220,7 +220,7 @@ class ActivitesSurvie(unittest.TestCase):
         os.link(self.rapport(), self.rapport().with_suffix('.lien'))
         with self.assertRaises(RuntimeError):
             self.rapports.noter_activite(self.profil, 'j1', 'TEST', 'interdit')
-        demande = g['chemin'] / 'lire_les_memoires.txt'
+        demande = g['chemin'] / 'info/lire_les_memoires.txt'
         os.mkfifo(demande)
         with self.assertRaises(ValueError):
             self.formation.lire_demande(self.profil, demande)

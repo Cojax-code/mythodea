@@ -63,7 +63,7 @@ class CombatsCamps(unittest.TestCase):
         if identite in profils:
             profils[identite].update(etiquettes={}, etiquettes_permanentes=[])
             self.generaux.progression.sauvegarder(profils)
-        (chemin / "ordre.txt").write_text(ordre, encoding="utf-8")
+        (chemin / "info/ordre.txt").write_text(ordre, encoding="utf-8")
         for bloc, (nombre, equipement) in (blocs or {}).items():
             prefixe = "cavalerie" if equipement == "cheval" else "infanterie"
             for numero in range(1, nombre + 1):

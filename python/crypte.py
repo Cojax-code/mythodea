@@ -535,7 +535,7 @@ def attribuer_recompense(c, joueur, fiche, attribution, composition):
     nom = f'general{numero}'
     general = attente / nom
     generaux.creer_general(general, nom)
-    with (general / 'fiche.txt').open('a', encoding='utf-8') as f:
+    with (generaux.chemin_info(general, 'fiche.txt')).open('a', encoding='utf-8') as f:
         f.write(f'\nnom_affichage={composition["nom"]}\n')
     equipements = composition.get('equipements')
     if equipements is None:

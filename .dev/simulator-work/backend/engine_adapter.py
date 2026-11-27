@@ -68,8 +68,9 @@ def prepare(payload):
             name = f"general{index}"
             path = territory / owner / str(general["position"]) / name
             path.mkdir(parents=True)
+            (path / 'info').mkdir(mode=0o700)
             # Fiche neutre, sans statistique supplémentaire ni tirage de création.
-            (path / "fiche.txt").write_text(f"nom={name}\norientation=stratege\nstrategie=0\nforce=0\nexperience=0\n")
+            (path / "info/fiche.txt").write_text(f"nom={name}\norientation=stratege\nstrategie=0\nforce=0\nexperience=0\n")
             generaux.creer_general(path, name)
             from backend.schema import InvalidConfiguration
             where = f'Camp {camp} — Général {index}'
@@ -81,13 +82,13 @@ def prepare(payload):
             if fiche is not None:
                 progression.enregistrer_creation(owner, name, fiche)
                 progression.publier_fiche(path, fiche)
-                (path / 'etiquettes_actives.txt').write_text('\n'.join(general['profile']['active']), encoding='utf-8')
+                (path / 'info/etiquettes_actives.txt').write_text('\n'.join(general['profile']['active']), encoding='utf-8')
                 try:
                     progression.selection_etiquettes(fiche, path)
                 except ValueError as exc:
                     raise InvalidConfiguration(f'{where} : {exc}') from exc
             if general.get('qg'):
-                (path / 'QG.txt').touch()
+                (path / 'info/QG.txt').touch()
             if general.get('banner_block'):
                 (path / general['banner_block'] / 'etendard.txt').touch()
                 import etendards
@@ -144,7 +145,7 @@ def simulate(payload):
     import commandement
     forces = generaux.lire_forces_territoire(territory, profile)
     present = [g for camp in forces.values() for g in camp.values() if g]
-    qgs = [commandement.instantane_qg_territorial(g, present) for g in present if (g['chemin'] / 'QG.txt').exists()]
+    qgs = [commandement.instantane_qg_territorial(g, present) for g in present if (g['chemin'] / 'info/QG.txt').exists()]
     initial_ids = set(soldats.charger())
     event = 'simulateur:terrain1'
     battle_result = {}

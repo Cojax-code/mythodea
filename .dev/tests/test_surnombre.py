@@ -43,14 +43,14 @@ class Surnombre(unittest.TestCase):
             profils[identite].update(etiquettes={}, etiquettes_permanentes=[])
             self.generaux.progression.sauvegarder(profils)
         if ordre is not None:
-            (chemin / "ordre_surnombre.txt").write_text(f"{ordre}\n", encoding="utf-8")
+            (chemin / "info/ordre_surnombre.txt").write_text(f"{ordre}\n", encoding="utf-8")
         prefixe = "cavalerie" if equipement == "cheval" else "infanterie"
         for index in range(nombre):
             unite = chemin / "avant" / f"{prefixe}{index + 1}"
             unite.mkdir()
             (unite / equipement).touch()
         if joueur == "bot":
-            with (chemin / "fiche.txt").open("a", encoding="utf-8") as fichier:
+            with (chemin / "info/fiche.txt").open("a", encoding="utf-8") as fichier:
                 fichier.write(f"\nfaction=est\nvague=1\nnom_affichage=general1_{numero}\n")
             self.survie.enregistrer_arrivee_ennemi(self.config.game_path / territoire, chemin, self.profil)
         self.generaux.donner_permissions_general(chemin, "root" if joueur == "bot" else joueur)
@@ -76,9 +76,9 @@ class Surnombre(unittest.TestCase):
         self.colonne(1)
         self.scan()
         for chemin, attendu, uid in ((exterieur, "1\n", 1001), (village, "2\n", 1002)):
-            fichier = chemin / "ordre_surnombre.txt"
+            fichier = chemin / "info/ordre_surnombre.txt"
             self.assertEqual(fichier.read_text(encoding="utf-8"), attendu)
-            self.assertFalse((chemin / "ordre.txt").exists())
+            self.assertFalse((chemin / "info/ordre.txt").exists())
             self.assertIn(call(fichier, uid, uid), self.chown.call_args_list)
             self.assertIn(call(fichier, 0o600), self.chmod.call_args_list)
         self.assertFalse(list((self.config.game_path / "est_3/bot").rglob("ordre_surnombre.txt")))
@@ -89,18 +89,18 @@ class Surnombre(unittest.TestCase):
                    self.general(numero=3, territoire="village", reserve=True),
                    self.general(numero=4, territoire="village")]
         self.scan()
-        self.assertEqual([(p / "ordre_surnombre.txt").read_text().strip() for p in chemins],
+        self.assertEqual([(p / "info/ordre_surnombre.txt").read_text().strip() for p in chemins],
                          ["1", "1", "2", "2"])
 
     def test_audit_declenche_creation_et_recreation_au_lieu_actuel(self):
         chemin = self.general(territoire="est_1")
         self.securite.verifier_tous_les_deplacements(self.profil)
-        self.assertEqual((chemin / "ordre_surnombre.txt").read_text().strip(), "1")
+        self.assertEqual((chemin / "info/ordre_surnombre.txt").read_text().strip(), "1")
         destination = self.config.game_path / "village/j1/garnison/1/general1"
         chemin.rename(destination)
-        (destination / "ordre_surnombre.txt").unlink()
+        (destination / "info/ordre_surnombre.txt").unlink()
         self.securite.verifier_tous_les_deplacements(self.profil)
-        self.assertEqual((destination / "ordre_surnombre.txt").read_text().strip(), "2")
+        self.assertEqual((destination / "info/ordre_surnombre.txt").read_text().strip(), "2")
 
     def test_choix_suit_general_et_scan_ne_le_remplace_pas(self):
         chemin = self.general(territoire="village", ordre=2)
@@ -108,17 +108,17 @@ class Surnombre(unittest.TestCase):
         chemin.rename(destination)
         self.securite.verifier_tous_les_deplacements(self.profil)
         self.scan()
-        self.assertEqual((destination / "ordre_surnombre.txt").read_text().strip(), "2")
-        (destination / "ordre_surnombre.txt").unlink()
+        self.assertEqual((destination / "info/ordre_surnombre.txt").read_text().strip(), "2")
+        (destination / "info/ordre_surnombre.txt").unlink()
         self.scan()
-        self.assertEqual((destination / "ordre_surnombre.txt").read_text().strip(), "1")
+        self.assertEqual((destination / "info/ordre_surnombre.txt").read_text().strip(), "1")
 
     def test_classique_sans_nouveau_fichier(self):
         chemin = self.general()
         classique = self.config.configuration_mode("classique")
         self.generaux.scanner_ordres_surnombre(classique)
         self.generaux.assurer_ordre_surnombre(chemin, "j1", "est_3", classique)
-        self.assertFalse((chemin / "ordre_surnombre.txt").exists())
+        self.assertFalse((chemin / "info/ordre_surnombre.txt").exists())
 
     def test_routes_est_et_village_sans_route_automatique(self):
         for origine, destination in (("est_3", "est_2"), ("est_2", "est_1"),
@@ -178,7 +178,7 @@ class Surnombre(unittest.TestCase):
         self.assertEqual(resultat["retraites"], [])
         self.assertEqual(resultat["controle"], "allies")
         self.assertTrue(joueur.exists())
-        self.assertEqual((joueur / "ordre_surnombre.txt").read_text().strip(), "1")
+        self.assertEqual((joueur / "info/ordre_surnombre.txt").read_text().strip(), "1")
 
     def test_fin_cascade_allie_detruit_renforts_intacts(self):
         joueur = self.general(nombre=1, ordre=2)
@@ -233,7 +233,7 @@ class Surnombre(unittest.TestCase):
                 self.assertEqual(position, arrivee)
                 # Sans préférence, la nouvelle règle cherche la première place libre.
                 self.assertEqual(chemin.parent.name, "1")
-                self.assertEqual((chemin / "ordre_surnombre.txt").read_text().strip(), "1")
+                self.assertEqual((chemin / "info/ordre_surnombre.txt").read_text().strip(), "1")
                 self.assertEqual(self.generaux.total_general_depuis_chemin(chemin), 16)
                 self.assertFalse(joueur.exists())
                 # Mettre le survivant hors des futurs scénarios pour éviter une collision voulue ailleurs.
@@ -285,7 +285,7 @@ class Surnombre(unittest.TestCase):
             promus = resoudre(*args, **kwargs)
             compteur += 1
             if compteur == 2:
-                (joueur / "ordre_surnombre.txt").write_text("1\n", encoding="utf-8")
+                (joueur / "info/ordre_surnombre.txt").write_text("1\n", encoding="utf-8")
             return promus
         with patch.object(self.combats, "resoudre_combat_range", side_effect=modifier_apres_deuxieme):
             resultat = self.cascade()
@@ -299,22 +299,22 @@ class Surnombre(unittest.TestCase):
         resoudre = self.combats.resoudre_combat_range
         def supprimer_apres_initial(*args, **kwargs):
             resultat = resoudre(*args, **kwargs)
-            (joueur / "ordre_surnombre.txt").unlink()
+            (joueur / "info/ordre_surnombre.txt").unlink()
             return resultat
         with patch.object(self.combats, "resoudre_combat_range", side_effect=supprimer_apres_initial):
             resultat = self.cascade()
         self.assertEqual(resultat["affrontements"], 1)
         chemin = resultat["retraites"][0]["chemin"]
-        self.assertEqual((chemin / "ordre_surnombre.txt").read_text().strip(), "1")
+        self.assertEqual((chemin / "info/ordre_surnombre.txt").read_text().strip(), "1")
 
     def test_ordre_invalide_defaut_signale_sans_reecriture(self):
         joueur = self.general(ordre=2)
         for texte in ("", "3", "01", "1\n2"):
-            (joueur / "ordre_surnombre.txt").write_text(texte, encoding="utf-8")
+            (joueur / "info/ordre_surnombre.txt").write_text(texte, encoding="utf-8")
             general = {"chemin": joueur, "joueur": "j1"}
             self.assertEqual(self.generaux.lire_ordre_surnombre(general, "est_3", self.profil), 1)
             self.assertEqual(self.generaux.lire_ordre_surnombre(general, "village", self.profil), 2)
-            self.assertEqual((joueur / "ordre_surnombre.txt").read_text(encoding="utf-8"), texte)
+            self.assertEqual((joueur / "info/ordre_surnombre.txt").read_text(encoding="utf-8"), texte)
         self.assertIn("Ordre de surnombre invalide", self.config.rapport_long_path.read_text(encoding="utf-8"))
 
     def test_arrivee_occupee_reorganise_sans_repli_ni_pertes(self):
@@ -333,7 +333,7 @@ class Surnombre(unittest.TestCase):
         self.assertEqual(self.etat.charger_attentes_repli(self.profil), {})
 
     def preference(self, chemin, valeur):
-        with (chemin / "fiche.txt").open("a", encoding="utf-8") as fichier:
+        with (chemin / "info/fiche.txt").open("a", encoding="utf-8") as fichier:
             fichier.write(f"\nposition_surnombre={valeur}\n")
 
     def reculer(self, chemins, origine="est_3"):
@@ -380,7 +380,7 @@ class Surnombre(unittest.TestCase):
             self.general("j2", numero=numero, territoire="village", place=str(numero))
         reserve = self.general(numero=2, territoire="village", reserve=True)
         self.etat.sauvegarder_generaux_fatigues({"j1:general1"})
-        fichiers = {p.name: p.read_bytes() for p in arrivant.iterdir() if p.is_file()}
+        fichiers = {p.name: p.read_bytes() for p in (arrivant / 'info').iterdir() if p.is_file()}
         resultat = self.reculer([arrivant], "est_1")
         destination = self.config.game_path / 'village/j1/caserne_militaire/general1'
         self.assertEqual([p for _, p in resultat], [destination])
@@ -389,7 +389,7 @@ class Surnombre(unittest.TestCase):
         self.assertEqual(self.etat.charger_positions_generaux()["j1:general1"], "village")
         self.assertEqual(self.etat.charger_generaux_fatigues(), {"j1:general1"})
         self.assertEqual(self.generaux.total_general_depuis_chemin(destination), 20)
-        self.assertEqual({p.name: p.read_bytes() for p in destination.iterdir() if p.is_file()}, fichiers)
+        self.assertEqual({p.name: p.read_bytes() for p in (destination / 'info').iterdir() if p.is_file()}, fichiers)
         forces = self.generaux.lire_forces_territoire(self.config.game_path / "village", self.profil)
         self.assertEqual(len(self.generaux.generaux_actifs_joueur(forces, "allies")), 4)
 
@@ -399,17 +399,17 @@ class Surnombre(unittest.TestCase):
         destination = self.reculer([arrivant])[0][1]
         self.scan()
         self.assertEqual(destination.parent.name, "20")
-        self.assertEqual((destination / "ordre_surnombre.txt").read_text().strip(), "1")
+        self.assertEqual((destination / "info/ordre_surnombre.txt").read_text().strip(), "1")
 
     def test_preferences_invalides_sans_preference_avertissement_fiche_intacte(self):
         for numero, valeur in enumerate(("", "0", "21", "abc", "-1", "1.5"), 1):
             with self.subTest(valeur=valeur):
                 arrivant = self.general(numero=numero, place="3")
                 self.preference(arrivant, valeur)
-                fiche = (arrivant / "fiche.txt").read_bytes()
+                fiche = (arrivant / "info/fiche.txt").read_bytes()
                 destination = self.reculer([arrivant])[0][1]
                 self.assertEqual(destination.parent.name, str(numero))
-                self.assertEqual((destination / "fiche.txt").read_bytes(), fiche)
+                self.assertEqual((destination / "info/fiche.txt").read_bytes(), fiche)
                 self.assertEqual(self.etat.charger_positions_generaux()[f"j1:general{numero}"], "est_2")
         self.assertEqual(self.etat.charger_attentes_repli(self.profil), {})
         journal = self.config.rapport_long_path.read_text(encoding="utf-8")
@@ -432,12 +432,12 @@ class Surnombre(unittest.TestCase):
         libre = self.general("j2", place="3")
         self.preference(bloque, 20)
         occupant = self.general(numero=2, territoire="est_2", place="20")
-        fiche = (bloque / "fiche.txt").read_bytes()
+        fiche = (bloque / "info/fiche.txt").read_bytes()
         resultat = self.reculer([bloque, libre])
         self.assertEqual([(g["joueur"], p.parent.name) for g, p in resultat], [("j2", "1")])
         self.assertTrue(bloque.exists())
         self.assertTrue(occupant.exists())
-        self.assertEqual((bloque / "fiche.txt").read_bytes(), fiche)
+        self.assertEqual((bloque / "info/fiche.txt").read_bytes(), fiche)
         self.assertEqual(self.generaux.total_general_depuis_chemin(bloque), 20)
         self.assertEqual(self.etat.charger_positions_generaux(),
                          {"j1:general1": "est_3", "j2:general1": "est_2", "j1:general2": "est_2"})

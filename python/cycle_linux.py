@@ -484,6 +484,7 @@ class Generations:
                                  else 'PAUSE : 10 secondes'))
                 derniere[0] = int(ecoule)
         try:
+            generaux.migrer_infos_generaux(self.c, verifier)
             crypte.clore(self.c)
             import formation
             formation.migrer_ancienne_ecole(self.c)
@@ -537,7 +538,7 @@ class Generations:
 
     def initialiser_exploration(self):
         """Photographie initiale cohérente avant la première fenêtre ACTIONS."""
-        self.backend.annoncer('PRÉPARATION DU RAPPORT D’EXPLORATION\nGEL TEMPORAIRE : les actions sont momentanément suspendues.')
+        # Gel technique initial silencieux ; les annonces de résolution restent inchangées.
         self.backend.geler()
         try:
             self.backend.verifier_gel()
@@ -564,6 +565,7 @@ class Generations:
         self.backend.geler()
         try:
             self.backend.verifier_gel()
+            generaux.migrer_infos_generaux(self.c)
             nouveaux = []
             import formation
             formation.migrer_ancienne_ecole(self.c)

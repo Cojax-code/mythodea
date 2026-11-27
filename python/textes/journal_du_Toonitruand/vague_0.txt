@@ -72,7 +72,10 @@ Observer la structure de votre premier général.
 
 tree /home/{joueur}/general1
 
-NOTE : Un général contient quatre blocs : avant, droite, gauche et arrière.
+NOTE : La racine contient quatre blocs : avant, droite, gauche et arrière, ainsi que le dossier info. La fiche et les choix du général se trouvent dans info/ ; les unités se fabriquent toujours dans les blocs.
+
+Pour consulter la fiche : cat /home/{joueur}/general1/info/fiche.txt
+debloque indique les évolutions acquises. apprentissage_niveau_suivant indique une évolution mémorisée pour remplacer une prochaine récompense classique.
 
 ----------------------------------------------------------
 

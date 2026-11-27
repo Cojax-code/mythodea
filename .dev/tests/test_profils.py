@@ -35,7 +35,7 @@ class ProfilsCibles(unittest.TestCase):
         attendus = {'nom', 'nature', 'trait_inne', 'niveau',
                     'emplacements_etiquettes_actives', 'niveau_etendard',
                     'points_commandement', 'moral', 'progression_combat', 'progression_formation',
-                    'evolutions_acquises', 'evolution_apprise', 'etiquettes'}
+                    'debloque', 'apprentissage_niveau_suivant', 'etiquettes'}
         self.assertEqual(set(fiche), attendus)
         prive = progression.charger()['j1:general1']
         self.assertFalse(progression.CHAMPS_HISTORIQUES.intersection(prive))
@@ -43,7 +43,7 @@ class ProfilsCibles(unittest.TestCase):
 
     def test_ancienne_fiche_lisible_et_publication_sans_perte(self):
         g = self.installer(self.profil(niveau=10, etiquettes={'infanterie': 3}))
-        chemin = g['chemin'] / 'fiche.txt'
+        chemin = g['chemin'] / 'info/fiche.txt'
         with chemin.open('a', encoding='utf-8') as f:
             f.write('orientation=combattant\nstrategie=7\nforce=8\nexperience=9\n'
                     'etiquettes_permanentes=infanterie\nposition_surnombre=6\n')

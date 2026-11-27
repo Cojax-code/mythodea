@@ -61,11 +61,14 @@ class PermissionsActivites(unittest.TestCase):
                     self.executer(60001, code, chemin, attendu=1)
                 attente = jeu / 'village/j1/crypte/recompense/general1'
                 attente.mkdir()
-                (attente / 'fiche.txt').write_text('identité conservée')
+                (attente / 'info').mkdir()
+                (attente / 'info/fiche.txt').write_text('identité conservée')
                 os.chown(attente, 60001, 60001)
-                os.chown(attente / 'fiche.txt', 60001, 60001)
+                os.chown(attente / 'info', 60001, 60001)
+                os.chown(attente / 'info/fiche.txt', 60001, 60001)
                 attente.chmod(0o700)
-                (attente / 'fiche.txt').chmod(0o600)
+                (attente / 'info').chmod(0o700)
+                (attente / 'info/fiche.txt').chmod(0o600)
                 cible = jeu / 'village/j1/garnison/1/general1'
                 gestion.permissions_consultation()
                 gestion.proteger_activites()
@@ -79,7 +82,8 @@ class PermissionsActivites(unittest.TestCase):
                                  (0, 60001, 0o640))
                 self.executer(60001, 'os.rename(sys.argv[2], sys.argv[3])', attente, cible)
                 self.executer(60001, 'pathlib.Path(sys.argv[2]).unlink()', rapport, attendu=1)
-                self.assertEqual((cible / 'fiche.txt').read_text(), 'identité conservée')
+                self.assertEqual((cible / 'info/fiche.txt').read_text(), 'identité conservée')
+                self.executer(60001, 'pathlib.Path(sys.argv[2]).read_text()', cible / 'info/fiche.txt')
 
 
 if __name__ == '__main__':

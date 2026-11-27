@@ -220,7 +220,7 @@ class CycleSurvie(unittest.TestCase):
             resultat = reel(*args, **kwargs)
             compteur += 1
             if compteur == 2:
-                (b / "ordre_surnombre.txt").write_text("1\n", encoding="utf-8")
+                (b / "info/ordre_surnombre.txt").write_text("1\n", encoding="utf-8")
             return resultat
         with patch.object(self.combats, "resoudre_combat_range", side_effect=changer):
             resultat = self.resoudre(False)
@@ -242,7 +242,7 @@ class CycleSurvie(unittest.TestCase):
     def test_controles_sans_mutation_y_compris_sur_anomalie(self):
         allie = self.general(territoire="village")
         (allie / "avant/invalide").mkdir()
-        (allie / "ordre_surnombre.txt").unlink(missing_ok=True)
+        (allie / "info/ordre_surnombre.txt").unlink(missing_ok=True)
         self.etat.sauvegarder_attentes_repli({"j1:general1": 2}, self.profil)
         avant = self.photo()
         self.securite.controler_coherence_territoires(self.profil)

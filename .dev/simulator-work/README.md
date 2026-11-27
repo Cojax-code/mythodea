@@ -24,7 +24,7 @@ bash scripts/run_simulator.sh
 Ouvrir **http://127.0.0.1:8080/simulateur.html** dans le navigateur Windows ou Linux ;
 arrêter avec `Ctrl+C`. Le lanceur utilise `.venv`, ou les dépendances déjà préparées
 dans `.runtime/deps`. Il ne sélectionne pas `.venv-linux`.
-Le moteur est recherché par défaut dans `.runtime/engine-3391613`.
+Le moteur est recherché dans `.runtime/engine-<snapshot abrégé>` selon `backend/engine.lock.json`.
 Si une ancienne variable `MYTHODEA_ENGINE_PATH` est définie, exécuter
 `unset MYTHODEA_ENGINE_PATH` pour revenir à ce chemin.
 
@@ -44,6 +44,11 @@ le dossier préparé à partir de l'identifiant `snapshot`. Après une modificat
 moteur, exécuter `python3 -B scripts/sync_engine.py --source ../..`, puis préparer
 le nouvel instantané et relancer les tests de parité avant publication.
 Une page HTML seule ou un hébergement statique ne suffit pas à lancer le backend.
+
+Les informations des généraux synthétiques sont créées sous `info/`, comme dans
+le moteur. Les nouveaux noms de `fiche.txt` ne changent ni le contrat JSON du
+simulateur ni les clés privées de progression. Le verrou courant reste un
+instantané local non publié.
 
 ## Vérification
 

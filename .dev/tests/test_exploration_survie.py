@@ -75,7 +75,7 @@ class ExplorationSurvie(unittest.TestCase):
     def test_lecture_ne_repare_ni_ne_nettoie_et_rendu_pur(self):
         chemin = self.general(territoire='village', reserve=True, nombre=21)
         (chemin / 'arriere').rmdir()
-        (chemin / 'fiche.txt').unlink()
+        (chemin / 'info/fiche.txt').unlink()
         invalide = chemin / 'avant/objet_invalide'
         invalide.mkdir()
         pique = chemin / 'avant/infanterie22'

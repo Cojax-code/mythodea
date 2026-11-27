@@ -143,7 +143,7 @@ class Modes(unittest.TestCase):
         fonctions = {
             "rapports": ["preparer_rapports", "ecrire_rapport_court", "ecrire_rapport_long", "afficher_fin_de_tour"],
             "plateau": ["reparer_structure", "lancer_bataille_v15"],
-            "generaux": ["faire_apparaitre_general_si_possible"],
+            "generaux": ["faire_apparaitre_general_si_possible", "migrer_infos_generaux"],
             "securite": ["verifier_tous_les_deplacements"],
             "victoire": ["verifier_victoire"],
         }
@@ -162,6 +162,7 @@ class Modes(unittest.TestCase):
         self.entree.main([])
         self.assertEqual(journal.mock_calls, [
             call.preparer_rapports(), call.reparer_structure(),
+            call.migrer_infos_generaux(self.config.configuration_mode('classique')),
             call.faire_apparaitre_general_si_possible("j1"),
             call.faire_apparaitre_general_si_possible("j2"),
             call.verifier_tous_les_deplacements(), call.verifier_victoire(),
@@ -171,7 +172,7 @@ class Modes(unittest.TestCase):
     def test_victoire_classique_conserve_rapports_et_absence_de_bataille(self):
         journal = self.modules_cycle_simules(vainqueur="j2")
         self.entree.main(["--mode", "classique"])
-        self.assertEqual(journal.mock_calls[6:], [
+        self.assertEqual(journal.mock_calls[7:], [
             call.ecrire_rapport_court(""), call.ecrire_rapport_court("VICTOIRE DE j2"),
             call.ecrire_rapport_long("Victoire de j2."), call.afficher_fin_de_tour(),
         ])

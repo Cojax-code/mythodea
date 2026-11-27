@@ -130,7 +130,7 @@ class Village(unittest.TestCase):
         self.audit()
         self.assertEqual(self.generaux.trouver_position_general("j1", "general1", self.profil),
                          ("est_1", renfort))
-        self.assertEqual((renfort / "ordre_surnombre.txt").read_text().strip(), "1")
+        self.assertEqual((renfort / "info/ordre_surnombre.txt").read_text().strip(), "1")
         forces = self.generaux.lire_forces_territoire(self.config.game_path / "est_1", self.profil)
         self.assertEqual(self.generaux.controle_forces(forces), "neutre")
         self.assertTrue(reserve.exists())

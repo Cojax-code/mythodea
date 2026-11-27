@@ -282,7 +282,7 @@ class Etendards(unittest.TestCase):
 
     def test_frontal_et_cascade_surnombre_sans_recharge(self):
         g = self.porteur(niveau=2, nombre=20)
-        (g['chemin'] / 'ordre_surnombre.txt').write_text('2\n')
+        (g['chemin'] / 'info/ordre_surnombre.txt').write_text('2\n')
         self.profil['configurations_terrain'] = {'est_3': {'attaque_frontale': True}}
         for numero in range(1, 6):
             self.general('bot', numero=numero, nombre=1)
@@ -465,7 +465,7 @@ class Etendards(unittest.TestCase):
     def test_declarations_capacite_officielle_doublons_et_faux_royal(self):
         g = self.porteur(nombre=1)
         self.assertEqual(etendards.declaration(g), ('avant', 1))
-        with (g['chemin'] / 'fiche.txt').open('a') as f:
+        with (g['chemin'] / 'info/fiche.txt').open('a') as f:
             f.write('\nniveau_etendard=2\nemplacements_etiquettes_actives=99\n')
         self.assertEqual(etendards.declaration(g), ('avant', 1))
         self.assertEqual(progression.caracteristiques_general(g)['emplacements_etiquettes_actives'], 1)
@@ -508,7 +508,7 @@ class Etendards(unittest.TestCase):
 
     def test_hybride_qg_et_etendard_royal_remplace_normal(self):
         g = self.porteur(nature='hybride')
-        (g['chemin'] / 'QG.txt').touch()
+        (g['chemin'] / 'info/QG.txt').touch()
         territoire = g['chemin'].parents[2]
         with self.combats._contexte_qg_territorial(territoire, self.profil):
             self.assertEqual(etendards.figer(g)['niveau'], 1)

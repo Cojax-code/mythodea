@@ -5,6 +5,8 @@ import os
 import pwd
 import random
 import shutil
+import stat
+import tempfile
 
 import config
 import etat
@@ -15,6 +17,102 @@ import progression
 aleatoire_caracteristiques = random.Random()
 
 
+def chemin_info(chemin_general, nom):
+    """Chemin public, avec lecture des parties antérieures à info/.
+
+    Un doublon est ambigu, même si les deux fichiers paraissent identiques.
+    Aucun choix joueur ne doit être ignoré silencieusement.
+    """
+    ancien = chemin_general / nom
+    nouveau = chemin_general / 'info' / nom
+    if (ancien.exists() or ancien.is_symlink()) and (nouveau.exists() or nouveau.is_symlink()):
+        raise RuntimeError(f'Doublon de migration : {ancien} et {nouveau}')
+    if ancien.exists() or ancien.is_symlink():
+        return ancien
+    info = chemin_general / 'info'
+    return nouveau if info.exists() or info.is_symlink() else ancien
+
+
+def migrer_infos_general(chemin_general, verifier=lambda: None):
+    """Sous gel : déplacements sans écrasement, modes/UID/GID conservés.
+
+    Les blocs ne sont ni parcourus ni modifiés. Une interruption entre deux
+    renommages est reprenable ; une collision exige une décision administrative.
+    """
+    from cycle_linux import sans_liens, synchroniser_dossier
+    verifier()
+    sans_liens(chemin_general)
+    dossier = chemin_general / 'info'
+    sans_liens(dossier)
+    if dossier.exists() and not dossier.is_dir():
+        raise RuntimeError(f'info doit être un dossier : {dossier}')
+    sources = sorted(p for p in chemin_general.iterdir()
+                     if p.name not in (*config.ordre_blocs, 'info'))
+    for source in sources:
+        cible = dossier / source.name
+        if cible.exists() or cible.is_symlink():
+            raise RuntimeError(f'Doublon de migration : {source} et {cible}')
+    # Contrôler avant de déplacer, y compris les dossiers personnels inconnus.
+    for source in [*sources, *([dossier] if dossier.exists() else [])]:
+        sans_liens(source)
+        for p in [source, *source.rglob('*')] if source.is_dir() else [source]:
+            verifier()
+            sans_liens(p)
+            infos = p.lstat()
+            if not (stat.S_ISDIR(infos.st_mode) or
+                    (stat.S_ISREG(infos.st_mode) and infos.st_nlink == 1)):
+                raise RuntimeError(f'Information liée ou non ordinaire : {p}')
+    fiche = chemin_info(chemin_general, 'fiche.txt')
+    texte = fiche.read_text(encoding='utf-8') if fiche.exists() else None
+    renomme = progression.renommer_champs_publics(texte) if texte is not None else None
+    if not dossier.exists():
+        infos = chemin_general.stat()
+        dossier.mkdir(mode=0o700)
+        os.chown(dossier, infos.st_uid, infos.st_gid)
+        os.chmod(dossier, stat.S_IMODE(infos.st_mode))
+    for source in sources:
+        verifier()
+        source.rename(dossier / source.name)
+        synchroniser_dossier(dossier)
+        synchroniser_dossier(chemin_general)
+    if renomme != texte:
+        fiche = dossier / 'fiche.txt'
+        infos = fiche.stat()
+        # Préparer un inode privé puis publier atomiquement la fiche renommée.
+        temporaire = None
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=dossier,
+                                             prefix='.fiche-', delete=False) as sortie:
+                temporaire = dossier / os.path.basename(sortie.name)
+                sortie.write(renomme)
+                sortie.flush()
+                os.fsync(sortie.fileno())
+            os.chown(temporaire, infos.st_uid, infos.st_gid)
+            os.chmod(temporaire, stat.S_IMODE(infos.st_mode))
+            temporaire.replace(fiche)
+            synchroniser_dossier(dossier)
+        finally:
+            if temporaire is not None and temporaire.exists():
+                temporaire.unlink()
+
+
+def migrer_infos_generaux(configuration, verifier=lambda: None):
+    """Toutes les zones, homes et acteurs, y compris les récompenses et bâtiments."""
+    from cycle_linux import sans_liens
+    for joueur in configuration['acteurs']:
+        for zone in zones_generaux(joueur, configuration):
+            verifier()
+            racine = zone['chemin']
+            sans_liens(racine)
+            if not racine.is_dir():
+                continue
+            for chemin in sorted(racine.iterdir()):
+                if numero_general_depuis_nom(chemin.name) is not None:
+                    sans_liens(chemin)
+                    if chemin.is_dir():
+                        migrer_infos_general(chemin, verifier)
+
+
 def creer_general(chemin_general, nom_general):
     nouveau = not chemin_general.exists()
     chemin_general.mkdir(exist_ok=True)
@@ -23,7 +121,8 @@ def creer_general(chemin_general, nom_general):
         bloc_dir = chemin_general / bloc
         bloc_dir.mkdir(exist_ok=True)
 
-    fiche = chemin_general / "fiche.txt"
+    migrer_infos_general(chemin_general)
+    fiche = chemin_general / 'info' / 'fiche.txt'
 
     if not fiche.exists():
         fiche.write_text(f"nom={nom_general}\n", encoding="utf-8")
@@ -141,7 +240,7 @@ def est_general_valide(chemin_general):
             return False
 
     # La fiche est importante pour les futures statistiques.
-    if not (chemin_general / "fiche.txt").is_file():
+    if not chemin_info(chemin_general, 'fiche.txt').is_file():
         return False
 
 
@@ -153,13 +252,14 @@ def lire_fiche_general(chemin_general):
     # Les anciennes clés restent lisibles, sans intervenir dans la progression.
     # Les caractéristiques officielles viennent de progression.json.
 
-    fiche_path = chemin_general / "fiche.txt"
+    fiche_path = chemin_info(chemin_general, 'fiche.txt')
     fiche = {}
 
     if not fiche_path.exists():
         return fiche
 
-    lignes = fiche_path.read_text(encoding="utf-8").splitlines()
+    lignes = progression.renommer_champs_publics(
+        fiche_path.read_text(encoding="utf-8")).splitlines()
 
     for ligne in lignes:
         if "=" not in ligne:
@@ -175,7 +275,7 @@ def assurer_ordre_surnombre(chemin_general, joueur, position, configuration):
     """Crée seulement le fichier manquant, selon la position au moment du scan."""
     if configuration["mode"] != "survie" or joueur not in configuration["joueurs"]:
         return None
-    chemin = chemin_general / "ordre_surnombre.txt"
+    chemin = chemin_info(chemin_general, 'ordre_surnombre.txt')
     if not chemin.exists():
         valeur = 2 if position in configuration["villages"] else 1
         chemin.write_text(f"{valeur}\n", encoding="utf-8")

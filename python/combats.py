@@ -186,7 +186,7 @@ def _contexte_commandement_territorial(territoire, configuration):
             # une seule désignation lorsqu'elles concernent le même général.
             # Contrôler systématiquement LES DEUX graphies : un fichier régulier
             # ne doit jamais masquer un second chemin invalide (lien, dossier...).
-            fichiers = tuple(_fichier_qg_valide(general['chemin'] / nom)
+            fichiers = tuple(_fichier_qg_valide(generaux.chemin_info(general['chemin'], nom))
                             for nom in ('QG.txt', 'qg.txt'))
             if any(fichiers):
                 fiche = progression.caracteristiques_general(general)

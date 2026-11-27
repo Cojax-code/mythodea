@@ -6,6 +6,7 @@ import stat
 import catalogues
 import progression
 import soldats
+from generaux import chemin_info
 
 
 EMPLACEMENTS = ('001', '002', '003')
@@ -296,7 +297,7 @@ def publier_manuel(repertoire, camp, gid):
 
 def preparer_demandes(general):
     for nom in ('ecrire_ses_memoires.txt', 'lire_les_memoires.txt'):
-        chemin = general['chemin'] / nom
+        chemin = chemin_info(general['chemin'], nom)
         if not chemin.exists():
             soldats.ecrire_copie(chemin, '')
 
@@ -350,11 +351,11 @@ def alertes_actions(configuration, tour):
             if general['lieu'] == 'forge':
                 verifier_acces_forge(progression.charger().get(f"{general['joueur']}:{general['nom']}"))
                 continue
-            lecture = lire_demande(configuration, general['chemin'] / 'lire_les_memoires.txt')
+            lecture = lire_demande(configuration, chemin_info(general['chemin'], 'lire_les_memoires.txt'))
             if lecture.strip():
                 demande_lecture(lecture)
             else:
-                ecriture = lire_demande(configuration, general['chemin'] / 'ecrire_ses_memoires.txt')
+                ecriture = lire_demande(configuration, chemin_info(general['chemin'], 'ecrire_ses_memoires.txt'))
                 if ecriture.strip():
                     _, evolution = demande_ecriture(ecriture)
                     fiche = progression.charger().get(f"{general['joueur']}:{general['nom']}")
@@ -597,7 +598,7 @@ def ouvrir_tour(configuration, tour):
         try:
             textes = {}
             for nom in ('lire_les_memoires.txt', 'ecrire_ses_memoires.txt'):
-                chemin = general['chemin'] / nom
+                chemin = chemin_info(general['chemin'], nom)
                 sans_liens(chemin)
                 infos = chemin.stat()
                 if not stat.S_ISREG(infos.st_mode) or infos.st_nlink != 1:

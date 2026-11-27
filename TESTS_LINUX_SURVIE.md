@@ -1,5 +1,38 @@
 # Validation et exploitation Linux du cycle Survie
 
+## Vérification du dossier info après mise à jour
+
+Sur un plateau de test Raspberry Pi, vérifier les deux joueurs en SSH :
+
+1. Nouvelle partie : bienvenue conservée, sans annonce de préparation du rapport
+   d'exploration ni de gel temporaire avant elle. Les deux annonces de gel doivent
+   toujours précéder capture et publication d'une résolution normale.
+2. `ls -la /home/j1/general1` : quatre blocs et `info/`, aucun autre élément.
+   Lire `info/fiche.txt` : `debloque` et `apprentissage_niveau_suivant` remplacent
+   les anciens noms. Un Stratège ayant 13 PC doit conserver ses 13 PC.
+3. Comparer `stat -c '%U:%G %a %n'` avant/après sur une ancienne partie : les
+   informations sont déplacées sans modifier propriétaires et modes ; `info/`
+   reprend les droits du général. Les droits restent ceux d'ACTIONS/CONSULTATION.
+4. Depuis le compte propriétaire, modifier les choix dans `info/`, fabriquer une
+   unité dans un bloc et déplacer le général. Vérifier le refus d'accès de l'autre
+   compte. Tester QG, étiquettes, surnombre, mémoires, caserne, Forge et Hôpital.
+5. Capturer et publier une ancienne partie contenant aussi des notes personnelles.
+   Vérifier ces notes et la progression après publication puis après récupération
+   d'une interruption contrôlée. Une collision racine/`info/` ou des champs
+   contradictoires doivent arrêter le cycle sans écrasement. Conserver les deux
+   versions et résoudre explicitement le conflit avant reprise administrative.
+
+Les tests de droits sans création de comptes sont exécutables séparément :
+
+```bash
+sudo python3 -B -m unittest discover -s python/tests_linux -p '*isole*.py' -v
+```
+
+Ils utilisent des UID numériques dans des processus enfants et uniquement des
+dossiers temporaires. Ils ne valident pas le gel systemd ni le relais SSH du Pi.
+
+## Suites existantes
+
 La suite ordinaire simule les droits. `python/tests_linux/test_permissions_reelles.py`
 éprouve réellement les UID/GID, droits Unix, inodes, cgroup v2 et la récupération.
 Les tests automatiques s'exécutent dans `/tmp`, jamais sur une partie `/game`.
@@ -238,9 +271,9 @@ processus longs, utiliser les véritables sessions SSH confinées des joueurs.
 ls -ld /game/village /game/est_{1,2,3} /game/repli
 sudo ls -ld /game/village/j{1,2}/{garnison,caserne_militaire,hotel_de_ville}
 sudo ls -ld /game/est_1/j{1,2}/renforts/{5,20} /game/repli/j{1,2}
-sudo stat -c '%U:%G %a %n' /home/j{1,2}/general1 /home/j{1,2}/general1/ordre.txt
-sudo -u j1 sh -c 'test -w /home/j1/general1/ordre.txt && printf "1-2\n" > /home/j1/general1/ordre.txt'
-sudo -u j2 sh -c 'test -w /home/j2/general1/ordre.txt && printf "1-2\n" > /home/j2/general1/ordre.txt'
+sudo stat -c '%U:%G %a %n' /home/j{1,2}/general1 /home/j{1,2}/general1/info/ordre.txt
+sudo -u j1 sh -c 'test -w /home/j1/general1/info/ordre.txt && printf "1-2\n" > /home/j1/general1/info/ordre.txt'
+sudo -u j2 sh -c 'test -w /home/j2/general1/info/ordre.txt && printf "1-2\n" > /home/j2/general1/info/ordre.txt'
 sudo -u j1 touch /game/village/j1/caserne_militaire/.sonde
 sudo -u j1 rm /game/village/j1/caserne_militaire/.sonde
 sudo -u j2 touch /game/est_1/j2/renforts/5/.sonde
@@ -250,7 +283,7 @@ sudo -u j2 rm /game/est_1/j2/renforts/5/.sonde
 Les sondes suivantes doivent être **refusées**, même en ACTIONS :
 
 ```bash
-sudo -u j1 cat /home/j2/general1/ordre.txt
+sudo -u j1 cat /home/j2/general1/info/ordre.txt
 sudo -u j1 touch /game/village/j2/caserne_militaire/.interdit
 sudo -u j2 touch /game/est_3/bot/.interdit
 sudo -u j1 ls /game/.systeme
@@ -311,8 +344,8 @@ Après le second gel de publication, dans chaque session joueur :
 ```bash
 cd ~
 cat /game/village/clocher/etat_tour.txt
-ls -l general1/ordre.txt
-test -w general1/ordre.txt
+ls -l general1/info/ordre.txt
+test -w general1/info/ordre.txt
 grep 'contrôle final' /game/rapport/rapport_court.txt
 ```
 

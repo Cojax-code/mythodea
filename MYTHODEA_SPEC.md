@@ -337,8 +337,32 @@ general1/
 ├── droite/
 ├── gauche/
 ├── arriere/
-└── fiche.txt
+└── info/
+    └── fiche.txt
 ```
+
+Tous les fichiers et dossiers personnels du général sont dans `info/`, y compris
+les choix d'étiquettes, QG, surnombre et demandes de mémoires. Seuls les quatre
+blocs militaires restent à la racine ; leurs unités et étendards sont inchangés.
+`info/` appartient au même propriétaire et groupe que le général, avec les mêmes
+droits de dossier (normalement `700` pendant ACTIONS). Les fichiers déplacés
+conservent leurs UID, GID et modes ; les phases conservent leur politique de droits.
+
+Les anciennes structures restent lisibles via `generaux.chemin_info()`. La migration
+commune déplace aussi les fichiers cachés et les dossiers personnels inconnus,
+sans fusion ni écrasement. Elle intervient sous le gel de préparation ou de capture
+Survie, avant les relevés métier, et au début d'un tour classique. Une reprise
+ACTIONS déjà préparée attend la prochaine capture ; les anciennes générations
+achevées restent republiables sans migration ni rejeu métier.
+Un doublon racine/`info/`, un `info` non dossier, un lien symbolique, un lien physique
+ou un objet spécial dans les informations bloque la migration pour intervention
+administrative. Les blocs ne sont pas migrés et conservent leurs contrôles existants.
+Une interruption entre deux déplacements se reprend sans perte ; la fiche renommée
+est remplacée atomiquement. Les contenus contradictoires des anciens et nouveaux
+champs de fiche sont refusés. Ne pas fusionner automatiquement deux versions.
+Les commandes et outils externes doivent utiliser les nouveaux chemins. Un ancien
+moteur attendant `generalN/fiche.txt` ne peut pas relire la structure migrée : un
+retour à cette version nécessite de restaurer une sauvegarde antérieure cohérente.
 
 Limites actuelles :
 
@@ -422,8 +446,15 @@ et un compteur distinct `.systeme/compteur_general_bot.txt`. Il n'est pas soumis
 
 La fiche contient `nom` et les caractéristiques actuelles de la section 22 :
 `nature`, `orientation_principale`, `trait_inne`, `niveau`, `points_commandement`,
-`moral`, `progression_combat`, `progression_formation`, `evolutions_acquises`,
-`evolution_apprise` et `etiquettes`.
+`moral`, `progression_combat`, `progression_formation`, `debloque`,
+`apprentissage_niveau_suivant` et `etiquettes`, dans `info/fiche.txt`.
+
+`debloque` désigne les évolutions acquises ; `apprentissage_niveau_suivant` désigne
+l'évolution mémorisée qui remplace la prochaine récompense classique applicable.
+Le registre privé et les API Python gardent les clés `evolutions_acquises` et
+`evolution_apprise` : les anciennes sauvegardes n'exigent aucun recalcul ni tirage.
+Seule la représentation publique est renommée. Les identifiants et effets restent
+inchangés, et aucune valeur publique n'est importée dans le registre officiel.
 
 Les champs historiques `orientation`, `strategie`, `force`, `experience` et
 `etiquettes_permanentes` ne sont plus générés. Les anciennes fiches restent
@@ -1539,9 +1570,9 @@ La création utilise `stratege` (45 %), `instinctif` (45 %) et `hybride` (10 %),
 sans dominante. Nature et trait inné sont persistants. Les nouveaux profils commencent au niveau 0, sans PC, moral,
 étiquette ni évolution initiale ; les profils historiques restent conservés.
 Les champs `niveau`, `nature`, `emplacements_etiquettes_actives`, `niveau_etendard`,
-`trait_inne`, `points_commandement`, `moral`, `evolutions_acquises`,
-`evolution_apprise`, `progression_combat`, `progression_formation` et `etiquettes`
-sont visibles dans `fiche.txt`. Le profil privé
+`trait_inne`, `points_commandement`, `moral`, `debloque`,
+`apprentissage_niveau_suivant`, `progression_combat`, `progression_formation` et `etiquettes`
+sont visibles dans `info/fiche.txt`. Le profil privé
 `.systeme/progression.json`, indexé par `joueur:generalN`, fait autorité :
 modifier la fiche du joueur ne change pas les statistiques officielles.
 La liste privée `etiquettes_apprises_ecole` compte les nouvelles acquisitions
@@ -1575,7 +1606,7 @@ Un tour classique interrompu n'a pas de reprise automatique.
 
 ### Étiquettes actives, commandement et QG
 
-Les rangs appris restent dans `progression.json`. `etiquettes_actives.txt`, dans
+Les rangs appris restent dans `progression.json`. `info/etiquettes_actives.txt`, dans
 le dossier du général, contient uniquement les noms exacts sélectionnés, séparés
 par lignes ou virgules. Un fichier vide désactive tout ; son absence active les
 étiquettes connues dans la limite applicable. Doublons, noms non appris et
@@ -1588,7 +1619,7 @@ son premier engagement ; une lecture de capacité ne le fige pas. La sortie,
 même sur exception, restaure le contexte précédent. La bataille suivante relit
 les choix. L'instantané est transitoire et n'introduit aucun format persistant.
 
-`QG.txt` ou `qg.txt` désigne un Stratège ou Hybride non zombie comme QG ; une nature incompatible est refusée. Plusieurs QG du
+`info/QG.txt` ou `info/qg.txt` désigne un Stratège ou Hybride non zombie comme QG ; une nature incompatible est refusée. Plusieurs QG du
 même camp annulent son soutien. Les PC globaux et les effets des seules étiquettes
 actives sont figés depuis les participants initiaux. Un Messager occupe cinq
 places, ne combat pas, et ajoute une seule fois `somme(PC des autres alliés) // 10`
@@ -1720,8 +1751,8 @@ Après l'audit de la génération privée, les soins valides remettent les bless
 de tous les généraux présents sont traitées. Une validation consommée ne peut
 soigner une nouvelle blessure.
 
-Les demandes personnelles sont `ecrire_ses_memoires.txt` (`e 001 201`) et
-`lire_les_memoires.txt` (`a 001 201`). Les actions acceptent les majuscules. La
+Les demandes personnelles sont `info/ecrire_ses_memoires.txt` (`e 001 201`) et
+`info/lire_les_memoires.txt` (`a 001 201`). Les actions acceptent les majuscules. La
 syntaxe historique `001 201` pour écrire et `001` pour lire reste acceptée.
 Une lecture non vide prime sur l'écriture, même si cette lecture est invalide.
 L'écriture d'une évolution nécessite son acquisition et remplace l'emplacement

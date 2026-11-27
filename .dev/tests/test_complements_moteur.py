@@ -206,7 +206,7 @@ class ComplementsMoteur(unittest.TestCase):
         self.formation.preparer_emplacements(self.profil)
         self.assertEqual(general['chemin'].stat().st_ino, inode)
         self.assertFalse(ancien.parent.exists())
-        self.assertTrue((general['chemin'] / 'fiche.txt').exists())
+        self.assertTrue((general['chemin'] / 'info/fiche.txt').exists())
 
     def test_migration_documents_restants_ne_reinitialisent_pas_sejour(self):
         general = self.creer(territoire='village', place='hopital/1')
@@ -270,8 +270,8 @@ class ComplementsMoteur(unittest.TestCase):
         self.formation.sauvegarder(donnees)
         self.formation.preparer(self.profil)
         for general in eleves:
-            (general['chemin'] / 'lire_les_memoires.txt').write_text('A 001 110')
-        (professeur['chemin'] / 'ecrire_ses_memoires.txt').write_text('E 001 202')
+            (general['chemin'] / 'info/lire_les_memoires.txt').write_text('A 001 110')
+        (professeur['chemin'] / 'info/ecrire_ses_memoires.txt').write_text('E 001 202')
         self.formation.ouvrir_tour(self.profil, 1)
         self.terminer()
         self.assertEqual(self.formation.charger()['manuels']['allies']['001'], 202)

@@ -137,11 +137,11 @@ class IntegrationFinale(unittest.TestCase):
         with self.contexte():
             self.assertEqual(self.combats._effets_transmis(b), {})
         for nom in ('QG.txt', 'qg.txt'):
-            (a['chemin'] / nom).touch()
+            (a['chemin'] / 'info' / nom).touch()
         with self.contexte():
             self.assertEqual(self.combats._effets_transmis(a), {})
             self.assertEqual(self.combats._effets_transmis(b)[('valeur', 'infanterie')], 10)
-        (b['chemin'] / 'qg.txt').touch()
+        (b['chemin'] / 'info/qg.txt').touch()
         with self.contexte():
             self.assertEqual(self.combats._effets_transmis(b), {})
             self.assertEqual(self.combats._effets_transmis(a), {})
@@ -152,7 +152,7 @@ class IntegrationFinale(unittest.TestCase):
         self.speciale(a, 'messager_du_QG', bloc='arriere')
         self.speciale(b, 'messager_du_QG', bloc='arriere')
         self.assertEqual(self.unites.occupation({'avant': {'messager_du_QG': 2}}), 10)
-        (a['chemin'] / 'QG.txt').touch()
+        (a['chemin'] / 'info/QG.txt').touch()
         with self.contexte():
             self.assertEqual(self.combats._effets_transmis(b)[('valeur', 'infanterie')], Fraction(29, 2))
             self.assertEqual(self.combats._effets_transmis(a), {})
@@ -166,7 +166,7 @@ class IntegrationFinale(unittest.TestCase):
         qg = self.combattant(numero=2, place='2', pc=200, etiquettes={'infanterie': 1})
         a = self.combattant(nombre=10)
         b = self.combattant('bot', nombre=10)
-        (qg['chemin'] / 'QG.txt').touch()
+        (qg['chemin'] / 'info/QG.txt').touch()
         armee = {g['joueur']: self.generaux.lire_blocs_general(g['chemin']) for g in (a, b)}
         with self.contexte(), patch.object(self.combats, 'supprimer_unites', return_value=[]), \
                 patch.object(self.unites, 'apres_confrontation'):
@@ -193,7 +193,7 @@ class IntegrationFinale(unittest.TestCase):
         profils = self.progression.charger()
         del profils['j1:general1']
         self.progression.sauvegarder(profils)
-        (qg['chemin'] / 'QG.txt').touch()
+        (qg['chemin'] / 'info/QG.txt').touch()
         with self.contexte():
             jeton = self.combats._DUEL_IDENTITES.set((a, b))
             try:
@@ -207,12 +207,12 @@ class IntegrationFinale(unittest.TestCase):
         b = self.combattant('j2', place='2')
         ennemi = self.combattant('bot', etiquettes={'cruelle': 1})
         for g in (a, ennemi):
-            (g['chemin'] / 'QG.txt').touch()
+            (g['chemin'] / 'info/QG.txt').touch()
         with self.contexte():
             self.combats.supprimer_unites(self.infos(a), 0)
             self.generaux.supprimer_general_si_vide(a)
             self.combats._desactiver_qg_detruit(a)
-            (b['chemin'] / 'QG.txt').touch()
+            (b['chemin'] / 'info/QG.txt').touch()
             with self.contexte():
                 self.assertEqual(self.combats._effets_transmis(b), {})
                 self.assertEqual(self.combats._effets_transmis(ennemi, ennemi=True), {})
@@ -220,11 +220,11 @@ class IntegrationFinale(unittest.TestCase):
 
     def test_liens_qg_refuses_meme_si_autre_graphie_valide(self):
         a = self.combattant()
-        (a['chemin'] / 'QG.txt').touch()
+        (a['chemin'] / 'info/QG.txt').touch()
         cible = self.racine / 'cible_qg'
         cible.touch()
         for physique in (False, True):
-            lien = a['chemin'] / 'qg.txt'
+            lien = a['chemin'] / 'info/qg.txt'
             if physique:
                 os.link(cible, lien)
             else:
@@ -264,8 +264,8 @@ class IntegrationFinale(unittest.TestCase):
         donnees['manuels']['allies'] = {'001': 105, '002': None, '003': None}
         self.formation.sauvegarder(donnees)
         self.formation.preparer(self.profil)
-        (g['chemin'] / 'ecrire_ses_memoires.txt').write_bytes(b'\xff')
-        (g['chemin'] / 'lire_les_memoires.txt').write_text('a 001 105')
+        (g['chemin'] / 'info/ecrire_ses_memoires.txt').write_bytes(b'\xff')
+        (g['chemin'] / 'info/lire_les_memoires.txt').write_text('a 001 105')
         self.formation.ouvrir_tour(self.profil, 1)
         self.formation.clore_tour(self.profil, 1)
         self.formation.resoudre_tour(self.profil, 1)
@@ -275,7 +275,7 @@ class IntegrationFinale(unittest.TestCase):
         g = self.creer(territoire='village', place='ecole_officiers/1')
         for tour, texte in enumerate((b'\xff', b'a 004 105', b'a 001 inconnu', b'a 001 ' + b'9' * 5000), 1):
             self.formation.preparer(self.profil)
-            (g['chemin'] / 'lire_les_memoires.txt').write_bytes(texte)
+            (g['chemin'] / 'info/lire_les_memoires.txt').write_bytes(texte)
             avant = self.progression.caracteristiques_general(g)
             self.formation.ouvrir_tour(self.profil, tour)
             self.formation.clore_tour(self.profil, tour)
@@ -286,7 +286,7 @@ class IntegrationFinale(unittest.TestCase):
         qg = self.combattant(numero=2, place='2', pc=60, etiquettes={'infanterie': 1})
         allie = self.combattant(pc=20, etiquettes={'infanterie': 1}, nombre=10)
         ennemi = self.combattant('bot', nombre=10)
-        (qg['chemin'] / 'QG.txt').touch()
+        (qg['chemin'] / 'info/QG.txt').touch()
         with self.contexte():
             bonus = self.combats._bonus_valeur_duel(self.progression.caracteristiques_general(allie),
                                                   'archer', 0, allie)
@@ -300,7 +300,7 @@ class IntegrationFinale(unittest.TestCase):
         allie = self.combattant('j2', place='2', pc=100, nombre=10)
         ennemi = self.combattant('bot', nombre=10)
         self.speciale(allie, 'messager_du_QG')
-        (qg['chemin'] / 'QG.txt').touch()
+        (qg['chemin'] / 'info/QG.txt').touch()
         with self.contexte():
             self.assertEqual(self.combats._malus_chaman_duel(
                 self.progression.caracteristiques_general(qg), 'orc_archer', 0, ennemi, qg), 10)
@@ -331,7 +331,7 @@ class IntegrationFinale(unittest.TestCase):
                     unite = ennemi['chemin'] / 'avant/infanterie1'
                     for unite in list(unite.parent.iterdir()):
                         unite.rename(ennemi['chemin'] / 'arriere' / unite.name)
-                (qg['chemin'] / 'QG.txt').touch()
+                (qg['chemin'] / 'info/QG.txt').touch()
                 with self.contexte():
                     self.combats.combat_entre_generaux(qg, ennemi)
                     self.assertFalse(qg['chemin'].exists())
@@ -347,11 +347,11 @@ class IntegrationFinale(unittest.TestCase):
 
     def test_cascade_un_seul_instantane_et_renfort_ulterieur_sans_releve(self):
         qg = self.combattant(pc=20, etiquettes={'infanterie': 1}, nombre=20, ordre=2)
-        (qg['chemin'] / 'QG.txt').touch()
+        (qg['chemin'] / 'info/QG.txt').touch()
         for numero in range(1, 6):
             bot = self.combattant('bot', numero=numero, nombre=1, equipement='pique')
             if numero == 5:
-                (bot['chemin'] / 'QG.txt').touch()
+                (bot['chemin'] / 'info/QG.txt').touch()
         with patch.object(commandement, 'instantane_qg_territorial',
                           wraps=commandement.instantane_qg_territorial) as calcul:
             resultat = self.survie.resoudre_cascade(self.config.game_path / 'est_3', self.profil)
@@ -365,7 +365,7 @@ class IntegrationFinale(unittest.TestCase):
         self.speciale(allie, 'messager_du_QG')
         for numero in range(1, 6):
             ennemi = self.combattant('bot', numero=numero, pc=900, nombre=1)
-        (qg['chemin'] / 'QG.txt').touch()
+        (qg['chemin'] / 'info/QG.txt').touch()
         with self.contexte():
             forces = self.generaux.lire_forces_territoire(self.config.game_path / 'est_3', self.profil)
             premier = forces['bot']['1']

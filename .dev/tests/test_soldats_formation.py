@@ -76,7 +76,7 @@ class SoldatsFormation(unittest.TestCase):
 
     def test_fiche_morale_modifiee_ne_change_pas_moral_officiel(self):
         general = self.creer(nature='stratege')
-        with (general['chemin'] / 'fiche.txt').open('a') as f:
+        with (general['chemin'] / 'info/fiche.txt').open('a') as f:
             f.write('\nnature=instinctif\nmoral=100\n')
         self.assertEqual(len(self.combats.supprimer_unites(self.infos(general), 0, general)), 1)
 
@@ -196,7 +196,7 @@ class SoldatsFormation(unittest.TestCase):
     def test_diagnostic_ordre_ne_publie_pas_contenu_prive(self):
         general = self.creer()
         secret = 'SECRET_personnel-ne-pas-publier'
-        (general['chemin'] / 'ordre.txt').write_text(secret + '\n1-2\n999-999\n')
+        (general['chemin'] / 'info/ordre.txt').write_text(secret + '\n1-2\n999-999\n')
         with patch.object(self.generaux.rapports, 'afficher_et_ecrire') as rapport:
             forces = self.generaux.lire_generaux_territoire(self.config.game_path / 'est_3', self.profil)
         self.assertNotIn('ordres', forces['j1']['1'])
@@ -215,11 +215,11 @@ class SoldatsFormation(unittest.TestCase):
         donnees['manuels']['allies'] = {'001': 202, '002': None, '003': None}
         self.formation.sauvegarder(donnees)
         self.formation.preparer(self.profil)
-        (professeur['chemin'] / 'ecrire_ses_memoires.txt').write_text('E 001 201')
-        (eleve['chemin'] / 'lire_les_memoires.txt').write_text('A 001 202')
+        (professeur['chemin'] / 'info/ecrire_ses_memoires.txt').write_text('E 001 201')
+        (eleve['chemin'] / 'info/lire_les_memoires.txt').write_text('A 001 202')
         self.formation.ouvrir_tour(self.profil, 1)
         # Une réécriture pendant ACTIONS ne remplace pas la demande enregistrée.
-        (eleve['chemin'] / 'lire_les_memoires.txt').write_text('a 003 201')
+        (eleve['chemin'] / 'info/lire_les_memoires.txt').write_text('a 003 201')
         gestion = self.cycle_linux.Generations(self.profil, GelSimule())
         gestion.preparer()
         with patch.object(self.survie, 'creer_vague_est', return_value=[]):
@@ -313,7 +313,7 @@ class SoldatsFormation(unittest.TestCase):
             profils[f'j1:general{numero}']['evolutions_acquises'] = [201]
             self.progression.sauvegarder(profils)
             self.formation.preparer_demandes(general)
-            (general['chemin'] / 'ecrire_ses_memoires.txt').write_text('e 001 201')
+            (general['chemin'] / 'info/ecrire_ses_memoires.txt').write_text('e 001 201')
         self.formation.ouvrir_tour(self.profil, 1)
         self.formation.clore_tour(self.profil, 1)
         self.formation.resoudre_tour(self.profil, 1)
@@ -328,7 +328,7 @@ class SoldatsFormation(unittest.TestCase):
             profils[f'j1:general{numero}']['evolutions_acquises'] = [201]
             self.progression.sauvegarder(profils)
             self.formation.preparer_demandes(general)
-            (general['chemin'] / 'ecrire_ses_memoires.txt').write_text('e 001 201')
+            (general['chemin'] / 'info/ecrire_ses_memoires.txt').write_text('e 001 201')
         self.formation.ouvrir_tour(self.profil, 1)
         general['chemin'].rename(self.config.game_path / 'village/j1/caserne_militaire/general2')
         self.formation.clore_tour(self.profil, 1)

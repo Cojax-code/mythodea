@@ -19,7 +19,8 @@ class SelectionEtProgression(unittest.TestCase):
         temporaire = tempfile.TemporaryDirectory(prefix='mythodea-selection-')
         self.addCleanup(temporaire.cleanup)
         self.chemin = Path(temporaire.name)
-        self.selection = self.chemin / 'etiquettes_actives.txt'
+        (self.chemin / 'info').mkdir()
+        self.selection = self.chemin / 'info/etiquettes_actives.txt'
 
     def test_syntaxe_absence_vide_et_connaissances_inchangees(self):
         fiche = self.fiche(niveau=10, emplacements_etiquettes_actives=3,
@@ -198,7 +199,7 @@ class BataillesEtSelections(unittest.TestCase):
     contexte = support.IntegrationFinale.contexte
 
     def choisir(self, general, texte):
-        (general['chemin'] / 'etiquettes_actives.txt').write_text(texte, encoding='utf-8')
+        (general['chemin'] / 'info/etiquettes_actives.txt').write_text(texte, encoding='utf-8')
 
     def actives(self, general):
         return self.progression.caracteristiques_general(general)['etiquettes_actives']
@@ -222,7 +223,7 @@ class BataillesEtSelections(unittest.TestCase):
 
     def test_fiche_publique_ne_permet_pas_apprentissage(self):
         g = self.combattant(etiquettes={'infanterie': 1})
-        with (g['chemin'] / 'fiche.txt').open('a', encoding='utf-8') as fiche:
+        with (g['chemin'] / 'info/fiche.txt').open('a', encoding='utf-8') as fiche:
             fiche.write("\netiquettes={'distance': 99}\npoints_commandement=99999\n")
         self.choisir(g, 'distance')
         with self.assertRaises(ValueError):
@@ -248,7 +249,7 @@ class BataillesEtSelections(unittest.TestCase):
 
     def test_renfort_premier_engagement_pas_inventaire(self):
         qg = self.combattant(etiquettes={'infanterie': 1})
-        (qg['chemin'] / 'QG.txt').touch()
+        (qg['chemin'] / 'info/QG.txt').touch()
         renfort = self.combattant('j2', place='5', pc=900, etiquettes={'distance': 1, 'infanterie': 1})
         self.choisir(renfort, 'distance')
         with self.contexte():
@@ -270,7 +271,7 @@ class BataillesEtSelections(unittest.TestCase):
         allie = self.combattant('j2', place='2', pc=100)
         ennemi = self.combattant('bot')
         self.speciale(allie, 'messager_du_QG')
-        (qg['chemin'] / 'QG.txt').touch()
+        (qg['chemin'] / 'info/QG.txt').touch()
         self.choisir(qg, 'infanterie')
         with self.contexte():
             self.choisir(qg, 'cruelle,chaman')
@@ -286,7 +287,7 @@ class BataillesEtSelections(unittest.TestCase):
 
     def test_home_reserve_batiment_et_renfort_exclus_de_instantane(self):
         qg = self.combattant(etiquettes={'infanterie': 1})
-        (qg['chemin'] / 'QG.txt').touch()
+        (qg['chemin'] / 'info/QG.txt').touch()
         self.speciale(qg, 'messager_du_QG')
         for numero, position in enumerate((dict(territoire='home'), dict(territoire='village', reserve=True),
                                           dict(territoire='village', place='ecole_officiers/1'),
@@ -295,8 +296,8 @@ class BataillesEtSelections(unittest.TestCase):
             profils = self.progression.charger()
             profils[f'j1:general{numero}'].update(points_commandement=1000)
             self.progression.sauvegarder(profils)
-            (chemin / 'QG.txt').touch()
-            (chemin / 'etiquettes_actives.txt').write_text('invalide', encoding='utf-8')
+            (chemin / 'info/QG.txt').touch()
+            (chemin / 'info/etiquettes_actives.txt').write_text('invalide', encoding='utf-8')
         with self.contexte():
             instantane = self.combats._EFFETS_TERRITOIRE.get()['instantanes']['allies']
             self.assertEqual((instantane['pc_global'], instantane['bonus_messager']), (20, 0))
