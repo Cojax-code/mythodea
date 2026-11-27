@@ -2,6 +2,7 @@
 import argparse
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
+from browser_helpers import initialize, choose, level as set_level, reward, advance
 
 
 def open_panel(page, identifier):
@@ -34,6 +35,7 @@ def main(url, channel):
         page.on('pageerror', lambda error: errors.append(str(error)))
         page.goto(url)
         expect(page.locator('#simulation-form')).to_be_visible()
+        initialize(page)
         expect(page.locator('#classic-order')).to_have_count(0)
         expect(page.locator('#terrain')).to_have_count(0)
         expect(page.locator('.simulator')).to_have_attribute('data-layout', 'horizontal')
@@ -44,10 +46,11 @@ def main(url, channel):
         expect(page.locator('#A-avant-count')).to_have_value('19')
         page.locator('#layout-button').click()
         page.locator('#A-avant-count').fill('20')
-        page.locator('#A-general-1-level').fill('10')
+        set_level(page, 10)
+        reward(page, 1, 'etiquette', 'infanterie')
+        advance(page)
         page.locator('#A-general-1-pc').fill('40')
         page.locator('#A-general-1-pc').fill('20')
-        page.locator('#generals-A .sim-labels > summary').click()
         page.locator('#A-general-1-label-infanterie-active').check()
         page.locator('#A-general-1-label-infanterie').fill('2')
         page.locator('#A-general-1-label-infanterie-active').check()
@@ -73,7 +76,10 @@ def main(url, channel):
         expect(page.locator('#add-A')).to_be_disabled()
         page.locator('#run-button').click()
         expect(page.locator('#validation')).to_be_visible()
-        for i in (2, 3, 4): page.locator(f'#A-{i}-avant-count').fill('10')
+        for i in (2, 3, 4):
+            choose(page, 'stratege', index=i)
+            advance(page, index=i)
+            page.locator(f'#A-{i}-avant-count').fill('10')
         page.locator('#A-general-1-position').select_option('4')
         expect(page.locator('#A-general-4-position')).to_have_value('1')
         expect(page.locator('#A-general-1-pc')).to_have_value('20')
@@ -87,9 +93,15 @@ def main(url, channel):
         expect(page.locator('#generals-A .sim-general')).to_have_count(3)
         # Génération réutilisable à deux niveaux, réponse du vrai moteur.
         for level in (5, 10):
-            page.locator('#A-general-1-level').fill(str(level))
-            with page.expect_response('**/api/simulator/generate') as response:
-                page.locator('#A-general-1-generate').click()
+            set_level(page, level)
+            try:
+                with page.expect_response('**/api/simulator/generate') as response:
+                    page.locator('#A-general-1-generate').click()
+            except Exception:
+                print('Generation:', page.locator('#A-general-1-generation-status').inner_text())
+                print('JavaScript:', errors)
+                print('Invalid:', page.locator(':invalid').evaluate_all('es => es.map(e => [e.id,e.value,e.validationMessage])'))
+                raise
             assert response.value.status == 200, response.value.text()
             generated = response.value.json()['profile']
             expect(page.locator('#A-general-1-level')).to_have_value(str(level))
@@ -109,8 +121,9 @@ def main(url, channel):
         mobile.on('pageerror', lambda error: errors.append(str(error)))
         mobile.goto(url)
         expect(mobile.locator('#simulation-form')).to_be_visible()
+        initialize(mobile)
         expect(mobile.locator('.simulator')).to_have_attribute('data-layout', 'vertical')
-        mobile.locator('#generals-A .sim-labels > summary').tap()
+        expect(mobile.locator('#generals-A .sim-labels')).to_be_hidden()
         assert mobile.evaluate('document.documentElement.scrollWidth <= innerWidth')
         result = run(mobile)
         mobile.locator('.sim-journal > summary').tap()

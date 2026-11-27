@@ -35,6 +35,6 @@ NOTE : Cette commande est exécutée depuis le PC du joueur, pas depuis le Raspb
 
 La Crypte est composée de trois espaces. Le grimoire contient les recettes, l'atelier est le lieu où le rituel est exécuté, et recompense reçoit le général bonus après une réussite et la publication du tour.
 
-Vous pouvez télécharger un PDF depuis votre PC avec scp. Pour consulter rapidement son contenu depuis Linux lorsqu'un outil de lecture texte est disponible, le journal peut aussi indiquer la méthode adaptée, mais les commandes exactes du rituel restent exclusivement dans la recette.
+Vous pouvez télécharger un PDF depuis votre PC avec scp. Les commandes exactes du rituel restent dans les recettes du grimoire.
 
 Une réussite de Crypte est soumise à un cooldown commun aux recettes et une seule récompense peut attendre d'être récupérée.

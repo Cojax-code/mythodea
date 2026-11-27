@@ -2,6 +2,7 @@
 import argparse
 from playwright.sync_api import sync_playwright, expect
 from browser_smoke import open_panel, run
+from browser_helpers import initialize, choose, level, reward, advance
 
 
 def main(url, channel):
@@ -12,6 +13,7 @@ def main(url, channel):
         page.on('pageerror', lambda error: errors.append(str(error)))
         page.goto(url)
         expect(page.locator('#simulation-form')).to_be_visible()
+        initialize(page)
         open_panel(page, 'advanced-panel')
         page.locator('#seed-mode').select_option('fixed')
         page.locator('#seed').fill('901')
@@ -26,6 +28,8 @@ def main(url, channel):
         expect(page.locator('#defender')).to_have_value('A')
         open_panel(page, 'camp-A')
         open_panel(page, 'camp-B')
+        level(page, 1)
+        reward(page, 1, 'unite', 110)
         page.locator('#A-avant-count').fill('15')
         page.locator('#A-avant-messengers').fill('1')
         expect(page.locator('#run-button')).to_be_enabled()
@@ -39,14 +43,18 @@ def main(url, channel):
         open_panel(page, 'camp-A')
         page.locator('#A-avant-messengers').fill('0')
         page.locator('#A-general-1-orientation').select_option('instinctif')
-        page.locator('#A-general-1-level').fill('5')
-        page.locator('#generals-A .sim-labels > summary').click()
+        level(page, 5)
+        reward(page, 1, 'etiquette', 'orc')
+        reward(page, 2, 'etiquette', 'infanterie')
+        reward(page, 3, 'unite', 108)
+        advance(page)
+        page.locator('#A-avant-count').fill('15')
         page.locator('#A-general-1-label-orc-active').check()
         page.locator('#A-general-1-label-orc').fill('2')
         expect(page.locator('#A-general-1-label-infanterie-active')).to_be_disabled()
         # Seules les étiquettes sélectionnées sont envoyées au moteur.
         learned = run(page)
-        assert learned['configuration']['armies']['A']['generals'][0]['profile']['labels'] == {'orc': 2}
+        assert learned['configuration']['armies']['A']['generals'][0]['profile']['labels'] == {'orc': 2, 'infanterie': 1}
         open_panel(page, 'camp-A')
         page.locator('#A-avant-unit').select_option('orc_archer')
         result = run(page)
@@ -63,11 +71,17 @@ def main(url, channel):
         zombie = browser.new_page()
         zombie.goto(url)
         expect(zombie.locator('#simulation-form')).to_be_visible()
-        zombie.locator('#A-general-1-orientation').select_option('instinctif')
-        zombie.locator('#A-general-1-orientation').select_option('zombie')
+        initialize(zombie)
+        choose(zombie, 'zombie')
+        level(zombie, 3)
+        zombie.locator('#A-general-1-zombie_levels').fill('1')
+        zombie.locator('#A-general-1-zombie_levels').press('Tab')
+        reward(zombie, 1, 'etiquette', 'infanterie')
+        reward(zombie, 2, 'etiquette', 'orc')
+        reward(zombie, 3, 'etiquette', 'mort_vivant')
+        advance(zombie)
         zombie.locator('#A-avant-unit').select_option('zombie')
         zombie.locator('#A-avant-count').fill('20')
-        zombie.locator('#generals-A .sim-labels > summary').click()
         zombie.locator('#A-general-1-label-infanterie-active').check()
         expect(zombie.locator('#A-general-1-label-orc-active')).to_be_disabled()
         expect(zombie.locator('#A-general-1-label-mort_vivant-active')).to_be_enabled()
@@ -83,9 +97,13 @@ def main(url, channel):
         for camp in ('A', 'B'):
             open_panel(blocked, 'camp-' + camp)
             blocked.locator(f'#{camp}-general-1-orientation').select_option('hybride')
+            level(blocked, 2, camp)
+            reward(blocked, 1, 'unite', 108, camp)
+            reward(blocked, 2, 'etiquette', 'chaman', camp)
+            advance(blocked, camp)
             blocked.locator(f'#{camp}-general-1-pc').fill('200')
             blocked.locator(f'#{camp}-avant-unit').select_option('orc_archer')
-            blocked.locator(f'#generals-{camp} .sim-labels > summary').click()
+            blocked.locator(f'#{camp}-avant-count').fill('20')
             blocked.locator(f'#{camp}-general-1-label-chaman-active').check()
         for mode in ('OFF/OFF', 'OFF/DEF'):
             open_panel(blocked, 'advanced-panel')
@@ -94,7 +112,7 @@ def main(url, channel):
             assert result['outcome'] == 'contested'
             assert result['losses'] == {'A': 0, 'B': 0}
             expect(blocked.locator('#result-summary')).to_contain_text('retraite physique non résolue')
-            expect(blocked.locator('#result-meta')).to_contain_text('+local.')
+            expect(blocked.locator('#result-meta')).to_contain_text('0159b8c')
         blocked.close()
         # Un échec du serveur conserve tous les champs.
         page.route('**/api/simulator/run', lambda route: route.fulfill(status=503, content_type='application/json', body='{"error":"Moteur indisponible"}'))

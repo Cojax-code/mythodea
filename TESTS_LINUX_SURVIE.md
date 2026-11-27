@@ -31,6 +31,24 @@ sudo python3 -B -m unittest discover -s python/tests_linux -p '*isole*.py' -v
 Ils utilisent des UID numériques dans des processus enfants et uniquement des
 dossiers temporaires. Ils ne valident pas le gel systemd ni le relais SSH du Pi.
 
+## Sauvegarde et reprise de migration
+
+Avant mise à jour d’une ancienne partie, arrêter le moteur, résoudre un éventuel
+gel avec les outils de sa version et sauvegarder ensemble `/game`, les dossiers
+`general*` des homes et les états privés, en conservant UID/GID et modes.
+La migration `info/` reprend après interruption entre renommages. Une collision,
+un lien ou des champs contradictoires provoquent un refus explicite : conserver
+les deux versions, diagnostiquer avant toute reprise. Une capture ou résolution
+interrompue reste soumise à la récupération ci-dessous ; la possibilité de reprendre
+la migration seule n’autorise pas à rejouer un tour.
+
+Une génération ancienne terminée peut être republiée sans rejouer les gains ;
+ses informations seront migrées à la prochaine préparation/capture. Un ancien
+moteur ne sait pas lire les nouveaux chemins : revenir à sa version exige une
+sauvegarde cohérente antérieure. Les mémoires d’ordres retirés et les généraux
+sans profil officiel restent des cas nécessitant une décision explicite, sans
+effacement ou attribution rétroactive.
+
 ## Suites existantes
 
 La suite ordinaire simule les droits. `python/tests_linux/test_permissions_reelles.py`
@@ -271,9 +289,9 @@ processus longs, utiliser les véritables sessions SSH confinées des joueurs.
 ls -ld /game/village /game/est_{1,2,3} /game/repli
 sudo ls -ld /game/village/j{1,2}/{garnison,caserne_militaire,hotel_de_ville}
 sudo ls -ld /game/est_1/j{1,2}/renforts/{5,20} /game/repli/j{1,2}
-sudo stat -c '%U:%G %a %n' /home/j{1,2}/general1 /home/j{1,2}/general1/info/ordre.txt
-sudo -u j1 sh -c 'test -w /home/j1/general1/info/ordre.txt && printf "1-2\n" > /home/j1/general1/info/ordre.txt'
-sudo -u j2 sh -c 'test -w /home/j2/general1/info/ordre.txt && printf "1-2\n" > /home/j2/general1/info/ordre.txt'
+sudo stat -c '%U:%G %a %n' /home/j{1,2}/general1 /home/j{1,2}/general1/info/ordre_surnombre.txt
+sudo -u j1 sh -c 'test -w /home/j1/general1/info/ordre_surnombre.txt && printf "1\n" > /home/j1/general1/info/ordre_surnombre.txt'
+sudo -u j2 sh -c 'test -w /home/j2/general1/info/ordre_surnombre.txt && printf "1\n" > /home/j2/general1/info/ordre_surnombre.txt'
 sudo -u j1 touch /game/village/j1/caserne_militaire/.sonde
 sudo -u j1 rm /game/village/j1/caserne_militaire/.sonde
 sudo -u j2 touch /game/est_1/j2/renforts/5/.sonde
@@ -283,7 +301,7 @@ sudo -u j2 rm /game/est_1/j2/renforts/5/.sonde
 Les sondes suivantes doivent être **refusées**, même en ACTIONS :
 
 ```bash
-sudo -u j1 cat /home/j2/general1/info/ordre.txt
+sudo -u j1 cat /home/j2/general1/info/ordre_surnombre.txt
 sudo -u j1 touch /game/village/j2/caserne_militaire/.interdit
 sudo -u j2 touch /game/est_3/bot/.interdit
 sudo -u j1 ls /game/.systeme
@@ -344,8 +362,8 @@ Après le second gel de publication, dans chaque session joueur :
 ```bash
 cd ~
 cat /game/village/clocher/etat_tour.txt
-ls -l general1/info/ordre.txt
-test -w general1/info/ordre.txt
+ls -l general1/info/ordre_surnombre.txt
+test -w general1/info/ordre_surnombre.txt
 grep 'contrôle final' /game/rapport/rapport_court.txt
 ```
 
@@ -419,6 +437,34 @@ administrateur distincte et la commande de dégel ci-dessus sont indispensables.
 Surveiller l'espace disque : les générations et archives de publication ne sont
 pas purgées automatiquement. Sauvegarder avant toute purge, moteur arrêté ; garder
 la génération active et celle de toute récupération en cours.
+
+## Scanner Bash isolé
+
+`bash/prototype_crypte_scan.sh` est le scanner utilisé par l’installation officielle,
+avec `bash/crypte_transport.sh` pour joindre le collecteur. Seul, il écrit un journal
+de test sur FD 9 : huit champs séparés par NUL (événement, ligne complète,
+`BASH_COMMAND`, statut, répertoire physique, historique, nature de commande, PID).
+Les valeurs déclarées par Bash ne sont pas une authentification ; le collecteur
+utilise le noyau. `DEBUG` observe la ligne complète, `PROMPT_COMMAND` relève le
+retour et les erreurs de syntaxe. Les filtres d’historique et l’expansion `!` sont
+neutralisés pendant la tentative puis restaurés, sans réduire `HISTSIZE`.
+
+Les tests utilisent de vrais PTY temporaires et un oracle indépendant : erreurs,
+alias/fonctions, séparateurs, pipeline, sous-shell, historique, Ctrl+C pendant une
+commande ou à l’invite, fermeture du PTY et fin prématurée. Une fermeture ne garantit
+aucun événement `close` ; l’intégration surveille donc la disparition de session.
+Le test root exécute les refus d’écriture/chmod/suppression sous UID nobody.
+Aucun profil système ni `.bashrc` personnel n’est modifié par ces tests.
+
+```bash
+python3 -B -m unittest discover -s .dev/tests -p test_crypte_scanner.py -v
+sudo env CRYPTE_TEST_REPORT=/tmp/crypte-observations.jsonl \
+  python3 -B -m unittest discover -s .dev/tests -p test_crypte_scanner.py -v
+```
+
+Le scanner reste pédagogique et contournable en mémoire ou via le PATH ; aucune
+de ses observations ne suffit à attribuer une récompense. Le contrat intégré,
+le cooldown et les contrôles du collecteur sont dans `SURVIE_SPEC.md`.
 
 ## Crypte V0.1
 
@@ -578,9 +624,17 @@ court après publication. Le Clocher reste continu avec `tail -f`, même lors d'
 publication ou republication administrative. Le village n'a pas de renforts alliés ;
 les positions 5..20 restent disponibles sur les territoires ouverts.
 
-## Anciennes structures
+Les modèles corrigés n’écrasent pas les pages de journal déjà publiées. Pour une
+partie ancienne, l’administrateur doit sauvegarder puis actualiser les seules pages
+déjà débloquées depuis `python/textes/`, avec substitution de `{joueur}` et
+`{game_path}`, moteur arrêté et avant reprise. Conserver `root:<groupe_joueur>`,
+les modes de la phase et les pages futures absentes. Ne pas supprimer globalement
+les journaux : le rattrapage conserve volontairement les conseils existants.
 
-Aucune conversion automatique : l'ancien dossier technique visible, l'ancien
+## Anciennes structures du plateau
+
+Cette incompatibilité concerne la structure du plateau, pas le dossier `info/`
+des généraux ni la migration des places d’École. L’ancien dossier technique visible, l'ancien
 Clocher, la communication à la racine, la poste et les renforts alliés du village
 provoquent un refus explicite avant préparation. Ce contrôle s'applique aussi à
 la récupération administrative et à l'installation des hooks. Ne pas simplement

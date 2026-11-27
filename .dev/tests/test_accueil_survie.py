@@ -1,5 +1,10 @@
 """Accueil, publication et refus des anciens plateaux, en isolation."""
 import hashlib
+import re
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
 import unittest
 from unittest.mock import call, patch
 
@@ -141,27 +146,27 @@ class AccueilSurvie(unittest.TestCase):
             self.assertNotIn('{game_path}', texte)
             self.assertNotIn('/game/', texte)
 
-    def test_veteran_fidele_au_word_et_personnalise(self):
-        # Empreintes des sections 0..10 extraites de Journal_du_Veteran.docx.
+    def test_veteran_textes_valides_et_personnalises(self):
+        # Empreintes des conseils validés, corrigés après les essais Raspberry Pi.
         # Seules les lignes vides de mise en page sont ignorées. Les espaces,
         # accents, guillemets, accolades Bash et antislashs restent significatifs.
-        empreintes_word = (
+        empreintes_valides = (
             'b73a50d4340d964ab576bb4f69bebd44f77a507b260c6aa8b18fa8614aaa167d',
-            '61296835cc6f0e26e18c4aab88256a55ae75148bc39d0915db9e91d00b772484',
+            '7d37b50ac0f44bc14c38458c7a55728c579ff6843b037792da0b1ca107198a6c',
             'd7b1120717de57793c899369ed837870bc6a3beea2a8901e10cdbf62741c3f13',
             'f6c13c8950e90f2a83216eefa890a12c64b76d4a1e104191c7fc222d7c279066',
             '834a4c6dd06d830781b66d130a7f32419f565e0028653480afd429210b0e5aca',
             '7d3b1eca970b2d094b5c3cdc94a114d96b7ad4a757950778027b7cd6056f20d5',
-            'e7cbe2553e852261a8c404d60b9a1294ad0e6fec219a132aa2ebe43f4d73fb49',
+            'dd3ceeb5cb21f247722c543236c984bc873e15a6a4fafd72071eee40e9c0f56a',
             '2295098f4f227d574be0ac9001cba6fed824ed24a3db361539ffb379c36ad87a',
-            '8ac145caae6233ebccfd3bdcc75c44419063f0ba28b0489857adfad25e94733d',
-            '45bbb0845a31ad0ca2c351dcc5777b0c5d4e17a3bcc50ee6c92b9363ec86d04e',
-            '6ed6a30b7924da7262f09fb16491cc4def8653b9f16d68ae4c40885f7aa3be0d',
+            '17bd5af19ac38e806af50fa0cf0d9018ab6be4286dd6288527af5341680de91c',
+            '9e6e55b3b216076347acba740bc891204df6c32efd4d385c68c79e1053565759',
+            '02ff5327f95c92fa600b5f8c48febf84a1dd06b5aee8d52996b8432610d40108',
         )
         self.plateau.preparer_accueil(self.profil, 10)
         self.verifier_journal(10)
         for joueur, autre in (('j1', 'j2'), ('j2', 'j1')):
-            for numero, empreinte in enumerate(empreintes_word):
+            for numero, empreinte in enumerate(empreintes_valides):
                 with self.subTest(joueur=joueur, vague=numero):
                     texte = (self.hotel(joueur) / 'journal_du_veteran' /
                              f'vague_{numero}.txt').read_text(encoding='utf-8')
@@ -173,16 +178,47 @@ class AccueilSurvie(unittest.TestCase):
                     self.assertNotIn('{joueur}', texte)
                     self.assertNotIn(str(self.racine), texte)
                     self.assertNotIn('/reserve', texte)
-                    # Le Word historique utilisait /home/game. Conserver ses empreintes
-                    # pour vérifier le texte, avec la racine et le nom de caserne
-                    # désormais canoniques dans les commandes publiées.
-                    # Vagues 0 et 8 : empreintes actualisées pour info/ et ses
-                    # champs publics, corrections demandées après les tests Pi.
+                    # Normalisation historique conservée pour les conseils inchangés.
+                    # Le texte courant, et non le Word d'origine, fait référence.
                     historique = (texte.replace('/game/', '/home/game/').replace(joueur, 'j1')
                                   .replace('/caserne_militaire', '/reserve'))
                     normalise = '\n'.join(ligne for ligne in historique.splitlines()
                                           if ligne.strip())
                     self.assertEqual(hashlib.sha256(normalise.encode('utf-8')).hexdigest(), empreinte)
+
+    @unittest.skipUnless(shutil.which('bash'), 'Commandes pédagogiques Bash requises')
+    def test_commandes_journaux_recettes_et_surnombre(self):
+        self.plateau.preparer_accueil(self.profil, 10)
+        for nom in self.journaux:
+            journal = self.hotel() / nom
+            for fichier in journal.glob('vague_*.txt'):
+                self.assertNotIn('ordre.txt', fichier.read_text(encoding='utf-8'))
+            for vague in (8, 9, 10):
+                with self.subTest(journal=nom, vague=vague), tempfile.TemporaryDirectory() as dossier:
+                    racine = Path(dossier)
+                    general = racine / 'village/j1/garnison/1/general1'
+                    for bloc in ('avant', 'arriere', 'droite', 'gauche', 'info'):
+                        (general / bloc).mkdir(parents=True)
+                    choix = general / 'info/ordre_surnombre.txt'
+                    choix.write_text('2\n')
+                    texte = (journal / f'vague_{vague}.txt').read_text(encoding='utf-8')
+                    commandes = re.findall(r'>>> COMMANDE[^\n]*\n\n(.*?)\n\nNOTE :', texte, re.S)
+                    self.assertTrue(commandes)
+                    for commande in commandes:
+                        subprocess.run(['bash', '-eu', '-o', 'pipefail', '-c',
+                                        commande.replace('/game/', str(racine) + '/')],
+                                       cwd=general, check=True, capture_output=True, text=True)
+                    if vague == 8:
+                        self.assertEqual(choix.read_text(), '1\n')
+                        self.assertEqual(self.generaux.lire_ordre_surnombre(
+                            dict(chemin=general, joueur='j1'), 'est_1', self.profil), 1)
+                    else:
+                        unites = [p for bloc in ('avant', 'arriere', 'droite', 'gauche')
+                                  for p in (general / bloc).iterdir()]
+                        attendu = 'archer' if vague == 9 else 'piquier'
+                        self.assertEqual(len(unites), 5 if vague == 9 else 6)
+                        for unite in unites:
+                            self.assertEqual(self.generaux.identifier_unite(unite), attendu)
 
     def test_ajout_veteran_preserve_journal_toonitruand_existant(self):
         self.plateau.preparer_accueil(self.profil, 4)

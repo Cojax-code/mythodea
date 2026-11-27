@@ -7,9 +7,10 @@ Télécharger une recette dans un dossier local explicite.
 
 >>> COMMANDE VÉTÉRAN
 
+mkdir -p ./recettes
 scp {joueur}@Mythodea.local:{game_path}/village/{joueur}/crypte/grimoire/recette1.pdf ./recettes/
 
-NOTE : La destination explicite évite de perdre le fichier dans le mauvais répertoire local.
+NOTE : À exécuter sur votre PC. La destination explicite évite de perdre le fichier dans le mauvais répertoire local.
 
 ----------------------------------------------------------
 
@@ -31,4 +32,4 @@ Afficher les métadonnées du PDF sans ouvrir d'interface graphique.
 
 pdfinfo ./recettes/recette1.pdf
 
-NOTE : pdfinfo affiche notamment le nombre de pages et des informations techniques sur le document.
+NOTE : Si pdfinfo est installé, il affiche notamment le nombre de pages et des informations techniques sur le document.

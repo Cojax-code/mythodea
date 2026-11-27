@@ -1,23 +1,25 @@
-Vague 8 - Manipuler les ordres proprement
+Vague 8 - Vérifier le choix de surnombre
 
 ----------------------------------------------------------
 
 CONSEIL
-Écrire un ordre puis vérifier immédiatement son contenu.
+Écrire le choix de retraite puis vérifier la valeur envoyée.
 
 >>> COMMANDE VÉTÉRAN
 
-printf '%s\n' '1-2' | tee {game_path}/village/{joueur}/garnison/1/general1/info/ordre.txt
+printf '%s\n' '1' | tee {game_path}/village/{joueur}/garnison/1/general1/info/ordre_surnombre.txt
 
 NOTE : tee écrit dans le fichier tout en affichant la valeur envoyée.
 
 ----------------------------------------------------------
 
 CONSEIL
-Afficher le fichier avec numérotation des lignes.
+Contrôler les lignes du fichier.
 
 >>> COMMANDE VÉTÉRAN
 
-nl -ba {game_path}/village/{joueur}/garnison/1/general1/info/ordre.txt
+nl -ba {game_path}/village/{joueur}/garnison/1/general1/info/ordre_surnombre.txt
 
-NOTE : nl aide à diagnostiquer les lignes vides ou plusieurs ordres accidentels.
+NOTE : Une seule valeur est attendue : 1 pour demander la retraite, 2 pour continuer. nl révèle les lignes en trop.
+
+Le choix est lu après un affrontement lorsque des renforts ennemis remontent. Il ne permet pas de fuir avant ou pendant un combat. Sans destination disponible, la retraite peut être refusée ; au village, il n'existe pas de retraite vers un autre territoire. Le défaut est 2 au village et 1 ailleurs, mais un choix déjà écrit suit le général.

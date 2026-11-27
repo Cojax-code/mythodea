@@ -24,4 +24,4 @@ NOTE : Le rappel vers le home est instantané et sans pénalité.
 
 Un déplacement normal fait avancer un général vers un territoire adjacent. Une marche forcée permet de parcourir davantage de distance lorsqu'elle est autorisée, mais elle entraîne de la fatigue et peut limiter le général au tour suivant.
 
-Le rappel vers le home est différent : il est instantané et ne donne pas de pénalité de fatigue. En revanche, le général ne peut pas repartir directement au front. Il doit d'abord revenir au village, ce qui lui fait perdre un tour de progression.
+Le rappel vers le home est différent : il est instantané et ne donne pas de pénalité de fatigue. En revanche, le général ne peut pas repartir directement au front. Rappel au tour N : il reste au home jusqu’à publication, rejoint le village au tour N+1 et peut repartir vers le front au tour N+2. Le rappel depuis le repli est interdit.

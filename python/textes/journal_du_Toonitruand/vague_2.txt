@@ -31,10 +31,10 @@ Regarder si un nouveau général est apparu dans votre home.
 
 ls -l /home/{joueur}
 
-NOTE : Pour survivre aux vagues avenir, il faudra  préparer des nouveaux général pour soutenir celui qui a été affaibli. Les generaux Classique cad qui pop tout seul dans le home, sont limite a 5 par joueurs, et une apparition par tour. Attention les generaux ne se cumule pas dans le home donc meme si vous ne les utilisez pas, stocke les dans “caserne_militaire” afin de laisser els suivants se creer automatiquement
+NOTE : Un général apparaît au maximum par tour, dans la limite de cinq créations normales par joueur. Déplacez celui du home vers une zone autorisée du village pour permettre la prochaine apparition.
 
 À chaque résolution, les forces du bot déjà présentes tentent d'abord d'avancer vers le village. Une nouvelle vague apparaît ensuite à l'est, puis les combats sont résolus sur les territoires où les deux camps se rencontrent.
 
 Si une force du bot a été bloquée avant le combat et remporte ensuite son affrontement, elle peut effectuer une avancée de rattrapage. Ce rattrapage ne déclenche jamais un deuxième combat pendant le même tour : un territoire peut donc rester contesté jusqu'au cycle suivant.
 
-Les généraux classiques apparaissent dans votre home, au maximum un par tour et dans la limite de cinq créations normales. Tant qu'un général reste dans le home, le suivant ne peut pas y apparaître : utilisez la réserve lorsque vous voulez libérer cet espace. Certains généraux bonus, notamment ceux de la Crypte, sont hors de cette limite.
+Les généraux classiques apparaissent dans votre home, au maximum un par tour et dans la limite de cinq créations normales. Tant qu'un général reste dans le home, le suivant ne peut pas y apparaître : utilisez la caserne militaire lorsque vous voulez libérer cet espace. Certains généraux bonus, notamment ceux de la Crypte, sont hors de cette limite.

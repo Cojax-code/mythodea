@@ -29,9 +29,9 @@ Déplacer une unité d'un bloc vers un autre.
 
 >>> COMMANDE
 
-mv {game_path}/village/{joueur}/garnison/1/general1/arriere/archer1 {game_path}/village/{joueur}/garnison/1/general1/droite/
+mv {game_path}/village/{joueur}/garnison/1/general1/arriere/infanterie1 {game_path}/village/{joueur}/garnison/1/general1/gauche/
 
-NOTE : mv déplace ici tout le dossier de l'unité : ses fichiers enfants, comme arc, suivent automatiquement sans option supplémentaire. Un bloc doit rester homogène ; mélanger plusieurs types peut le rendre invalide.
+NOTE : mv déplace ici tout le dossier de l'unité : ses fichiers enfants, comme arc, suivent automatiquement sans option supplémentaire. Choisissez un bloc vide ou du même type, sans nom d’unité déjà présent. Les types minoritaires sont supprimés ; une égalité entre types détruit tout le bloc.
 
 Dans un combat 1 contre 1, les deux généraux engagés opposent leurs quatre blocs : avant, droite, gauche et arrière. La composition de ces blocs détermine quelles unités participent aux différents échanges.
 

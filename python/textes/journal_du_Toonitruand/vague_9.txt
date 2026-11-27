@@ -1,5 +1,7 @@
 Vague 9 - Automatiser avec une boucle for
 
+Avant ces commandes, utilisez cd pour entrer dans le dossier d’un général au home ou en caserne militaire. Choisissez des noms libres et des blocs vides ou du même type, sans dépasser sa capacité. En caserne militaire, attendez la publication après entraînement avant de partir.
+
 ----------------------------------------------------------
 
 CONSEIL
@@ -7,7 +9,7 @@ Créer plusieurs unités similaires avec une boucle.
 
 >>> COMMANDE
 
-for i in 1 2 3 4 5; do mkdir arriere/archer$i; done
+for i in 1 2 3 4 5; do mkdir "arriere/infanterie$i" && touch "arriere/infanterie$i/arc"; done
 
 NOTE : Cette première boucle évite volontairement les options complexes ; elle montre surtout for, do, done et la variable i.
 

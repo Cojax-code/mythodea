@@ -27,7 +27,7 @@ with tempfile.TemporaryDirectory(prefix='mythodea-validation-') as directory:
         shutil.copytree(source, work/'simulator', ignore=shutil.ignore_patterns('.runtime', '.venv', '__pycache__', '*.pyc', 'test-results'))
         import json
         lock = json.loads((source/'backend/engine.lock.json').read_text())
-        revision = (lock.get('revision') or lock['snapshot']) if kind == 'web' else lock['snapshot'][:7]
+        revision = lock.get('revision', lock['commit'][:7])
         engine = '.runtime/engine-' + revision
         shutil.copytree(source/engine, work/'simulator'/engine)
         shutil.copytree(source/'.runtime/deps', work/'simulator/.runtime/deps', ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))

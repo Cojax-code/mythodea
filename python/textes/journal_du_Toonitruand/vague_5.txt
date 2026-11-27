@@ -13,4 +13,4 @@ NOTE : Cette vague introduit les combats NvN et l'importance de la position des 
 
 Lorsque plusieurs généraux sont présents, les affrontements sont résolus selon leurs positions actives. Les places 1 à 4 déterminent les généraux immédiatement engagés ; sur les territoires ouverts, les renforts permettent d'accueillir des forces supplémentaires qui pourront ensuite remonter vers les places actives.
 
-L'ordre des généraux et leur formation prennent alors plus d'importance qu'en 1 contre 1. Plus tard, les ordres tactiques permettront aussi de modifier certains comportements pendant la résolution.
+L'ordre des généraux et leur formation prennent alors plus d'importance qu'en 1 contre 1. Les étiquettes acquises se choisissent dans info/etiquettes_actives.txt ; le choix de surnombre est présenté à la vague 8.

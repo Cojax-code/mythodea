@@ -19,7 +19,10 @@ le trait sont déterminés : 0 PC, 0 moral, aucune étiquette ni évolution.
 | Instinctif | Aucun | +1 | 1 / 1 |
 | Hybride | +2 à +4 | +1 | 1 / 3 |
 
-Les gains naturels sont indépendants des récompenses. Le moral est plafonné à 100.
+Les gains naturels sont indépendants des récompenses. Le moral est plafonné à 100. Le combat neutralise actuellement le moral propre
+du Stratège avant les effets de composition (`combats.appliquer_pertes_bloc`).
+Les points gagnés restent dans son profil ; changer cette utilisation demande
+une décision explicite de gameplay.
 Les traits charismatique/leader/inventeur suivent les poids 50/35/15, 50/15/35
 et 50/25/25, respectivement pour ces trois orientations.
 

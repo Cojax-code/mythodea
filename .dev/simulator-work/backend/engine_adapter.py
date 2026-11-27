@@ -174,7 +174,7 @@ def simulate(payload):
                     for key, other in ((one, two), (two, one))
                 }
     return json_safe({"engine_commit": LOCK["commit"], "engine_snapshot": LOCK.get('snapshot'),
-            "engine_revision": LOCK.get('snapshot', LOCK['commit']), "battle_resolution": battle_result,
+            "engine_revision": LOCK.get('revision', LOCK['commit']), "battle_resolution": battle_result,
             "python_version": platform.python_version(), "seed": seed,
             "configuration": payload, "outcome": outcome, "before": before, "after": after,
             "losses": {camp: before[camp]["total"] - after[camp]["total"] for camp in before},

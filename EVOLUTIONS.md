@@ -7,14 +7,14 @@ Les orientations sont Stratège (45 %), Instinctif (45 %) et Hybride (10 %), san
 dominante. L'Hybride gagne naturellement PC et moral et accède aux évolutions des
 deux orientations. Les tables sont dans [REGLES_V2.md](REGLES_V2.md).
 La référence de fabrication des trois unités ordinaires vaut 5. La propriété
-distincte `valeur_combat` vaut également 5 pour les quatre types actuels.
+distincte `valeur_combat` vaut également 5 pour archer, piquier, cavalier et cavalerie lourde ; les huit autres types ont leurs propres valeurs dans `catalogues.UNITES`.
 Un bloc de 10 archers a une puissance de base de 50. Les avantages, la fatigue
 et la formation lourde gardent leurs effets ; changer uniformément d'échelle
 conserve les pertes historiques. Les recettes ne changent pas.
 
 Les soldats survivant à la résolution complète d'un territoire gagnent une
-bataille. À 5 batailles ils deviennent vétérans, à 10 héroïques. Le moral d'un
-instinctif peut sauver des pertes en leur donnant une blessure ; leurs limites
+bataille. À 5 batailles ils deviennent vétérans, à 10 héroïques. Le moral d’un
+Instinctif ou Hybride peut sauver des pertes en leur donnant une blessure ; leurs limites
 sont respectivement 1, 2 et 3 blessures. Un nouveau général a un moral nul.
 
 ## Gagner des niveaux
@@ -205,7 +205,8 @@ sans double récompense, les accès depuis Home et l'ancienneté exigée par la 
 Les tests temporaires n'utilisent
 pas une vraie partie. Le test `python/tests_linux/test_progression_isolee.py`
 vérifie séparément les droits Linux avec root et des UID de processus, sans créer
-de comptes. Une validation sur Raspberry Pi reste à réaliser.
+de comptes. Les essais de bâtiments et de migration sur Raspberry Pi restent à compléter ;
+les premiers gains de niveau et de commandement y ont été validés.
 
 Les rapports personnels sont remplacés à chaque publication. Les erreurs de demande
 détectables pendant ACTIONS apparaissent aussi dans le terminal SSH au relevé

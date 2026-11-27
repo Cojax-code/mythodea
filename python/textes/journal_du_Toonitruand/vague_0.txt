@@ -39,7 +39,7 @@ Explorer votre village.
 
 ls -l {game_path}/village/{joueur}
 
-NOTE : Vous y trouverez notamment la garnison, la réserve, la Crypte et l'Hôtel de Ville.
+NOTE : Vous y trouverez notamment la garnison, la caserne militaire, la Crypte et l'Hôtel de Ville.
 
 ----------------------------------------------------------
 
@@ -50,7 +50,7 @@ Voir l'arborescence du village de façon plus visuelle.
 
 tree {game_path}/village/{joueur}
 
-NOTE : tree est pratique pour comprendre la structure générale sans ouvrir chaque dossier.
+NOTE : Si tree est installé, il est pratique pour comprendre la structure générale sans ouvrir chaque dossier.
 
 ----------------------------------------------------------
 
@@ -122,11 +122,11 @@ Déployer votre général dans une place de garnison libre.
 
 mv /home/{joueur}/general1 {game_path}/village/{joueur}/garnison/1/
 
-NOTE : Les déplacements dans Mythodea sont de vrais déplacements de dossiers. La granison represnte le lieu de defense du village.
+NOTE : Les déplacements dans Mythodea sont de vrais déplacements de dossiers. La garnison défend le village. Vérifiez que la place est libre aussi chez votre allié.
 
 Un tour alterne plusieurs phases. Pendant ACTIONS, vous pouvez préparer vos généraux et effectuer vos déplacements jusqu'à la fin du temps indiqué par le Clocher. À la clôture, les sessions joueurs sont brièvement gelées afin que le moteur capture un état cohérent de la partie.
 
-Après cette capture, les joueurs sont dégelés pendant que Mythodea résout le tour : déplacement du bot, apparition de la nouvelle vague et combats. Une phase de CONSULTATION permet ensuite de lire les résultats avant le retour à ACTIONS.
+Après cette capture, les joueurs sont dégelés pendant que Mythodea résout le tour : déplacement du bot, apparition de la nouvelle vague et combats. Un second gel bref publie les résultats ; faites ensuite cd ~ pour quitter les anciens dossiers. Une phase de CONSULTATION permet alors de lire les résultats avant le retour à ACTIONS.
 
 Votre objectif est de résister au plus grand nombre de vagues possible. Si les forces du bot finissent par contrôler le village, la partie est perdue. Le Clocher sert de repère pour connaître la phase actuelle et le temps restant.
 

@@ -35,4 +35,4 @@ NOTE : Le village n'a pas de renforts 5-20, mais cette mécanique existe sur les
 
 Le home et la réserve sont les zones logistiques prévues pour entraîner ou compléter les unités d'un général. La garnison et les territoires de combat ne doivent pas permettre de créer librement de nouvelles troupes au front.
 
-Une troupe fraîchement entraînée devra attendre le passage d'un tour avant de pouvoir être déplacée avec son général. Cette règle évite de créer des unités puis de les envoyer immédiatement au combat pendant la même fenêtre d'ACTIONS.
+Après un entraînement en caserne militaire, le général doit y attendre la publication du tour avant de partir, même vers la garnison. Depuis le home, un général officiel peut au contraire préparer ses unités et rejoindre le village pendant la même fenêtre, sauf attente de rappel. Il ne peut jamais sauter directement vers le front.

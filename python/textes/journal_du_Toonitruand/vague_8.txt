@@ -1,27 +1,25 @@
-Vague 8 - Ordres
+Vague 8 - Choisir face au surnombre
 
 ----------------------------------------------------------
 
 CONSEIL
-Lire l'ordre actuel d'un général.
+Lire le choix actuel du général.
 
 >>> COMMANDE
 
-cat {game_path}/village/{joueur}/garnison/1/general1/info/ordre.txt
+cat {game_path}/village/{joueur}/garnison/1/general1/info/ordre_surnombre.txt
 
-NOTE : Les ordres permettent d'influencer le comportement tactique.
+NOTE : 1 demande une retraite tactique si elle est possible ; 2 choisit de continuer face aux renforts ennemis.
 
 ----------------------------------------------------------
 
 CONSEIL
-Écrire un ordre dans le fichier.
+Demander une retraite lorsque le moteur propose ce choix.
 
 >>> COMMANDE
 
-echo '1-2' > {game_path}/village/{joueur}/garnison/1/general1/info/ordre.txt
+echo '1' > {game_path}/village/{joueur}/garnison/1/general1/info/ordre_surnombre.txt
 
-NOTE : La redirection > remplace le contenu du fichier par la nouvelle valeur.
+NOTE : La redirection > remplace le contenu du fichier. Écrire 2 choisit de poursuivre le combat.
 
-Les ordres sont écrits dans ordre.txt sous la forme type-numéro, avec parfois une troisième valeur de précision. Le moteur compare cette valeur à son registre des ordres connus ; une écriture inconnue ou mal formée est ignorée.
-
-Le registre présenté au joueur doit donner le numéro, le nom et l'effet de chaque ordre disponible. Modifier ordre.txt permet ainsi de changer le comportement tactique sans utiliser une interface graphique.
+Le choix est lu après un affrontement lorsque des renforts ennemis remontent. Il ne permet pas de fuir avant ou pendant un combat. Sans destination disponible, la retraite peut être refusée ; au village, il n'existe pas de retraite vers un autre territoire. Le défaut est 2 au village et 1 ailleurs, mais un choix déjà écrit suit le général.

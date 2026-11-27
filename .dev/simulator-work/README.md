@@ -1,34 +1,15 @@
-# Mythodea-web
+# Copie de travail du simulateur
 
-Le simulateur de bataille exécute le moteur Python officiel **v2.0**, verrouillé par empreintes SHA-256 :
-deux camps, quatre généraux maximum par camp, profils et étiquettes, QG/Messagers, étendards,
-douze unités, blessures et journal des phases. Aucun calcul de combat n'est
-réimplémenté dans son JavaScript. Le comparateur théorique reste un outil séparé.
+Le simulateur maintenu et sa documentation canonique sont dans
+[Mythodea-web](https://github.com/Cojax-code/Mythodea-web).
+Cette copie permet les essais d’intégration avec le moteur voisin. Elle utilise
+le même backend, les mêmes tests, JavaScript et verrou de sources. Les anciennes
+pages annexes de cette copie ne doivent pas remplacer celles du site maintenu.
 
-Les profils et les compositions sont modifiables et peuvent être générés à nouveau.
-OFF/OFF et OFF/DEF utilisent actuellement les mêmes règles. Les cascades,
-retraites et la fatigue de déplacement ne sont pas simulées. Les règles sont synchronisées avec le moteur commun du dépôt.
+## Préparer et tester sous Linux / WSL
 
-## Lancement sous WSL / Linux
-
-Prérequis : utilisateur **non root**, Python 3.11+, Git, Bubblewrap avec `--size`
-et espaces de noms utilisateur autorisés. Lancement vérifié sous WSL Ubuntu,
-Python 3.14.4 et Bubblewrap 0.11.1.
-
-Depuis la racine de **Mythodea-web**, dans un terminal **WSL / Linux** :
-
-```bash
-bash scripts/run_simulator.sh
-```
-
-Ouvrir **http://127.0.0.1:8080/simulateur.html** dans le navigateur Windows ou Linux ;
-arrêter avec `Ctrl+C`. Le lanceur utilise `.venv`, ou les dépendances déjà préparées
-dans `.runtime/deps`. Il ne sélectionne pas `.venv-linux`.
-Le moteur est recherché dans `.runtime/engine-<snapshot abrégé>` selon `backend/engine.lock.json`.
-Si une ancienne variable `MYTHODEA_ENGINE_PATH` est définie, exécuter
-`unset MYTHODEA_ENGINE_PATH` pour revenir à ce chemin.
-
-Pour préparer le moteur lors d'une **première installation ou après une mise à jour du verrou** :
+Depuis ce dossier, sous un utilisateur non root, avec Python 3.11+, Git,
+Bubblewrap avec `--size` et les espaces de noms utilisateur autorisés :
 
 ```bash
 python3 -m venv .venv
@@ -37,27 +18,34 @@ python3 -B scripts/prepare_engine.py --source ../..
 bash scripts/run_simulator.sh
 ```
 
-Ouvrir **http://127.0.0.1:8080/simulateur.html** ; arrêter avec `Ctrl+C`.
-Le verrou courant décrit les sources locales : `--source` est requis. La préparation
-vérifie chaque empreinte et refuse une destination existante. Le serveur retrouve
-le dossier préparé à partir de l'identifiant `snapshot`. Après une modification du
-moteur, exécuter `python3 -B scripts/sync_engine.py --source ../..`, puis préparer
-le nouvel instantané et relancer les tests de parité avant publication.
-Une page HTML seule ou un hébergement statique ne suffit pas à lancer le backend.
-
-Les informations des généraux synthétiques sont créées sous `info/`, comme dans
-le moteur. Les nouveaux noms de `fiche.txt` ne changent ni le contrat JSON du
-simulateur ni les clés privées de progression. Le verrou courant reste un
-instantané local non publié.
-
-## Vérification
-
-Après une modification qui le justifie, avec l'environnement `.venv` préparé :
+Ouvrir `http://127.0.0.1:8080/simulateur.html` ; arrêter avec Ctrl+C.
+Le runtime `.runtime/engine-<revision>` est extrait des blobs du commit dans
+`backend/engine.lock.json`, actuellement `cb4da67`, puis vérifié par SHA-256.
+Ne pas ajouter `--working-tree` pour ce verrou officiel. Une destination existante
+est refusée ; la copie déjà préparée peut être réutilisée.
 
 ```bash
 .venv/bin/python -B -m unittest discover -s tests -v
 ```
 
-Le [dossier du simulateur](docs/simulateur.md) décrit aussi l'API, l'isolation et les
-tests navigateur ; le [guide d'hébergement](docs/hebergement-permanent.md) couvre
-les prérequis d'une publication permanente.
+Sur un checkout Windows monté dans WSL, `python3 -B scripts/validate_linux.py`
+teste une copie Linux temporaire. `--serve` la sert pour les cinq parcours de
+`scripts/test_browsers.py` (Playwright et Chrome requis). Les résultats restent
+dans `test-results/`, hors Git. Ne jamais désactiver Bubblewrap pour les tests.
+
+## Synchronisation
+
+Après validation explicite d’un nouveau commit moteur :
+
+```bash
+python3 -B scripts/sync_engine.py --source ../.. --commit COMMIT_VALIDE
+python3 -B scripts/prepare_engine.py --source ../..
+```
+
+Le [guide technique web](https://github.com/Cojax-code/Mythodea-web/blob/main/docs/simulateur.md)
+décrit API, limites, isolation et parité. Le
+[guide d’hébergement](https://github.com/Cojax-code/Mythodea-web/blob/main/docs/hebergement-permanent.md)
+conserve les exigences d’un service permanent ; aucune publication n’est automatique.
+Comparer les deux verrous et les fichiers partagés avant intégration. Les métadonnées
+des généraux synthétiques restent dans `info/` ; les clés privées de progression
+et le contrat API ne sont pas renommés avec les champs publics de fiche.

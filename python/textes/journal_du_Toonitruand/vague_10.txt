@@ -1,5 +1,7 @@
 Vague 10 - Plusieurs blocs avec une double boucle
 
+Avant ces commandes, utilisez cd pour entrer dans le dossier d’un général au home ou en caserne militaire. Choisissez des noms libres et des blocs vides ou du même type, sans dépasser sa capacité. En caserne militaire, attendez la publication après entraînement avant de partir.
+
 ----------------------------------------------------------
 
 CONSEIL
@@ -7,7 +9,7 @@ Créer des unités dans plusieurs blocs avec deux boucles.
 
 >>> COMMANDE
 
-for bloc in droite gauche; do for i in 1 2 3; do mkdir "$bloc/piquier$i"; done; done
+for bloc in droite gauche; do for i in 1 2 3; do mkdir "$bloc/infanterie$i" && touch "$bloc/infanterie$i/pique"; done; done
 
 NOTE : La boucle externe choisit le bloc ; la boucle interne répète la création des unités.
 

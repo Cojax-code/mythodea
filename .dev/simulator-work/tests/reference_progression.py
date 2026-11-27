@@ -21,7 +21,11 @@ else:
             return b
     for _ in range(min(4, (p['level'] - p['zombie_levels']) // 5)):
         progression.progression_specifique(fiche, Instinct())
-_, reward = progression.monter_niveau(fiche, random.Random(data['seed']))
+if data.get('slot') == 'supplementaire':
+    fiche['niveau'] += 1
+    _, reward = progression.recompense_classique(fiche, random.Random(data['seed']))
+else:
+    _, reward = progression.monter_niveau(fiche, random.Random(data['seed']))
 if isinstance(reward, tuple):
     kind, value = reward
     kind = {'maitrise_commandement': 'commandement', 'force_caractere': 'moral',

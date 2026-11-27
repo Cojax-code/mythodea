@@ -101,7 +101,7 @@ contrôle final du village revient au bot.
 
 Les noms de dossiers utilisent des minuscules, sans espace ni accent.
 
-Topologie actuellement décidée :
+Topologie de conception (seul le front Est est jouable ; Nord, Sud et Ouest restent futurs) :
 
 ```text
                          nord_4
@@ -265,14 +265,17 @@ accomplissement, validation ou récompense.
 
 Le Journal du Vétéran coexiste dans `journal_du_veteran/`, avec les mêmes vagues
 0..10 et thèmes, sous une forme plus compacte destinée aux joueurs à l'aise avec
-Linux. Ses conseils, commandes et notes proviennent de `Journal_du_Veteran.docx`,
-sans ajout de longs paragraphes. Les modèles communs à j1/j2 sont dans
+Linux. Les modèles texte du dépôt sont la référence courante ; le document Word
+d’origine ne prévaut pas sur les corrections de chemins et de mécaniques. Les modèles communs à j1/j2 sont dans
 `python/textes/journal_du_veteran/` ; leurs commandes portent le marqueur
 `>>> COMMANDE VÉTÉRAN`. `plateau.preparer_journaux()` applique le même déblocage,
 rattrapage et les mêmes permissions aux deux journaux, sans remplacer les conseils
 déjà présents du Toonitruand.
 
-La vague 5 présente les combats avec plusieurs généraux, la vague 6 la Crypte.
+La vague 5 présente les combats avec plusieurs généraux, la vague 6 la Crypte,
+la vague 8 `info/ordre_surnombre.txt` (1 : retraite admissible, 2 : continuer).
+Les vagues 9 et 10 créent réellement les équipements des unités dans une zone
+d’entraînement. Les commandes distinguent bien le home de la caserne militaire.
 Les commandes internes des recettes restent dans les PDF. La publication du
 texte pédagogique est indépendante de l'audit moteur de l'entraînement et du
 rappel vers le home, défini dans la section du prototype jouable.
@@ -301,7 +304,7 @@ Les généraux joueurs et ennemis suivent l'arborescence commune : quatre blocs
 militaires à la racine, autres éléments dans `info/`. La migration des anciennes
 parties et les nouveaux noms publics de fiche sont décrits dans `MYTHODEA_SPEC.md`,
 section 5. Les captures privées, publications et reprises conservent cette arborescence.
-Les suivantes sont reconstruites après le remplacement complet de la génération,
+Les photographies suivantes sont reconstruites après le remplacement complet de la génération,
 avant la fin du gel de publication et l'ouverture de CONSULTATION. Les lectures
 ne réparent, nettoient ni déplacent rien. Le texte précédent est remplacé, sans
 historique ; le fichier reste stable pendant ACTIONS. Ses permissions suivent
@@ -410,7 +413,8 @@ Exemples de familles envisagées :
 - recherche de contenu avec `grep` ;
 - encodage simple comme Base64.
 
-Les détails exacts, récompenses et conditions de déclenchement restent à définir.
+Le premier défi actif est la cabane d’EST_2, décrit plus bas. La sélection
+aléatoire entre plusieurs défis et les autres familles restent à définir.
 
 ---
 
@@ -695,8 +699,9 @@ sécurité. Le Courrier de l'Hôtel de Ville est indépendant de cette communica
 en `710` : les joueurs peuvent traverser un chemin connu mais ne peuvent ni lister
 ni modifier ces dossiers. La socket est en `660` pour ce groupe. Les états restent
 `root:root 600` et les sous-dossiers privés, notamment `generations/`, `root:root 700`.
-Les anciennes structures sont refusées avant écriture, sans conversion ni
-suppression de données ; la procédure d'archivage est dans `TESTS_LINUX_SURVIE.md`.
+Les anciennes implantations du dossier technique, du Clocher et de la poste sont
+refusées sans suppression ; voir `TESTS_LINUX_SURVIE.md`. La migration des
+informations de généraux vers `info/` reste autorisée et distincte.
 
 `cycle_linux.py` contrôle les slices `user-<UID>.slice` de j1/j2 sous `user.slice`
 avec le freezer cgroup v2. Il démarre leurs gestionnaires systemd utilisateur afin
@@ -734,11 +739,10 @@ propriétaire. La copie est physique, vérifiée par SHA-256 et synchronisée su
 Aucun hardlink ni symlink n'est créé ; un symlink ou objet spécial source est refusé.
 Un hardlink source est copié comme un fichier indépendant.
 
-La liste blanche `config.ETATS_METIER` est : `compteur_general_j1.txt`,
-`compteur_general_j2.txt`, `compteur_general_bot.txt`, `positions_generaux.txt`,
-`fatigue_generaux.txt`, `controle_territoires.txt`, `attente_repli.txt`, `meteo.txt`,
-`crypte.json`, `compteur_creation_normale_j1.txt`, `compteur_creation_normale_j2.txt`,
-`unites_actions.json`, `defis.json`.
+La liste blanche des états transférés est `config.ETATS_METIER` : compteurs,
+positions, fatigue, contrôle, attente, météo, Crypte et Crypte des plaines,
+référence d'unités, défis, progression, soldats, formation, Morgue et capacités
+d'unités. Se référer à cette constante pour les noms exacts des fichiers.
 Le cycle vivant, les verrous, générations, journaux de récupération, rapports et
 Clocher sont exclus. Le marqueur local du résolveur dans `travail/.systeme/` n'est
 jamais publié. Le moteur commun utilise le contexte privé `config.racines_generation()`.
@@ -1157,52 +1161,12 @@ du nombre total de forces ennemies physiquement présentes sur le territoire.
 
 ### Repli comme sanction
 
-La zone globale `repli` n'est pas la destination normale d'une retraite tactique de
-surnombre. Elle reste une **sanction** pour les anomalies et infractions du moteur
-commun (duplication, déplacement illégal, collision interdite, placement chez le
-mauvais joueur, etc.).
-
-Pour éviter qu'une sanction de repli ne devienne un raccourci avantageux en Survie,
-un général envoyé au repli reçoit un temps d'attente avant de pouvoir effectuer une
-nouvelle action. La règle commune est :
-
-```text
-tours_attente = ceil(distance_de_retour / 2)
-```
-
-où `distance_de_retour` est le nombre minimal de territoires entre le lieu où la
-sanction a été constatée et le point normal de retour depuis le repli. Pour le
-prototype Survie Est, ce point est le village. Le moteur commun doit conserver cette
-règle de façon réutilisable pour le mode classique/JcJ.
-
-Exemples :
-
-```text
-distance 1 -> 1 tour d'attente
-distance 2 -> 1 tour
-distance 3 -> 2 tours
-distance 4 -> 2 tours
-distance 5 -> 3 tours
-```
-
-Pendant cette attente, le général ne peut effectuer aucune action. Le détail du
-stockage et de la décrémentation est défini dans `MYTHODEA_SPEC.md` : le fichier
-privé `.systeme/attente_repli.txt` conserve les tours restants par identité.
-
-Le home conserve ses copies de bac à sable. Une anomalie d'identité qui y est détectée produit uniquement
-un avertissement dans le rapport, sans suppression, envoi au repli, nouveau délai
-ni calcul de distance de sanction depuis `home`. Ses copies ne masquent pas les
-occurrences présentes sur la carte et ne les sanctionnent pas. La sortie du home
-reste soumise aux règles communes de déploiement et d'identité.
-
-Le rappel volontaire est validé séparément selon les règles ci-dessus : une
-présence physique dans le home ne suffit plus à y enregistrer une position
-officielle, et un rappel depuis le repli ramène le dossier dans sa zone de sanction.
-
-Pour un général déjà au repli, une nouvelle anomalie produit un avertissement,
-sans nouvelle sanction ni nouveau calcul de délai ; son compteur existant est
-conservé. Les copies illégales hors home restent nettoyées selon le moteur commun.
-La décrémentation normale reste applicable aux tours sans nouvelle anomalie.
+Le repli suit les sanctions communes de [MYTHODEA_SPEC.md](MYTHODEA_SPEC.md),
+section 9, avec le village comme point de retour : attente de
+`ceil(distance_de_retour / 2)` tours, décrémentée une seule fois par audit.
+Il ne remplace jamais une destination tactique indisponible.
+Une anomalie au home ou au repli ne crée pas une nouvelle sanction ; les copies
+du home restent un bac à sable. Le rappel volontaire depuis le repli est refusé.
 
 ---
 
@@ -1215,8 +1179,10 @@ doit pouvoir repérer plus facilement un comportement anormal.
 Les délais d'affichage doivent être configurables et désactivables pour les tests
 automatiques.
 
-Les rapports territoriaux proposent un journal de combat actualisé progressivement,
-consultable notamment avec `tail -f`.
+Les journaux sont alimentés pendant la résolution privée puis rendus visibles
+à publication. `tail -f` sur un ancien inode ne suit pas son remplacement ;
+rouvrir les documents publiés après le gel. Les observations privées ne sont
+pas diffusées en direct aux joueurs.
 
 Le ralentissement concerne la présentation et l'enchaînement des étapes ; il ne doit
 pas modifier les règles mathématiques du moteur de combat.
@@ -1264,7 +1230,7 @@ partagés.
 
 `generaux.lire_generaux_territoire(territoire, configuration)` conserve une lecture
 par propriétaire de jeu (`j1`, `j2`, `bot`). Chaque général garde son champ `joueur`,
-son nom technique, son chemin réel, son emplacement, sa fiche, ses ordres et ses blocs.
+son nom technique, son chemin réel, son emplacement, sa fiche, ses choix et ses blocs.
 Son champ `camp`, ajouté uniquement en mémoire, vient du profil.
 
 `regrouper_forces_par_camp()` puis `lire_forces_territoire()` fournissent une vue
@@ -1606,8 +1572,9 @@ En résolution privée, après les recettes Crypte, le défi attribue une seule 
 `cavalier_noir`, avec identité canonique `generalN`, hors quota des cinq généraux
 normaux. Il contient 20 cavaliers lourds dans `avant/`, zéro dans les autres blocs.
 Les dossiers sont `cavalerie_L1` à `cavalerie_L20`, contenant chacun exactement
-`cheval`, `armure`, `cuirasse`, `bouclier` et `casque`. Seule la récompense divine
-peut actuellement les créer ; la construction manuelle reste verrouillée.
+`cheval`, `armure`, `cuirasse`, `bouclier` et `casque`. La récompense les crée officiellement ; la Forge permet aussi la transformation
+de cavaliers avec l’évolution 104 et un séjour valide. La construction manuelle
+de cavalerie lourde reste verrouillée.
 Il utilise la création commune de la Crypte et sa zone `recompense/`. Si une
 recette ou un général occupe cette place, le défi reste terminé mais non livré
 jusqu'à libération ; il ne consomme aucun cooldown de recette. La réponse annonce
@@ -1647,7 +1614,7 @@ Un renfort fige sa sélection à son premier engagement sans recalculer
 le soutien global initial. La capture Linux refuse les liens physiques
 et symboliques pour les fichiers sensibles.
 
-## Unités zombies — Bouclier vivant et progression (décision du 20 octobre 2026)
+## Unités zombies — Bouclier vivant et progression
 
 Lors de sa mort définitive, un général joueur dispose d'un unique tirage de
 5 % pour réapparaître comme général zombie à la Morgue. Cette transformation
@@ -1681,7 +1648,7 @@ il affronte successivement les blocs adverses : un bloc de puissance effective
 P le détruit immédiatement si P est supérieur ou égal à sa résistance R ;
 sinon sa résistance devient R - P/4 (valeur rationnelle, sans arrondi).
 Les rapports de force intègrent la faiblesse ×2 subie par les Zombies,
-sans diminuer deux fois la caserne militaire. La résistance résiduelle est conservée
+sans diminuer deux fois la réserve de résistance du bouclier. La résistance résiduelle est conservée
 entre tous les duels du même territoire, puis rétablie à 250 à la fin des combats
 territoriaux, si le bouclier existe toujours.
 
@@ -1693,7 +1660,7 @@ L'affrontement ne tue pas directement d'autres soldats adverses.
 Les Zombies ordinaires attaquent ensuite un bloc présentant une possibilité
 favorable d'affrontement ; à défaut, les positions identiques prévalent, puis
 une autre cible vivante. Le Bouclier reprend ensuite contre les survivants.
-S'il meurt, le moteur reprend le déroulement normal, ordres compris, sans rejouer
+S'il meurt, le moteur reprend le déroulement normal du combat, sans rejouer
 sa phase prioritaire. Si aucun Zombie combattant ordinaire ne subsiste, le bouclier
 disparaît et son général est vaincu.
 

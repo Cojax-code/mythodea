@@ -98,8 +98,15 @@ def validate_generation(payload):
 
 
 def validate_reward(payload):
-    exact_keys(payload, ('profile', 'seed'), 'Récompense')
+    exact_keys(payload, ('profile', 'seed', *(['slot'] if isinstance(payload, dict) and 'slot' in payload else [])), 'Récompense')
     validate_profile(payload['profile'])
+    slot = payload.get('slot', 'classique')
+    if slot not in ('classique', 'supplementaire'):
+        raise InvalidConfiguration('Type de récompense inconnu.')
+    if slot == 'supplementaire':
+        profile = payload['profile']
+        if profile['zombie'] or profile['level'] + 1 not in CATALOG['extra_roulette_levels'][profile['nature']]:
+            raise InvalidConfiguration('Aucune roulette supplémentaire à ce niveau.')
     if payload['profile']['level'] >= CATALOG['limits']['level']:
         raise InvalidConfiguration('Niveau maximal atteint.')
     if payload['seed'] is not None:
@@ -171,7 +178,7 @@ def validate(payload):
                 profile = general['profile']
                 if (not isinstance(profile, dict) or profile.get('zombie') is not False
                         or profile.get('nature') not in ('stratege', 'hybride')):
-                    raise InvalidConfiguration('Le quartier général est réservé aux stratèges.')
+                    raise InvalidConfiguration('Le quartier général est réservé aux Stratèges et Hybrides non zombies.')
             if 'qg_block' in general and general['qg_block'] not in CATALOG['blocks']:
                 raise InvalidConfiguration(f'{where} : bloc du QG inconnu.')
             if 'profile' in general:

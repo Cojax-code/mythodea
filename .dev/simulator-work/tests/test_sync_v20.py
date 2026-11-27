@@ -4,6 +4,7 @@ import json
 import unittest
 from pathlib import Path
 import tempfile
+import subprocess
 from unittest.mock import patch
 
 from backend.runner import Runner
@@ -31,14 +32,27 @@ class Synchronisation(unittest.TestCase):
             (source / 'python').mkdir(parents=True)
             for name, content in contents.items():
                 (source / 'python' / name).write_bytes(content)
-            prepare(source, destination)
-            self.assertEqual({p.name: p.read_bytes() for p in destination.iterdir()}, contents)
-            with self.assertRaises(SystemExit):
-                prepare(source, destination)
+            def git(*args):
+                return subprocess.check_output(['git', '-C', str(source), *args], stderr=subprocess.STDOUT)
+            git('init')
+            git('add', 'python')
+            git('-c', 'user.name=Simulator test', '-c', 'user.email=test@example.invalid', 'commit', '-m', 'Fixture')
+            lock = dict(LOCK, commit=git('rev-parse', 'HEAD').decode().strip(), source_state='git')
+            (root / 'backend').mkdir()
+            (root / 'backend/engine.lock.json').write_text(json.dumps(lock))
+            # Le working tree modifié ne doit jamais remplacer les blobs validés.
             with (source / 'python/combats.py').open('ab') as stream:
                 stream.write(b'\n# Unvalidated change\n')
-            with self.assertRaises(SystemExit):
-                prepare(source, root / 'invalid')
+            with patch('scripts.prepare_engine.ROOT', root):
+                for output in (destination, root / 'reproduced'):
+                    prepare(source, output)
+                    self.assertEqual({p.name: p.read_bytes() for p in output.iterdir()}, contents)
+                with self.assertRaises(SystemExit):
+                    prepare(source, destination)
+                lock['files'] = dict(lock['files'], **{'combats.py': '0' * 64})
+                (root / 'backend/engine.lock.json').write_text(json.dumps(lock))
+                with self.assertRaises(SystemExit):
+                    prepare(source, root / 'invalid')
             self.assertFalse((root / 'invalid').exists())
 
     def test_commit_preparation_uses_verified_git_blobs(self):
@@ -47,7 +61,7 @@ class Synchronisation(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'backend').mkdir()
-            lock = dict(LOCK, source_mode='git')
+            lock = dict(LOCK, source_state='git')
             (root / 'backend/engine.lock.json').write_text(json.dumps(lock))
             def git_blob(command):
                 name = command[-1].removeprefix(LOCK['commit'] + ':python/')

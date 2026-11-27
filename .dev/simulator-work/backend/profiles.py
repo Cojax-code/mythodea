@@ -233,7 +233,13 @@ def reward(payload):
     import progression
     seed = payload['seed'] if payload['seed'] is not None else secrets.randbits(32)
     fiche = engine_profile(payload['profile'])
-    apres, result = progression.monter_niveau(fiche, random.Random(seed))
+    if payload.get('slot') == 'supplementaire':
+        # Les acquis transmis incluent déjà la récompense classique choisie.
+        # Une seule roulette officielle : ne pas retirer une seconde classique.
+        fiche['niveau'] += 1
+        apres, result = progression.recompense_classique(fiche, random.Random(seed))
+    else:
+        apres, result = progression.monter_niveau(fiche, random.Random(seed))
     if isinstance(result, tuple):
         kind, value = result
         kind = {'maitrise_commandement': 'commandement', 'force_caractere': 'moral',

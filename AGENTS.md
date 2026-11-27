@@ -59,33 +59,12 @@ Pour la V2.0, ne pas dupliquer une règle du moteur dans du code spécifique au 
 Survie si elle peut rester commune. Les règles encore ouvertes dans `SURVIE_SPEC.md`
 doivent rester ouvertes jusqu'à décision explicite.
 
-Pour le premier prototype Survie :
-
-- limiter l'implémentation jouable au front Est tant que les autres fronts ne sont pas demandés ;
-- conserver les règles de combat classiques pour les bots, sans inventer d'IA tactique ni d'ordres spéciaux ;
-- conserver les noms canoniques `generalN` du moteur commun et traiter les noms
-  `general<vague>_<numero>` comme noms d'affichage des ennemis dans les rapports si
-  une adaptation interne est nécessaire ;
-- permettre le surnombre ennemi propre au mode Survie sans supprimer arbitrairement
-  des troupes ;
-- garder les délais visuels de combat configurables et neutralisables dans les tests ;
-- considérer les positions `1` à `4` comme partagées logiquement entre `j1` et
-  `j2`, tout en conservant leurs dossiers Linux séparés ;
-- en cas de collision alliée volontaire/illégale sur le même numéro d'emplacement,
-  conserver la sanction commune de `repli` ; en revanche, une **retraite tactique
-  de surnombre** ne doit pas téléporter un général au repli simplement parce que
-  son emplacement d'arrivée est occupé ;
-- pour les retraites tactiques Survie, utiliser la file alliée documentée dans
-  `SURVIE_SPEC.md` : positions logiques actives `1..4`, puis positions de renfort
-  `5..20` ; respecter `position_surnombre` lorsqu'elle est présente et ne pas
-  inventer d'autre règle de placement ;
-- garder `repli` comme zone de **sanction** (anti-triche, duplication, déplacement
-  illégal, collision interdite). La sanction de repli comporte un délai d'attente
-  calculé selon la règle commune documentée dans `MYTHODEA_SPEC.md` ;
-- au village, conserver une `caserne_militaire/` séparée pour chaque joueur ; le passage
-  `caserne_militaire <-> garnison` est une réorganisation interne et ne consomme pas le
-  mouvement normal du général. La `caserne_militaire/` ne doit pas être confondue avec la
-  zone tactique `renforts/`.
+Pour Survie, respecter le périmètre Est et les règles de zones, de coopération,
+de renforts et de retraites de [SURVIE_SPEC.md](SURVIE_SPEC.md).
+`repli` reste une sanction ; la caserne militaire du village est distincte des
+renforts tactiques. Les noms techniques `generalN`, les propriétaires Linux et
+les identités persistantes ne doivent pas être déduits des noms d'affichage.
+Les délais visuels doivent rester neutralisables dans les tests.
 
 ## Tests
 
@@ -124,7 +103,19 @@ réelle sous Linux lorsqu'une modification touche ces aspects.
 
 `MYTHODEA_SPEC.md` est la référence technique et gameplay du moteur commun.
 
-`SURVIE_SPEC.md` est la référence de conception du mode Survie V2.0.
+`SURVIE_SPEC.md` décrit le cycle, les zones et les mécanismes propres à Survie.
+`REGLES_V2.md` est la référence des tables de progression, étiquettes et QG.
+`EVOLUTIONS.md` est le guide joueur ; `TESTS_LINUX_SURVIE.md` contient les procédures.
+Corriger une règle documentaire à sa source et utiliser des liens dans les autres
+guides. L'historique Git remplace les comptes rendus de tâches terminées.
+
+Les métadonnées des généraux sont sous `info/`, les unités dans les quatre blocs.
+Les anciens noms de champs restent valides dans le registre privé et les API,
+pas dans la fiche publique ; voir la compatibilité en section 5 de la SPEC.
+Le simulateur maintenu est Mythodea-web ; `.dev/simulator-work/` en est la copie
+de travail. Vérifier ses empreintes et la parité lors d'une mise à jour moteur.
+Ne pas modifier le gameplay dans un adaptateur ou copier les pages web annexes
+pour synchroniser seulement le simulateur.
 
 Ne pas utiliser la SPEC comme journal de modifications.
 

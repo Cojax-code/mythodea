@@ -91,11 +91,13 @@ def exercise(browser, mobile=False):
                     expect(page.locator('#A-general-1-label-infanterie-active')).not_to_be_checked()
             if nature.startswith('instinctif'):
                 expect(page.locator('#A-general-1-qg')).to_be_disabled()
-    # Acquisition par roulette : pas d'apprentissage croisé gratuit chez l'hybride.
+    # L'Hybride accède aux deux familles, mais chaque unité exige son acquisition.
     choose(page, 'hybride'); level(page, 1)
     reward(page, 1, 'unite', 106)
     choices = panel(page).get_by_label('Choix de récompense niveau 1', exact=True)
-    assert choices.locator('option[value="108"]').count() == 0
+    assert choices.locator('option[value="108"]').count() == 1
+    advance(page)
+    assert page.locator('#A-avant-unit option[value="orc_archer"]').count() == 0
     choose(page, 'stratege'); level(page, 5)
     reward(page, 1, 'unite', 106)
     reward(page, 2, 'moral', 4)
@@ -127,14 +129,15 @@ def exercise(browser, mobile=False):
     page.locator('#A-avant-unit').select_option('cavalerie_lourde')
     page.locator('#A-avant-count').fill('10')
     run(page)
-    # Le tirage d'une récompense est celui du moteur, y compris un palier garanti.
+    # Le palier donne une récompense classique et une capacité spécifique.
     open_panel(page, 'camp-A'); level(page, 5)
     with page.expect_response('**/api/simulator/reward') as response:
         panel(page).get_by_role('button', name='Tirer une valeur pour la récompense du niveau 5', exact=True).click()
     assert response.value.status == 200, response.value.text()
     expected = response.value.json()['reward']
-    assert expected['kind'] == 'etiquette'
-    expect(panel(page).get_by_label('Choix de récompense niveau 5', exact=True)).to_have_value(expected['value'])
+    expect(panel(page).get_by_label('Récompense niveau 5', exact=True)).to_have_value(expected['kind'])
+    field = 'Valeur' if expected['kind'] in ('commandement', 'moral') else 'Choix'
+    expect(panel(page).get_by_label(f'{field} de récompense niveau 5', exact=True)).to_have_value(expected['value'])
     # Zombie : historique vivant conservé, seuls les niveaux suivants sont zombies.
     choose(page, 'zombie'); level(page, 5)
     page.locator('#A-general-1-zombie_levels').fill('3')
@@ -167,4 +170,4 @@ if __name__ == '__main__':
         exercise(browser)
         exercise(browser, True)
         browser.close()
-    print('Progression desktop/mobile, quatre natures, zombies, QG, déblocages, OFF/OFF et OFF/DEF : OK')
+    print('Progression desktop/mobile, trois orientations, zombies, QG, déblocages, OFF/OFF et OFF/DEF : OK')

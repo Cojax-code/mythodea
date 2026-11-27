@@ -38,6 +38,17 @@ class ProgressionContract(unittest.TestCase):
 
 @unittest.skipUnless(sys.platform == 'linux', 'Bubblewrap réel requis')
 class ProgressionEngine(unittest.TestCase):
+    def test_supplementary_draw_is_one_official_roulette_on_selected_acquisitions(self):
+        for nature, level in (('stratege', 14), ('instinctif', 14), ('hybride', 24)):
+            for seed in (1, 7, 42):
+                data = dict(profile=profile(nature=nature, level=level,
+                    labels={'infanterie': 1}, unlocked_evolutions=[106]), seed=seed, slot='supplementaire')
+                self.assertEqual(Runner().reward(data)['reward'],
+                                 ProgressionReference().execute('generate', data))
+        for changes in (dict(level=4), dict(level=24, zombie=True), dict(level=23)):
+            with self.assertRaises(InvalidConfiguration):
+                Runner().reward(dict(profile=profile(nature='hybride', **changes), seed=42, slot='supplementaire'))
+
     def test_natural_four_natures_levels_and_zombie_history(self):
         for nature in LOCK['catalog']['natures']:
             for level in (0, 1, 5, 10, 15):

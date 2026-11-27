@@ -1,29 +1,42 @@
-"""Verrouille les sources locales et exporte leur catalogue sans dupliquer les règles."""
+"""Exporte le catalogue et les empreintes des blobs d'un commit officiel précis."""
 import argparse
 import hashlib
 import json
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def sync(source):
+def sync(source, commit):
     source = source.resolve()
-    sys.path.insert(0, str(source / 'python'))
+    commit = subprocess.check_output(['git', '-C', str(source), 'rev-parse', commit + '^{commit}'], text=True).strip()
+    names = subprocess.check_output(['git', '-C', str(source), 'ls-tree', '--name-only', commit, 'python/'], text=True).splitlines()
+    contents = {Path(name).name: subprocess.check_output(['git', '-C', str(source), 'show', f'{commit}:{name}'])
+                for name in names if name.endswith('.py')}
+    if not contents:
+        raise SystemExit('Aucun module moteur dans ce commit.')
+    with tempfile.TemporaryDirectory(prefix='mythodea-catalog-') as directory:
+        for name, data in contents.items():
+            (Path(directory) / name).write_bytes(data)
+        export_catalog(Path(directory), commit, contents)
+
+
+def export_catalog(source, commit, contents):
+    sys.path.insert(0, str(source))
     import catalogues
     import config
     import progression
     lock_path = ROOT / 'backend/engine.lock.json'
     lock = json.loads(lock_path.read_text(encoding='utf-8'))
-    lock['commit'] = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip()
-    lock['source_mode'] = 'working-tree'
-    lock['files'] = {p.name: hashlib.sha256(p.read_text(encoding='utf-8').encode()).hexdigest()
-                     for p in sorted((source / 'python').glob('*.py'))}
-    lock['snapshot'] = hashlib.sha256(json.dumps(lock['files'], sort_keys=True).encode()).hexdigest()
-    lock['revision'] = lock['snapshot']
-    lock.pop('source_state', None)
+    lock['commit'] = commit
+    lock['source_state'] = 'git'
+    lock['files'] = {name: hashlib.sha256(data).hexdigest() for name, data in sorted(contents.items())}
+    lock['revision'] = commit[:7]
+    lock.pop('snapshot', None)
+    lock.pop('source_mode', None)
     catalog = lock['catalog']
     catalog.update(blocks=config.ordre_blocs, max_units=config.max_unites_par_general,
                    units=list(catalogues.UNITE_PAR_NOM),
@@ -67,10 +80,12 @@ def sync(source):
         catalog['specific_states'][nature] = niveaux
         catalog['extra_roulette_levels'][nature] = extras
     lock_path.write_text(json.dumps(lock, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    print(f"Sources locales verrouillées : {lock['snapshot']}")
+    print(f"Commit verrouillé : {commit} ({len(contents)} modules)")
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, required=True)
-    sync(parser.parse_args().source)
+    parser.add_argument('--commit', required=True, help='Commit validé à exporter, sans lire les modifications locales.')
+    args = parser.parse_args()
+    sync(args.source, args.commit)

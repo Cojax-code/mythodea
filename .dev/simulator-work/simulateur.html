@@ -102,14 +102,14 @@ nav .help-dropdown a:hover,nav .help-dropdown a:focus-visible{background:#41526d
                     <div><label for="combat-mode">Mode de combat</label><select id="combat-mode" aria-describedby="combat-mode-help"><option value="OFF/OFF">OFF/OFF</option><option value="OFF/DEF">OFF/DEF</option></select></div>
                     <div id="defender-field" hidden><label for="defender">Camp défenseur</label><select id="defender" disabled><option value="A">Camp A</option><option value="B" selected>Camp B</option></select></div>
                 </div>
-                <p id="combat-mode-help" class="sim-muted">Le moteur officiel utilise actuellement les mêmes calculs dans les deux modes, sans bonus défensif. En OFF/DEF, échanger les camps échange aussi le rôle de défenseur.</p>
+                <p id="combat-mode-help" class="sim-muted">Les deux modes utilisent le moteur officiel, sans bonus défensif. OFF/DEF distingue le défenseur en cas d’impasse ; échanger les camps échange aussi ce rôle.</p>
                 <div class="sim-actions">
                     <button id="run-button" type="submit">Lancer le combat</button>
                     <button id="swap-button" type="button" class="sim-secondary">Échanger les camps</button>
                 </div>
                 <div id="validation" class="sim-error" role="alert" hidden></div>
                 <p id="run-error" class="sim-error" role="alert" hidden></p>
-                <p class="sim-muted">Profils, PC, moral, étiquettes, QG et Messagers sont transmis au moteur. Sans fatigue, renforts en cascade ni retraites. Direction, terrain et fuite volontaire sont réservés à la v2.1. Roulette actualisée, gains hybrides, PC instinctifs et valeurs pouvant atteindre 0 % sont intégrés. L’emplacement zombie supplémentaire est réservé à mort_vivant.</p>
+                <p class="sim-muted">Les profils et compositions sont transmis au moteur officiel. Sans fatigue de déplacement, renforts en cascade ni retraites physiques. Voir les <a href="bestiaire.html#generaux">règles des généraux</a> et les <a href="regles.html#ordres">règles de commandement</a>.</p>
             </section>
         </form>
         <details id="results-panel" class="sim-panel">

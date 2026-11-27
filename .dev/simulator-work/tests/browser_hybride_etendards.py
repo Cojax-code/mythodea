@@ -1,6 +1,7 @@
 """Parcours desktop/mobile contre le vrai serveur Linux, sans calcul substitué."""
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
+from browser_helpers import reward, panel as general_panel
 
 
 def exercise(browser, mobile=False):
@@ -26,6 +27,8 @@ def exercise(browser, mobile=False):
         page.locator(f'#{camp}-avant-unit').select_option('archer')
         page.locator(f'#{camp}-avant-count').fill('20')
     page.locator('#A-general-1-qg').check()
+    assert page.locator('#A-general-1-banner-block').evaluate(
+        "e => e.closest('section') === document.getElementById('A-general-1-qg').closest('section')")
     page.locator('#A-general-1-qg-block').select_option('avant')
     for mode in ('OFF/OFF', 'OFF/DEF'):
         page.locator('#combat-mode').select_option(mode)
@@ -51,6 +54,15 @@ def exercise(browser, mobile=False):
     expect(page.locator('#A-general-1-banner-block')).to_be_enabled()
     field.fill('25'); field.press('Tab')
     expect(page.get_by_label('Récompense niveau 25:supplementaire', exact=True).first).to_be_visible()
+    reward(page, 25, 'commandement', 7)
+    with page.expect_response('**/api/simulator/reward') as response:
+        general_panel(page).get_by_role('button', name='Tirer une valeur pour la récompense du niveau 25:supplementaire', exact=True).click()
+    assert response.value.status == 200, response.value.text()
+    assert response.value.request.post_data_json['slot'] == 'supplementaire'
+    result = response.value.json()['reward']
+    expect(general_panel(page).get_by_label('Récompense niveau 25:supplementaire', exact=True)).to_have_value(result['kind'])
+    expect(general_panel(page).get_by_label('Valeur de récompense niveau 25', exact=True)).to_have_value('7')
+    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
     assert not errors, errors
     artifacts = Path(__file__).resolve().parents[1] / 'test-results'
     artifacts.mkdir(exist_ok=True)

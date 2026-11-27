@@ -173,7 +173,7 @@ généraux joueurs officiels, dans toutes leurs zones. Il est appelé à la fin 
 l'audit des déplacements. La cascade complète aussi les participants avant le
 premier affrontement. Le fichier `ordre_surnombre.txt` appartient au joueur (`600`),
 avec le défaut `1` hors village et `2` au village ; un choix existant suit le dossier.
-`ordre.txt` reste indépendant. Les comptes et fichiers classiques sont inchangés.
+Les anciens fichiers `ordre.txt` ne sont plus interprétés comme commandes de combat.
 
 `mouvements.destination_retraite_surnombre()` cherche l'unique voisin tactique
 rapprochant le plus du village ; un départage ambigu est refusé.
@@ -247,8 +247,9 @@ distincte des systèmes de fichiers de `/` et `/home`. La référence unique est
 modes en dérivent leurs chemins ; `game_public_path` garde les chemins publiés
 pour les journaux et PDF, même pendant une résolution privée.
 Les homes joueurs restent `/home/j1` et `/home/j2`, et le dépôt administrateur peut
-rester dans `/home/cojax/mythodea`. Aucun symlink entre l'ancien `/home/game` et
-`/game`, aucune migration automatique d'une partie existante.
+rester dans `/home/cojax/mythodea`. Aucun symlink ni déplacement automatique d’une ancienne racine `/home/game`
+vers `/game`. Cette incompatibilité de plateau est distincte de la migration des
+informations de généraux décrite en section 5.
 
 L'administrateur crée et monte la partition manuellement avant le premier lancement.
 `config.verifier_partition_plateau()` contrôle, sans écriture, l'existence, l'absence
@@ -445,7 +446,7 @@ et un compteur distinct `.systeme/compteur_general_bot.txt`. Il n'est pas soumis
 ### Fiche
 
 La fiche contient `nom` et les caractéristiques actuelles de la section 22 :
-`nature`, `orientation_principale`, `trait_inne`, `niveau`, `points_commandement`,
+`nature`, `trait_inne`, `niveau`, `points_commandement`,
 `moral`, `progression_combat`, `progression_formation`, `debloque`,
 `apprentissage_niveau_suivant` et `etiquettes`, dans `info/fiche.txt`.
 
@@ -456,7 +457,7 @@ Le registre privé et les API Python gardent les clés `evolutions_acquises` et
 Seule la représentation publique est renommée. Les identifiants et effets restent
 inchangés, et aucune valeur publique n'est importée dans le registre officiel.
 
-Les champs historiques `orientation`, `strategie`, `force`, `experience` et
+Les champs historiques `orientation`, `orientation_principale`, `strategie`, `force`, `experience` et
 `etiquettes_permanentes` ne sont plus générés. Les anciennes fiches restent
 lisibles ; ces clés sont ignorées par les calculs et retirées lors d'une
 publication habituelle de la fiche, sans toucher aux autres champs optionnels.
@@ -524,8 +525,7 @@ MANŒUVRE ; aucun bonus ne s'applique depuis les autres blocs. L'avantage de typ
 multiplie ensuite la valeur par 2 contre archer et cavalier : une formation
 éligible vaut donc 20 par unité contre ces types. Le piquier bénéficie de son
 avantage x2 contre la cavalerie lourde. La règle commune de fatigue entre blocs
-du même type s'applique à la valeur contextuelle. Aucun attribut permanent de
-force n'est ajouté ; le champ historique `force` de la fiche reste inchangé.
+du même type s'applique à la valeur contextuelle. Aucun attribut permanent de force n’est ajouté à la fiche.
 
 L'audit interdit toute cavalerie lourde construite manuellement, y compris dans
 le home et la caserne militaire. Il vérifie l'attribution privée du général récompense et
@@ -851,8 +851,9 @@ aucune unité       -> neutre
 les deux présents  -> conteste
 ```
 
-`conteste` est normalement transitoire pendant la résolution classique. À la fin
-d'un tour classique, le territoire doit revenir à `j1`, `j2` ou `neutre`.
+`conteste` est normalement transitoire pendant la résolution classique. Une impasse
+non résolue physiquement ou une limite de sécurité peut toutefois conserver cet état
+(section 13) : le contrôle dépend des unités réellement présentes.
 En Survie, un rattrapage bot peut laisser un territoire `conteste` jusqu'au prochain
 cycle normal, sans lancer de combat supplémentaire pendant ce rattrapage.
 
@@ -1035,7 +1036,7 @@ Utilisé lorsqu'un territoire sans défenseur propriétaire établi devient cont
 ### OFF/DEF
 
 Utilisé lorsqu'un joueur possédait déjà le territoire et que l'adversaire y entre.
-La distinction est conservée pour de futurs effets défensifs.
+Cette distinction décide du camp devant partir en cas d’impasse ; elle ne donne aucun bonus défensif.
 
 ### Engagement frontal
 
@@ -1057,7 +1058,7 @@ n'est défini ici.
 
 ### Combat rangé
 
-Sans autre règle d'ordre applicable, les généraux actifs sont pris par ordre
+Les généraux actifs sont pris par ordre
 d'emplacement :
 
 ```text
@@ -1289,7 +1290,8 @@ de données. `rapports.afficher_fin_de_tour(configuration=None)` reçoit le prof
 Survie pour produire son exemple de consultation ; sans profil, le comportement
 classique est conservé. Aucun chemin ou exemple classique n'est produit en Survie.
 
-Les anciennes structures visibles sont aussi refusées avant écriture. Le dossier
+Les anciennes implantations du Clocher, de la poste et du dossier technique
+sont refusées avant écriture (voir le guide Linux). Le dossier
 technique commun est `.systeme/`. L'accueil Survie est publié sous
 `village/<joueur>/hotel_de_ville/` : deux journaux passifs des vagues 0..10, Courrier
 acceptant `FLAG <flag>`, bestiaire progressif et copie du rapport court finalisé. Le Clocher commun est
@@ -1536,6 +1538,9 @@ ne deviennent applicables qu'après validation explicite.
 
 `catalogues.py` est la source des recettes et des identifiants reconnus.
 Les identifiants sont universels, permanents et ne doivent jamais être recyclés.
+
+Extrait des quatre représentations de base ; les douze définitions complètes,
+leurs capacités et recettes sont dans `catalogues.UNITES`.
 
 | Type générique | ID unité | ID d'évolution | Référence de fabrication | Valeur de combat |
 | --- | --- | --- | --- | --- |

@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/Cojax-code/mythodea.git",
   "branch": "v2.0",
-  "commit": "3e3555458c9fdd8791edfe26302abe0190a58cbb",
+  "commit": "cb4da67bc27898402780a71bc3bb0ca784072f5c",
   "files": {
     "bouclier_vivant.py": "011427c00884482cac642884250b70bcb79760f988546c4413e93367725ff44f",
     "catalogues.py": "acd03d0b2edcfab355183e992d66b288ca21026f9696943c79f52029ebdf3a07",
@@ -1701,7 +1701,6 @@
       ]
     }
   },
-  "source_mode": "working-tree",
-  "snapshot": "a6bb1c6de02f8b734006784a213bf79ebe0e369681cbe925b03460f341185e0f",
-  "revision": "a6bb1c6de02f8b734006784a213bf79ebe0e369681cbe925b03460f341185e0f"
+  "revision": "cb4da67",
+  "source_state": "git"
 }

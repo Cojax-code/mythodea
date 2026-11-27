@@ -3,13 +3,13 @@ Vague 4 - Consolider ses acquis avant le boss
 ----------------------------------------------------------
 
 CONSEIL
-Relire les conseils déjà découverts lors des vagues precedentes
+Relire les conseils déjà découverts lors des vagues précédentes
 
 >>> COMMANDE
 
 ls -l {game_path}/village/{joueur}/hotel_de_ville/journal_du_Toonitruand
 
-NOTE : Un boss arrive à la vague 5, 10, 15, …prepare vous en consequence !.
+NOTE : Un boss arrive à la vague 5, 10, 15, … Préparez-vous en conséquence !
 
 ----------------------------------------------------------
 

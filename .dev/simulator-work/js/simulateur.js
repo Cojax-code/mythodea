@@ -189,7 +189,7 @@
                 if (general.qg && !catalog.blocks.includes(general.qgBlock)) errors.push(`${where} : bloc du QG invalide.`);
                 general.labelsSummary.textContent = `${ordinary} / ${maximum} étiquette(s) sélectionnée(s)${p.zombie ? " · mort_vivant dispose d’un emplacement réservé supplémentaire" : ""}${p.pc === 0 ? " · PC nuls : aucun bonus d’étiquette" : ""}`;
                 general.steps?.forEach((section, i) => { section.hidden = i + 2 > general.uiStep; });
-                general.qgStep.hidden = p.zombie || !["stratege", "hybride"].includes(p.nature) || general.uiStep < 4;
+                general.qgStep.hidden = p.zombie || (!["stratege", "hybride"].includes(p.nature) && !p.banner_level) || general.uiStep < 4;
                 general.labelStep.hidden = earnedRewardLabels(general).length === 0 || general.uiStep < 5;
                 general.nextQG.textContent = earnedRewardLabels(general).length ? "Continuer vers les étiquettes" : "Continuer vers la composition";
                 if (general.extras) general.extras.hidden = general.uiStep < 6;
@@ -250,8 +250,9 @@
         const qgAllowed = !p.zombie && ["stratege", "hybride"].includes(p.nature);
         controls.banner_block.disabled = p.zombie || !p.banner_level;
         if (controls.banner_block.disabled) { controls.banner_block.value = ""; general.banner_block = null; }
-        general.qgStep.hidden = !qgAllowed;
-        general.continueStats.textContent = qgAllowed ? "Continuer vers le QG" : (earnedRewardLabels(general).length ? "Continuer vers les étiquettes" : "Continuer vers la composition");
+        general.qgStep.hidden = !qgAllowed && controls.banner_block.disabled;
+        general.qgField.hidden = !qgAllowed;
+        general.continueStats.textContent = (qgAllowed || !controls.banner_block.disabled) ? "Continuer vers le QG et l’étendard" : (earnedRewardLabels(general).length ? "Continuer vers les étiquettes" : "Continuer vers la composition");
         controls.qg.disabled = !qgAllowed;
         if (!qgAllowed) {
             controls.qg.checked = false;
@@ -377,14 +378,11 @@
             const level = parseInt(key);
             const extra = key.includes(":");
             const zombieLevel = p.zombie && level > p.level - p.zombie_levels;
-            const fixed = false; // Aucun niveau ne garantit une étiquette.
-            const reward = general.rewards[key] || {kind: fixed ? "etiquette" : "", value: ""};
-            if (fixed && reward.kind !== "etiquette") { reward.kind = "etiquette"; reward.value = ""; }
+            const reward = general.rewards[key] || {kind: "", value: ""};
             const row = node("div", undefined, "sim-reward-row");
             row.append(node("span", "N" + level + (extra ? " · supplémentaire" : " · classique")));
             const kind = node("select");
             const categories = zombieLevel ? [["", "Aucune"], ...(!knownLabels.has("mort_vivant") ? [["etiquette", "Mort-vivant"]] : [])]
-                : fixed ? [["etiquette", "Étiquette garantie"]]
                 : [["", "Non renseignée"], ["commandement", "PC (+5 à +10)"],
                    ["moral", "Moral (+2 à +4)"], ["etiquette", "Étiquette"], ["unite", "Unité débloquée"]];
             for (const [id, label] of categories) {
@@ -456,12 +454,9 @@
                         if (item.kind === "commandement") prior.pc += Number(item.value);
                         if (item.kind === "moral") prior.morale = Math.min(100, prior.morale + Number(item.value));
                     }
-                    const result = await engineRequest("reward", {profile: prior, seed: null});
+                    const result = await engineRequest("reward", {profile: prior, seed: null, slot: extra ? "supplementaire" : "classique"});
                     if (!randomValue.isConnected || signature !== JSON.stringify([p, general.rewards])) return;
-                    if (extra) {
-                        const [kind, value] = Array.isArray(result.supplementary) ? result.supplementary : ["unite", result.supplementary];
-                        Object.assign(reward, {kind: {maitrise_commandement: "commandement", force_caractere: "moral"}[kind] || kind, value: String(value)});
-                    } else Object.assign(reward, result.reward);
+                    Object.assign(reward, result.reward);
                     apply();
                 } catch (error) { general.rewardInfo.textContent = error.message; }
                 finally { randomValue.disabled = false; }
@@ -506,6 +501,7 @@
             if (states.some(pair => pair.join(",") === current)) capabilities.value = current;
             const pair = capabilities.value.split(",").map(Number);
             [p.active_slots, p.banner_level] = pair;
+            capabilities.disabled = states.length <= 1;
         };
         general.refreshCapabilities();
         capabilities.addEventListener("change", () => { rememberGenerals(); update(); });
@@ -515,7 +511,7 @@
         }
         banner.value = general.banner_block || "";
         const bannerLabel = node("label", "Bloc portant l’étendard"); bannerLabel.htmlFor = banner.id;
-        levelStep.append(bannerLabel, banner);
+
         const trait = node("select"); trait.id = `${prefix}-trait`;
         for (const name of catalog.traits) {
             const option = node("option", name); option.value = name; trait.append(option);
@@ -581,6 +577,8 @@
         controls.level.addEventListener("change", () => {
             if (controls.level.checkValidity()) {
                 p.level = Number(controls.level.value);
+                p.zombie_levels = p.zombie ? Math.min(p.level, p.zombie_levels) : 0;
+                controls.zombie_levels.value = p.zombie_levels;
                 general.refreshCapabilities();
                 for (const level of Object.keys(general.rewards))
                     if (parseInt(level) > p.level || parseInt(level) === 0) delete general.rewards[level];
@@ -634,18 +632,18 @@
         continueStats.type = "button";
         continueStats.addEventListener("click", () => {
             const canHaveQG = !p.zombie && ["stratege", "hybride"].includes(p.nature);
-            general.uiStep = Math.max(canHaveQG ? 4 : (earnedRewardLabels(general).length ? 5 : 6), general.uiStep);
+            general.uiStep = Math.max((canHaveQG || !p.zombie && p.banner_level) ? 4 : (earnedRewardLabels(general).length ? 5 : 6), general.uiStep);
             update();
         });
         statsStep.append(continueStats);
         general.continueStats = continueStats;
         const qgStep = node("section", undefined, "sim-step");
         general.qgStep = qgStep;
-        qgStep.append(node("h3", "4. Quartier général"));
+        qgStep.append(node("h3", "4. QG et étendard"));
         const qg = node("input"); Object.assign(qg, {type: "checkbox", id: `${prefix}-qg`, checked: general.qg});
         controls.qg = qg;
         const qgLabel = node("label", "Quartier général du camp"); qgLabel.htmlFor = qg.id;
-        const qgField = node("div", undefined, "sim-check"); qgField.append(qg, qgLabel);
+        const qgField = node("div", undefined, "sim-check"); qgField.append(qg, qgLabel); general.qgField = qgField;
         qg.addEventListener("change", () => {
             if (qg.checked) for (const other of armies[camp]) if (other !== general) other.profileControls.qg.checked = false;
         });
@@ -657,7 +655,10 @@
         block.value = general.qgBlock;
         const blockLabel = node("label", "Bloc du QG"); blockLabel.htmlFor = block.id;
         placement.append(blockLabel, block, node("p", "Le QG reste un rôle du général. Ce placement ne crée aucun bonus propre au bloc ; les effets globaux suivent le moteur officiel.", "sim-muted"));
-        qgStep.append(qgField, placement);
+        qgStep.append(qgField, placement, bannerLabel, banner);
+        const rules = node("a", "Règles des généraux et des étendards");
+        rules.href = "bestiaire.html#generaux";
+        qgStep.append(rules);
         const nextQG = node("button", "Continuer vers les étiquettes", "sim-secondary");
         general.nextQG = nextQG;
         nextQG.type = "button";

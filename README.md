@@ -14,11 +14,13 @@ permissions Unix et Python.
 La branche `v2.0` rassemble le moteur commun du mode classique (`j1` contre
 `j2`) et le cycle jouable du mode Survie Est. Les combats et la progression
 utilisent les **étiquettes**, les PC et le soutien du QG, à la place des
-anciens ordres de combat. `ordre_surnombre.txt` reste réservé aux décisions
+anciens ordres de combat. `info/ordre_surnombre.txt` reste réservé aux décisions
 de retraite et de poursuite du mode Survie.
 
-Le moteur a fait l'objet de tests automatisés sous Linux/WSL ; la validation
-d'une partie complète avec de vrais joueurs sur Raspberry Pi reste à mener.
+Les premiers essais Raspberry Pi avec joueurs SSH ont validé la montée de niveau,
+les gains et la récompense de commandement (Stratège à 13 PC). Les corrections
+d’arborescence et d’accueil demandent encore leur essai sur cette machine ;
+les procédures distinguent ces contrôles des tests automatisés Linux/WSL.
 Les règles applicables sont décrites dans [REGLES_V2.md](REGLES_V2.md),
 [MYTHODEA_SPEC.md](MYTHODEA_SPEC.md) et [SURVIE_SPEC.md](SURVIE_SPEC.md).
 
@@ -96,38 +98,17 @@ Le temps est lisible avec `cat /game/village/clocher/etat_tour.txt` ou
 `tail -f /game/village/clocher/suivi_tour.log`.
 
 Commencez par `village/<joueur>/hotel_de_ville/journal_du_Toonitruand/vague_0.txt`.
-L’Hôtel de Ville contient aussi le bilan `rapport.txt` et le `courrier/` (prototype
-sans traitement de requêtes). Les états techniques se trouvent sous `.systeme/`.
-Les anciennes structures sont refusées ; archiver la partie et réinstaller les
-hooks Crypte avant une nouvelle partie.
+L’Hôtel de Ville contient aussi le bilan `rapport.txt` et le `courrier/`, qui accepte
+`FLAG <flag>` pour les mini-défis. Les états techniques sont sous `.systeme/`.
+Les anciens plateaux incompatibles sont refusés ; les informations des généraux
+encore à leur racine sont en revanche migrées sous gel vers `info/`, sans écrasement.
+Voir [compatibilité et migration](MYTHODEA_SPEC.md#5-généraux).
 
-La Crypte V0.1 propose trois recettes Linux, documentées dans les PDF
-`recette1.pdf`, `recette2.pdf` et `recette3.pdf` sous
-`village/<joueur>/crypte/grimoire/` (SCP/SFTP).
-L'administrateur installe ou met à jour les hooks Bash officiels, puis les joueurs se
-reconnectent :
-
-```bash
-sudo python3 python/crypte_installer.py
-```
-
-Une réussite pendant ACTIONS prépare un général bonus de 20 cavaliers, archers ou piquiers, publié
-après la résolution dans `crypte/recompense/`. Il reste à récupérer avec `mv`.
-Une réussite tous les cinq tours, partagée entre toutes les recettes, est permise par joueur, hors quota normal des
-cinq créations. Voir [les vérifications Linux de la Crypte](TESTS_LINUX_SURVIE.md#crypte-v01).
-
-Pour un essai borné sans attendre :
-
-```bash
-bash bash/start.sh --mode survie --duree-action 0 --duree-gel 0 --duree-consultation 0 --tours 1
-```
-
-`Ctrl+C` pendant l'attente conserve l'échéance pour la reprise. Une capture,
-résolution ou publication interrompue exige une récupération administrative ; les
-[commandes de diagnostic et de dégel](TESTS_LINUX_SURVIE.md#récupération-administrative)
-ne rejouent aucun audit ou combat. Ne pas alterner classique et Survie sur une même
-partie : les identités et fichiers d'état sont communs. `instal.sh` et
-`nettoyage.sh` restent réservés au mode classique.
+La Crypte propose trois recettes Linux dans son grimoire PDF et des récompenses
+hors quota normal. Installation des hooks, tests bornés, sauvegardes et récupération
+après interruption : [procédure Linux](TESTS_LINUX_SURVIE.md).
+Une résolution interrompue ne doit jamais être relancée en modifiant sa phase :
+la récupération administrative ne rejoue ni audit ni combat.
 
 ## Organisation
 
