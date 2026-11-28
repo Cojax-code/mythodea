@@ -2,6 +2,9 @@
 # Lecture non privilégiée : les permissions du joueur s'appliquent normalement.
 # Fonction isolée en sous-shell pour préserver les traps et hooks du shell SSH.
 replay() (
+    if ! declare -F _mythodea_afficher >/dev/null; then
+        source "$(dirname -- "${BASH_SOURCE[0]}")/terminal.sh"
+    fi
     if [[ $# != 1 || ! -f $1 || ! -r $1 ]]; then
         printf 'Usage : replay chemin/rapport.txt (fichier lisible requis)\n' >&2
         exit 1
@@ -13,7 +16,7 @@ replay() (
     fi
     trap 'exit 130' INT
     while IFS= read -r ligne || [[ -n $ligne ]]; do
-        printf '%s\n' "$ligne" || exit
+        _mythodea_afficher "$ligne" || exit
         sleep "$delai" || exit
     done < "$1"
 )

@@ -193,9 +193,9 @@ class PicNic(unittest.TestCase):
 
     def test_pdf_pic_nic_et_marqueurs(self):
         for j in ('j1', 'j2'):
-            pdf = (self.crypte.zone(self.profil, j) / 'grimoire/recette3.pdf').read_bytes()
+            pdf = (self.crypte.zone(self.profil, j) / 'grimoire/recette3.txt').read_bytes()
             self.assertIn(b'pic-nic', pdf)
-            self.assertEqual(pdf.count(b'(ls -l rempart) Tj'), 3)
+            self.assertEqual(pdf.count(b'\nls -l rempart\n'), 3)
             for texte in (b'-rw-rw----', b'-rw-------', b'umask', b'20 piquiers',
                           b'proprietaire', b'groupe', b'autres'):
                 self.assertIn(texte, pdf)

@@ -14,7 +14,7 @@ echo '[1/7] Vérification root'
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 cd -- "$PROJECT_DIR"
-source "$SCRIPT_DIR/stockage.sh"
+source "$SCRIPT_DIR/.interne/stockage.sh"
 
 for commande in python3 getent id useradd groupadd usermod install rm find ps findmnt; do
     command -v "$commande" >/dev/null || refuser "Commande requise absente : $commande"

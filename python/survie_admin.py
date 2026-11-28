@@ -5,11 +5,134 @@ import os
 from pathlib import Path
 import re
 import time
+import stat
+import uuid
 
 import config
 import cycle_linux
 import etat
 import securite
+import generaux
+
+
+def plan_rollback(configuration):
+    """Diagnostic en lecture seule ; aucune restauration conjecturale."""
+    cycle = etat.charger_cycle_survie(configuration)
+    if not cycle or cycle['phase'] not in ('capture', 'resolution', 'recuperation'):
+        raise RuntimeError('Rollback réservé à une capture/résolution interrompue non publiée.')
+    nom = cycle.get('generation', '')
+    if not re.fullmatch(r'g[0-9]{6,}-[0-9a-f]{12}', nom):
+        raise RuntimeError('Génération interrompue absente ou invalide.')
+    if nom == cycle.get('generation_active'):
+        raise RuntimeError('Génération déjà validée : ne jamais rejouer ce tour.')
+    generation = configuration['game_path'] / '.systeme/generations' / nom
+    cycle_linux.sans_liens(generation)
+    if not generation.is_dir():
+        raise RuntimeError('Génération de diagnostic absente.')
+    for dossier in (generation.parent.parent, generation.parent, generation):
+        infos = dossier.stat()
+        if not stat.S_ISDIR(infos.st_mode) or infos.st_uid != 0 or infos.st_mode & 0o022:
+            raise RuntimeError('Dossier administratif modifiable : diagnostic non fiable.')
+    if (generation / 'resultat.json').exists() or (generation / 'resultat.json').is_symlink():
+        raise RuntimeError('Résultat présent : utiliser republier, sans rejouer la résolution.')
+    # Refuser aussi les traces d'une republication administrative interrompue.
+    if any(generation.glob('publication*')):
+        raise RuntimeError('Publication commencée ou ambiguë : rollback automatique refusé.')
+    stage = configuration.get('publication_homes_path', Path('/home/.mythodea-publication'))
+    if stage.exists() and any(stage.glob(nom + '*')):
+        raise RuntimeError('Staging de publication présent : vérifier la republication.')
+    reference = etat.charger_unites_actions(configuration)
+    if not reference or reference.get('tour') != cycle['tour']:
+        raise RuntimeError('Référence ACTIONS incohérente : aucune reprise sûre.')
+    systeme = configuration['game_path'] / '.systeme'
+    for nom_etat in config.ETATS_METIER:
+        fichier = systeme / nom_etat
+        cycle_linux.sans_liens(fichier)
+        if fichier.exists():
+            infos = fichier.stat()
+            if (not stat.S_ISREG(infos.st_mode) or infos.st_nlink != 1
+                    or infos.st_uid != 0 or infos.st_mode & 0o077):
+                raise RuntimeError(f'État privé non sûr : {fichier}')
+            if fichier.suffix == '.json':
+                if not isinstance(json.loads(fichier.read_text(encoding='utf-8')), dict):
+                    raise RuntimeError(f'État privé invalide : {fichier}')
+    # Les déplacements ACTIONS ne sont pas encore audités : ne pas les sanctionner
+    # ni remplacer leurs positions officielles par celles constatées maintenant.
+    inventaire = securite.inventorier_unites_actions(configuration)
+    identites = [g['identifiant'] for g in inventaire.values()]
+    if len(identites) != len(set(identites)):
+        raise RuntimeError('Généraux dupliqués : examen manuel nécessaire.')
+    positions = etat.charger_positions_generaux()
+    profils = systeme / 'progression.json'
+    if profils.exists():
+        for fiche in json.loads(profils.read_text(encoding='utf-8')).values():
+            if not isinstance(fiche, dict):
+                raise RuntimeError('Profil privé invalide.')
+            if any(cle.startswith((f"formation:{cycle['tour']}:", f"combat:survie:{cycle['tour']}:"))
+                   for cle in fiche.get('progressions_validees', {})):
+                raise RuntimeError('Progression de ce tour déjà validée sur le plateau : rollback refusé.')
+    for identite in identites:
+        joueur, general = identite.split(':')
+        if identite not in positions or generaux.numero_general_depuis_nom(general) > etat.lire_compteur_general(joueur):
+            raise RuntimeError('Identités/compteurs incohérents : examen manuel nécessaire.')
+    return {'tour': cycle['tour'], 'generation': generation.name,
+            'operation': 'reouvrir_actions_sans_restaurer',
+            'conserves': ['plateau actuel et déplacements', 'profils, unités, bâtiments',
+                         'états privés, compteurs et reçus', 'archives', 'génération interrompue'],
+            'restaures': [],
+            'pertes': ['tentatives Crypte inachevées déjà closes ; ateliers déjà nettoyés par la capture'],
+            'note': 'Nouvelle fenêtre ACTIONS du même tour ; contrôles répétés sous gel. Aucun gain rejoué.'}
+
+
+@cycle_linux.interruption_differee()
+def rollback(configuration, dry_run=False, gestion=None):
+    exiger_moteur_arrete(configuration)
+    for nom in ('gel_survie.json', 'verrou_cycle_survie'):
+        if (configuration['game_path'] / '.systeme' / nom).exists():
+            raise RuntimeError(f'{nom} présent : diagnostic puis dégel/retrait explicite requis.')
+    plan = plan_rollback(configuration)
+    if dry_run:
+        return plan
+    with etat.verrou_cycle_survie(configuration):
+        gestion = gestion or cycle_linux.Generations(configuration)
+        # Pas de preparer() : aucune migration avant la sauvegarde de diagnostic.
+        gestion.backend.preparer()
+        gestion.backend.geler()
+        try:
+            gestion.backend.verifier_gel()
+            plan = plan_rollback(configuration)
+            generation = configuration['game_path'] / '.systeme/generations' / plan['generation']
+            sauvegarde = generation / ('recuperation-' + uuid.uuid4().hex)
+            cycle_linux.dossier_prive(sauvegarde)
+            cycle_linux.ecrire_json(sauvegarde / 'plan.json', plan)
+            cycle_linux.dossier_prive(sauvegarde / 'game')
+            cycle_linux.dossier_prive(sauvegarde / 'homes')
+            for source in (*configuration['territoires'], configuration['repli_path']):
+                if source.exists():
+                    cycle_linux.copier(source, sauvegarde / 'game' / source.name, gestion.backend.verifier_gel)
+            cycle_linux.dossier_prive(sauvegarde / 'game/.systeme')
+            for nom in (*config.ETATS_METIER, 'cycle_survie.json'):
+                source = configuration['game_path'] / '.systeme' / nom
+                if source.exists():
+                    cycle_linux.copier(source, sauvegarde / 'game/.systeme' / nom, gestion.backend.verifier_gel)
+            for joueur, home in gestion.homes.items():
+                cycle_linux.dossier_prive(sauvegarde / 'homes' / joueur)
+                for source in cycle_linux.entrees_home(home):
+                    cycle_linux.copier(source, sauvegarde / 'homes' / joueur / source.name, gestion.backend.verifier_gel)
+            cycle_linux.ecrire_json(sauvegarde / 'prete.json', {'complete': True})
+            precedent = etat.charger_cycle_survie(configuration)
+            reprise = {'tour': plan['tour'], 'phase': 'actions',
+                       'echeance': time.time() + configuration['duree_phase_action_secondes'],
+                       'recuperation_de': plan['generation']}
+            if 'generation_active' in precedent:
+                reprise['generation_active'] = precedent['generation_active']
+            gestion.backend.verifier_gel()
+            # Point de validation unique. Avant : recommencer la récupération.
+            # Après : reprendre ACTIONS, sans nouvelle attribution de général.
+            etat.sauvegarder_cycle_survie(reprise, configuration)
+        finally:
+            gestion.backend.degeler()
+    return plan
 
 
 def exiger_moteur_arrete(configuration):
@@ -56,6 +179,7 @@ def retirer_verrou(configuration):
         cycle_linux.synchroniser_dossier(verrou.parent)
 
 
+@cycle_linux.interruption_differee()
 def republier(configuration, generation):
     if not re.fullmatch(r'g[0-9]{6,}-[0-9a-f]{12}', generation or ''):
         raise ValueError('Identifiant de génération invalide.')
@@ -95,9 +219,10 @@ def republier(configuration, generation):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('operation', choices=('diagnostic', 'degeler', 'retirer-verrou', 'republier'))
+    p.add_argument('operation', choices=('diagnostic', 'degeler', 'retirer-verrou', 'republier', 'rollback'))
     p.add_argument('--confirmer', action='store_true', help='administrateur : diagnostic vérifié')
     p.add_argument('--generation')
+    p.add_argument('--dry-run', action='store_true', help='diagnostic rollback sans aucune écriture')
     args = p.parse_args(argv)
     if os.name != 'posix' or os.geteuid() != 0:
         p.error('Exécuter sous Linux avec root depuis le compte administrateur.')
@@ -107,10 +232,20 @@ def main(argv=None):
         for nom in ('cycle_survie.json', 'verrou_cycle_survie', 'gel_survie.json'):
             fichier = c['game_path'] / '.systeme' / nom
             print(nom + ':\n' + (fichier.read_text() if fichier.exists() else 'absent'))
+        try:
+            print(json.dumps(rollback(c, dry_run=True), ensure_ascii=False, indent=2))
+        except (RuntimeError, ValueError, OSError) as erreur:
+            print('Rollback : ' + str(erreur))
+        return
+    if args.dry_run:
+        if args.operation != 'rollback':
+            p.error('--dry-run est réservé à rollback.')
+        print(json.dumps(rollback(c, dry_run=True), ensure_ascii=False, indent=2))
         return
     if not args.confirmer:
         p.error('--confirmer est requis après vérification administrative.')
     {'degeler': lambda: degeler(c), 'retirer-verrou': lambda: retirer_verrou(c),
+     'rollback': lambda: print(json.dumps(rollback(c), ensure_ascii=False, indent=2)),
      'republier': lambda: republier(c, args.generation)}[args.operation]()
 
 

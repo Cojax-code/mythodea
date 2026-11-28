@@ -34,7 +34,8 @@ class ResetSurvie(unittest.TestCase):
         (self.cg / 'cgroup.controllers').touch()
         for name in ('appels', 'processus', 'montages'):
             (self.state / name).touch()
-        for name in ('reset_survie.sh', 'stockage.sh'):
+        (self.repo / 'bash/.interne').mkdir()
+        for name in ('reset_survie.sh', '.interne/stockage.sh'):
             texte = (REPO / 'bash' / name).read_text(encoding='utf-8')
             # Redirection seulement de la copie : les vrais chemins restent inaccessibles.
             for original, cible in (('/home', self.home), ('/game', self.game),
@@ -138,7 +139,8 @@ rm() {
         self.assertNotIn('rm ', self.calls())
 
     def test_syntaxe_bash_scripts_administratifs(self):
-        for name in ('reset_survie.sh', 'stockage.sh', 'instal.sh', 'nettoyage.sh', 'start.sh'):
+        for name in ('reset_survie.sh', '.interne/stockage.sh', 'instal.sh', 'start.sh',
+                     '.interne/terminal.sh', '.interne/replay.sh', '.interne/prototype_crypte_scan.sh'):
             with self.subTest(name=name):
                 result = subprocess.run([BASH, '-n', str(REPO / 'bash' / name)], capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stderr)

@@ -8,28 +8,28 @@ Télécharger une recette dans un dossier local explicite.
 >>> COMMANDE VÉTÉRAN
 
 mkdir -p ./recettes
-scp {joueur}@Mythodea.local:{game_path}/village/{joueur}/crypte/grimoire/recette1.pdf ./recettes/
+scp {joueur}@Mythodea.local:{game_path}/village/{joueur}/crypte/grimoire/recette1.txt ./recettes/
 
 NOTE : À exécuter sur votre PC. La destination explicite évite de perdre le fichier dans le mauvais répertoire local.
 
 ----------------------------------------------------------
 
 CONSEIL
-Calculer l'empreinte SHA-256 du PDF après téléchargement.
+Calculer l'empreinte SHA-256 du fichier texte après téléchargement.
 
 >>> COMMANDE VÉTÉRAN
 
-sha256sum ./recettes/recette1.pdf
+sha256sum ./recettes/recette1.txt
 
 NOTE : Une empreinte permet de vérifier qu'un fichier n'a pas été modifié entre deux copies.
 
 ----------------------------------------------------------
 
 CONSEIL
-Afficher les métadonnées du PDF sans ouvrir d'interface graphique.
+Lire la recette page par page dans le terminal.
 
 >>> COMMANDE VÉTÉRAN
 
-pdfinfo ./recettes/recette1.pdf
+less ./recettes/recette1.txt
 
-NOTE : Si pdfinfo est installé, il affiche notamment le nombre de pages et des informations techniques sur le document.
+NOTE : Utilisez les flèches pour parcourir le document, / pour chercher et q pour quitter.

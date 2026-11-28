@@ -15,11 +15,33 @@ import stat
 import subprocess
 import time
 import uuid
+import signal
+import threading
+from contextlib import contextmanager
 
 import config
 import etat
 import generaux
 import rapports
+
+
+@contextmanager
+def interruption_differee():
+    """Ctrl+C termine l'opération critique ; SIGTERM/SIGKILL restent des pannes."""
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+    precedent = signal.getsignal(signal.SIGINT)
+    recu = []
+    def demander_arret(numero, frame):
+        recu.append(numero)
+    signal.signal(signal.SIGINT, demander_arret)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGINT, precedent)
+    if recu:
+        raise KeyboardInterrupt
 
 
 def synchroniser_dossier(chemin):
@@ -101,6 +123,24 @@ def copier(source, destination, verifier=lambda: None, exclure=(), exercices=())
 def entrees_home(home):
     # Inclure les noms non canoniques qui influencent home_contient_general().
     return sorted(p for p in home.iterdir() if p.name.startswith("general"))
+
+
+def proteger_ancien(chemin):
+    """Retirer les accès par cwd conservé ; les fd déjà ouverts restent isolés."""
+    if not chemin.exists():
+        return
+    for p in [chemin, *(chemin.rglob('*') if chemin.is_dir() else ())]:
+        if p.is_symlink():
+            # Des ateliers pédagogiques autorisent des liens ; fermer leur
+            # parent suffit, sans traverser ni modifier leurs cibles.
+            continue
+        sans_liens(p)
+        if not p.is_dir() and p.stat().st_nlink != 1:
+            # Un lien physique peut viser un fichier personnel hors du jeu.
+            # Le parent retiré est fermé ; ne jamais chown/chmod cet autre inode.
+            continue
+        os.chown(p, 0, 0)
+        os.chmod(p, 0o500 if p.is_dir() else 0o400)
 
 
 class Linux:
@@ -253,6 +293,39 @@ class Linux:
         return sorted(terminaux)
 
     @staticmethod
+    def texte_terminal(uid, tty, message):
+        # La préférence est écrite par le hook de CE terminal, à chaque invite.
+        # Aucun code de contrôle joueur n'est transmis, même sans couleurs.
+        texte = ''.join(c for c in message if c in '\n\t' or (ord(c) >= 32 and not 127 <= ord(c) <= 159))
+        preference = Path(f'/run/user/{uid}/mythodea-' + tty.replace('/', '-'))
+        couleurs = False
+        try:
+            sans_liens(preference)
+            fd = os.open(preference, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+            try:
+                infos = os.fstat(fd)
+                couleurs = (stat.S_ISREG(infos.st_mode) and infos.st_uid == uid
+                            and infos.st_nlink == 1 and infos.st_size == 1
+                            and os.read(fd, 2) == b'1')
+            finally:
+                os.close(fd)
+        except (OSError, RuntimeError):
+            pass
+        if not couleurs:
+            return texte
+        lignes = []
+        for ligne in texte.split('\n'):
+            bas = ligne.lower()
+            code = next((code for code, mots in (
+                (31, ('erreur', 'refus', 'défaite', 'perte')),
+                (33, ('fatigue', 'bless', 'gel temporaire', 'avertissement')),
+                (32, ('réuss', 'succès', 'victoire', 'progression', 'récompense')),
+                (36, ('phase', 'tour', '===', 'rapports disponibles')))
+                if any(mot in bas for mot in mots)), None)
+            lignes.append(f'\033[{code}m{ligne}\033[0m' if code else ligne)
+        return '\n'.join(lignes)
+
+    @staticmethod
     def ecrire_terminal(uid, tty, message):
         """Valide aussi le descripteur ouvert, sans créer ni modifier de droits."""
         if not re.fullmatch(r'pts/[0-9]+', tty):
@@ -273,7 +346,7 @@ class Linux:
                     or not os.isatty(fd)):
                 logging.warning('Terminal modifié ou invalide, envoi refusé : %s', chemin)
                 return False
-            restant = ('\n' + message + '\n').encode('utf-8')
+            restant = ('\n' + Linux.texte_terminal(uid, tty, message) + '\n').encode('utf-8')
             while restant:
                 taille = os.write(fd, restant)
                 if taille == 0:
@@ -389,9 +462,9 @@ class Generations:
         repertoire = self.game / 'village/clocher'
         repertoire.mkdir(parents=True, exist_ok=True)
         courant = repertoire / 'etat_tour.log'
-        etat.ecrire_prive(courant, texte)
-        os.chown(courant, 0, self.gid)
-        os.chmod(courant, 0o640)
+        os.chown(repertoire, 0, self.gid)
+        os.chmod(repertoire, 0o750)
+        etat.ecrire_prive(courant, texte, gid=self.gid, mode=0o640)
 
     def annoncer_debut(self):
         messages = {}
@@ -403,7 +476,7 @@ class Generations:
                 f'Votre village :\n{village}\n\nCommencez par l’Hôtel de Ville :\n\n'
                 f'Débutant :\ncat {village}/hotel_de_ville/journal_du_Toonitruand/vague_0.txt\n\n'
                 f'À l’aise avec Linux :\ncat {village}/hotel_de_ville/journal_du_veteran/vague_0.txt\n\n'
-                f'Le Clocher indique l’état du tour :\n\ncat {self.game}/village/clocher/etat_tour.log')
+                f'Le Clocher indique l’état du tour :\n\nwatch -n 1 cat {self.game}/village/clocher/etat_tour.log')
         self.backend.annoncer(messages)
 
     def attendre(self, cycle):
@@ -623,6 +696,7 @@ class Generations:
                     destination.rename(ancien)
                     synchroniser_dossier(destination.parent)
                     synchroniser_dossier(ancien.parent)
+                    proteger_ancien(ancien)
                 op['etat'] = 'ancien_retire'
                 ecrire_json(fichier, journal)
                 if source.exists():

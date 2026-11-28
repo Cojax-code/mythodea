@@ -397,10 +397,75 @@ class PermissionsReelles(unittest.TestCase):
         finally:
             lien.unlink()
         os.link(source, lien)
+        with self.assertRaisesRegex(RuntimeError, 'Information liée'):
+            self.g.capturer(0)
+        lien.unlink()
+        # Hors des informations sensibles, la copie physique reste indépendante.
+        source = self.general / 'avant/infanterie1/arc'
+        lien = self.general / 'avant/lien'
+        os.link(source, lien)
         prive, _ = self.g.capturer(0)
-        copie = prive['game_path'].parent / 'homes/j1/general1/lien'
+        copie = prive['game_path'].parent / 'homes/j1/general1/avant/lien'
         self.assertNotEqual(copie.stat().st_ino, source.stat().st_ino)
         self.assertEqual(copie.stat().st_nlink, 1)
+
+    def test_rollback_capture_reelle_conserve_actions_et_etats(self):
+        avant = {n: (config.game_path / '.systeme' / n).read_bytes()
+                 for n in config.ETATS_METIER if (config.game_path / '.systeme' / n).exists()}
+        with patch.object(cycle_linux, 'copier', side_effect=OSError('capture interrompue')):
+            with self.assertRaises(OSError):
+                survie.resoudre_tour_survie(self.c, gestion=self.g)
+        apres_capture = {n: (config.game_path / '.systeme' / n).read_bytes()
+                         for n in config.ETATS_METIER if (config.game_path / '.systeme' / n).exists()}
+        generation = self.g.generation
+        survie_admin.rollback(self.c, gestion=self.g)
+        self.assertEqual(etat.charger_cycle_survie(self.c)['phase'], 'actions')
+        self.assertEqual({n: (config.game_path / '.systeme' / n).read_bytes() for n in apres_capture}, apres_capture)
+        self.assertEqual((self.general / 'info/notes_test.txt').read_text(), '1-2\n')
+        self.assertTrue(list(generation.glob('recuperation-*/prete.json')))
+        self.assertEqual(avant['compteur_general_j1.txt'], apres_capture['compteur_general_j1.txt'])
+
+    def test_clocher_inode_deja_lisible_avant_publication_et_consultation(self):
+        remplacer = Path.replace
+        gid = grp.getgrnam('mythodea_allies').gr_gid
+        def verifier(source, destination):
+            if destination.name == 'etat_tour.log':
+                infos = source.stat()
+                self.assertEqual((infos.st_uid, infos.st_gid, infos.st_mode & 0o777), (0, gid, 0o640))
+            return remplacer(source, destination)
+        log = config.game_path / 'village/clocher/etat_tour.log'
+        with patch.object(Path, 'replace', verifier):
+            for phase in ('actions', 'resolution', 'consultation'):
+                self.g.afficher(0, phase)
+                for joueur in ('j1', 'j2'):
+                    lecture = self.en_joueur(joueur, 'from pathlib import Path; import sys; print(Path(sys.argv[1]).read_text())', log)
+                    self.assertEqual(lecture.returncode, 0, lecture.stderr)
+                    self.assertIn(phase.upper(), lecture.stdout)
+
+    def test_ancien_cwd_interdit_ecriture_et_liens_personnels_preserves(self):
+        ancien = self.root / 'ancien'
+        ancien.mkdir()
+        compte = pwd.getpwnam('j1')
+        os.chown(ancien, compte.pw_uid, compte.pw_gid)
+        personnel = self.root / 'personnel.txt'
+        personnel.write_text('conserver')
+        os.chown(personnel, compte.pw_uid, compte.pw_gid)
+        personnel.chmod(0o600)
+        os.link(personnel, ancien / 'lien_physique')
+        (ancien / 'lien_symbolique').symlink_to(personnel)
+        fd = os.open(ancien, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            cycle_linux.proteger_ancien(ancien)
+            code = ('import os; os.fchdir(int(__import__("sys").argv[1])); '
+                    f'os.setgroups([]); os.setgid({compte.pw_gid}); os.setuid({compte.pw_uid}); '
+                    'open("nouveau", "w").write("interdit")')
+            essai = subprocess.run([sys.executable, '-c', code, str(fd)], pass_fds=(fd,), capture_output=True)
+            self.assertNotEqual(essai.returncode, 0)
+            self.assertFalse((ancien / 'nouveau').exists())
+        finally:
+            os.close(fd)
+        self.assertEqual((personnel.stat().st_uid, personnel.stat().st_mode & 0o777), (compte.pw_uid, 0o600))
+        self.assertEqual(personnel.read_text(), 'conserver')
 
     def test_processus_joueur_hors_slice_refuse_avant_capture(self):
         compte = pwd.getpwnam('j1')

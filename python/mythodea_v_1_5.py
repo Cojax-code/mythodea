@@ -56,7 +56,7 @@ def _resoudre_tour_classique():
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Mythodea : sélection du mode de jeu")
-    parser.add_argument("--mode", choices=config.modes_disponibles, default="classique")
+    parser.add_argument("--mode", choices=config.modes_disponibles, default="survie")
     parser.add_argument("--duree-action", type=float, default=None,
                         help="durée d'action Survie en secondes (défaut : 120, 0 sans attente)")
     parser.add_argument("--tours", type=int, default=None,

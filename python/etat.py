@@ -9,7 +9,7 @@ from contextlib import contextmanager
 import config
 
 
-def ecrire_prive(chemin, texte):
+def ecrire_prive(chemin, texte, *, gid=0, mode=0o600):
     """Remplacement atomique et durable d'un état root:root 600."""
     for parent in (chemin, *chemin.parents):
         if parent.is_symlink():
@@ -26,6 +26,9 @@ def ecrire_prive(chemin, texte):
         os.chmod(temporaire, 0o600)
         fichier.write(texte)
         fichier.flush()
+        # Préparer les droits AVANT le remplacement (Clocher public compris).
+        os.chown(temporaire, 0, gid)
+        os.chmod(temporaire, mode)
         os.fsync(fichier.fileno())
     temporaire.replace(chemin)
     if os.name == 'posix':

@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-echo "=== Lancement Mythodea V1.5 ==="
+echo "=== Lancement Mythodea V2.0 ==="
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"

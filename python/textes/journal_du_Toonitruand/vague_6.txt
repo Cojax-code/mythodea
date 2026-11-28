@@ -20,21 +20,21 @@ Lister les recettes disponibles.
 
 ls -l {game_path}/village/{joueur}/crypte/grimoire
 
-NOTE : Les commandes exactes des rituels restent volontairement dans les PDF.
+NOTE : Les commandes exactes des rituels restent volontairement dans les fichiers texte du grimoire.
 
 ----------------------------------------------------------
 
 CONSEIL
-Télécharger une recette sur votre propre PC.
+Lire une recette dans votre terminal SSH.
 
 >>> COMMANDE
 
-scp {joueur}@Mythodea.local:{game_path}/village/{joueur}/crypte/grimoire/recette1.pdf .
+cat {game_path}/village/{joueur}/crypte/grimoire/recette1.txt
 
-NOTE : Cette commande est exécutée depuis le PC du joueur, pas depuis le Raspberry.
+NOTE : Utilisez aussi less pour lire page par page, puis q pour quitter.
 
 La Crypte est composée de trois espaces. Le grimoire contient les recettes, l'atelier est le lieu où le rituel est exécuté, et recompense reçoit le général bonus après une réussite et la publication du tour.
 
-Vous pouvez télécharger un PDF depuis votre PC avec scp. Les commandes exactes du rituel restent dans les recettes du grimoire.
+Les recettes se lisent avec cat et less. Leurs commandes peuvent être copiées directement depuis le grimoire.
 
 Une réussite de Crypte est soumise à un cooldown commun aux recettes et une seule récompense peut attendre d'être récupérée.

@@ -22,9 +22,9 @@ _crypte_event() {
             return "$resultat"
         fi
         _crypte_token=$reponse
-        builtin printf 'Crypte : tentative ouverte.\n'
+        _mythodea_afficher 'Crypte : tentative ouverte.'
     elif [[ -n $reponse ]]; then
-        builtin printf 'Crypte : %s\n' "$reponse"
+        _mythodea_afficher "Crypte : $reponse"
     fi
     return "$resultat"
 }

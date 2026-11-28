@@ -18,7 +18,7 @@ if sys.platform == 'linux':
     import pty
 
 
-SCRIPT = Path(__file__).resolve().parents[2] / 'bash/prototype_crypte_scan.sh'
+SCRIPT = Path(__file__).resolve().parents[2] / 'bash/.interne/prototype_crypte_scan.sh'
 RECIPE = ('mkdir appel', 'touch appel/cavalerie', 'cp appel/cavalerie appel/offrande',
           'mv appel/offrande appel/poulin')
 PROMPT = b'CRYPTE_TEST> '

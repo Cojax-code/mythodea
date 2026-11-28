@@ -457,13 +457,13 @@ class Crypte(unittest.TestCase):
         for j in ('j1', 'j2'):
             grimoire = self.crypte.zone(self.profil, j) / 'grimoire'
             self.assertEqual(sorted(p.name for p in grimoire.iterdir()),
-                             ['recette1.pdf', 'recette2.pdf', 'recette3.pdf'])
+                             ['recette1.txt', 'recette2.txt', 'recette3.txt'])
             for identifiant, recette in self.crypte.RECETTES.items():
-                contenu = (grimoire / f'{identifiant}.pdf').read_bytes()
-                self.assertTrue(contenu.startswith(b'%PDF-1.4'))
+                contenu = (grimoire / f'{identifiant}.txt').read_bytes()
+                self.assertTrue(contenu.startswith(b'MYTHODEA'))
                 for ligne in recette['lignes']:
                     self.assertIn(ligne.encode(), contenu)
-            self.assertNotIn(b'chmod', (grimoire / 'recette1.pdf').read_bytes())
+            self.assertNotIn(b'chmod', (grimoire / 'recette1.txt').read_bytes())
 
     def test_echeance_refusee_sans_consommation(self):
         self.collecteur.horloge = lambda: 100
@@ -488,7 +488,7 @@ class Crypte(unittest.TestCase):
         self.etat.ecrire_prive(self.profil['game_path'] / '.systeme/crypte_config.json',
                                json.dumps({'debut': 'crypte_ouvre', 'fin': 'crypte_ferme'}))
         self.crypte.preparer(self.profil)
-        pdf = self.crypte.zone(self.profil, 'j1') / 'grimoire/recette1.pdf'
+        pdf = self.crypte.zone(self.profil, 'j1') / 'grimoire/recette1.txt'
         self.assertIn(b'crypte_ouvre', pdf.read_bytes())
         self.assertIn(b'crypte_ferme', pdf.read_bytes())
         self.assertNotIn(b'crypte_commence', pdf.read_bytes())

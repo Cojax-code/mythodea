@@ -469,7 +469,9 @@ def preparer_journaux(configuration, vague=0):
             for numero in range(min(vague, 10) + 1):
                 fichier = journal / f'vague_{numero}.txt'
                 sans_liens(fichier)
-                if not fichier.exists():
+                ancien_pdf = (numero == 6 and fichier.is_file()
+                              and '.pdf' in fichier.read_text(encoding='utf-8'))
+                if not fichier.exists() or ancien_pdf:
                     contenu = (modeles / nom / fichier.name).read_text(encoding='utf-8')
                     # Garder les chemins publics, même dans une génération privée,
                     # et les accolades Bash présentes dans les commandes vétéran.

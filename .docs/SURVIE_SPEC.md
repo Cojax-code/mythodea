@@ -277,7 +277,7 @@ La vague 5 présente les combats avec plusieurs généraux, la vague 6 la Crypte
 la vague 8 `info/ordre_surnombre.txt` (1 : retraite admissible, 2 : continuer).
 Les vagues 9 et 10 créent réellement les équipements des unités dans une zone
 d’entraînement. Les commandes distinguent bien le home de la caserne militaire.
-Les commandes internes des recettes restent dans les PDF. La publication du
+Les commandes internes des trois recettes du village restent dans les fichiers texte du grimoire. La publication du
 texte pédagogique est indépendante de l'audit moteur de l'entraînement et du
 rappel vers le home, défini dans la section du prototype jouable.
 
@@ -755,7 +755,16 @@ Les homes `/home/j1` et `/home/j2` eux-mêmes restent aux joueurs. Seules les
 entrées réservées au jeu `general*` sont remplacées ; `.ssh`, les fichiers personnels,
 le shell et l'historique ne sont pas touchés. Un ancien FD ou cwd continue de viser
 les anciens inodes, sans effet sur la capture ou la nouvelle génération.
-Après publication : **faire `cd ~`, puis revenir sur la carte**. Un éditeur qui
+Le hook Bash rafraîchit le cwd vers le même chemin logique au retour à l'invite,
+ou revient au home si le chemin a disparu. Il préserve les hooks Crypte et les
+commandes personnelles de `PROMPT_COMMAND`. Les anciens dossiers retirés passent
+à root (`500` pour les dossiers, `400` pour les fichiers sans lien physique) avant le dégel pour
+empêcher de nouvelles écritures via un cwd conservé. Les copies capture/travail
+conservent les propriétaires originaux pour diagnostic et audit. Les liens
+symboliques ne sont pas suivis et les fichiers liés physiquement ne sont pas
+modifiés, pour préserver leurs éventuelles cibles personnelles hors du jeu. Les FD déjà
+ouverts ne sont pas redirigés ; relancer les éditeurs/lectures concernés.
+Un éditeur qui
 réouvre un chemin absolu vise, lui, la nouvelle génération : consultation n'est
 pas une frontière anti-triche absolue.
 
@@ -768,7 +777,10 @@ mais la protection du tour clôturé repose sur la copie privée.
 Rapports alliés et Clocher : dossiers `root:mythodea_allies 750`, fichiers `640`.
 Le journal technique reste `root:root 600`, comme compteurs, cycle, manifestes,
 résultats, verrous et journaux de publication. Les rapports restent hors des
-arborescences remplacées, lisibles avec `cat`, `tail -f` et `grep`.
+arborescences remplacées, lisibles avec `cat` et `grep`. Le Clocher se suit avec
+`watch -n 1 cat /game/village/clocher/etat_tour.log` : chaque remplacement atomique
+prépare les droits `640` avant le renommage. `tail -f` reste adapté au suivi des
+combats qui conserve son inode, pas au fichier d'état du Clocher.
 
 ### Récupération administrative
 
@@ -783,10 +795,28 @@ Une publication interrompue peut être reprise par `republier --generation ...
 --confirmer` après examen du résultat terminé et du journal. L'outil accepte
 uniquement la génération interrompue, conserve les traces précédentes et recrée
 la publication depuis `travail/`, sans audit, vague ou combat supplémentaire.
-Une capture ou résolution incomplète n'a pas ce chemin de reprise : conserver les
-preuves, réparer/restaurer explicitement avec l'administrateur, sans modifier
-aveuglément la phase pour forcer une relance. Aucun merge des écritures tardives.
+Une capture ou résolution privée incomplète dispose de `rollback --dry-run`, puis
+`rollback --confirmer`. L'outil refuse toute trace de publication, tout résultat
+terminé, une génération déjà active, une référence ACTIONS incohérente, un état
+privé non sûr ou un reçu de progression du tour déjà validé sur le plateau vivant.
+Il contrôle les identités et compteurs sans auditer/sanctionner les déplacements
+encore en attente. Sous verrou et gel réel, il sauvegarde le plateau et les états
+dans `recuperation-<id>/` de la génération interrompue, puis ouvre ACTIONS du même
+tour avec une nouvelle échéance. Il conserve la référence d'unités, les profils,
+compteurs, ateliers encore présents et réussites privées. Les ateliers déjà
+nettoyés et tentatives inachevées closes avant l'interruption restent perdus.
+Le point de validation est l'écriture atomique du cycle ; une interruption avant
+ce point permet un nouvel essai, après ce point le lancement reprend ACTIONS.
+Un résultat complet reste réservé à la republication sans nouveau combat. Une
+publication partielle sans résultat exploitable est refusée : aucune restauration
+automatique depuis un état incomplet ou mélange de générations. Aucun merge des écritures tardives.
 Les commandes et contrôles exacts sont dans `TESTS_LINUX_SURVIE.md`.
+
+Ctrl+C est différé pendant les opérations critiques de préparation, capture,
+résolution, publication et récupération, puis arrête le pilote après leur fin.
+Les attentes ACTIONS/CONSULTATION restent interruptibles. Un échec d'annonce SSH
+après validation laisse la phase CONSULTATION/DÉFAITE acquise. Les signaux non
+interceptables et erreurs réelles conservent la procédure de récupération.
 
 Les générations sont conservées pour diagnostic ; leur purge est administrative,
 moteur arrêté, après sauvegarde. Aucun nettoyage automatique ni partitionnement
@@ -1289,14 +1319,14 @@ Chaque joueur dispose de :
 ```text
 village/<joueur>/crypte/
 ├── grimoire/
-│   ├── recette1.pdf
-│   ├── recette2.pdf
-│   └── recette3.pdf
+│   ├── recette1.txt
+│   ├── recette2.txt
+│   └── recette3.txt
 ├── atelier/
 └── recompense/
 ```
 
-Le grimoire contient trois PDF téléchargeables par SCP/SFTP, à lire sur l'ordinateur
+Le grimoire du village contient trois fichiers texte lisibles avec `cat` et `less`, sur le terminal
 du joueur. L'atelier est entièrement jetable : aucun document personnel ne doit
 y être conservé. `recompense/` est une zone de récupération inactive, distincte
 de la garnison, de la caserne militaire et des renforts tactiques.
@@ -1467,7 +1497,12 @@ Comme les autres déplacements de dossiers, cette règle s'applique aux position
 constatées lors de l'audit ; les allers-retours entre deux observations ne constituent
 pas un historique de mouvements enregistré par le moteur.
 
-Grimoire : dossier `root:<groupe_joueur> 750`, PDF `640`. Atelier, zone de récupération
+Grimoire : dossier `root:<groupe_joueur> 750`, documents `640`. Les trois anciens PDF
+du village sont retirés après installation des textes ; les recettes/commandes et
+récompenses sont inchangées. Les documents PDF des plaines et leur générateur
+générique restent compatibles. Les journaux déjà publiés de la vague 6 mentionnant
+les anciens PDF sont remplacés par le modèle texte actualisé.
+Atelier, zone de récupération
 et généraux sont privés au joueur (`700`/`600`), avec le retrait d'écriture prévu
 pendant CONSULTATION. Les états, compteurs et configuration restent privés root.
 

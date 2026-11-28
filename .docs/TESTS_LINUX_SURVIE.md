@@ -1,5 +1,148 @@
 # Validation et exploitation Linux du cycle Survie
 
+## Récupérer la capture interrompue du tour 4
+
+Depuis le dépôt mis à jour, dans le compte administrateur, moteur arrêté et
+relance automatique suspendue. Ne pas lancer de reset et ne pas modifier le JSON.
+Pour le cas observé (`g000004-0c35af6211cb`, active `g000003-31290ed9acf0`,
+seul `capture/` présent, aucun résultat/publication/verrou/gel) :
+
+```bash
+sudo python3 python/survie_admin.py diagnostic
+sudo python3 python/survie_admin.py rollback --dry-run
+sudo bash bash/instal.sh
+```
+
+Reconnecter j1 et j2 en SSH, puis lancer :
+
+```bash
+sudo python3 python/survie_admin.py rollback --confirmer
+sudo bash bash/start.sh
+```
+
+La reprise conserve le plateau actuel et les actions, les profils, les compteurs,
+les reçus de progression/récompense et les archives. Elle ouvre une nouvelle
+fenêtre ACTIONS du tour 4, sans recréer les généraux de début de tour. La durée
+commence à la récupération : relancer le moteur immédiatement après le rollback.
+La capture avait déjà pu nettoyer les ateliers Crypte et clore une tentative
+inachevée : ces tentatives ne sont pas ressuscitées. Les réussites enregistrées
+dans l'état privé restent présentes. Aucun combat validé n'est rejoué.
+
+Le dry-run est en lecture seule et reste provisoire tant que les joueurs ne sont
+pas gelés. L'application reprend les contrôles sous verrou et gel cgroup réel,
+copie les territoires, les états privés et les seuls `general*` des homes dans
+`generations/<génération>/recuperation-<id>/`, puis valide le cycle en une écriture
+atomique. Aucune ancienne génération n'est supprimée. Une panne pendant la copie
+laisse le plateau intact : refaire diagnostic puis rollback. Après validation,
+le cycle est ACTIONS et le moteur se relance normalement, sans second rollback.
+
+Si un journal de gel ou un verrou résiduel existe, examiner d'abord le PID indiqué.
+Un processus encore présent bloque les outils. Seulement après arrêt confirmé :
+
+```bash
+sudo python3 python/survie_admin.py degeler --confirmer
+sudo python3 python/survie_admin.py retirer-verrou --confirmer
+sudo python3 python/survie_admin.py diagnostic
+```
+
+Ne pas employer ces deux commandes quand les fichiers sont absents. Un gel externe,
+un processus joueur hors confinement, un état privé non sûr, des identités ou une
+référence ACTIONS incohérentes entraînent un refus. Une absence de données ne doit
+pas être réparée en inventant des compteurs ou un inventaire.
+
+| Point d'interruption | Procédure |
+| --- | --- |
+| ACTIONS | Relancer normalement : même référence et échéance ; pas de rollback. |
+| Capture ou résolution privée sans résultat ni trace de publication | Diagnostic, rollback à blanc, puis confirmation. Les actions vivantes restent intactes. |
+| Résolution terminée, publication absente/incomplète | Republier le résultat terminé, jamais relancer les combats. |
+| Publication partielle sans résultat exploitable | Refus automatique. Restaurer seulement une sauvegarde complète cohérente après expertise. |
+| CONSULTATION déjà validée | Relancer normalement ; le tour publié n'est pas recalculé. |
+| Préparation interrompue | Examen manuel : aucune réattribution automatique conjecturale. |
+
+Pour un **autre cas** disposant de `resultat.json` terminé, utiliser l'identifiant
+indiqué par diagnostic (remplacer la valeur entre guillemets) :
+
+```bash
+sudo python3 python/survie_admin.py republier --generation 'IDENTIFIANT_DU_DIAGNOSTIC' --confirmer
+sudo bash bash/start.sh
+```
+
+La republication restaure depuis le résultat privé complet, conserve les traces
+antérieures et les marqueurs d'archives, et n'exécute ni combat ni récompense.
+Elle peut remplacer les écritures tardives du plateau partiellement publié ; les
+anciens dossiers sont conservés pour examen. Elle n'est pas adaptée au cas actuel
+du Pi, qui ne dispose pas de résultat terminé.
+
+Ctrl+C pendant une capture/résolution/publication laisse désormais l'opération
+critique se terminer, puis arrête le pilote après dégel. Pendant les attentes
+ACTIONS/CONSULTATION, l'arrêt reste immédiat. Une erreur réelle, SIGTERM, SIGKILL
+ou une coupure de courant relève toujours du diagnostic administratif.
+
+## Mise à jour des sessions et vérification Raspberry
+
+`sudo bash bash/instal.sh` installe Survie sans reset. Sur des comptes déjà préparés,
+`sudo python3 python/crypte_installer.py` suffit à réinstaller les outils.
+Le chargeur `/etc/profile.d/mythodea-crypte.sh` cible uniquement les comptes joueurs
+configurés. Un bloc unique est ajouté en fin de leur `.bashrc` ; les lignes
+personnelles sont conservées et le compte administrateur n'est pas personnalisé.
+Reconnecter les joueurs après installation. Une session déjà connectée conserve
+son ancien code Bash tant qu'elle n'est pas reconnectée.
+
+Le prompt distingue utilisateur/machine en cyan et répertoire en jaune ; les
+commandes restent en couleur normale. Le réglage `export MYTHODEA_COULEURS=0`
+désactive les couleurs, `export MYTHODEA_COULEURS=1` les réactive au prochain prompt.
+`TERM=dumb` et les sorties redirigées restent sans couleur. Les préférences SSH
+sont enregistrées par terminal dans `/run/user/<uid>/mythodea-pts-<n>` ; en leur
+absence les annonces restent sans couleur. Les données affichées sont filtrées
+contre les contrôles terminal ; les rapports enregistrés ne contiennent pas d'ANSI.
+
+Après publication, le hook compare l'inode du cwd au chemin logique `$PWD` avant
+la nouvelle invite. Il rejoint le nouveau dossier sans annonce, ou le home avec
+une brève explication si le chemin a disparu. Il ne suit pas un général vers sa
+nouvelle destination : un déplacement qui supprime l'ancien chemin ramène au home.
+Les anciens dossiers deviennent réservés à root ; les FD déjà ouverts ne peuvent
+pas être redirigés et restent attachés à l'ancienne copie, isolée du plateau actif.
+Relancer éditeurs et lectures longues après publication. Ne pas lancer une commande
+relative après un simple `sleep` couvrant une publication : le hook ne s'exécute
+qu'au retour à l'invite, pas entre deux commandes d'un même script.
+
+Pour le Clocher, utiliser :
+
+```bash
+watch -n 1 cat /game/village/clocher/etat_tour.log
+```
+
+Son dossier reste `root:mythodea_allies 750` et chaque nouvel inode est déjà
+`root:mythodea_allies 640` avant son installation. `tail -f` suit un ancien inode.
+La fenêtre temporaire en `600` est supprimée ; une erreur inotify persistante
+doit être examinée sur le Pi avec `id`, `namei -l` et `stat`, sans accorder d'écriture.
+
+Validation manuelle sur le Pi, avec j1/j2 et une session reconnectée : vérifier
+le Clocher en ACTIONS et CONSULTATION, les annonces après dégel, `watch`, `tail`,
+`replay`, les flèches/autocomplétion, puis chacune des trois recettes. Une annonce
+envoyée au PTY peut être recouverte par un programme plein écran ou survenir en
+pleine déconnexion ; il n'existe pas d'accusé de lecture SSH garantissant une
+réception exactement une fois. Le Clocher et les rapports restent la référence.
+Le moteur déduplique les PTY d'un même envoi et redécouvre les sessions à chaque
+annonce ; aucune attente artificielle de dix secondes n'est réintroduite.
+
+Vérifier une arrivée légale en caserne pendant ACTIONS : un point à la clôture,
+puis un point par clôture admissible, niveau au troisième point. Comparer la fiche
+et `rapport_activites.txt`. Un `mv` ordinaire pendant CONSULTATION doit échouer ;
+les propriétaires peuvent toutefois rétablir leurs droits Unix. La consultation
+reste une protection de confort, complétée par l'audit et la référence d'unités,
+et non une isolation absolue des comptes propriétaires.
+
+## Référence historique du mode Classique
+
+Le commit précédant le retrait du script dangereux `nettoyage.sh` est
+`a34393cb2c4c888b9e258de925b02f4d46756c2a`. Le lancement sans argument choisit Survie ;
+`--mode survie` reste compatible. La suppression complète du profil Classique est
+reportée : `backend/engine_adapter.py` du simulateur utilise encore
+`configuration_mode("classique")` et `terrain1`, et les API communes sans profil
+reposent sur ces valeurs. Le moteur de combat, les camps, alliances et capacités
+PvP sont conservés. Le verrou du simulateur reste au commit `cb4da67`.
+
 ## Vérification du dossier info après mise à jour
 
 Sur un plateau de test Raspberry Pi, vérifier les deux joueurs en SSH :
@@ -101,8 +244,7 @@ conservation des unités lors d'un vrai `mv`. Une partie ancienne sans cette
 référence est arrêtée pour récupération : ne pas fabriquer un inventaire depuis
 des ACTIONS déjà jouées sans examen administratif du dernier état fiable.
 
-Ne pas lancer `instal.sh`/`nettoyage.sh` pour ces tests : le nettoyage classique
-efface les homes entiers. Ces scripts ne servent pas à migrer une partie Survie.
+`nettoyage.sh` est retiré. `instal.sh` installe désormais Survie sans effacer les homes.
 
 ## Partition dédiée sur le Raspberry
 
@@ -178,8 +320,8 @@ Le moteur recrée ensuite village, fronts et états privés. Reconnecter les ses
 SSH après ajout au groupe allié et pour charger les hooks réinstallés.
 Le script retrouve le dépôt depuis son emplacement, même lancé depuis un autre dossier.
 
-`bash/nettoyage.sh` reste réservé au mode classique et n'est jamais appelé par
-le reset Survie. Son comportement de nettoyage des homes reste destructif.
+Le reset Survie reste la seule commande de remise à zéro ; ne pas l'utiliser
+pour récupérer une partie interrompue.
 
 Validation de développement sur répertoires temporaires uniquement :
 
@@ -441,8 +583,8 @@ la génération active et celle de toute récupération en cours.
 
 ## Scanner Bash isolé
 
-`bash/prototype_crypte_scan.sh` est le scanner utilisé par l’installation officielle,
-avec `bash/crypte_transport.sh` pour joindre le collecteur. Seul, il écrit un journal
+`bash/.interne/prototype_crypte_scan.sh` est le scanner utilisé par l’installation officielle,
+avec `bash/.interne/crypte_transport.sh` pour joindre le collecteur. Seul, il écrit un journal
 de test sur FD 9 : huit champs séparés par NUL (événement, ligne complète,
 `BASH_COMMAND`, statut, répertoire physique, historique, nature de commande, PID).
 Les valeurs déclarées par Bash ne sont pas une authentification ; le collecteur
@@ -473,7 +615,7 @@ Python 3.11 ou supérieur est requis pour le nettoyage Unix avec `dir_fd`.
 L'installation administrative ci-dessus copie les hooks et le client dans
 `/usr/local/lib/mythodea` et crée `/etc/profile.d/mythodea-crypte.sh`. Reconnecter
 les sessions joueurs après installation. Elle ne modifie aucun `.bashrc` personnel.
-Ne pas sourcer `bash/prototype_crypte_scan.sh` directement dans une partie : ce
+Ne pas sourcer `bash/.interne/prototype_crypte_scan.sh` directement dans une partie : ce
 fichier seul écrit le journal du prototype, sans collecteur moteur.
 
 Depuis l'administrateur, après préparation du plateau par le lancement Survie :
@@ -496,15 +638,15 @@ parent `710`. Le moteur obtient l'identité par le noyau, pas par un champ joueu
 
 Après mise à jour des recettes, réinstaller les hooks avec
 `sudo python3 python/crypte_installer.py`, puis reconnecter les joueurs.
-Depuis le PC du joueur (remplacer l'adresse), télécharger les PDF :
+Depuis la session SSH du joueur, consulter les recettes texte :
 
 ```bash
-scp j1@ADRESSE_DU_PI:/game/village/j1/crypte/grimoire/recette1.pdf .
-scp j1@ADRESSE_DU_PI:/game/village/j1/crypte/grimoire/recette2.pdf .
-scp j1@ADRESSE_DU_PI:/game/village/j1/crypte/grimoire/recette3.pdf .
+cat /game/village/j1/crypte/grimoire/recette1.txt
+less /game/village/j1/crypte/grimoire/recette2.txt
+cat /game/village/j1/crypte/grimoire/recette3.txt
 ```
 
-Dans sa session SSH principale, pendant ACTIONS, après avoir lu le PDF :
+Dans sa session SSH principale, pendant ACTIONS, après avoir lu la recette :
 
 ```bash
 type crypte_commence crypte_fin
@@ -621,11 +763,12 @@ ls /game/village/j1/hotel_de_ville/courrier
 Aux résolutions suivantes, vérifier l'apparition de vague_1 puis vague_2, sans
 validation de lecture. Un brouillon du Courrier reste conservé ; seules les lignes
 `FLAG <flag>` sont traitées. Le rapport de chaque Hôtel de Ville doit correspondre au rapport
-court après publication. Le Clocher reste continu avec `tail -f`, même lors d'une
+court après publication. Le Clocher se consulte avec `watch -n 1 cat /game/village/clocher/etat_tour.log`, même lors d'une
 publication ou republication administrative. Le village n'a pas de renforts alliés ;
 les positions 5..20 restent disponibles sur les territoires ouverts.
 
-Les modèles corrigés n’écrasent pas les pages de journal déjà publiées. Pour une
+Seuls les deux journaux vague 6 mentionnant les anciens PDF du village sont migrés
+automatiquement. Les autres modèles corrigés n’écrasent pas les pages de journal déjà publiées. Pour une
 partie ancienne, l’administrateur doit sauvegarder puis actualiser les seules pages
 déjà débloquées depuis `python/textes/`, avec substitution de `{joueur}` et
 `{game_path}`, moteur arrêté et avant reprise. Conserver `root:<groupe_joueur>`,

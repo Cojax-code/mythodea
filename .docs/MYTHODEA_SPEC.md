@@ -43,9 +43,8 @@ La cible principale est Linux / Raspberry Pi OS.
 mythodea/
 ├── bash/
 │   ├── instal.sh
-│   ├── nettoyage.sh
 │   ├── reset_survie.sh
-│   ├── stockage.sh
+│   ├── .interne/             # stockage, replay, transport/scanner Crypte, terminal
 │   └── start.sh
 ├── python/
 │   ├── mythodea_v_1_5.py
@@ -71,9 +70,9 @@ mythodea/
 │       ├── test_vagues.py
 │       ├── test_surnombre.py
 │       └── test_cycle_survie.py
-├── README.md
-├── AGENTS.md
 └── .docs/
+    ├── README.md
+    ├── AGENTS.md
     ├── REGLES_V2.md
     ├── SURVIE_SPEC.md
     ├── EVOLUTIONS.md
@@ -105,7 +104,7 @@ Responsabilités :
 | `etendards.py` | déclaration de bloc, instantané territorial, protection individuelle et destruction |
 | `formation.py` | formation en caserne militaire, hôpital, École et Forge, séjours, mémoires et transformations |
 | `cycle_linux.py` | gel Linux, capture privée, publication de générations et permissions des phases Survie |
-| `survie_admin.py` | diagnostic, dégel de secours et republication explicitement autorisée, sans rejeu métier |
+| `survie_admin.py` | diagnostic, dégel, reprise conservatrice avant publication et republication sans rejeu métier |
 | `crypte.py` | collecteur privé Survie, recette pédagogique, cooldown et attribution différée |
 | `defis.py` | lieux des mini-défis, accès par camp, flags via Courrier, état privé, bestiaire et récompense unique |
 | `crypte_client.py` | transport non privilégié des observations Bash vers le socket local |
@@ -221,7 +220,7 @@ noms de joueurs. Les calculs et priorités restent communs aux deux modes.
 acceptent le profil pour conserver les camps dans le contrôle. La boucle
 `plateau.lancer_bataille_v15()` reste l'orchestration classique.
 
-Le point d'entrée accepte `--mode classique` (valeur par défaut) et `--mode survie`.
+Le point d'entrée accepte `--mode classique` explicitement et `--mode survie` (par défaut).
 L'option `--afficher-configuration` affiche le profil sans lancer de tour ni importer
 les modules dépendant d'Unix. `bash bash/start.sh --mode survie` lance le cycle Est.
 `--duree-action` configure la durée en secondes (120 par défaut),
@@ -262,14 +261,18 @@ Le point d'entrée du moteur et l'installation Crypte officielle font ce contrô
 `--afficher-configuration` reste consultable sans montage. Les API métier et les
 tests conservent leurs chemins temporaires injectables.
 
-`bash/stockage.sh` partage ce contrôle entre les scripts administratifs et refuse
+`bash/.interne/stockage.sh` partage ce contrôle entre les scripts administratifs et refuse
 toute cible autre que `/game`, ainsi que les sous-montages avant nettoyage.
 `reset_survie.sh` détruit le contenu, fichiers cachés inclus, sans supprimer le
 point de montage ni formater la partition. Il refuse moteur actif, verrou ou gel
 résiduel, puis conserve son propre verrou exclusif Survie pendant l'opération ;
 seuls `general*` sont retirés des homes. Il prépare les racines et
 permissions puis installe les hooks Crypte ; le moteur crée le plateau Survie.
-`instal.sh` et `nettoyage.sh` restent classiques, avec le même contrôle du stockage.
+`instal.sh` prépare désormais les comptes et hooks Survie sans effacement.
+`nettoyage.sh`, qui effaçait les homes, est retiré ; référence historique :
+`a34393cb2c4c888b9e258de925b02f4d46756c2a`. La suppression complète du profil
+Classique est reportée pour préserver les API communes et le simulateur verrouillé,
+dont l'adaptateur appelle `configuration_mode("classique")` et utilise `terrain1`.
 Aucun script ne crée, ne monte ni ne formate une partition.
 
 Le moteur utilise notamment :
@@ -1337,7 +1340,9 @@ technique commun est `.systeme/`. L'accueil Survie est publié sous
 `village/<joueur>/hotel_de_ville/` : deux journaux passifs des vagues 0..10, Courrier
 acceptant `FLAG <flag>`, bestiaire progressif et copie du rapport court finalisé. Le Clocher commun est
 `village/clocher/` ; il reste attaché au cycle vivant et exclu des captures. La
-publication du village conserve ses inodes, notamment le journal suivi avec `tail -f`.
+publication du village conserve le dossier du Clocher. Son fichier d'état est
+remplacé atomiquement, avec droits `root:mythodea_allies 640` préparés avant
+renommage ; le suivi recommandé est `watch -n 1 cat /game/village/clocher/etat_tour.log`.
 
 Les modèles sont conservés dans `python/textes/journal_du_Toonitruand/` et
 `python/textes/journal_du_veteran/`. `plateau.preparer_journaux()` utilise la même
@@ -1345,7 +1350,9 @@ publication pour les deux niveaux : elle remplace `{joueur}` et `{game_path}`
 (racine publique configurée) et crée uniquement
 les fichiers manquants des vagues 0 à la vague atteinte, plafonnée à 10. Les chemins
 des commandes restent les chemins Linux publics, même dans une génération privée.
-Les fichiers déjà débloqués ne sont ni supprimés ni réécrits. Une reprise complète
+Les fichiers déjà débloqués ne sont ni supprimés ni réécrits, sauf la migration
+ciblée des deux journaux vague 6 mentionnant encore les recettes PDF du village.
+Une reprise complète
 les conseils manquants sans rejouer la préparation des généraux ni modifier l'échéance.
 En ACTIONS, la vague atteinte est `tour` ; en CONSULTATION ou après défaite, elle
 est `tour + 1`, puisque la résolution de ce tour est terminée.

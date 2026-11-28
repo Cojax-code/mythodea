@@ -274,9 +274,12 @@ def preparer(c):
             os.chown(p, 0 if nom == 'grimoire' else uid, gid)
             os.chmod(p, 0o750 if nom == 'grimoire' else 0o700)
         for identifiant in catalogue(c, j):
-            pdf = zone(c, j) / f'grimoire/{identifiant}.pdf'
+            format_texte = site(c) == 'crypte'
+            extension = 'txt' if format_texte else 'pdf'
+            pdf = zone(c, j) / f'grimoire/{identifiant}.{extension}'
             sans_liens(pdf)
-            contenu = recette_pdf(configuration(c), identifiant,
+            produire = recette_texte if format_texte else recette_pdf
+            contenu = produire(configuration(c), identifiant,
                                   c.get('game_public_path', config.game_public_path), c, j)
             if not pdf.exists() or pdf.read_bytes() != contenu:
                 # Source installée avec le moteur ; aucun contenu fourni par le joueur.
@@ -287,12 +290,21 @@ def preparer(c):
                     with os.fdopen(fd, 'wb') as fichier:
                         fichier.write(contenu)
                         fichier.flush()
+                        os.chown(temporaire, 0, gid)
+                        os.chmod(temporaire, 0o640)
                         os.fsync(fichier.fileno())
                     temporaire.replace(pdf)
                 finally:
                     temporaire.unlink(missing_ok=True)
             os.chown(pdf, 0, gid)
             os.chmod(pdf, 0o640)
+            if format_texte:
+                ancien = pdf.with_suffix('.pdf')
+                sans_liens(ancien)
+                if ancien.exists():
+                    if not ancien.is_file() or ancien.stat().st_nlink != 1:
+                        raise RuntimeError('Ancien grimoire non ordinaire : migration refusée.')
+                    ancien.unlink()
         etat.initialiser_quota_normal(j)
     configuration(c)
     if not chemin_etat(c).exists():
@@ -338,8 +350,8 @@ def nettoyer(c, j):
                 os.unlink(nom, dir_fd=fd)
 
 
-def recette_pdf(marqueurs, identifiant="recette1", racine=None, contexte=None, joueur='j1'):
-    """PDF une page sans dépendance : texte sélectionnable pour SCP/SFTP."""
+def recette_lignes(marqueurs, identifiant="recette1", racine=None, contexte=None, joueur='j1'):
+    """Source commune aux documents ; les commandes viennent du catalogue inchangé."""
     racine = (config.game_public_path if racine is None else racine).as_posix()
     recette = catalogue(contexte, joueur)[identifiant] if contexte else RECETTES[identifiant]
     explications = [
@@ -373,12 +385,11 @@ def recette_pdf(marqueurs, identifiant="recette1", racine=None, contexte=None, j
         composition = '20 piquiers (6/7/7/0)'
     lignes = [
         'MYTHODEA - Crypte V0.1', f'{identifiant} : {recette["nom"]}', '',
-        'Telechargez ce PDF avec votre client SFTP, puis lisez-le sur votre PC.',
-        'Exemple SCP depuis votre PC (remplacez ADRESSE_DU_PI) :',
-        f'scp j1@ADRESSE_DU_PI:{racine}/village/j1/crypte/grimoire/{identifiant}.pdf .',
-        'Pour j2, remplacez j1 par j2 dans les chemins et la connexion.', '',
+        'Consultez cette recette dans votre terminal avec cat ou less :',
+        f'cat {racine}/village/{joueur}/crypte/grimoire/{identifiant}.txt',
+        f'less {racine}/village/{joueur}/crypte/grimoire/{identifiant}.txt', '',
         'Pendant ACTIONS, dans votre Bash habituel :',
-        f'cd {racine}/village/j1/crypte/atelier', marqueurs['debut'], *recette['lignes'], marqueurs['fin'], '',
+        f'cd {racine}/village/{joueur}/crypte/atelier', marqueurs['debut'], *recette['lignes'], marqueurs['fin'], '',
         'Saisissez une commande par ligne, dans cet ordre exact.',
         'Aucune commande supplementaire : ls, clear, cd... invalident la tentative.',
         'Une commande echouee, Ctrl+C ou une tentative inachevee ne rapporte rien.',
@@ -392,7 +403,7 @@ def recette_pdf(marqueurs, identifiant="recette1", racine=None, contexte=None, j
         'Cette recompense ne consomme pas les 5 creations normales.', '',
         'Apres publication : cd ~ puis revenez sur la carte.',
         'Lors des ACTIONS suivantes, choisissez une destination legale et libre :',
-        f'mv {racine}/village/j1/crypte/recompense/generalN {racine}/village/j1/garnison/1/',
+        f'mv {racine}/village/{joueur}/crypte/recompense/generalN {racine}/village/{joueur}/garnison/1/',
         'Ne ramenez pas un general dans recompense/ apres sa recuperation.',
     ]
     if contexte and site(contexte) == 'crypte_des_plaines':
@@ -412,6 +423,16 @@ def recette_pdf(marqueurs, identifiant="recette1", racine=None, contexte=None, j
             'Bloc incompatible : autre bloc compatible choisi au hasard, avec message.',
             'Aucune place : aucune unite. Delai : une reussite tous les 5 tours.',
         ]
+    return lignes
+
+
+def recette_texte(marqueurs, identifiant="recette1", racine=None, contexte=None, joueur='j1'):
+    return ('\n'.join(recette_lignes(marqueurs, identifiant, racine, contexte, joueur)) + '\n').encode('utf-8')
+
+
+def recette_pdf(marqueurs, identifiant="recette1", racine=None, contexte=None, joueur='j1'):
+    """Compatibilité pour les documents des plaines ; hors des trois recettes village."""
+    lignes = recette_lignes(marqueurs, identifiant, racine, contexte, joueur)
     commandes = ['BT /F1 10 Tf 42 795 Td 17 TL']
     for ligne in lignes:
         texte = ligne.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')

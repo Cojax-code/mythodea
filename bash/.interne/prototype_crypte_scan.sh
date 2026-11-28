@@ -31,7 +31,7 @@ _crypte_history() {
 _crypte_before() {
     local command=$1 previous=$2 kind name event=before
     # Les hooks ne doivent pas observer leur propre instrumentation.
-    [[ $command == '_crypte_prompt "$?" "${PIPESTATUS[*]}"' ]] && return 0
+    [[ $command == '_crypte_prompt "$?" "${PIPESTATUS[*]}"' || ${_crypte_dans_prompt-0} == 1 ]] && return 0
     (( _crypte_active )) || return 0
     _crypte_history
     # DEBUG peut aussi précéder un trap de signal avec un BASH_COMMAND périmé.
@@ -50,6 +50,7 @@ _crypte_before() {
 
 _crypte_prompt() {
     local result=$1 statuses=$2
+    _crypte_dans_prompt=1
     if (( _crypte_active && ! _crypte_pending )); then
         # Une erreur de syntaxe n'exécute aucune commande et ne déclenche pas
         # DEBUG. Ne pas perdre sa ligne au prochain retour à l'invite.
@@ -67,7 +68,10 @@ _crypte_prompt() {
     fi
     _crypte_pending=0
     _crypte_ouverture=0
+    return "$result"
 }
+
+_crypte_sortie_prompt() { _crypte_dans_prompt=0; }
 
 _crypte_interrupt() {
     if (( _crypte_active )); then
@@ -133,9 +137,37 @@ _crypte_restaurer_historique() {
     return 0
 }
 
-# Le prototype exige un rcfile dédié : ne remplace pas les hooks d'une vraie partie.
-PROMPT_COMMAND='_crypte_prompt "$?" "${PIPESTATUS[*]}"'
-trap '_crypte_before "$BASH_COMMAND" "$?"' DEBUG
-trap '_crypte_interrupt' INT
-trap '_crypte_exit "$?"' EXIT
-trap 'exit 129' HUP
+# Composer les hooks de confiance du shell, sans eval de données de joueurs.
+if [[ ${_crypte_hooks_installes-0} != 1 || $(trap -p DEBUG) != *'_crypte_before '* ]]; then
+    _crypte_hooks_installes=1
+    _crypte_commandes=()
+    for _crypte_commande in "${PROMPT_COMMAND[@]}"; do
+        case $_crypte_commande in
+            '_crypte_prompt "$?" "${PIPESTATUS[*]}"'|_crypte_sortie_prompt) ;;
+            *) _crypte_commandes+=("$_crypte_commande") ;;
+        esac
+    done
+    PROMPT_COMMAND=('_crypte_prompt "$?" "${PIPESTATUS[*]}"' "${_crypte_commandes[@]}" '_crypte_sortie_prompt')
+    for _crypte_signal in DEBUG INT EXIT HUP; do
+        _crypte_trap=$(trap -p "$_crypte_signal")
+        _crypte_ancien=''
+        if [[ -n $_crypte_trap ]]; then
+            _crypte_trap=${_crypte_trap#trap -- }
+            _crypte_trap=${_crypte_trap% *}
+            eval "_crypte_ancien=$_crypte_trap"
+        fi
+        case $_crypte_signal in
+            DEBUG) _crypte_nouveau='_crypte_before "$BASH_COMMAND" "$?"' ;;
+            INT) _crypte_nouveau='_crypte_interrupt' ;;
+            EXIT) _crypte_nouveau='_crypte_exit "$?"' ;;
+            HUP) _crypte_nouveau='' ;;
+        esac
+        if [[ -n $_crypte_nouveau && $_crypte_ancien == *"$_crypte_nouveau"* ]]; then
+            continue
+        fi
+        [[ -z $_crypte_ancien ]] || _crypte_nouveau+="; $_crypte_ancien"
+        [[ $_crypte_signal != HUP ]] || _crypte_nouveau="${_crypte_ancien:+$_crypte_ancien; }exit 129"
+        trap "$_crypte_nouveau" "$_crypte_signal"
+    done
+    unset _crypte_signal _crypte_trap _crypte_ancien _crypte_nouveau _crypte_commandes _crypte_commande
+fi

@@ -98,11 +98,13 @@ class Modes(unittest.TestCase):
             self.entree.main(["--mode", "inconnu"])
         self.assertEqual(erreur.exception.code, 2)
 
-    def test_selection_classique_implicite_et_explicite(self):
-        with patch.object(self.entree, "resoudre_tour_classique") as resoudre:
+    def test_selection_survie_implicite_et_classique_explicite(self):
+        with patch.object(self.entree, "resoudre_tour_classique") as resoudre, \
+                patch.object(self.entree, 'lancer_survie') as survie:
             self.entree.main([])
             self.entree.main(["--mode", "classique"])
-        self.assertEqual(resoudre.call_count, 2)
+        self.assertEqual(resoudre.call_count, 1)
+        self.assertEqual(survie.call_args.args[0]['mode'], 'survie')
 
     def test_configuration_consultable_sans_lancer_de_tour(self):
         for mode in self.config.modes_disponibles:
@@ -161,7 +163,7 @@ class Modes(unittest.TestCase):
 
     def test_cycle_classique_garde_generation_et_ordre_des_phases(self):
         journal = self.modules_cycle_simules()
-        self.entree.main([])
+        self.entree.main(['--mode', 'classique'])
         self.assertEqual(journal.mock_calls, [
             call.preparer_rapports(), call.reparer_structure(),
             call.migrer_infos_generaux(self.config.configuration_mode('classique')),

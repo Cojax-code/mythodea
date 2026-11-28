@@ -15,6 +15,7 @@ import plateau
 import securite
 import minuterie
 import crypte
+from cycle_linux import interruption_differee
 
 
 ORDRE_RESOLUTION_EST = ("village", "est_1", "est_2", "est_3")
@@ -393,6 +394,7 @@ def ouvrir_tour_survie(configuration=None, horloge=None):
         return _ouvrir_tour_survie(configuration, horloge)
 
 
+@interruption_differee()
 def _ouvrir_tour_survie(configuration, horloge=None):
     """Prépare une seule fois les généraux et ouvre la fenêtre d'action."""
     configuration = profil_survie(configuration)
@@ -453,6 +455,7 @@ def resoudre_tour_survie(configuration=None, aleatoire=None, gestion=None):
             return _clore_tour_survie(configuration, gestion, aleatoire)
 
 
+@interruption_differee()
 def _clore_tour_survie(configuration, gestion, aleatoire=None):
     cycle = etat.charger_cycle_survie(configuration)
     if cycle is None or cycle['phase'] != 'actions':
@@ -486,7 +489,12 @@ def _clore_tour_survie(configuration, gestion, aleatoire=None):
             )
         return resultat
     except BaseException as erreur:
-        gestion.erreur(tour, erreur)
+        courant = etat.charger_cycle_survie(configuration) or {}
+        # Une panne d'annonce après validation ne remet pas le combat en attente.
+        if not (courant.get('phase') in ('consultation', 'defaite')
+                and gestion.generation
+                and courant.get('generation_active') == gestion.generation.name):
+            gestion.erreur(tour, erreur)
         raise
 
 
@@ -601,12 +609,13 @@ def _lancer_partie_survie(configuration, nombre_tours, horloge, dormir):
         while cycle['phase'] != 'defaite' and (nombre_tours is None or len(resultats) < nombre_tours):
             if cycle['phase'] == 'consultation':
                 gestion.attendre(cycle)
-                try:
-                    gestion.permissions_actions()
-                except BaseException as erreur:
-                    gestion.erreur(cycle['tour'], erreur)
-                    raise
-                gestion.marquer(cycle['tour'] + 1, 'a_preparer')
+                with interruption_differee():
+                    try:
+                        gestion.permissions_actions()
+                    except BaseException as erreur:
+                        gestion.erreur(cycle['tour'], erreur)
+                        raise
+                    gestion.marquer(cycle['tour'] + 1, 'a_preparer')
                 cycle = _ouvrir_tour_survie(configuration, horloge)
             if cycle['phase'] != 'actions':
                 raise RuntimeError('Cycle interrompu : récupération administrative requise.')

@@ -66,6 +66,23 @@ class CrypteReelle(unittest.TestCase):
         self.assertEqual(len(list(p.glob('arriere/infanterie*/arc'))), 20)
         self.assertEqual(reel.etat.initialiser_quota_normal('j1'), 1)
 
+    def test_installation_bashrc_conserve_configuration_et_ne_duplique_pas(self):
+        for joueur, home in self.c['homes'].items():
+            compte = pwd.getpwnam(joueur)
+            fichier = home / '.bashrc'
+            fichier.write_text('# personnel\nexport UNE_VARIABLE=oui\n')
+            os.chown(fichier, compte.pw_uid, compte.pw_gid)
+            fichier.chmod(0o640)
+        for _ in range(2):
+            crypte_installer.installer_bashrc(self.c, self.root / 'profil.sh')
+        for joueur, home in self.c['homes'].items():
+            fichier = home / '.bashrc'
+            texte = fichier.read_text()
+            self.assertTrue(texte.startswith('# personnel\nexport UNE_VARIABLE=oui\n'))
+            self.assertEqual(texte.count('# Mythodea :'), 1)
+            self.assertEqual(fichier.stat().st_uid, pwd.getpwnam(joueur).pw_uid)
+            self.assertEqual(fichier.stat().st_mode & 0o777, 0o640)
+
     def test_pic_nic_scanner_socket_permissions_publication(self):
         shell = self.shell()
         self.assertIn('tentative ouverte', shell.command('crypte_commence'))
@@ -172,7 +189,7 @@ class CrypteReelle(unittest.TestCase):
         self.assertEqual(reel.etat.lire_compteur_general('j1'), 2)
 
     def test_pdf_et_script_lisibles_non_modifiables(self):
-        pdfs = [crypte.zone(self.c, 'j1') / f'grimoire/recette{i}.pdf' for i in (1, 2, 3)]
+        pdfs = [crypte.zone(self.c, 'j1') / f'grimoire/recette{i}.txt' for i in (1, 2, 3)]
         code = 'from pathlib import Path; import sys; print(Path(sys.argv[1]).read_bytes()[:8])'
         for pdf in pdfs:
             self.assertEqual(self.en_joueur('j1', code, pdf).returncode, 0)

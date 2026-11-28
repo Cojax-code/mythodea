@@ -2,6 +2,11 @@
 
 Ce fichier définit les règles de travail pour les agents qui modifient Mythodea.
 
+Les chemins de commandes ci-dessous sont relatifs à la racine du dépôt.
+Ce fichier est masqué dans `.docs/` et n'est pas détecté automatiquement comme
+un AGENTS.md racine. Pour chaque nouvelle session d'agent, donner explicitement :
+« Lis `.docs/AGENTS.md`, puis les spécifications qu'il indique, avant de modifier le dépôt. »
+
 ## Avant toute modification
 
 1. Lire `.docs/MYTHODEA_SPEC.md`.
@@ -60,7 +65,7 @@ Survie si elle peut rester commune. Les règles encore ouvertes dans `.docs/SURV
 doivent rester ouvertes jusqu'à décision explicite.
 
 Pour Survie, respecter le périmètre Est et les règles de zones, de coopération,
-de renforts et de retraites de [SURVIE_SPEC.md](.docs/SURVIE_SPEC.md).
+de renforts et de retraites de [SURVIE_SPEC.md](SURVIE_SPEC.md).
 `repli` reste une sanction ; la caserne militaire du village est distincte des
 renforts tactiques. Les noms techniques `generalN`, les propriétaires Linux et
 les identités persistantes ne doivent pas être déduits des noms d'affichage.
@@ -99,7 +104,7 @@ réelle sous Linux lorsqu'une modification touche ces aspects.
 
 ## Documentation
 
-`README.md` est destiné aux humains et doit rester court et accessible.
+`.docs/README.md` est destiné aux humains et doit rester court et accessible.
 
 `.docs/MYTHODEA_SPEC.md` est la référence technique et gameplay du moteur commun.
 

@@ -10,7 +10,7 @@ import unittest
 from test_crypte_scanner import BashSession, RECIPE, observations, verdict
 
 
-REPLAY = Path(__file__).resolve().parents[2] / 'bash/replay.sh'
+REPLAY = Path(__file__).resolve().parents[2] / 'bash/.interne/replay.sh'
 
 
 @unittest.skipUnless(sys.platform == 'linux', 'Bash et PTY Linux requis')
@@ -22,6 +22,7 @@ class Replay(unittest.TestCase):
         self.root.chmod(0o755)
         self.script = self.root / 'replay.sh'
         shutil.copyfile(REPLAY, self.script)
+        shutil.copyfile(REPLAY.with_name('terminal.sh'), self.root / 'terminal.sh')
         self.script.chmod(0o644)
         self.rapport = self.root / 'rapport avec espaces.txt'
         self.rapport.write_text('○ première ligne\n\\ -n %s × dernière ligne', encoding='utf-8')
