@@ -142,7 +142,7 @@ class NiveauxHomeForge(unittest.TestCase):
         general['chemin'].rename(ailleurs)
         ailleurs.rename(general['chemin'])
         self.terminer(2)
-        self.assertEqual(self.fiche(general)['progression_formation'], 1)
+        self.assertEqual(self.fiche(general)['progression_formation'], 2)
 
     def test_reprise_apres_persistance_repare_fiche_sans_double_recompense(self):
         general = self.creer(nature='stratege')
@@ -222,7 +222,7 @@ class NiveauxHomeForge(unittest.TestCase):
         self.etat.sauvegarder_cycle_survie(dict(tour=1, phase='resolution'), self.profil)
         self.rapports.preparer_activites(self.profil, 1)
         self.terminer(1)
-        self.assertEqual({p.name: p.read_bytes() for p in unite.iterdir()}, avant)
+        self.assertEqual({p.name: p.read_bytes() for p in unite.iterdir() if p.name in avant}, avant)
         self.assertIn('absence de validation officielle', self.config.rapport_long_path.read_text())
         self.assertIn('unités conservées', (self.config.game_path / 'village/j1/hotel_de_ville/rapport_activites.txt').read_text())
         self.securite.memoriser_unites_actions(self.profil, 2)

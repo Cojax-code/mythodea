@@ -134,7 +134,7 @@ class AccueilSurvie(unittest.TestCase):
             self.assertIn('Vague 5 - Combats avec plusieurs généraux', textes[5])
             self.assertNotIn('crypte', textes[5].lower())
             self.assertIn('Vague 6 - Découvrir la Crypte', textes[6])
-            self.assertIn(f'scp {joueur}@Mythodea.local:/game/village/{joueur}/crypte/', textes[6])
+            self.assertIn(f'cat /game/village/{joueur}/crypte/grimoire/recette1.txt', textes[6])
             self.assertIn('Une double boucle combine deux répétitions.', textes[10])
 
     def test_journaux_racine_publique_injectee(self):
@@ -153,11 +153,11 @@ class AccueilSurvie(unittest.TestCase):
         empreintes_valides = (
             'b73a50d4340d964ab576bb4f69bebd44f77a507b260c6aa8b18fa8614aaa167d',
             '7d37b50ac0f44bc14c38458c7a55728c579ff6843b037792da0b1ca107198a6c',
-            'df7ffdbdef2408e529e016eae508d368cc533d60379d3ed526652ebfecb75d4b',
-            'f6c13c8950e90f2a83216eefa890a12c64b76d4a1e104191c7fc222d7c279066',
+            '9d3c3ee8729ca01f01ac1e9379c636d782908890318eff1d1f6e64800aeba6f0',
+            '8240f0573f4892dd368bd3e9f1fc95bdc9095200bb92daae824c4bd986bc9f94',
             '834a4c6dd06d830781b66d130a7f32419f565e0028653480afd429210b0e5aca',
-            '7d3b1eca970b2d094b5c3cdc94a114d96b7ad4a757950778027b7cd6056f20d5',
-            'dd3ceeb5cb21f247722c543236c984bc873e15a6a4fafd72071eee40e9c0f56a',
+            '3f9399b4e7dd9382da4d00dca69a49cd486fbad39f7a276ba1f03501a1ce8949',
+            'e5d06bf4c75b5510bc06a505a3c8f3ccaf47aa529b13f7f33b6c76e41b9fce56',
             '2295098f4f227d574be0ac9001cba6fed824ed24a3db361539ffb379c36ad87a',
             '17bd5af19ac38e806af50fa0cf0d9018ab6be4286dd6288527af5341680de91c',
             '9e6e55b3b216076347acba740bc891204df6c32efd4d385c68c79e1053565759',

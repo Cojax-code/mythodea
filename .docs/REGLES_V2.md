@@ -177,7 +177,8 @@ Cette règle ne redéfinit pas la phase spéciale du Bouclier vivant.
 
 Six places communes : `village/ecole_officiers/1..6/<joueur>/`.
 Le manuel partagé a trois emplacements distincts : `001`, `002`, `003`.
-Lecture et écriture exigent chacune un séjour complet, selon les preuves du moteur.
+Lecture et écriture sont admissibles dès la première clôture après arrivée, après audit.
+Les demandes finales peuvent être remplies ou modifiées pendant ACTIONS.
 
 - Une demande de lecture non vide prime sur l'écriture : une seule action par séjour.
   Si cette lecture est invalide, il n'y a pas de repli vers l'écriture.

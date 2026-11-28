@@ -60,7 +60,7 @@ class ActivitesSurvie(unittest.TestCase):
         (g['chemin'] / 'info/lire_les_memoires.txt').write_text('a 999 201')
         self.formation.ouvrir_tour(self.profil, 1)
         alertes = self.formation.alertes_actions(self.profil, 1)
-        self.assertTrue(any('refusée' in a['message'] for a in alertes))
+        self.assertTrue(any('invalide' in a['message'] for a in alertes))
         self.assertTrue(all(a['joueur'] == 'j1' for a in alertes))
         self.resolution()
         self.formation.clore_tour(self.profil, 1)
@@ -75,7 +75,8 @@ class ActivitesSurvie(unittest.TestCase):
         self.formation.clore_tour(self.profil, 2)
         self.resolution(2)
         self.formation.resoudre_tour(self.profil, 2)
-        self.assertIn('séjour incomplet ou annulé', self.rapport().read_text())
+        self.assertNotIn('Mémoire', self.rapport().read_text())
+        self.assertNotIn('2:j1:general1', self.formation.charger()['valides'])
 
     def test_ecole_ecriture_lecture_et_rang_officiels(self):
         g = self.creer(territoire='village', place='ecole_officiers/1', nature='stratege')
@@ -109,7 +110,8 @@ class ActivitesSurvie(unittest.TestCase):
         self.resolution()
         for _ in range(2):
             self.formation.resoudre_tour(self.profil, 1)
-        self.assertEqual(self.rapport().read_text().count('séjour incomplet'), 1)
+        self.assertEqual(self.rapport().read_text().count('effectivement soignée'), 1)
+        self.assertNotIn('séjour incomplet', self.rapport().read_text())
 
     def test_forge_resultat_et_identites_conserves(self):
         g = self.forge()
@@ -211,7 +213,7 @@ class ActivitesSurvie(unittest.TestCase):
         self.securite.verifier_tous_les_deplacements(self.profil)
         texte = self.rapport().read_text()
         self.assertIn('déplacement interdit', texte)
-        self.assertIn('sanction de repli', texte)
+        self.assertIn('[REPLI]', texte)
         self.assertNotIn('general1', self.rapport('j2').read_text())
 
     @unittest.skipUnless(os.name == 'posix', 'Liens Linux requis')

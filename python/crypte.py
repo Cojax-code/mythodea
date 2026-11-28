@@ -1,7 +1,7 @@
-"""Crypte V0.1 : décisions privées, recettes et récompenses différées.
+"""Crypte : décisions privées, recettes et livraison immédiate au village.
 
 Le scanner est un instrument pédagogique non fiable. Seul ce module attribue
-une réussite et seul le résolveur privé matérialise son général.
+une réussite et le collecteur publie sa récompense après préparation privée.
 """
 from contextlib import contextmanager
 import grp
@@ -37,6 +37,7 @@ RECETTES = {
     'recette3': {'lignes': RECETTE3, 'nom': 'pic-nic', 'blocs': (6, 7, 7, 0),
                  'unite': 'infanterie', 'equipement': 'pique'},
 }
+PREFIXES_RECOMPENSES = {'recette1': 'amelie_poulin', 'recette2': 'har_chez_moi', 'recette3': 'pic_nic'}
 
 # Textes originaux installés par le moteur. Ne pas les générer à chaque tour :
 # les numéros donnés par nl font partie des recettes reproductibles.
@@ -225,10 +226,39 @@ random_livraison = random.Random()
 
 def charger(c):
     p = chemin_etat(c)
-    if p.exists():
-        return json.loads(p.read_text(encoding='utf-8'))
-    return {j: {'dernier_tour': None, 'a_creer': None, 'en_attente': None,
-                'attributions': []} for j in c['joueurs']}
+    donnees = (json.loads(p.read_text(encoding='utf-8')) if p.exists() else
+               {j: {'dernier_tour': None, 'a_creer': None, 'en_attente': None,
+                    'attributions': []} for j in c['joueurs']})
+    if site(c) == 'crypte':
+        for fiche in donnees.values():
+            if 'derniers_tours' not in fiche:
+                tours = dict.fromkeys(RECETTES)
+                historique = [*fiche['attributions'], *([fiche['a_creer']] if fiche['a_creer'] else [])]
+                for attribution in historique:
+                    recette = attribution.get('recette')
+                    tour = attribution.get('tour')
+                    if recette in tours and type(tour) is int:
+                        tours[recette] = max(tours[recette] if tours[recette] is not None else -1, tour)
+                dernier = fiche['dernier_tour']
+                # Historique incomplet : ne jamais inventer une disponibilité.
+                if dernier is not None and not any(a.get('tour') == dernier and a.get('recette') in tours
+                                                  for a in historique):
+                    tours = {r: max(t if t is not None else -1, dernier) for r, t in tours.items()}
+                fiche['derniers_tours'] = tours
+            fiche.setdefault('compteurs_recettes', dict.fromkeys(RECETTES, 0))
+    return donnees
+
+
+def disponibilites(c, fiche, tour):
+    tours = fiche.get('derniers_tours', {})
+    return {r: max(0, (tours.get(r) if site(c) == 'crypte' else fiche['dernier_tour']) + 5)
+            if (tours.get(r) if site(c) == 'crypte' else fiche['dernier_tour']) is not None else 0
+            for r in catalogue(c)}
+
+
+def etat_disponibilites(c, fiche, tour):
+    return '; '.join(f'{r} : disponible' if tour >= debut else f'{r} : disponible au tour {debut}'
+                     for r, debut in disponibilites(c, fiche, tour).items())
 
 
 def sauver(c, donnees):
@@ -395,15 +425,16 @@ def recette_lignes(marqueurs, identifiant="recette1", racine=None, contexte=None
         'Une commande echouee, Ctrl+C ou une tentative inachevee ne rapporte rien.',
         'L atelier est jetable : ne placez aucun fichier personnel dedans.', '',
         *explications, '',
-        'Une reussite tous les 5 tours par joueur, delai partage entre toutes les recettes.',
+        'Chaque recette a son delai de 5 tours par joueur ; une seule reussite par tour.',
         'Les erreurs ne consomment pas ce delai.',
-        'La recompense apparait apres la publication du tour, dans recompense/.',
-        'Un seul general en attente. Son identite reste generalN.',
+        'La recompense apparait des la reussite de crypte_fin, dans recompense/.',
+        f'Un seul general en attente. Nom physique : {PREFIXES_RECOMPENSES.get(identifiant, identifiant)}N.',
         f'Nom affiche : {recette["nom"]} ; {composition}.',
         'Cette recompense ne consomme pas les 5 creations normales.', '',
-        'Apres publication : cd ~ puis revenez sur la carte.',
-        'Lors des ACTIONS suivantes, choisissez une destination legale et libre :',
-        f'mv {racine}/village/{joueur}/crypte/recompense/generalN {racine}/village/{joueur}/garnison/1/',
+        'Apres publication, le hook Bash actualise le repertoire au retour a l invite.',
+        'Relancez les editeurs et processus deja ouverts : ils ne sont pas rediriges.',
+        'Des ces ACTIONS, choisissez une place libre au village (preparation initiale) :',
+        f'mv {racine}/village/{joueur}/crypte/recompense/{PREFIXES_RECOMPENSES.get(identifiant, identifiant)}1 {racine}/village/{joueur}/garnison/1/',
         'Ne ramenez pas un general dans recompense/ apres sa recuperation.',
     ]
     if contexte and site(contexte) == 'crypte_des_plaines':
@@ -528,7 +559,7 @@ def auditer_recuperations(c):
         for p in list(attente.iterdir()):
             if p.is_dir() and p.name != fiche['en_attente']:
                 rapports.afficher_et_ecrire(f'Retour interdit dans la Crypte : {j}:{p.name}.')
-                mouvements.envoyer_general_au_repli(j, p.name, p, c)
+                mouvements.envoyer_general_au_repli(j, p.name, p, c, motif="retour interdit dans la Crypte")
                 punis.add(f'{j}:{p.name}')
         if fiche['en_attente'] and not (attente / fiche['en_attente']).exists():
             nom = fiche['en_attente']
@@ -551,13 +582,48 @@ def attribuer_recompense(c, joueur, fiche, attribution, composition):
     attente = zone(c, joueur) / 'recompense'
     if any(attente.iterdir()):
         raise RuntimeError('Récompense Crypte occupée : attribution impossible.')
-    numero = etat.lire_compteur_general(joueur) + 1
-    etat.sauvegarder_compteur_general(joueur, numero)
-    nom = f'general{numero}'
+    recette = attribution.get('recette', 'recette1')
+    if attribution.get('source') == 'defi':
+        numero = etat.lire_compteur_general(joueur) + 1
+        etat.sauvegarder_compteur_general(joueur, numero)
+        nom = f'general{numero}'
+    else:
+        numero = fiche.setdefault('compteurs_recettes', {}).get(recette, 0) + 1
+        fiche['compteurs_recettes'][recette] = numero
+        nom = PREFIXES_RECOMPENSES[recette] + str(numero)
     general = attente / nom
+    construire_recompense(c, joueur, general, attribution, composition)
+    positions = etat.charger_positions_generaux()
+    positions[f'{joueur}:{nom}'] = 'village' if site(c) == 'crypte' else 'est_1'
+    etat.sauvegarder_positions_generaux(positions)
+    fiche['en_attente'] = nom
+    fiche['attributions'].append({**({'recette': recette} if attribution.get('source') != 'defi' else {}),
+                                 **attribution, 'general': nom})
+    return nom
+
+
+def construire_recompense(c, joueur, general, attribution, composition):
+    """Construction privée ; aucun fichier joueur n'est utilisé comme autorité."""
+    import generaux
+    import progression
+    from cycle_linux import sans_liens
+    nom = general.name
+    sans_liens(general)
+    if general.exists():
+        for element in general.rglob('*'):
+            sans_liens(element)
+            if not element.is_dir() and (not element.is_file() or element.stat().st_nlink != 1):
+                raise RuntimeError('Objet inattendu dans la réserve privée Crypte.')
     generaux.creer_general(general, nom)
-    with (generaux.chemin_info(general, 'fiche.txt')).open('a', encoding='utf-8') as f:
-        f.write(f'\nnom_affichage={composition["nom"]}\n')
+    # Une coupure entre mkdir et l'enregistrement du profil reste réparable.
+    profil = progression.charger().get(f'{joueur}:{nom}')
+    if profil is None:
+        profil = progression.enregistrer_creation(joueur, nom, progression.nouvelles_caracteristiques())
+    progression.publier_fiche(general, profil)
+    fiche_publique = generaux.chemin_info(general, 'fiche.txt')
+    lignes = [l for l in fiche_publique.read_text(encoding='utf-8').splitlines()
+              if not l.startswith('nom_affichage=')]
+    fiche_publique.write_text('\n'.join([*lignes, f'nom_affichage={composition["nom"]}']) + '\n', encoding='utf-8')
     equipements = composition.get('equipements')
     if equipements is None:
         equipements = (composition['equipement'],)
@@ -569,16 +635,106 @@ def attribuer_recompense(c, joueur, fiche, attribution, composition):
                 unites.creer_officielle(unite, composition['type_officiel'],
                     {'source': site(c), 'attribution': attribution['id']}, composition.get('contenu'))
                 continue
-            unite.mkdir()
+            unite.mkdir(exist_ok=True)
             for equipement in equipements:
                 (unite / equipement).touch()
     generaux.donner_permissions_general(general, c['acteurs'][joueur]['proprietaire_linux'])
-    positions = etat.charger_positions_generaux()
-    positions[f'{joueur}:{nom}'] = 'village' if site(c) == 'crypte' else 'est_1'
-    etat.sauvegarder_positions_generaux(positions)
-    fiche['en_attente'] = nom
-    fiche['attributions'].append({**attribution, 'general': nom})
-    return nom
+
+
+def livrer_immediatement(c, joueur):
+    """Sous VERROU : préparation privée, états durables, exposition sans écrasement.
+
+    La construction privée reprend sans recréer les identités déjà enregistrées.
+    Une livraison exposée n'est jamais recréée, même si le joueur l'a supprimée.
+    """
+    import generaux
+    import soldats
+    import securite
+    from cycle_linux import dossier_prive, synchroniser_dossier, renommer_sans_ecraser
+    d = charger(c)
+    f = d[joueur]
+    journal = f.get('livraison')
+    if journal is None:
+        demande = f['a_creer']
+        if demande is None:
+            return
+        recette = demande.get('recette', 'recette1')
+        numero = f['compteurs_recettes'][recette] + 1
+        nom = PREFIXES_RECOMPENSES[recette] + str(numero)
+        f['compteurs_recettes'][recette] = numero
+        journal = dict(demande, recette=recette, general=nom, etape='construction')
+        f['livraison'] = journal
+        sauver(c, d)
+    if journal['etape'] == 'construction':
+        nom, recette = journal['general'], journal['recette']
+        reserve = c['game_path'] / '.systeme/livraisons_crypte' / joueur
+        dossier_prive(reserve.parent)
+        dossier_prive(reserve)
+        general = reserve / nom
+        construire_recompense(c, joueur, general, journal, RECETTES[recette])
+        registre = soldats.charger()
+        copies = []
+        for bloc in config.ordre_blocs:
+            for unite in (general / bloc).iterdir():
+                identifiant = soldats.retrouver(unite, registre)
+                if identifiant is None:
+                    identifiant = soldats.enregistrer(unite, registre, generaux.identifier_unite(unite))
+                copies.append((unite, identifiant))
+        soldats.sauvegarder(registre)
+        for unite, identifiant in copies:
+            soldats.publier(unite, identifiant, registre[identifiant])
+        generaux.assurer_ordre_surnombre(general, joueur, 'village', c)
+        generaux.donner_permissions_general(general, c['acteurs'][joueur]['proprietaire_linux'])
+        # Persister tous les fichiers avant d'enregistrer l'image prête.
+        for fichier in general.rglob('*'):
+            if fichier.is_file():
+                with fichier.open('rb') as entree:
+                    os.fsync(entree.fileno())
+        for dossier in reversed([general, *[p for p in general.rglob('*') if p.is_dir()]]):
+            synchroniser_dossier(dossier)
+        synchroniser_dossier(reserve)
+        journal.update(etape='prete', device=general.stat().st_dev, inode=general.stat().st_ino,
+                       reference=securite.inventaire_general_actions(general, joueur, 'village', False))
+        sauver(c, d)
+    nom = journal['general']
+    general = c['game_path'] / '.systeme/livraisons_crypte' / joueur / nom
+    destination = zone(c, joueur) / 'recompense' / nom
+    identite = f'{joueur}:{nom}'
+    if journal['etape'] == 'prete':
+        if not general.is_dir():
+            raise RuntimeError('Réserve Crypte préparée absente : examen administratif requis.')
+        reference = etat.charger_unites_actions(c)
+        if reference is None or reference['tour'] != journal['tour']:
+            raise RuntimeError('Référence ACTIONS absente ou ancienne pour la livraison Crypte.')
+        positions = etat.charger_positions_generaux()
+        positions[identite] = 'village'
+        etat.sauvegarder_positions_generaux(positions)
+        cle = 'game/' + destination.relative_to(c['game_path']).as_posix()
+        reference['generaux'][cle] = journal['reference']
+        reference['premiers_deploiements'] = sorted(set(reference.get('premiers_deploiements', ())) | {identite})
+        reference.setdefault('creations_crypte', {})[identite] = journal['tour']
+        etat.sauvegarder_unites_actions(c, reference)
+        if not any(a['id'] == journal['id'] for a in f['attributions']):
+            f['attributions'].append({k: journal[k] for k in ('id', 'tour', 'recette', 'general')})
+        f['en_attente'] = nom
+        f['a_creer'] = None
+        journal['etape'] = 'enregistree'
+        sauver(c, d)
+    if general.exists():
+        if [general.stat().st_dev, general.stat().st_ino] != [journal['device'], journal['inode']]:
+            raise RuntimeError('Identité de la réserve Crypte différente du journal.')
+        renommer_sans_ecraser(general, destination)
+    # Si le renommage a déjà eu lieu, le joueur a pu déplacer ou même supprimer
+    # sa récompense : ne jamais la recréer. Les états étaient durables avant mv.
+    f.pop('livraison')
+    sauver(c, d)
+
+
+def reprendre_livraisons(c):
+    with VERROU:
+        for joueur, fiche in charger(c).items():
+            if fiche.get('livraison') or (fiche['a_creer'] and fiche['a_creer'].get('immediate')):
+                livrer_immediatement(c, joueur)
 
 
 def materialiser(c, tour):
@@ -593,9 +749,19 @@ def _materialiser_site(c, tour):
     import rapports
     donnees = charger(c)
     for j, fiche in donnees.items():
+        if site(c) == 'crypte':
+            for attribution in fiche['attributions']:
+                if attribution['tour'] == tour and attribution.get('recette') in RECETTES:
+                    recette = RECETTES[attribution['recette']]
+                    rapports.noter_resultat(j, 'CRYPTE',
+                        f'{attribution["general"]} ({recette["nom"]}) créé et attribué ; '
+                        f'{sum(recette["blocs"])} unités de type {recette["unite"]} ; '
+                        f'blocs : {"/".join(map(str, recette["blocs"]))}.', c)
         demande = fiche['a_creer']
         if demande is None:
             continue
+        if demande.get('immediate') or fiche.get('livraison'):
+            raise RuntimeError('Livraison immédiate inachevée : reprendre avant la capture.')
         if demande['tour'] != tour:
             raise RuntimeError('Réussite Crypte d’un autre tour : récupération administrative requise.')
         if demande['id'] in {a['id'] for a in fiche['attributions']}:
@@ -709,10 +875,12 @@ class Collecteur:
                     nettoyer(dict(self.c, crypte_site=ancienne['site']), j)
                 nettoyer(c, j)
                 d = charger(c)[j]
-                if d['a_creer'] or any((zone(c, j) / 'recompense').iterdir()):
+                if d['a_creer'] or d.get('livraison') or any((zone(c, j) / 'recompense').iterdir()):
                     raise ValueError('Une récompense est déjà en attente.')
-                if d['dernier_tour'] is not None and cycle['tour'] < d['dernier_tour'] + 5:
-                    raise ValueError(f"Prochaine utilisation au tour {d['dernier_tour'] + 5}.")
+                if d['dernier_tour'] == cycle['tour']:
+                    raise ValueError('Une seule réussite par joueur et par tour.')
+                if all(cycle['tour'] < debut for debut in disponibilites(c, d, cycle['tour']).values()):
+                    raise ValueError(etat_disponibilites(c, d, cycle['tour']))
                 token = uuid.uuid4().hex
                 beneficiaire = destinataire_plaines(c, j) if site(c) == 'crypte_des_plaines' else None
                 self.tentatives[j] = {'token': token, 'session': session, 'tour': cycle['tour'],
@@ -743,6 +911,8 @@ class Collecteur:
                     if t['etape'] < len(recettes[r]['lignes']) and
                     correspond_etape(recettes[r]['lignes'][t['etape']], ligne)]
                 t['recette'] = t['candidats'][0] if len(t['candidats']) == 1 else None
+                if t['recette'] and cycle['tour'] < disponibilites(c, charger(c)[j], cycle['tour'])[t['recette']]:
+                    t['erreur'] = etat_disponibilites(c, charger(c)[j], cycle['tour'])
                 kind = 'builtin' if site(c) != 'crypte' and (
                     ligne == 'pwd' or ligne.startswith('echo ')) else 'file'
                 if (t['pending'] or not t['candidats']
@@ -801,17 +971,27 @@ class Collecteur:
                     f = d[j]
                     if f['a_creer'] or any((zone(c, j) / 'recompense').iterdir()):
                         raise ValueError('Récompense déjà en attente.')
-                    if f['dernier_tour'] is not None and cycle['tour'] < f['dernier_tour'] + 5:
+                    if (f['dernier_tour'] == cycle['tour'] or
+                            cycle['tour'] < disponibilites(c, f, cycle['tour'])[t['recette']]):
                         raise ValueError('Cooldown actif.')
                     f['dernier_tour'] = cycle['tour']
+                    if site(c) == 'crypte':
+                        f['derniers_tours'][t['recette']] = cycle['tour']
                     f['a_creer'] = {'id': t['token'], 'tour': cycle['tour'], 'recette': t['recette']}
+                    if site(c) == 'crypte':
+                        f['a_creer']['immediate'] = True
                     if bloc is not None:
                         f['a_creer']['bloc'] = bloc
                         f['a_creer']['general'] = t['general']
                     sauver(c, d)
+                    if site(c) == 'crypte':
+                        livrer_immediatement(c, j)
                 finally:
                     nettoyer(c, j)
-                return 'Réussite enregistrée. Récompense après la publication du tour.'
+                return ('Réussite enregistrée. Récompense disponible dans recompense/ ; '
+                        'mobilisable dans le village pendant ACTIONS, préparation initiale habituelle.'
+                        if site(c) == 'crypte' else
+                        'Réussite enregistrée. Récompense après la publication du tour.')
             else:
                 t['erreur'] = 'Événement inconnu.'
             return t['erreur'] or ''
@@ -870,6 +1050,10 @@ class Collecteur:
                         m['cwd'] = str(Path(f'/proc/{session[0]}/cwd').resolve(strict=True))
                         resultat = self.evenement(uid, session, m)
                         reponse = {'ok': True, 'resultat': resultat}
+                        if m['event'] == 'start':
+                            j = self.uids[uid]
+                            c = dict(self.c, crypte_site=self.tentatives[j]['site'])
+                            reponse['information'] = etat_disponibilites(c, charger(c)[j], self.tentatives[j]['tour'])
                     except (OSError, ValueError, KeyError, TypeError) as erreur:
                         reponse = {'ok': False, 'erreur': str(erreur)}
                     try:
@@ -885,6 +1069,7 @@ class Collecteur:
         from cycle_linux import sans_liens
         config.verifier_structure_actuelle(self.c)
         etat.preparer_systeme_survie(self.c)
+        reprendre_livraisons(self.c)
         racine = self.c['game_path'] / '.systeme/communication'
         sans_liens(racine)
         racine.mkdir(mode=0o710, exist_ok=True)
@@ -907,7 +1092,8 @@ class Collecteur:
 
     def __exit__(self, *_):
         self.arret.set()
-        self.thread.join(timeout=2)
+        # Attendre la livraison durable en cours avant de fermer le service.
+        self.thread.join()
         self.socket.close()
         self.chemin.unlink(missing_ok=True)
         SERVICES.pop(str(self.c['game_path']), None)

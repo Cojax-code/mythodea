@@ -67,6 +67,44 @@ def dossier_prive(chemin):
     os.chmod(chemin, 0o700)
 
 
+def renommer_sans_ecraser(source, destination):
+    """Livraison pendant ACTIONS : parents ouverts sans liens, RENAME_NOREPLACE."""
+    sans_liens(source)
+    sans_liens(destination)
+    if os.name != 'posix':
+        source.rename(destination)  # Windows refuse déjà une destination existante.
+        return
+    import ctypes
+    libc = ctypes.CDLL(None, use_errno=True)
+    renommer = libc.renameat2
+    renommer.argtypes = (ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint)
+    renommer.restype = ctypes.c_int
+    def ouvrir(chemin):
+        fd = os.open('/', os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            for partie in chemin.absolute().parts[1:]:
+                suivant = os.open(partie, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+                os.close(fd)
+                fd = suivant
+            return fd
+        except BaseException:
+            os.close(fd)
+            raise
+    entree = ouvrir(source.parent)
+    try:
+        sortie = ouvrir(destination.parent)
+        try:
+            if renommer(entree, os.fsencode(source.name), sortie, os.fsencode(destination.name), 1):
+                numero = ctypes.get_errno()
+                raise OSError(numero, os.strerror(numero), str(destination))
+            os.fsync(entree)
+            os.fsync(sortie)
+        finally:
+            os.close(sortie)
+    finally:
+        os.close(entree)
+
+
 def ecrire_json(chemin, valeur):
     etat.ecrire_prive(chemin, json.dumps(valeur, ensure_ascii=False, indent=2) + "\n")
 
@@ -122,7 +160,8 @@ def copier(source, destination, verifier=lambda: None, exclure=(), exercices=())
 
 def entrees_home(home):
     # Inclure les noms non canoniques qui influencent home_contient_general().
-    return sorted(p for p in home.iterdir() if p.name.startswith("general"))
+    return sorted(p for p in home.iterdir() if p.name.startswith("general") or
+                  generaux.identite_officielle(home.name, p.name))
 
 
 def proteger_ancien(chemin):
@@ -535,6 +574,8 @@ class Generations:
         dossier_prive(self.generation)
         with crypte.VERROU:
             self.marquer(tour, 'capture')
+            crypte.reprendre_livraisons(self.c)
+            crypte.verifier_collecteur(self.c)
         self.backend.annoncer(f'FIN DES ACTIONS — TOUR {tour}\nGEL TEMPORAIRE : capture des actions en cours.')
         self.afficher(tour, 'capture', detail='FIN DES ACTIONS\nCAPTURE EN COURS\nGEL DEMANDE')
         self.backend.geler()

@@ -38,11 +38,31 @@ _mythodea_afficher() {
     fi
 }
 
+_mythodea_exploration() {
+    local REPLY texte couleur=''
+    _mythodea_nettoyer "$1"
+    texte=$REPLY
+    if _mythodea_couleurs; then
+        case $texte in
+            RAPPORT*|VILLAGE|EST_*|REPLI|===*) couleur=36 ;;
+            *contesté*|*avertissement*|*sanction*) couleur=33 ;;
+            'Contrôle : bot'|BOT) couleur=31 ;;
+            'Contrôle : allié'|j1|j2) couleur=32 ;;
+            *' — '*unité*) couleur=$2 ;;
+        esac
+    fi
+    if [[ -n $couleur ]]; then
+        builtin printf '\033[%sm%s\033[0m\n' "$couleur" "$texte"
+    else
+        builtin printf '%s\n' "$texte"
+    fi
+}
+
 _mythodea_prompt() {
     local resultat=$? logique=$PWD
     # PWD garde le chemin logique même si Linux a renommé son inode.
     case $logique in
-        /game/*|"$HOME"/general*)
+        /game/*|"$HOME"/general*|"$HOME"/amelie_poulin[1-9]*|"$HOME"/har_chez_moi[1-9]*|"$HOME"/pic_nic[1-9]*)
             if [[ ! . -ef $logique ]]; then
                 if ! builtin cd -L -- "$logique" 2>/dev/null; then
                     builtin cd -- "$HOME" || return "$resultat"

@@ -303,7 +303,9 @@ def convertir_deplacements(c):
             # Une seconde copie revendiquant la même identité empêche la conversion.
             copies = [p for zone_general in generaux.zones_generaux(joueur, c)
                       if zone_general['chemin'].is_dir()
-                      for p in zone_general['chemin'].glob('general*/*/*/identifiant_soldat.txt')
+                      for g in zone_general['chemin'].iterdir()
+                      if generaux.numero_general_depuis_nom(g.name) is not None and g.is_dir()
+                      for p in g.glob('*/*/identifiant_soldat.txt')
                       if p.is_file() and not p.is_symlink() and p.read_text(encoding='utf-8').strip() == identifiant]
             if len(copies) != 1:
                 continue

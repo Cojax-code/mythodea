@@ -103,6 +103,29 @@ liberer_verrou_reset() {
 trap liberer_verrou_reset EXIT
 echo '[4/7] Suppression du contenu du plateau'
 echo "Destruction complète de la partie Survie actuelle dans $GAME_PATH ; partition conservée."
+# Lire l'autorité privée avant de supprimer le plateau. Aucun glob supplémentaire
+# dans les homes : seuls les noms de récompenses officiellement enregistrés.
+verifier_sous_montages
+python3 -B - "$PROJECT_DIR/python" <<'PY'
+import sys
+from pathlib import Path
+import shutil
+sys.path.insert(0, sys.argv[1])
+import config, generaux
+from cycle_linux import sans_liens
+c = config.configuration_mode('survie')
+cibles = []
+for joueur in c['joueurs']:
+    home = Path('/home') / joueur
+    for chemin in home.iterdir():
+        if not chemin.name.startswith('general') and generaux.identite_officielle(joueur, chemin.name, c):
+            sans_liens(chemin)
+            if not chemin.is_dir():
+                raise RuntimeError('Récompense officielle non dossier : reset refusé.')
+            cibles.append(chemin)
+for chemin in cibles:
+    shutil.rmtree(chemin)
+PY
 vider_plateau conserver_verrou_survie
 
 echo '[5/7] Nettoyage des généraux uniquement'

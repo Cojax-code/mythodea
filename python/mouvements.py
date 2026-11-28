@@ -150,6 +150,7 @@ def envoyer_general_au_repli(
     configuration=None,
     lieu_sanction=None,
     appliquer_sanction=True,
+    motif=None,
 ):
     # Envoie le général et toutes ses unités
     # dans sa zone de repli.
@@ -218,8 +219,14 @@ def envoyer_general_au_repli(
         rapports.afficher_et_ecrire(
             f"Sanction de repli : {joueur}:{nom_general}, {delai} tour(s) d'attente."
         )
-        rapports.noter_resultat(joueur, 'INCIDENTS',
-            f'{nom_general} : sanction de repli, {delai} tour(s) d’attente.', configuration)
+    if chemin_actuel != destination:
+        origine = chemin_actuel.relative_to(configuration['game_path']).as_posix()
+        cible = destination.relative_to(configuration['game_path']).as_posix()
+        nombre = generaux.total_general_depuis_chemin(destination)
+        rapports.noter_resultat(joueur, 'REPLI',
+            f'{nom_general} : {motif or "mise en repli par le moteur"}. '
+            f'{origine} → {cible} ; {nombre} unité(s) survivante(s).'
+            + (f' {delai} tour(s) d’attente.' if delai is not None else ''), configuration)
     return destination
 
 
@@ -393,6 +400,10 @@ def appliquer_retraites_surnombre(destinations, configuration):
         generaux.donner_permissions_general(destination, acteur["proprietaire_linux"])
         positions[f"{joueur}:{general['nom']}"] = arrivee
         etat.sauvegarder_positions_generaux(positions)
+        rapports.noter_resultat(joueur, 'RETRAITE',
+            f'{general["nom"]} : retraite de surnombre après combat. '
+            f'{origine} → {destination.relative_to(configuration["game_path"])} ; '
+            f'{generaux.total_general_depuis_chemin(destination)} unité(s) survivante(s).', configuration)
         rapports.afficher_et_ecrire(
             f"Retraite de surnombre : {joueur} {general['nom']} : "
             f"{origine} -> {arrivee}, position {destination.parent.name}."

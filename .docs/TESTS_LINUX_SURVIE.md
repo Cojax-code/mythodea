@@ -609,12 +609,13 @@ Le scanner reste pédagogique et contournable en mémoire ou via le PATH ; aucun
 de ses observations ne suffit à attribuer une récompense. Le contrat intégré,
 le cooldown et les contrôles du collecteur sont dans `SURVIE_SPEC.md`.
 
-## Crypte V0.1
+## Crypte du village — validation V2.0
 
 Python 3.11 ou supérieur est requis pour le nettoyage Unix avec `dir_fd`.
 L'installation administrative ci-dessus copie les hooks et le client dans
 `/usr/local/lib/mythodea` et crée `/etc/profile.d/mythodea-crypte.sh`. Reconnecter
-les sessions joueurs après installation. Elle ne modifie aucun `.bashrc` personnel.
+les sessions joueurs après installation. Le bloc Mythodea du `.bashrc` est installé
+sans remplacer la configuration personnelle.
 Ne pas sourcer `bash/.interne/prototype_crypte_scan.sh` directement dans une partie : ce
 fichier seul écrit le journal du prototype, sans collecteur moteur.
 
@@ -659,15 +660,17 @@ mv appel/offrande appel/poulin
 crypte_fin
 ```
 
-Résultat attendu : « Réussite enregistrée », atelier vide, aucune récompense avant
-publication. Après publication, faire `cd ~`, puis revenir consulter
-`/game/village/j1/crypte/recompense`. Un seul `generalN` doit apparaître, avec
+Résultat attendu : « Réussite enregistrée », atelier vide et `amelie_poulin1`
+visible immédiatement dans `/game/village/j1/crypte/recompense`, avec
 `nom_affichage=ame_et_lie_poulin` et 20 équipements `cheval`, répartis 10/5/5/0.
-Lors des prochaines ACTIONS, déplacer ce dossier avec `mv` vers une place légale
-libre de la garnison. Remplacer `generalN` par le nom réellement attribué.
+Dès ces ACTIONS, déplacer le dossier avec `mv` vers une place légale libre du
+village. Le numéro dépend du compteur de cette recette. La première sortie du
+village reste soumise à la préparation initiale et à la notification du moteur.
+Après publication, le hook Bash actualise le répertoire au retour à l'invite ;
+les éditeurs et processus déjà ouverts doivent être relancés.
 
-Pour recette2, après récupération et expiration du même cooldown (ou avec j2
-dans son propre atelier) :
+Pour recette2, au tour suivant après récupération de la première récompense
+(ou avec j2 dans son atelier au même tour), sans attendre recette1 :
 
 ```bash
 crypte_commence
@@ -679,13 +682,13 @@ crypte_fin
 ```
 
 Le tableau complet apparaît avec `cat`, puis les lignes contenant `NAME` avec
-les deux formes de `grep`. Le pipeline compte pour une étape. Après publication,
-la récompense porte `nom_affichage=har-chez-moi`, avec 20 équipements `arc`
+les deux formes de `grep`. Le pipeline compte pour une étape. Dès `crypte_fin`,
+`har_chez_moi1` porte `nom_affichage=har-chez-moi`, avec 20 équipements `arc`
 dans le seul bloc `arriere` (0/0/0/20), sans consommer de création normale.
 Tester aussi `>>`, un motif différent, un troisième composant dans le pipeline
 et une commande supplémentaire : toutes ces variantes doivent échouer.
 
-Pour recette3, dans l'atelier et après expiration du même cooldown :
+Pour recette3, au tour suivant et après récupération de la récompense précédente :
 
 ```bash
 crypte_commence
@@ -699,11 +702,11 @@ crypte_fin
 ```
 
 Comparer les permissions initiales, puis `-rw-rw----`, puis `-rw-------`.
-Les trois affichages doivent être visibles. Après publication, vérifier le nom
-`pic-nic` et 20 équipements `pique`, répartis 6/7/7/0. Un `ls -l` absent ou
+Les trois affichages doivent être visibles. Dès `crypte_fin`, vérifier le dossier
+`pic_nic1`, son nom affiché `pic-nic` et 20 équipements `pique`, répartis 6/7/7/0. Un `ls -l` absent ou
 supplémentaire, un autre mode chmod ou un fichier final différent doit échouer.
-Le délai de cinq tours et la récompense unique en attente restent communs aux
-trois recettes.
+Le délai de cinq tours est indépendant par recette et par joueur. Une seule
+réussite par joueur et par tour et une seule récompense en attente sont autorisées.
 
 Vérifier séparément, sur une partie de démonstration :
 
@@ -714,8 +717,9 @@ Vérifier séparément, sur une partie de démonstration :
 - laisser une tentative ouverte à l'expiration du timer : aucune attribution,
   atelier propre après publication ;
 - j2 utilise sa propre Crypte sans modifier le cooldown de j1 ;
-- après une réussite au tour N, les tours N+1 à N+4 sont refusés ; N+5 est accepté
-  seulement après récupération de la récompense précédente ;
+- après une réussite au tour N, cette même recette est refusée de N+1 à N+4 ;
+  N+5 est accepté après récupération ; les deux autres recettes restent disponibles,
+  sous réserve de la limite d’une réussite par tour ;
 - un retour dans `recompense/` après récupération constatée par l'audit est refusé
   au prochain audit et utilise le repli commun.
 
@@ -729,8 +733,9 @@ Après le diagnostic administratif du cycle et **vérification de l'absence du m
 ```bash
 sudo python3 python/survie_admin.py diagnostic
 sudo ss -xlpn | grep '/game/.systeme/communication/crypte.sock'
-# Seulement si aucun moteur ni collecteur n'est actif :
-sudo rm -- /game/.systeme/communication/crypte.sock
+sudo python3 python/survie_admin.py nettoyer-residus --dry-run
+# Après inspection du plan et arrêt de tout moteur/collecteur :
+sudo python3 python/survie_admin.py nettoyer-residus --confirmer
 ```
 
 Le retrait de cette socket ne retire pas le verrou moteur, ne dégèle pas les
@@ -937,3 +942,34 @@ complet supprime les archives avec tous les autres états de partie. Les interru
 avant/après remplacement des archives et pendant troncature/diffusion sont injectées
 sur des plateaux temporaires par les tests ; ne pas simuler une panne sur la partie
 réelle. Une reprise administrative ne doit ajouter ni vague ni notification en double.
+
+## Validation finale après les essais Raspberry Pi
+
+La procédure de mise à jour sans reset et la liste ciblée des essais matériels
+sont dans [HANDOFF.md](HANDOFF.md). Les règles autorisées sont celles des SPEC :
+présence légale dans un bâtiment à la clôture, après audit ; Crypte du village
+immédiate (option B), trois délais indépendants et trois familles de noms.
+
+Régressions ciblées supplémentaires :
+
+```bash
+python3 -B -m unittest discover -s .dev/tests -p test_corrections_pi.py -v
+python3 -B -m unittest discover -s .dev/tests -p test_replay.py -v
+```
+
+Les coupures injectées couvrent la sauvegarde des soldats avant exposition, le
+renommage avant accusé de livraison et la résolution avant publication. Les
+UUID et reçus sont conservés lors de la reprise ; un dossier joueur occupant
+la destination n'est jamais écrasé. Le nettoyage administratif refuse une
+socket encore liée, un processus actif ou un objet de type inattendu.
+
+Pour l'exploration, depuis j1 puis j2 :
+
+```bash
+replay --immediat /game/village/j1/hotel_de_ville/rapport_exploration.txt
+watch -n 1 cat /game/village/clocher/etat_tour.log
+```
+
+L'option `--immediat` ignore le délai du replay. Les couleurs concernent le
+terminal uniquement ; une redirection conserve le texte brut. Les fichiers de
+rapport ne contiennent pas de codes ANSI.

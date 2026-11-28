@@ -171,7 +171,7 @@ def home_contient_general(joueur, configuration=None):
         return False
 
     for element in home_joueur.iterdir():
-        if element.is_dir() and element.name.startswith("general"):
+        if element.is_dir() and nom_general_reserve(element.name):
             return True
 
     return False
@@ -782,6 +782,33 @@ def controle_territoire_generaux(generaux_territoire, configuration=None):
     return controle_forces(regrouper_forces_par_camp(generaux_territoire, configuration))
 
 
+PREFIXES_GENERAUX = ('general', 'amelie_poulin', 'har_chez_moi', 'pic_nic')
+
+
+def nom_general_reserve(nom):
+    return nom.startswith('general') or numero_general_depuis_nom(nom) is not None
+
+
+def identite_officielle(joueur, nom, configuration=None):
+    """Le format seul n'autorise jamais un général, même avec un petit numéro."""
+    numero = numero_general_depuis_nom(nom)
+    if numero is None or f'{joueur}:{nom}' not in etat.charger_positions_generaux():
+        return False
+    if nom.startswith('general'):
+        return numero <= etat.lire_compteur_general(joueur)
+    import crypte
+    c = configuration or dict(game_path=config.racine_metier(), joueurs=config.joueurs)
+    return any(a.get('general') == nom and a.get('recette') in crypte.RECETTES
+               for a in crypte.charger(c).get(joueur, {}).get('attributions', ()))
+
+
+def noms_generaux_audites(joueur, configuration):
+    noms = {f'general{i}' for i in range(1, etat.lire_compteur_general(joueur) + 1)}
+    noms.update(cle.split(':', 1)[1] for cle in etat.charger_positions_generaux()
+                if cle.startswith(joueur + ':'))
+    return sorted(noms)
+
+
 def numero_general_depuis_nom(nom_general):
     # Vérifie que le nom est exactement du type :
     # general1
@@ -790,7 +817,7 @@ def numero_general_depuis_nom(nom_general):
     #
     # Pas de zéro initial ni de chiffre Unicode : general01 est invalide.
 
-    prefixe = "general"
+    prefixe = next((p for p in PREFIXES_GENERAUX if nom_general.startswith(p)), "general")
 
     if not nom_general.startswith(prefixe):
         return None

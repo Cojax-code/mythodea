@@ -7,7 +7,7 @@ Lister uniquement les généraux stockés en réserve.
 
 >>> COMMANDE VÉTÉRAN
 
-find {game_path}/village/{joueur}/caserne_militaire -maxdepth 1 -type d -name 'general*' -printf '%f\n' | sort
+find {game_path}/village/{joueur}/caserne_militaire -maxdepth 1 -type d \( -name 'general*' -o -name 'amelie_poulin*' -o -name 'har_chez_moi*' -o -name 'pic_nic*' \) -printf '%f\n' | sort
 
 NOTE : Le filtre évite le bruit visuel et facilite le comptage rapide.
 

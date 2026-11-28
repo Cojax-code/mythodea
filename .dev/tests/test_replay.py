@@ -87,3 +87,22 @@ class Replay(unittest.TestCase):
             shell.command(commande)
         shell.command('crypte_fin')
         self.assertNotEqual(verdict(observations(shell.journal), shell.atelier), 'succes')
+
+    def test_exploration_immediate_couleurs_affichage_seul(self):
+        rapport = self.root / 'rapport_exploration.txt'
+        texte = "RAPPORT D'EXPLORATION — j1\nEST_1\nj1\n    amelie_poulin1 — 20 unités\n      Avant : 10 cavaliers\nBOT\n    general1 — 3 unités\nContrôle : contesté\n"
+        rapport.write_text(texte, encoding='utf-8')
+        shell = self.session()
+        shell.command('export TERM=xterm MYTHODEA_COULEURS=1 MYTHODEA_DELAI=30')
+        sortie = shell.command(f"replay --immediat '{rapport}'")
+        for couleur, contenu in ((36, 'EST_1'), (32, 'j1'), (31, 'BOT'), (33, 'Contrôle : contesté')):
+            self.assertIn(f'\x1b[{couleur}m{contenu}\x1b[0m', sortie)
+        self.assertIn('\x1b[32m    amelie_poulin1', sortie)
+        self.assertIn('\x1b[31m    general1', sortie)
+        self.assertNotIn('m      Avant', sortie)
+        self.assertEqual(rapport.read_text(encoding='utf-8'), texte)
+        result = subprocess.run(['bash', str(self.script), '--immediat', str(rapport)],
+            env=dict(os.environ, MYTHODEA_DELAI='30', MYTHODEA_COULEURS='1', TERM='xterm'),
+            capture_output=True, text=True, timeout=3)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, texte)

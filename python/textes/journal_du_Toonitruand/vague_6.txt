@@ -33,8 +33,10 @@ cat {game_path}/village/{joueur}/crypte/grimoire/recette1.txt
 
 NOTE : Utilisez aussi less pour lire page par page, puis q pour quitter.
 
-La Crypte est composée de trois espaces. Le grimoire contient les recettes, l'atelier est le lieu où le rituel est exécuté, et recompense reçoit le général bonus après une réussite et la publication du tour.
+La Crypte est composée de trois espaces. Le grimoire contient les recettes, l'atelier est le lieu où le rituel est exécuté, et recompense reçoit le général bonus dès la réussite confirmée du rituel.
 
 Les recettes se lisent avec cat et less. Leurs commandes peuvent être copiées directement depuis le grimoire.
 
-Une réussite de Crypte est soumise à un cooldown commun aux recettes et une seule récompense peut attendre d'être récupérée.
+Chaque recette possède son propre délai de cinq tours par joueur. Une seule réussite est autorisée par tour et une seule récompense peut attendre d'être récupérée.
+
+Les récompenses se nomment amelie_poulin1, har_chez_moi1 et pic_nic1 (puis 2, 3…). Elles peuvent rejoindre une place libre du village dès ces ACTIONS. La préparation initiale doit se terminer avant de quitter le village. Consultez le rapport d'activités pour sa confirmation.

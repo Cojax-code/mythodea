@@ -76,7 +76,7 @@ class PicNic(unittest.TestCase):
         self.assertEqual(len(observations_ls), 3)
         self.assertEqual(len({e['history'] for e in observations_ls}), 3)
         self.assertEqual([e['status'] for e in evenements if e['event'] == 'after'], ['0'] * 6)
-        self.assertEqual(self.crypte.charger(self.profil)['j1']['a_creer']['recette'], 'recette3')
+        self.assertEqual(self.crypte.charger(self.profil)['j1']['attributions'][-1]['recette'], 'recette3')
 
     @unittest.skipUnless(sys.platform == 'linux', 'Bash Linux requis')
     def test_variations_interdites(self):
@@ -155,39 +155,36 @@ class PicNic(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'attente'):
             self.message('start')
         self.creer()
-        p = self.crypte.zone(self.profil, 'j1') / 'recompense/general6'
+        p = self.crypte.zone(self.profil, 'j1') / 'recompense/pic_nic1'
         fiche = self.generaux.lire_fiche_general(p)
-        self.assertEqual((fiche['nom'], fiche['nom_affichage']), ('general6', 'pic-nic'))
+        self.assertEqual((fiche['nom'], fiche['nom_affichage']), ('pic_nic1', 'pic-nic'))
         self.assertEqual([len(list((p / b).iterdir())) for b in self.config.ordre_blocs], [6, 7, 7, 0])
         self.assertEqual(len(list(p.glob('*/infanterie*/pique'))), 20)
         self.assertFalse(list(p.glob('*/*/arc')) + list(p.glob('*/*/cheval')))
         self.assertEqual(self.etat.initialiser_quota_normal('j1'), 5)
         self.assertEqual(self.rapports.nom_affichage_general(
-            {'joueur': 'j1', 'nom': 'general6', 'fiche': fiche}), 'pic-nic')
+            {'joueur': 'j1', 'nom': 'pic_nic1', 'fiche': fiche}), 'pic-nic')
         self.activer(8)
         with self.assertRaisesRegex(ValueError, 'attente'):
             self.message('start')
-        cible = self.config.game_path / 'village/j1/garnison/1/general6'
+        cible = self.config.game_path / 'village/j1/garnison/1/pic_nic1'
         p.rename(cible)
         self.securite.verifier_tous_les_deplacements(self.profil)
         self.assertIsNone(self.crypte.charger(self.profil)['j1']['en_attente'])
         cible.rename(p)
         self.securite.verifier_tous_les_deplacements(self.profil)
-        self.assertEqual(self.etat.charger_positions_generaux()['j1:general6'], 'repli')
+        self.assertEqual(self.etat.charger_positions_generaux()['j1:pic_nic1'], 'repli')
 
-    def test_cooldown_partage_avec_les_deux_recettes(self):
-        # Les transitions 1->3, 3->2, 2->3 et 3->1 utilisent toutes le même délai.
-        for index, reussir in enumerate((self.reussir, self.reussir_piquiers,
-                                        self.reussir_archers, self.reussir_piquiers, self.reussir)):
-            tour = 3 + index * 5
-            if index:
-                self.activer(tour - 1)
-                with self.assertRaisesRegex(ValueError, f'tour {tour}'):
-                    self.message('start')
+    def test_cooldown_independant_des_trois_recettes(self):
+        for tour, reussir, nom in ((3, self.reussir, 'amelie_poulin1'),
+                                  (4, self.reussir_piquiers, 'pic_nic1'),
+                                  (5, self.reussir_archers, 'har_chez_moi1'),
+                                  (9, self.reussir_piquiers, 'pic_nic2'),
+                                  (10, self.reussir, 'amelie_poulin2')):
             self.activer(tour)
             reussir()
-            self.creer(tour)
-            p = self.crypte.zone(self.profil, 'j1') / f'recompense/general{index + 1}'
+            p = self.crypte.zone(self.profil, 'j1') / 'recompense' / nom
+            self.assertTrue(p.is_dir())
             p.rename(self.config.game_path / 'village/j1/caserne_militaire' / p.name)
             self.assertEqual(self.crypte.charger(self.profil)['j1']['dernier_tour'], tour)
 

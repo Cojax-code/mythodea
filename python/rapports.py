@@ -48,7 +48,7 @@ def preparer_activites(configuration, tour):
     """Crée un rapport privé neuf pour chaque joueur dans la génération du tour."""
     for joueur in configuration['joueurs']:
         chemin = configuration['game_path'] / 'village' / joueur / 'hotel_de_ville/rapport_activites.txt'
-        etat.ecrire_prive(chemin, f"=== RAPPORT D'ACTIVITÉS — VAGUE {tour + 1} (TOUR {tour}) ===\n")
+        etat.ecrire_prive(chemin, f"=== RAPPORT D'ACTIVITÉS — VAGUE {tour + 1} (TOUR {tour}) ===\n\n")
         ancien = chemin.parent.parent / chemin.name
         from cycle_linux import sans_liens
         sans_liens(ancien)
@@ -67,13 +67,16 @@ def noter_activite(configuration, joueur, categorie, message):
     sans_liens(chemin)
     if not chemin.is_file() or chemin.stat().st_nlink != 1:
         raise RuntimeError('Rapport d’activités personnel absent ou invalide.')
+    ligne = f"[{texte_notification(categorie)}] {texte_notification(message)}"
+    if ligne in chemin.read_text(encoding='utf-8').splitlines():
+        return
     fd = os.open(chemin, os.O_WRONLY | os.O_APPEND | getattr(os, 'O_NOFOLLOW', 0)
                  | getattr(os, 'O_NONBLOCK', 0))
     with os.fdopen(fd, 'a', encoding='utf-8') as fichier:
         infos = os.fstat(fichier.fileno())
         if not stat.S_ISREG(infos.st_mode) or infos.st_nlink != 1:
             raise RuntimeError('Rapport personnel non ordinaire ou lié.')
-        fichier.write(f"[{texte_notification(categorie)}] {texte_notification(message)}\n")
+        fichier.write(f"[{texte_notification(categorie)}] {texte_notification(message)}\n\n")
     archiver_evenement(categorie, joueur=joueur, message=texte_notification(message))
 
 
@@ -764,23 +767,33 @@ def ecrire_entete_tableau_affrontements(
     colonne_numero,
     camps=("j1", "j2")
 ):
-    _tableaux[Path(territoire).name] = dict(ouvert=True, lignes=[])
-    bordure = "+------+--------------------------+-----+--------------------------+"
+    _tableaux[Path(territoire).name] = dict(ouvert=True, lignes=[],
+        cellules=[(str(colonne_numero), str(camps[0]), '', str(camps[1]))])
 
-    ecrire_rapport_territoire(territoire, bordure)
-    ecrire_rapport_territoire(
-        territoire,
-        f"| {colonne_numero:<4} | {camps[0]:<24} | {'':^3} | {camps[1]:<24} |"
-    )
-    ecrire_rapport_territoire(territoire, bordure)
+
+def largeur_visible(texte):
+    import unicodedata
+    texte = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', str(texte))
+    return sum(0 if unicodedata.combining(c) else 2 if unicodedata.east_asian_width(c) in ('W', 'F')
+               else 1 for c in texte)
 
 
 def ecrire_fin_tableau_affrontements(territoire):
-    ecrire_rapport_territoire(
-        territoire,
-        "+------+--------------------------+-----+--------------------------+"
-    )
-    _tableaux[Path(territoire).name]['ouvert'] = False
+    tableau = _tableaux[Path(territoire).name]
+    cellules = [tuple(re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', str(t)) for t in ligne)
+                for ligne in tableau['cellules']]
+    largeurs = [max(minimum, *(largeur_visible(l[i]) for l in cellules))
+                for i, minimum in enumerate((4, 24, 3, 24))]
+    bordure = '+' + '+'.join('-' * (n + 2) for n in largeurs) + '+'
+    lignes = [bordure]
+    for i, cellule in enumerate(cellules):
+        lignes.append('| ' + ' | '.join(str(t) + ' ' * (n - largeur_visible(t))
+                                         for t, n in zip(cellule, largeurs)) + ' |')
+        if i == 0:
+            lignes.append(bordure)
+    lignes.append(bordure)
+    tableau['lignes'] = lignes if len(cellules) > 1 else []
+    tableau['ouvert'] = False
 
 
 def ecrire_ligne_affrontement_territoire(
@@ -806,10 +819,12 @@ def ecrire_ligne_affrontement_territoire(
         f"{resultat['initial_2']} → {resultat['final_2']}"
     )
 
-    ecrire_rapport_territoire(
-        territoire,
-        f"| {str(etiquette):<4} | {gauche:<24} | {'<->':^3} | {droite:<24} |"
-    )
+    tableau = _tableaux.get(Path(territoire).name)
+    if tableau:
+        tableau['cellules'].append((str(etiquette), gauche, '<->', droite))
+    else:
+        # API isolée : une ligne reste lisible sans ouvrir un tableau complet.
+        ecrire_rapport_territoire(territoire, f'| {etiquette} | {gauche} | <-> | {droite} |')
 
 
 def nom_type_unite(type_unite, nombre):
@@ -1041,7 +1056,8 @@ def commandes_consultation(configuration):
             f"Lecture à la demande : replay {racine}/rapport/territoires/est_1.txt\n"
             f"Journal progressif : tail -f {racine}/rapport/suivi_combats.log\n\n"
             "État du tour :\n"
-            f"État actuel : cat {racine}/village/clocher/etat_tour.log")
+            f"État actuel : cat {racine}/village/clocher/etat_tour.log\n"
+            f"Suivi : watch -n 1 cat {racine}/village/clocher/etat_tour.log")
 
 
 def afficher_fin_de_tour(configuration=None):

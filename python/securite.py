@@ -28,6 +28,32 @@ def chemin_general_actions(cle, configuration):
     return configuration['game_path'].joinpath(*parties[1:])
 
 
+def inventaire_general_actions(chemin, joueur, position, entrainement):
+    from cycle_linux import sans_liens
+    unites = {}
+    for bloc in config.ordre_blocs:
+        dossier = chemin / bloc
+        sans_liens(dossier)
+        if not dossier.is_dir():
+            continue
+        for unite in dossier.iterdir():
+            sans_liens(unite)
+            if unite.is_dir():
+                for element in unite.iterdir():
+                    sans_liens(element)
+            type_unite = generaux.identifier_unite(unite)
+            if type_unite == 'inconnu':
+                continue
+            dossier_stat = unite.stat()
+            identites = [dossier_stat.st_dev, dossier_stat.st_ino]
+            for nom in config.unites_equipements[type_unite][1]:
+                equipement_stat = (unite / nom).stat()
+                identites.extend((equipement_stat.st_dev, equipement_stat.st_ino))
+            unites[unite.relative_to(chemin).as_posix()] = [*identites, type_unite]
+    return {'identifiant': f'{joueur}:{chemin.name}', 'device': chemin.stat().st_dev,
+            'position': position, 'entrainement': entrainement, 'unites': unites}
+
+
 def inventorier_unites_actions(configuration):
     """Identités du disque vivant, relevées sous gel avant toute copie."""
     from cycle_linux import sans_liens
@@ -42,34 +68,10 @@ def inventorier_unites_actions(configuration):
                 sans_liens(chemin)
                 if not chemin.is_dir() or generaux.numero_general_depuis_nom(chemin.name) is None:
                     continue
-                unites = {}
-                for bloc in config.ordre_blocs:
-                    dossier = chemin / bloc
-                    sans_liens(dossier)
-                    if not dossier.is_dir():
-                        continue
-                    for unite in dossier.iterdir():
-                        sans_liens(unite)
-                        if unite.is_dir():
-                            for element in unite.iterdir():
-                                sans_liens(element)
-                        type_unite = generaux.identifier_unite(unite)
-                        if type_unite == 'inconnu':
-                            continue
-                        dossier_stat = unite.stat()
-                        identites = [dossier_stat.st_dev, dossier_stat.st_ino]
-                        for nom in config.unites_equipements[type_unite][1]:
-                            equipement_stat = (unite / nom).stat()
-                            identites.extend((equipement_stat.st_dev, equipement_stat.st_ino))
-                        unites[unite.relative_to(chemin).as_posix()] = [*identites, type_unite]
                 cle = cle_general_actions(chemin, joueur, configuration)
-                resultat[cle] = {'identifiant': f'{joueur}:{chemin.name}',
-                                'device': chemin.stat().st_dev,
-                                'position': zone['position'],
-                                'entrainement': zone['position'] == 'home' or (
-                                    zone['position'] in configuration['villages']
-                                    and parent.name == 'caserne_militaire'),
-                                'unites': unites}
+                resultat[cle] = inventaire_general_actions(chemin, joueur, zone['position'],
+                    zone['position'] == 'home' or (zone['position'] in configuration['villages']
+                                                  and parent.name == 'caserne_militaire'))
     return resultat
 
 
@@ -139,6 +141,8 @@ def auditer_cavalerie_lourde(configuration, positions):
                 continue
             if unite.exists():
                 shutil.rmtree(unite)
+                rapports.noter_resultat(joueur, 'SÉCURITÉ',
+                    f'{chemin.name} : {relatif} supprimée, cavalerie lourde non autorisée.', configuration)
                 rapports.afficher_et_ecrire(
                     f'{identifiant} : cavalerie lourde supprimée, construction verrouillée ; '
                     'récompense officielle ou transformation de Forge validée requise.')
@@ -386,7 +390,9 @@ def securiser_generaux_mauvais_joueur(
                     shutil.rmtree(
                         chemin_general
                     )
-
+                    rapports.noter_resultat(proprietaire_reel or joueur_zone, 'SÉCURITÉ',
+                        f'{chemin_general.name} : général non autorisé supprimé ; propriétaire ou identité invalide. '
+                        f'Lieu : {chemin_general.relative_to(configuration["game_path"])}.', configuration)
                     continue
 
                 identifiant = (
@@ -407,9 +413,7 @@ def securiser_generaux_mauvais_joueur(
                 # Le dossier appartient bien à un joueur,
                 # mais le général n'est pas officiellement actif.
                 if (
-                    numero < 1
-                    or numero > dernier_numero
-                    or identifiant not in positions_avant
+                    not generaux.identite_officielle(proprietaire_reel, chemin_general.name, configuration)
                 ):
                     rapports.afficher_et_ecrire(
                         f"Général non autorisé supprimé : "
@@ -419,7 +423,9 @@ def securiser_generaux_mauvais_joueur(
                     shutil.rmtree(
                         chemin_general
                     )
-
+                    rapports.noter_resultat(proprietaire_reel or joueur_zone, 'SÉCURITÉ',
+                        f'{chemin_general.name} : général non autorisé supprimé ; propriétaire ou identité invalide. '
+                        f'Lieu : {chemin_general.relative_to(configuration["game_path"])}.', configuration)
                     continue
 
                 occurrences_correctes = (
@@ -439,7 +445,7 @@ def securiser_generaux_mauvais_joueur(
                 if len(occurrences_correctes) == 0:
                     mouvements.envoyer_general_au_repli(
                         proprietaire_reel, chemin_general.name, chemin_general,
-                        configuration, lieu_sanction=nom_zone)
+                        configuration, lieu_sanction=nom_zone, motif=f'placement chez {joueur_zone}')
 
                     generaux_punis.add(
                         identifiant
@@ -481,7 +487,7 @@ def securiser_generaux_mauvais_joueur(
                         chemin_general.name,
                         occurrence_reelle["chemin"],
                         configuration,
-                        lieu_sanction=nom_zone,
+                        lieu_sanction=nom_zone, motif=f'placement chez {joueur_zone}',
                     )
 
                     generaux_punis.add(
@@ -509,15 +515,16 @@ def supprimer_generaux_non_autorises(configuration=None):
             if not chemin.exists():
                 continue
             for element in list(chemin.iterdir()):
-                if not element.is_dir() or not element.name.startswith("general"):
+                if not element.is_dir() or not generaux.nom_general_reserve(element.name):
                     continue
                 numero = generaux.numero_general_depuis_nom(element.name)
-                if (numero is None or numero < 1 or numero > dernier_numero
-                        or f"{joueur}:{element.name}" not in positions):
+                if (not generaux.identite_officielle(joueur, element.name, configuration)):
                     if zone["position"] == "home":
                         rapports.afficher_et_ecrire(
                             f"Avertissement dans le home : général non autorisé "
                             f"{joueur}:{element.name}, aucune sanction.")
+                        rapports.noter_resultat(joueur, 'SÉCURITÉ',
+                            f'{element.name} : général non autorisé détecté dans le home. Aucune sanction appliquée.', configuration)
                         continue
                     suffixe = ""
                     if zone["position"] not in ("home", "repli"):
@@ -526,6 +533,9 @@ def supprimer_generaux_non_autorises(configuration=None):
                         f"Général non autorisé supprimé : {joueur} {element.name}{suffixe}"
                     )
                     shutil.rmtree(element)
+                    rapports.noter_resultat(joueur, 'SÉCURITÉ',
+                        f'{element.name} : général non autorisé supprimé. Motif : général non généré par le système. '
+                        f'Lieu : {chemin.relative_to(configuration["game_path"])}.', configuration)
 
 
 def securiser_generaux_dupliques(positions_avant, configuration=None):
@@ -545,11 +555,7 @@ def securiser_generaux_dupliques(positions_avant, configuration=None):
     for joueur in configuration["joueurs"]:
         dernier_numero = etat.lire_compteur_general(joueur)
 
-        for numero in range(
-            1,
-            dernier_numero + 1
-        ):
-            nom_general = f"general{numero}"
+        for nom_general in generaux.noms_generaux_audites(joueur, configuration):
             identifiant = (
                 f"{joueur}:{nom_general}"
             )
@@ -571,6 +577,8 @@ def securiser_generaux_dupliques(positions_avant, configuration=None):
                 rapports.afficher_et_ecrire(
                     f"Avertissement dans le home : copie de {identifiant}, "
                     f"aucune sanction pour cette copie.")
+                rapports.noter_resultat(joueur, 'SÉCURITÉ',
+                    f'{nom_general} : copie dans le home ; aucune sanction pour cette copie.', configuration)
                 occurrences = [o for o in occurrences if o["position"] != "home"]
                 if len(occurrences) <= 1:
                     continue
@@ -640,7 +648,7 @@ def securiser_generaux_dupliques(positions_avant, configuration=None):
                     joueur,
                     nom_general,
                     chemin_garde,
-                    configuration
+                    configuration, motif="duplication interdite"
                 )
             else:
                 rapports.afficher_et_ecrire(
@@ -680,7 +688,7 @@ def securiser_emplacements_generaux(configuration=None, territoire=None):
                 cle = (groupe, zone["emplacement"])
                 occupants = positions.setdefault(cle, [])
                 for element in zone["chemin"].iterdir():
-                    if element.is_dir() and element.name.startswith("general"):
+                    if element.is_dir() and generaux.nom_general_reserve(element.name):
                         occupants.append((joueur, element))
 
         for (groupe, emplacement), occupants in positions.items():
@@ -692,10 +700,8 @@ def securiser_emplacements_generaux(configuration=None, territoire=None):
             )
             for joueur, chemin_general in occupants:
                 identifiant = f"{joueur}:{chemin_general.name}"
-                rapports.noter_resultat(joueur, 'INCIDENTS',
-                    f'{chemin_general.name} : collision interdite sur l’emplacement {emplacement}.', configuration)
                 mouvements.envoyer_general_au_repli(
-                    joueur, chemin_general.name, chemin_general, configuration
+                    joueur, chemin_general.name, chemin_general, configuration, motif=f"collision sur {emplacement}"
                 )
                 generaux_punis.add(identifiant)
                 rapports.afficher_et_ecrire(f"{identifiant} envoyé au repli.")
@@ -778,7 +784,7 @@ def verifier_tous_les_deplacements(configuration=None):
             continue
         if chemin is not None and position != "repli":
             mouvements.envoyer_general_au_repli(
-                joueur, nom, chemin, configuration, appliquer_sanction=False)
+                joueur, nom, chemin, configuration, appliquer_sanction=False, motif="attente de repli non terminée")
         if chemin is not None:
             rapports.afficher_et_ecrire(
                 f"{identifiant} : action interdite, attente au repli "
@@ -828,11 +834,7 @@ def verifier_tous_les_deplacements(configuration=None):
             etat.lire_compteur_general(joueur)
         )
 
-        for numero in range(
-            1,
-            dernier_numero + 1
-        ):
-            nom_general = f"general{numero}"
+        for nom_general in generaux.noms_generaux_audites(joueur, configuration):
 
             identifiant = (
                 f"{joueur}:{nom_general}"
@@ -905,6 +907,8 @@ def verifier_tous_les_deplacements(configuration=None):
             # autoriser une nouvelle identité lors de sa génération.
             if origine is None:
                 shutil.rmtree(chemin_actuel)
+                rapports.noter_resultat(joueur, 'SÉCURITÉ',
+                    f'{nom_general} : général sans position officielle supprimé.', configuration)
                 rapports.afficher_et_ecrire(
                     f"Général sans position officielle supprimé : {identifiant}"
                 )
@@ -925,6 +929,11 @@ def verifier_tous_les_deplacements(configuration=None):
             # Mouvement valide
             # --------------------------------------
 
+            cycle = etat.charger_cycle_survie(configuration) or {}
+            if (reference_actions and identifiant in reference_actions.get('creations_crypte', {})
+                    and reference_actions['creations_crypte'][identifiant] == cycle.get('tour')
+                    and position_actuelle not in ('village', 'home')):
+                autorise, fatigue, raison = False, False, 'préparation initiale : rester au village pendant ce tour'
             if autorise:
                 nouvelles_positions[
                     identifiant
@@ -972,15 +981,12 @@ def verifier_tous_les_deplacements(configuration=None):
             rapports.afficher_et_ecrire(
                 f"Raison : {raison}"
             )
-            rapports.noter_resultat(joueur, 'INCIDENTS',
-                f'{nom_general} : déplacement interdit {origine} -> {position_actuelle}. Motif : {raison}',
-                configuration)
 
             mouvements.envoyer_general_au_repli(
                 joueur,
                 nom_general,
                 chemin_actuel,
-                configuration
+                configuration, motif=f"déplacement interdit {origine} -> {position_actuelle} : {raison}"
             )
 
             nouvelles_positions[
@@ -996,6 +1002,13 @@ def verifier_tous_les_deplacements(configuration=None):
     # ------------------------------------------
 
     if reference_actions is not None:
+        for identifiant in reference_actions.get('premiers_deploiements', ()):
+            if (nouvelles_positions.get(identifiant) == configuration['bases_joueurs'][identifiant.split(':')[0]]
+                    and identifiant not in generaux_deja_punis):
+                joueur, nom = identifiant.split(':')
+                rapports.noter_resultat(joueur, 'GÉNÉRAUX',
+                    f'{nom} : période initiale de préparation terminée. '
+                    'Le général peut désormais se déplacer en dehors du village.', configuration)
         reference_actions['premiers_deploiements'] = [
             identifiant for identifiant in reference_actions.get('premiers_deploiements', ())
             if nouvelles_positions.get(identifiant) == 'home'

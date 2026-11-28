@@ -493,8 +493,7 @@ immédiatement au village. Un général vide peut également se déployer.
 Ce droit d'accès sans consommation de mouvement territorial est limité à
 `home -> village`, y compris ses places et bâtiments autorisés. Aucun déplacement
 direct vers `est_1`, `est_2` ou `est_3` n'est autorisé depuis home, même après le
-tour 0, et aucune marche forcée ne contourne le village. Les séjours complets
-imposés par les bâtiments restent obligatoires.
+tour 0, et aucune marche forcée ne contourne le village. Les bâtiments valident la présence légale à la clôture après audit.
 Les unités ajoutées hors d'une zone autorisée sont supprimées par l'audit privé ;
 les unités déjà présentes sont conservées. Chaque refus est expliqué au rapport.
 
@@ -1454,63 +1453,86 @@ par joueur :
 Les anciennes entrées sans champ `recette` désignent recette1 ; une récompense
 historique reste donc une récompense de cavalerie.
 
-Au début et à la validation finale, le moteur contrôle ACTIONS et son échéance,
-le cooldown et l'absence de récompense en attente. La condition est
-`dernier_tour is None` ou `tour >= dernier_tour + 5`, indépendamment pour j1 et j2.
-Ce délai est global à la Crypte pour un joueur, partagé entre toutes les recettes.
-Erreur, refus, abandon et déconnexion ne consomment pas ce délai. Le cooldown est
-enregistré atomiquement avec la réussite acceptée, pas avec une déclaration locale.
-Une seule récompense, déjà publiée ou encore `a_creer`, est autorisée par joueur.
+Chaque recette a son délai de cinq tours, pour chaque joueur, dans
+`derniers_tours`. `dernier_tour` impose toujours une seule réussite par joueur et
+tour. `crypte_commence` n'exige pas de sélection : la première commande identifie
+la recette. Les disponibilités sont annoncées au commencement ; une recette en
+récupération est refusée avec son tour de disponibilité. Un échec ne consomme rien.
+Une seule récompense peut attendre, y compris une livraison interrompue.
+
+La migration reconstruit les derniers tours à partir des recettes connues dans
+l'historique et des succès en attente. Si la dernière réussite ne peut pas être
+rattachée à une recette, le délai est appliqué prudemment aux trois recettes.
+Les anciens généraux et leurs identifiants restent inchangés.
 
 ### Récompense et cycle sécurisé
 
-Après acceptation pendant ACTIONS : fermeture des demandes, gel, invalidation des
-tentatives inachevées, nettoyage, capture privée, résolution, matérialisation privée,
-puis publication. Le nettoyage utilise des descripteurs de dossiers et ne suit
-pas les symlinks vers l'extérieur. Il ne parcourt jamais grimoire ou recompense.
-Après une commande erronée, le nettoyage attend son retour avant de vider l'atelier.
-Une anomalie empêchant un nettoyage sûr bloque la clôture pour vérification.
+L'option B est active au village : `crypte_fin` livre le général immédiatement
+après validation officielle. Le joueur peut le déplacer pendant les ACTIONS
+restantes vers une place libre du village. Il respecte la préparation initiale ;
+une sortie immédiate sur un front est refusée par l'audit commun. La levée effective
+de cette restriction est annoncée une seule fois dans le rapport d'activités.
 
-La récompense est `generalN`, avec le nom et la composition de la recette :
+Les compositions et noms d'affichage restent inchangés :
 
-- recette1 : `nom_affichage=ame_et_lie_poulin`, 20 cavaliers (10/5/5/0) ;
-- recette2 : `nom_affichage=har-chez-moi`, 20 archers (0/0/0/20) ;
-- recette3 : `nom_affichage=pic-nic`, 20 piquiers (6/7/7/0).
+| Recette | Nom physique | Nom affiché | Composition avant/droite/gauche/arrière |
+| --- | --- | --- | --- |
+| 1 | `amelie_poulinN` | `ame_et_lie_poulin` | 20 cavaliers, 10/5/5/0 |
+| 2 | `har_chez_moiN` | `har-chez-moi` | 20 archers, 0/0/0/20 |
+| 3 | `pic_nicN` | `pic-nic` | 20 piquiers, 6/7/7/0 |
 
-L'ordre des blocs est avant/droite/gauche/arrière. Elle est créée uniquement
-dans la génération privée à `village/<joueur>/crypte/recompense/generalN`, puis
-publiée. Elle ne participe ni au contrôle ni au combat tant qu'elle attend là.
-Elle ne consomme aucune des cinq créations normales ; le compteur technique
-commun continue à croître et ne réutilise jamais un numéro.
+`compteurs_recettes` attribue un numéro distinct par recette et joueur, jamais
+réutilisé après destruction. Les cinq créations ordinaires restent indépendantes.
+Les généraux historiques `generalN` ne sont pas renommés.
 
-Pendant ACTIONS, le joueur choisit une destination légale et utilise un vrai `mv` :
+La transaction est sérialisée avec la fermeture des ACTIONS par `crypte.VERROU` :
+
+1. Vérifier phase, échéance, recette, délai et absence de récompense en attente.
+2. Persister le succès accepté et son délai ; réserver le nom dans le journal
+   `livraison` de `crypte.json` (`construction`).
+3. Construire sous `.systeme/livraisons_crypte/<joueur>/<nom>`, derrière un dossier
+   `root:root 700`. Persister les profils et UUID des soldats, préparer les droits
+   joueur, synchroniser fichiers et dossiers, puis marquer la réserve `prete`.
+4. Enregistrer positions et référence d'unités du seul nouveau général, sans
+   revalider les forces modifiées par les joueurs. `creations_crypte` et
+   `premiers_deploiements` prouvent sa création dans `unites_actions.json`.
+   Enregistrer attribution et attente, puis marquer `enregistree`.
+5. Exposer le dossier par `renameat2(RENAME_NOREPLACE)` avec parents ouverts sans
+   suivre de liens. Une destination occupée bloque la livraison sans écrasement.
+   Supprimer le journal après synchronisation. La réponse confirme alors la livraison.
+
+Une réussite engagée avant l'échéance termine cette transaction ; la capture attend
+le verrou. Une demande arrivée après fermeture est refusée avant toute attribution.
+Le redémarrage et la capture reprennent les livraisons interrompues : construction
+privée idempotente, mêmes profils et UUID enregistrés, aucune reconstruction après
+exposition. Si le joueur a déplacé ou supprimé une récompense déjà exposée, elle
+n'est pas recréée. Les ambiguïtés d'identité ou de destination bloquent la reprise.
+
+La capture conserve ces états et les forces déjà mobilisées. Le rollback
+conservateur garde les succès et délais du plateau vivant. La republication
+réutilise le résultat terminé, sans rejouer livraison, progression ou rapport.
+La Crypte des plaines conserve ses règles, sa disponibilité et sa livraison privée.
+Les anciens succès `a_creer` sans marqueur `immediate` restent matérialisés en
+résolution privée. Les notifications d'attribution sont ajoutées au rapport du tour.
+
+Exemple pendant ACTIONS :
 
 ```bash
-mv /game/village/j1/crypte/recompense/general7 /game/village/j1/garnison/1/
+mv /game/village/j1/crypte/recompense/amelie_poulin1 /game/village/j1/garnison/1/
 ```
 
-La position logique d'origine est le village. Les limites, identités, collisions,
-déplacements, fatigue, combats et destructions utilisent le moteur commun.
-L'audit unique constate la récupération et ferme la zone à ce général. Un retour
-ultérieur dans `recompense/` est une infraction, sanctionnée par le repli commun.
-Comme les autres déplacements de dossiers, cette règle s'applique aux positions
-constatées lors de l'audit ; les allers-retours entre deux observations ne constituent
-pas un historique de mouvements enregistré par le moteur.
+La zone d'attente est hors combat et sans recrutement. L'audit constate la
+récupération ; un retour ultérieur dans `recompense/` entraîne le repli commun.
+Grimoire : dossier root/groupe joueur 750, TXT 640 ; atelier et récompense privés
+au joueur, 700/600, sans écriture pendant CONSULTATION. Les états restent root 600.
+Le hook Bash actualise le répertoire au retour à l'invite après publication ;
+les éditeurs et processus déjà ouverts doivent être relancés.
 
-Grimoire : dossier `root:<groupe_joueur> 750`, documents `640`. Les trois anciens PDF
-du village sont retirés après installation des textes ; les recettes/commandes et
-récompenses sont inchangées. Les documents PDF des plaines et leur générateur
-générique restent compatibles. Les journaux déjà publiés de la vague 6 mentionnant
-les anciens PDF sont remplacés par le modèle texte actualisé.
-Atelier, zone de récupération
-et généraux sont privés au joueur (`700`/`600`), avec le retrait d'écriture prévu
-pendant CONSULTATION. Les états, compteurs et configuration restent privés root.
-
-Une interruption pendant capture/résolution/publication conserve les règles de
-récupération du cycle. Une republication administrative utilise le résultat terminé
-sans réexécuter ni audit, ni recette, ni création de récompense. Une socket résiduelle
-reste bloquante : son retrait est une décision administrative explicite après
-vérification de l'arrêt du moteur. Les commandes sont dans `TESTS_LINUX_SURVIE.md`.
+`survie_admin.py nettoyer-residus --dry-run` inspecte verrou, PID, socket du noyau
+et journal de gel. `--confirmer` retire seulement les résidus inactifs vérifiés,
+sans modifier le cycle ni effectuer de rollback. Un PID actif, une socket liée,
+un objet inattendu, des groupes encore gelés ou une origine ambiguë bloquent la
+commande ; les commandes individuelles restent disponibles après diagnostic.
 
 ## Mini-défi de la cabane mystérieuse
 
@@ -1644,7 +1666,7 @@ utilisent le même calcul commun, sans effet tactique supplémentaire.
 
 ### Forge, progression, hôpital et École des officiers
 
-Le fonctionnement partagé des bâtiments, des places, des séjours complets,
+Le fonctionnement partagé des bâtiments, des places, des présences à la clôture,
 des mémoires, des transformations, des états persistants et de la sécurité
 est documenté dans [MYTHODEA_SPEC.md](MYTHODEA_SPEC.md),
 section 22, et dans [EVOLUTIONS.md](EVOLUTIONS.md).

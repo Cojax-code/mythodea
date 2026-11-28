@@ -105,7 +105,7 @@ Responsabilités :
 | `formation.py` | formation en caserne militaire, hôpital, École et Forge, séjours, mémoires et transformations |
 | `cycle_linux.py` | gel Linux, capture privée, publication de générations et permissions des phases Survie |
 | `survie_admin.py` | diagnostic, dégel, reprise conservatrice avant publication et republication sans rejeu métier |
-| `crypte.py` | collecteur privé Survie, recette pédagogique, cooldown et attribution différée |
+| `crypte.py` | collecteur privé Survie, recette pédagogique, délais par recette et livraison immédiate transactionnelle |
 | `defis.py` | lieux des mini-défis, accès par camp, flags via Courrier, état privé, bestiaire et récompense unique |
 | `crypte_client.py` | transport non privilégié des observations Bash vers le socket local |
 | `crypte_installer.py` | installation administrative des fonctions et hooks Bash officiels |
@@ -429,18 +429,26 @@ reprise ordinaire conserve l'échéance et ne répète pas les créations. Une p
 
 En Survie, les récompenses Crypte sont hors quota normal. Les compteurs privés
 `compteur_creation_normale_j1.txt` et `compteur_creation_normale_j2.txt` comptent
-uniquement les créations normales. À leur première initialisation, ils reprennent
-le compteur technique existant : avant la Crypte, toutes les créations étaient
-normales. Ensuite, `compteur_general_<joueur>.txt` augmente pour toute création,
-normale ou récompense. Le mode classique conserve son fonctionnement antérieur.
+uniquement les créations normales. Les nouvelles récompenses utilisent
+`amelie_poulinN`, `har_chez_moiN` et `pic_nicN`, avec un compteur indépendant par
+recette et joueur dans `crypte.json`. Elles n'incrémentent plus `compteur_general`.
+Les anciennes récompenses `generalN` restent inchangées : aucune identité de
+général, aucun UUID de soldat ni ancien compteur n'est réécrit.
 
-Une récompense est créée dans `village/<joueur>/crypte/recompense/generalN`,
-avec la position officielle `village`. Cette zone sans emplacement est découverte
-et auditée par le moteur commun, mais exclue du contrôle et du combat. La fiche
-porte le `nom_affichage` de la recette (`ame_et_lie_poulin`, `har-chez-moi` ou `pic-nic`) ;
-les affichages utilisent ce nom seulement pour une identité réellement attribuée
-par cette recette dans l'état privé Crypte. L'identité technique reste
-`joueur:generalN`, y compris pour les sanctions, la fatigue et la destruction.
+Le format d'un nom n'est jamais une autorisation. Une récompense spéciale exige
+une position officielle et une attribution privée correspondante. Les parcours
+communs reconnaissent ces noms pour l'audit, les bâtiments, combats, déplacements,
+archives, morts et zombies. Dans les homes, capture, publication et reset
+sélectionnent les récompenses par leur identité privée, sans élargir les globs
+aux fichiers personnels. Les anciens traitements de `general*` restent compatibles.
+
+La récompense apparaît dans `village/<joueur>/crypte/recompense/<nom>` dès la
+réussite officielle de `crypte_fin`. Elle peut rejoindre le village pendant ces
+ACTIONS, avec préparation initiale avant sortie sur un front. Sa position logique
+est `village`. La zone d'attente ne participe ni au contrôle ni au combat.
+Les noms thématiques d'affichage restent `ame_et_lie_poulin`, `har-chez-moi`,
+`pic-nic`, uniquement pour les attributions authentifiées par le registre privé.
+Voir la transaction et la récupération dans [SURVIE_SPEC.md](SURVIE_SPEC.md#récompense-et-cycle-sécurisé).
 
 Créer manuellement un dossier portant le nom d'un ancien général ne le ressuscite
 pas.
@@ -607,7 +615,7 @@ dans la référence officielle précédente peut créer ses unités puis accéde
 immédiatement aux places et bâtiments autorisés du village, sans mouvement
 territorial. Le droit vaut aussi pour un général vide. La validation commune
 de sortie du home reste obligatoire : aucun saut direct vers un front, ni
-exemption des contrôles d'identité ou de collision. Les séjours complets des
+exemption des contrôles d'identité ou de collision. Les validations à la clôture des
 bâtiments et l'attente après entraînement en caserne militaire restent applicables.
 
 Un rappel légal vers home peut être suivi d'entraînement à l'arrivée. Tout général
@@ -1417,21 +1425,17 @@ la génération privée. L'orchestrateur :
 8. publie de nouveaux inodes puis, en l'absence de défaite, ouvre la consultation
    de 60 secondes et ensuite le tour suivant avec un nouveau timer de 120 secondes.
 
-Le pilote Survie héberge aussi le collecteur Crypte pendant les fenêtres d'action.
-Il reçoit des observations Bash, authentifie l'UID par le noyau et conserve les
-décisions dans `.systeme/crypte.json`, privé `root:root 600`. Une réussite acceptée
-enregistre ensemble son tour, son identifiant et le cooldown, sans créer de général
-sur le plateau vivant. À la clôture, les nouvelles demandes sont refusées ; sous
-gel, les tentatives inachevées sont invalidées et les ateliers nettoyés avant copie.
-Les récompenses acceptées sont matérialisées à la fin de la résolution privée,
-puis publiées avec les autres états métier. La récupération administrative republie
-les résultats terminés et ne réexécute pas la recette ni son attribution.
+Le pilote héberge le collecteur Crypte pendant ACTIONS. La réussite, le délai
+par recette et le journal de livraison sont privés et atomiques dans `crypte.json`.
+Le général est préparé dans `.systeme/livraisons_crypte/`, inaccessible aux joueurs,
+puis livré après enregistrement des profils, soldats, positions et référence
+`unites_actions.json`. Le verrou partagé du collecteur et de la clôture interdit
+une capture au milieu de cette transaction. Voir [SURVIE_SPEC.md](SURVIE_SPEC.md#récompense-et-cycle-sécurisé).
+La Crypte des plaines et les anciens succès différés conservent leur résolution privée.
 
-`crypte.json` et les deux compteurs de créations normales font partie de
-`config.ETATS_METIER`. La configuration `crypte_config.json`, le socket et les
-tentatives en mémoire restent attachés au moteur vivant et ne sont pas publiés.
-Les règles de recette, permissions et récupération sont définies dans
-`SURVIE_SPEC.md`, section « Crypte V0.1 ».
+Les états métier, dont `crypte.json` et les compteurs normaux, sont capturés et
+publiés. Socket, configuration du scanner et réserve de livraison appartiennent
+au moteur vivant ; toute livraison interrompue doit être achevée avant capture.
 
 Les déplacements automatiques sont préparés depuis un inventaire initial des
 actifs et renforts bots, en tenant compte des départs prévus, puis appliqués.
@@ -1775,29 +1779,26 @@ d'emplacement, indépendamment des places de garnison. Les bâtiments sont hors 
 
 Les anciens dossiers d'École sont transférés sous gel par renommage, sans
 écrasement ni recréation d'identité. Une destination ambiguë interrompt la migration
-pour récupération. Un séjour traversant une migration doit recommencer un tour
-complet. Capture et publication incluent les deux bâtiments communs ; le Clocher
+pour récupération. Une migration conserve la validation à la clôture si la présence reste légale. Capture et publication incluent les deux bâtiments communs ; le Clocher
 reste préservé. Les phases de consultation/actions couvrent leurs compartiments privés.
 
 Entrer ou sortir d'un bâtiment est une réorganisation interne au village, sans
 déplacement normal. Se déplacer entre le village et un autre territoire conserve
 les règles existantes. Les bâtiments n'accordent pas de droit d'entraînement.
 
-Sous gel avant ACTIONS, le moteur enregistre les demandes et les preuves de
-présence. Sous gel de clôture, il relève les présences finales. Périphérique,
-inode et ctime du général et de sa place doivent rester identiques ; les unités
-d'hôpital et de Forge ont aussi leurs propres preuves. À la Forge, les équipements
-doivent également être présents et inchangés pendant le tour. Une entrée tardive, sortie/retour ou
-substitution invalide le séjour concerné. Modifier une demande pendant ACTIONS
-ne remplace pas celle du début. Une reprise ne réinitialise pas le début du séjour.
+Sous gel de clôture des ACTIONS, le moteur relève les demandes finales,
+les présences et les identités des unités. Les demandes peuvent être préparées
+ou modifiées pendant ACTIONS. Une arrivée tardive ou une sortie suivie d'un
+retour ne suffit plus à invalider une demande. Un départ avant clôture ne donne
+aucun bénéfice au bâtiment quitté.
 
-La formation en caserne militaire utilise les mêmes relevés et validations. Comme plusieurs
-généraux partagent ce dossier, sa preuve conserve le périphérique et l'inode du
-parent, mais pas son ctime : l'arrivée d'un voisin n'annule pas le séjour.
-Le ctime du général lui-même reste contrôlé pour détecter sa sortie et son retour.
-Une arrivée pendant ACTIONS donne un point dès cette clôture si le général est
-encore dans la caserne après audit. Les preuves sont relevées sur le plateau vivant ;
-elles ne sont pas comparées aux nouveaux inodes de la copie privée.
+Après audit, le général doit encore être légalement présent dans le bâtiment
+observé. Un déplacement refusé, une collision ou une unité retirée par l'audit
+ne donne aucun bénéfice indu. Les preuves viennent du plateau vivant ; les
+inodes de la copie privée ne sont pas comparés aux inodes originaux.
+La caserne donne +1 XP formation à chaque clôture admissible, avec niveau tous
+les trois points et compteur de combat indépendant. Une seule validation par
+général et tour est permise ; les reçus privés empêchent les doubles gains.
 
 Après l'audit de la génération privée, les soins valides remettent les blessures
 à zéro sans toucher aux batailles ni aux statuts. Toutes les unités admissibles
@@ -1827,16 +1828,13 @@ ne sont ni utilisées ni mises à jour. Une lecture d'étiquette l'apprend ou am
 à la fin du séjour, selon les plafonds de `REGLES_V2.md`, sans remplacer une mémoire
 d'évolution en attente.
 
-`.systeme/formation.json` conserve les manuels par camp, séjours par
-`tour:joueur:generalN`, tours ouverts, relevés de clôture et validations consommées.
-Les champs optionnels `refus` (par `tour:joueur:generalN`) gardent les refus
-d’ouverture jusqu’au rapport ; `alertes` (par tour) évite de répéter une même
-alerte terminal après redémarrage. Ces sorties ne décident aucune règle.
-Le marqueur optionnel `incomplet_signale` d’une observation de clôture évite de
-répéter le message d’une arrivée tardive ; il ne participe pas à la validation du séjour.
-Le profil conserve les apprentissages validés pour prévenir un double traitement.
-Le manuel visible est `village/ecole_officiers/memoire_des_generaux.txt`, publié
-`root:<groupe_allie> 640` dans un dossier 750. Aucun `chattr` n'est utilisé.
+`.systeme/formation.json` conserve les manuels, demandes finales par
+`tour:joueur:nom`, relevés de clôture, refus et validations consommées. Les anciennes
+demandes d'ouverture sont renouvelées à la prochaine capture, sans supprimer les
+reçus. Une capture recommencée après rollback relève les nouvelles demandes.
+Les alertes ACTIONS sont indicatives. Les apprentissages validés restent dans
+le profil officiel. Le manuel public est
+`village/ecole_officiers/memoire_des_generaux.txt`, `root:<groupe_allie> 640`.
 
 Les trois nouveaux JSON utilisent l'écriture privée atomique existante, en 600,
 et font partie de `ETATS_METIER` : ils accompagnent capture et publication.
@@ -1848,11 +1846,11 @@ l'utilisation et les décisions de conception encore ouvertes.
 ### Transformation à la Forge
 
 Le général doit être Instinctif ou Hybride et posséder l'évolution 104 dans son
-profil officiel. Après un tour complet, les cavaliers légers
+profil officiel. À la clôture admissible, les cavaliers légers
 existants possédant `cheval`, `cuirasse`, `armure`, `casque`, `bouclier` sont renommés
 par le moteur en `cavalerie_LN`. Aucun coût ni ressource supplémentaire n'est ajouté.
 L'unité doit figurer dans la référence officiellement publiée au tour précédent
-de `unites_actions.json`. Sous gel d'ouverture, les signatures du cavalier et
+de `unites_actions.json`. Sous gel de clôture, les signatures du cavalier et
 de son cheval sont rapprochées de cette référence ; les créations du tour courant
 sont exclues. Les UUID admissibles sont figés dans `eligibles_forge` du séjour.
 Le simple relevé d'entrée, une copie d'UUID ou une recette complète ne valident

@@ -58,9 +58,8 @@ class CrypteReelle(unittest.TestCase):
     def test_archers_scanner_socket_publication(self):
         shell = self.shell()
         self.reussir(shell, crypte.RECETTE2)
-        self.assertEqual(crypte.charger(self.c)['j1']['a_creer']['recette'], 'recette2')
-        reel.survie.resoudre_tour_survie(self.c, gestion=self.g)
-        p = crypte.zone(self.c, 'j1') / 'recompense/general2'
+        self.assertEqual(crypte.charger(self.c)['j1']['attributions'][-1]['recette'], 'recette2')
+        p = crypte.zone(self.c, 'j1') / 'recompense/har_chez_moi1'
         self.assertEqual(p.stat().st_uid, pwd.getpwnam('j1').pw_uid)
         self.assertEqual([len(list((p / b).iterdir())) for b in reel.config.ordre_blocs], [0, 0, 0, 20])
         self.assertEqual(len(list(p.glob('arriere/infanterie*/arc'))), 20)
@@ -96,9 +95,8 @@ class CrypteReelle(unittest.TestCase):
             if i in (3, 5):
                 self.assertIn('-rw-rw----' if i == 3 else '-rw-------', sortie)
         self.assertIn('Réussite enregistrée', shell.command('crypte_fin'))
-        self.assertEqual(crypte.charger(self.c)['j1']['a_creer']['recette'], 'recette3')
-        reel.survie.resoudre_tour_survie(self.c, gestion=self.g)
-        p = crypte.zone(self.c, 'j1') / 'recompense/general2'
+        self.assertEqual(crypte.charger(self.c)['j1']['attributions'][-1]['recette'], 'recette3')
+        p = crypte.zone(self.c, 'j1') / 'recompense/pic_nic1'
         self.assertEqual(p.stat().st_uid, pwd.getpwnam('j1').pw_uid)
         self.assertEqual([len(list((p / b).iterdir())) for b in reel.config.ordre_blocs], [6, 7, 7, 0])
         self.assertEqual(len(list(p.glob('*/infanterie*/pique'))), 20)
@@ -116,9 +114,9 @@ class CrypteReelle(unittest.TestCase):
                 self.assertNotEqual(self.en_joueur(j, 'import os,sys; os.listdir(sys.argv[1])', p).returncode, 0)
                 self.assertNotEqual(self.en_joueur(j, "import pathlib,sys; (pathlib.Path(sys.argv[1]) / 'intrus').touch()", p).returncode, 0)
         donnees = crypte.charger(self.c)
-        self.assertIsNotNone(donnees['j1']['a_creer'])
+        self.assertEqual(len(donnees['j1']['attributions']), 1)
         self.assertIsNone(donnees['j2']['a_creer'])
-        self.assertFalse(list((crypte.zone(self.c, 'j1') / 'recompense').iterdir()))
+        self.assertEqual([p.name for p in (crypte.zone(self.c, 'j1') / 'recompense').iterdir()], ['amelie_poulin1'])
         self.assertFalse(list((crypte.zone(self.c, 'j1') / 'atelier').iterdir()))
         for nom in ('crypte.json', 'crypte_config.json', 'compteur_creation_normale_j1.txt'):
             p = self.c['game_path'] / '.systeme' / nom
@@ -158,18 +156,17 @@ class CrypteReelle(unittest.TestCase):
 
     def test_publication_et_mv_reels(self):
         self.reussir(self.shell())
-        reel.survie.resoudre_tour_survie(self.c, gestion=self.g)
-        p = crypte.zone(self.c, 'j1') / 'recompense/general2'
+        p = crypte.zone(self.c, 'j1') / 'recompense/amelie_poulin1'
         self.assertTrue(p.exists())  # general1 normal était déjà dans le home.
         self.assertEqual(p.stat().st_uid, pwd.getpwnam('j1').pw_uid)
         self.assertEqual(len(list(p.glob('*/cavalerie*/cheval'))), 20)
         self.g.permissions_actions()
-        cible = self.c['game_path'] / 'village/j1/garnison/1/general2'
+        cible = self.c['game_path'] / 'village/j1/garnison/1/amelie_poulin1'
         code = 'from pathlib import Path; import sys; Path(sys.argv[1]).rename(Path(sys.argv[2]))'
         self.assertEqual(self.en_joueur('j1', code, p, cible).returncode, 0)
         self.assertTrue(cible.exists())
         reel.survie.securite.verifier_tous_les_deplacements(self.c)
-        self.assertEqual(reel.etat.charger_positions_generaux()['j1:general2'], 'village')
+        self.assertEqual(reel.etat.charger_positions_generaux()['j1:amelie_poulin1'], 'village')
 
     def test_republication_ne_recree_pas_recompense(self):
         self.reussir(self.shell())
@@ -186,7 +183,7 @@ class CrypteReelle(unittest.TestCase):
         d = crypte.charger(self.c)['j1']
         self.assertEqual(len(d['attributions']), 1)
         self.assertIsNone(d['a_creer'])
-        self.assertEqual(reel.etat.lire_compteur_general('j1'), 2)
+        self.assertEqual(reel.etat.lire_compteur_general('j1'), 1)
 
     def test_pdf_et_script_lisibles_non_modifiables(self):
         pdfs = [crypte.zone(self.c, 'j1') / f'grimoire/recette{i}.txt' for i in (1, 2, 3)]
@@ -221,7 +218,7 @@ class CrypteReelle(unittest.TestCase):
         for ligne in crypte.RECETTE:
             shell.command(ligne)
         self.assertIn('Réussite enregistrée', shell.command('crypte_ferme'))
-        self.assertIsNotNone(crypte.charger(self.c)['j1']['a_creer'])
+        self.assertEqual(len(crypte.charger(self.c)['j1']['attributions']), 1)
 
 
 if __name__ == '__main__':

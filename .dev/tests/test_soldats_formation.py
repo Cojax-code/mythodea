@@ -216,10 +216,10 @@ class SoldatsFormation(unittest.TestCase):
         self.formation.sauvegarder(donnees)
         self.formation.preparer(self.profil)
         (professeur['chemin'] / 'info/ecrire_ses_memoires.txt').write_text('E 001 201')
-        (eleve['chemin'] / 'info/lire_les_memoires.txt').write_text('A 001 202')
-        self.formation.ouvrir_tour(self.profil, 1)
-        # Une réécriture pendant ACTIONS ne remplace pas la demande enregistrée.
         (eleve['chemin'] / 'info/lire_les_memoires.txt').write_text('a 003 201')
+        self.formation.ouvrir_tour(self.profil, 1)
+        # La demande finale pendant ACTIONS remplace celle de l'ouverture.
+        (eleve['chemin'] / 'info/lire_les_memoires.txt').write_text('A 001 202')
         gestion = self.cycle_linux.Generations(self.profil, GelSimule())
         gestion.preparer()
         with patch.object(self.survie, 'creer_vague_est', return_value=[]):
@@ -228,7 +228,7 @@ class SoldatsFormation(unittest.TestCase):
         self.assertEqual(self.formation.charger()['manuels']['allies']['001'], 201)
         self.assertIn('001 201', (self.config.game_path / 'village/ecole_officiers/memoire_des_generaux.txt').read_text())
 
-    def test_sejour_entree_tardive_et_sortie_retour_refuses(self):
+    def test_sejour_entree_tardive_et_sortie_retour_admis(self):
         general = self.creer(territoire='village', place='hopital/1')
         unite = self.infos(general)['unites'][0]
         self.combats.supprimer_unites(self.infos(general), 0, general)
@@ -240,9 +240,9 @@ class SoldatsFormation(unittest.TestCase):
         self.combats.supprimer_unites(self.infos(tardif), 0, tardif)
         self.formation.clore_tour(self.profil, 1)
         self.formation.resoudre_tour(self.profil, 1)
-        self.assertEqual(self.soldats.charger()[self.soldats.marqueur(unite)]['blessures'], 1)
+        self.assertEqual(self.soldats.charger()[self.soldats.marqueur(unite)]['blessures'], 0)
         unite_tardive = self.infos(tardif)['unites'][0]
-        self.assertEqual(self.soldats.charger()[self.soldats.marqueur(unite_tardive)]['blessures'], 1)
+        self.assertEqual(self.soldats.charger()[self.soldats.marqueur(unite_tardive)]['blessures'], 0)
 
     def test_soins_simultanes_toutes_places_et_mouvement_interne_gratuit(self):
         generaux = [self.creer(numero=n, territoire='village', place=f'hopital/{n}') for n in range(1, 8)]

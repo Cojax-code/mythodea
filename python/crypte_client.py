@@ -7,7 +7,7 @@ import sys
 
 def envoyer(chemin, message):
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connexion:
-        connexion.settimeout(3)
+        connexion.settimeout(30 if message.get('event') == 'end' else 3)
         connexion.connect(chemin)
         connexion.sendall((json.dumps(message) + '\n').encode())
         with connexion.makefile('rb') as fichier:
@@ -31,6 +31,8 @@ def main():
             return 1
         if resultat.get('resultat'):
             print(resultat['resultat'])
+        if resultat.get('information'):
+            print('Crypte : ' + resultat['information'], file=sys.stderr)
         return 0
     except (OSError, ValueError, KeyError) as erreur:
         print(f'Crypte indisponible : {erreur}', file=sys.stderr)

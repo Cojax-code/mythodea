@@ -14,14 +14,14 @@ Bubblewrap avec `--size` et les espaces de noms utilisateur autorisés :
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -r backend/requirements.txt
-python3 -B scripts/prepare_engine.py --source ../..
+python3 -B scripts/prepare_engine.py --source ../.. --working-tree
 bash scripts/run_simulator.sh
 ```
 
 Ouvrir `http://127.0.0.1:8080/simulateur.html` ; arrêter avec Ctrl+C.
-Le runtime `.runtime/engine-<revision>` est extrait des blobs du commit dans
-`backend/engine.lock.json`, actuellement `cb4da67`, puis vérifié par SHA-256.
-Ne pas ajouter `--working-tree` pour ce verrou officiel. Une destination existante
+Le runtime `.runtime/engine-<revision>` est extrait des sources locales identifiées dans `backend/engine.lock.json`,
+base Git `645fada`, puis vérifié intégralement par SHA-256.
+Ce verrou temporaire exige `--working-tree` ; il ne représente pas un commit publié. Une destination existante
 est refusée ; la copie déjà préparée peut être réutilisée.
 
 ```bash

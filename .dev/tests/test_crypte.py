@@ -51,6 +51,7 @@ class Crypte(unittest.TestCase):
     def test_installateur_racine_configuree_et_socket(self):
         installateur = importlib.import_module('crypte_installer')
         with patch.object(installateur, 'installer') as installer, \
+                patch.object(installateur, 'installer_bashrc'), \
                 patch.object(self.config, 'verifier_partition_plateau') as verifier, \
                 patch.object(sys, 'argv', ['crypte_installer.py']):
             installateur.main()
@@ -107,52 +108,48 @@ class Crypte(unittest.TestCase):
         self.etat.sauvegarder_quota_normal('j1', 5)
         self.reussir_archers()
         self.creer()
-        p = self.crypte.zone(self.profil, 'j1') / 'recompense/general6'
+        p = self.crypte.zone(self.profil, 'j1') / 'recompense/har_chez_moi1'
         self.assertEqual([len(list((p / b).iterdir())) for b in self.config.ordre_blocs], [0, 0, 0, 20])
         self.assertEqual(len(list(p.glob('arriere/infanterie*/arc'))), 20)
         self.assertFalse(list(p.glob('*/cavalerie*')))
         self.assertFalse(list(p.glob('*/*/pique')))
         self.assertEqual(self.etat.initialiser_quota_normal('j1'), 5)
         fiche = self.generaux.lire_fiche_general(p)
-        self.assertEqual(fiche['nom'], 'general6')
+        self.assertEqual(fiche['nom'], 'har_chez_moi1')
         self.assertEqual(fiche['nom_affichage'], 'har-chez-moi')
-        general = {'joueur': 'j1', 'nom': 'general6', 'fiche': fiche}
+        general = {'joueur': 'j1', 'nom': 'har_chez_moi1', 'fiche': fiche}
         self.assertEqual(self.rapports.nom_affichage_general(general), 'har-chez-moi')
         fiche['nom_affichage'] = self.crypte.NOM
-        self.assertEqual(self.rapports.nom_affichage_general(general), 'general6')
+        self.assertEqual(self.rapports.nom_affichage_general(general), 'har_chez_moi1')
 
-    def test_cooldown_partage_dans_les_deux_sens(self):
+    def test_cooldowns_independants_et_limite_par_tour(self):
         self.reussir()
-        self.creer()
         p = self.crypte.zone(self.profil, 'j1') / 'recompense'
-        (p / 'general1').rename(self.config.game_path / 'village/j1/caserne_militaire/general1')
-        self.activer(7)
-        with self.assertRaisesRegex(ValueError, 'tour 8'):
+        (p / 'amelie_poulin1').rename(self.config.game_path / 'village/j1/caserne_militaire/amelie_poulin1')
+        with self.assertRaisesRegex(ValueError, 'par tour'):
             self.message('start')
-        self.activer(8)
+        self.activer(4)
         self.reussir_archers()
-        self.assertEqual(self.crypte.charger(self.profil)['j1']['a_creer']['recette'], 'recette2')
-        self.creer(8)
-        self.activer(13)
+        self.assertEqual(self.crypte.charger(self.profil)['j1']['derniers_tours'],
+                         {'recette1': 3, 'recette2': 4, 'recette3': None})
+        self.activer(8)
         with self.assertRaisesRegex(ValueError, 'attente'):
             self.message('start')
-        (p / 'general2').rename(self.config.game_path / 'village/j1/caserne_militaire/general2')
-        self.activer(12)
-        with self.assertRaisesRegex(ValueError, 'tour 13'):
-            self.message('start')
-        self.activer(13)
+        (p / 'har_chez_moi1').rename(self.config.game_path / 'village/j1/caserne_militaire/har_chez_moi1')
         self.reussir()
+        self.assertTrue((p / 'amelie_poulin2').is_dir())
 
     def test_attribution_historique_sans_recette(self):
-        self.reussir()
         d = self.crypte.charger(self.profil)
-        del d['j1']['a_creer']['recette']
+        d['j1'].pop('derniers_tours')
+        d['j1']['dernier_tour'] = 3
+        d['j1']['a_creer'] = {'id': 'historique', 'tour': 3}
         self.crypte.sauver(self.profil, d)
+        self.assertEqual(self.crypte.charger(self.profil)['j1']['derniers_tours'],
+                         dict.fromkeys(self.crypte.RECETTES, 3))
         self.creer()
-        p = self.crypte.zone(self.profil, 'j1') / 'recompense/general1'
+        p = self.crypte.zone(self.profil, 'j1') / 'recompense/amelie_poulin1'
         self.assertEqual(len(list(p.glob('*/cavalerie*/cheval'))), 20)
-        self.assertEqual(self.rapports.nom_affichage_general({
-            'joueur': 'j1', 'nom': 'general1', 'fiche': self.generaux.lire_fiche_general(p)}), self.crypte.NOM)
 
     def test_pipeline_incomplet_ou_echec_masque(self):
         for composants, codes in ((1, '0 0'), (2, '1 0'), (2, '0 1'), (2, ''), (3, '0 0 0')):
@@ -192,7 +189,7 @@ class Crypte(unittest.TestCase):
                             continue
                         self.message(e['event'], j, **{k: e[k] for k in
                                      ('line', 'command', 'status', 'history', 'kind')})
-                    self.assertIsNotNone(self.crypte.charger(self.profil)[j]['a_creer'])
+                    self.assertEqual(len(self.crypte.charger(self.profil)[j]['attributions']), 1)
                 finally:
                     shell.close()
 
@@ -253,12 +250,12 @@ class Crypte(unittest.TestCase):
                 self.message('end')
             self.assertIsNone(self.crypte.charger(self.profil)['j1']['dernier_tour'])
 
-    def test_reussite_persistante_sans_creation_vivante(self):
+    def test_reussite_persistante_avec_creation_immediate(self):
         self.reussir()
         donnees = self.crypte.charger(self.profil)['j1']
         self.assertEqual(donnees['dernier_tour'], 3)
-        self.assertEqual(donnees['a_creer']['id'], self.tokens['j1'])
-        self.assertEqual(list((self.crypte.zone(self.profil, 'j1') / 'recompense').iterdir()), [])
+        self.assertEqual(donnees['attributions'][0]['id'], self.tokens['j1'])
+        self.assertEqual([p.name for p in (self.crypte.zone(self.profil, 'j1') / 'recompense').iterdir()], ['amelie_poulin1'])
         self.assertEqual(self.etat.lire_compteur_general('j1'), 0)
         nouveau = self.crypte.Collecteur(self.profil, horloge=lambda: 1)
         self.assertEqual(self.crypte.charger(nouveau.c), self.crypte.charger(self.profil))
@@ -266,17 +263,17 @@ class Crypte(unittest.TestCase):
     def test_composition_identite_affichage_zone_inactive(self):
         self.reussir()
         self.creer()
-        p = self.crypte.zone(self.profil, 'j1') / 'recompense/general1'
+        p = self.crypte.zone(self.profil, 'j1') / 'recompense/amelie_poulin1'
         self.assertTrue(self.generaux.est_general_valide(p))
         self.assertEqual([len(list((p / b).iterdir())) for b in self.config.ordre_blocs], [10, 5, 5, 0])
         self.assertEqual(len(list(p.glob('*/cavalerie*/cheval'))), 20)
         fiche = self.generaux.lire_fiche_general(p)
-        self.assertEqual(fiche['nom'], 'general1')
+        self.assertEqual(fiche['nom'], 'amelie_poulin1')
         self.assertEqual(fiche['nom_affichage'], self.crypte.NOM)
-        self.assertEqual(self.rapports.nom_affichage_general({'joueur': 'j1', 'nom': 'general1', 'fiche': fiche}), self.crypte.NOM)
+        self.assertEqual(self.rapports.nom_affichage_general({'joueur': 'j1', 'nom': 'amelie_poulin1', 'fiche': fiche}), self.crypte.NOM)
         forces = self.generaux.lire_forces_territoire(self.config.game_path / 'village', self.profil)
         self.assertEqual(self.generaux.controle_forces(forces), 'neutre')
-        self.assertEqual(self.etat.charger_positions_generaux()['j1:general1'], 'village')
+        self.assertEqual(self.etat.charger_positions_generaux()['j1:amelie_poulin1'], 'village')
 
     def test_mauvais_ordre_commande_extra_et_echec(self):
         for ligne, retour in [('touch appel/cavalerie', '0'), ('ls', '0'), ('mkdir appel', '1')]:
@@ -297,7 +294,7 @@ class Crypte(unittest.TestCase):
         self.reussir()
         with self.assertRaises(ValueError):
             self.message('end')
-        self.assertEqual(len(self.crypte.charger(self.profil)['j1']['attributions']), 0)
+        self.assertEqual(len(self.crypte.charger(self.profil)['j1']['attributions']), 1)
 
     def test_reconnexion_ne_reprend_pas_ancienne_tentative(self):
         self.message('start')
@@ -329,21 +326,25 @@ class Crypte(unittest.TestCase):
     def test_cooldown_exact_et_independance(self):
         self.reussir('j1')
         self.creer(3)
-        (self.crypte.zone(self.profil, 'j1') / 'recompense/general1').rename(
-            self.config.game_path / 'village/j1/caserne_militaire/general1')
+        (self.crypte.zone(self.profil, 'j1') / 'recompense/amelie_poulin1').rename(
+            self.config.game_path / 'village/j1/caserne_militaire/amelie_poulin1')
         self.activer(4)
         self.reussir('j2')
         self.creer(4)
-        (self.crypte.zone(self.profil, 'j2') / 'recompense/general1').rename(
-            self.config.game_path / 'village/j2/caserne_militaire/general1')
+        (self.crypte.zone(self.profil, 'j2') / 'recompense/amelie_poulin1').rename(
+            self.config.game_path / 'village/j2/caserne_militaire/amelie_poulin1')
         self.securite.verifier_tous_les_deplacements(self.profil)
         self.activer(7)
+        self.message('start', 'j1')
+        self.commande(self.crypte.RECETTE[0], 'j1')
         with self.assertRaisesRegex(ValueError, 'tour 8'):
-            self.message('start', 'j1')
+            self.message('end', 'j1')
         self.activer(8)
         self.reussir('j1')
+        self.message('start', 'j2')
+        self.commande(self.crypte.RECETTE[0], 'j2')
         with self.assertRaisesRegex(ValueError, 'tour 9'):
-            self.message('start', 'j2')
+            self.message('end', 'j2')
         self.activer(9)
         self.reussir('j2')
 
@@ -360,24 +361,24 @@ class Crypte(unittest.TestCase):
         self.etat.sauvegarder_quota_normal('j1', 5)
         self.reussir()
         self.creer()
-        self.assertEqual(self.crypte.charger(self.profil)['j1']['en_attente'], 'general6')
+        self.assertEqual(self.crypte.charger(self.profil)['j1']['en_attente'], 'amelie_poulin1')
         self.assertEqual(self.etat.initialiser_quota_normal('j1'), 5)
         self.generaux.faire_apparaitre_general_si_possible('j1', self.profil)
-        self.assertEqual(self.etat.lire_compteur_general('j1'), 6)
+        self.assertEqual(self.etat.lire_compteur_general('j1'), 5)
 
     def test_bonus_ne_consomme_pas_creation_normale(self):
         self.reussir()
         self.creer()
         self.generaux.faire_apparaitre_general_si_possible('j1', self.profil)
         self.assertEqual(self.etat.initialiser_quota_normal('j1'), 1)
-        self.assertEqual(self.etat.lire_compteur_general('j1'), 2)
-        self.assertTrue((self.racine / 'home/j1/general2').exists())
+        self.assertEqual(self.etat.lire_compteur_general('j1'), 1)
+        self.assertTrue((self.racine / 'home/j1/general1').exists())
 
     def test_rapport_activites_par_joueur_et_remplacement(self):
         import rapports
         rapports.preparer_activites(self.profil, 3)
         rapports.noter_activite(self.profil, 'j1', 'CASERNE MILITAIRE',
-                               'general1 : +1 formation')
+                               'amelie_poulin1 : +1 formation')
         premier = self.profil['game_path'] / 'village/j1/hotel_de_ville/rapport_activites.txt'
         autre = self.profil['game_path'] / 'village/j2/hotel_de_ville/rapport_activites.txt'
         self.assertIn('+1 formation', premier.read_text(encoding='utf-8'))
@@ -393,13 +394,13 @@ class Crypte(unittest.TestCase):
         racines = []
         def mater(c, tour):
             self.assertNotEqual(c['game_path'], self.config.game_path)
-            self.assertFalse(list((self.crypte.zone(self.profil, 'j1') / 'recompense').iterdir()))
+            self.assertTrue(list((self.crypte.zone(self.profil, 'j1') / 'recompense').iterdir()))
             racines.append(c['game_path'])
             original(c, tour)
         with patch.object(self.crypte, 'materialiser', side_effect=mater):
             self.survie.resoudre_tour_survie(self.profil, random.Random(4), g)
         self.assertEqual(len(racines), 1)
-        self.assertTrue((self.crypte.zone(self.profil, 'j1') / 'recompense/general1').exists())
+        self.assertTrue((self.crypte.zone(self.profil, 'j1') / 'recompense/amelie_poulin1').exists())
         self.assertEqual(len(self.crypte.charger(self.profil)['j1']['attributions']), 1)
         with self.assertRaises(RuntimeError):
             self.survie.resoudre_tour_survie(self.profil, gestion=g)
@@ -410,7 +411,7 @@ class Crypte(unittest.TestCase):
         self.creer()
         gestion = self.gestion()
         parent = self.crypte.zone(self.profil, 'j1') / 'recompense'
-        general = parent / 'general1'
+        general = parent / 'amelie_poulin1'
         destination = self.config.game_path / 'village/j1/garnison/1'
         # Ce scénario vérifie les modes réels ; le fixture général simule chmod.
         self.contextes.enter_context(patch.object(os, 'chmod', side_effect=CHMOD_REEL))
@@ -432,26 +433,26 @@ class Crypte(unittest.TestCase):
         rapport = self.config.game_path / 'village/j1/hotel_de_ville/rapport_activites.txt'
         self.assertIn('20 unités de type cavalerie', rapport.read_text())
         self.assertIn('10/5/5/0', rapport.read_text())
-        source = self.crypte.zone(self.profil, 'j1') / 'recompense/general1'
-        source.rename(self.config.game_path / 'village/j1/garnison/1/general1')
+        source = self.crypte.zone(self.profil, 'j1') / 'recompense/amelie_poulin1'
+        source.rename(self.config.game_path / 'village/j1/garnison/1/amelie_poulin1')
         self.securite.verifier_tous_les_deplacements(self.profil)
         self.securite.verifier_tous_les_deplacements(self.profil)
         self.assertEqual(rapport.read_text().count('récupération constatée'), 1)
-        self.assertNotIn('general1', (self.config.game_path / 'village/j2/hotel_de_ville/rapport_activites.txt').read_text())
+        self.assertNotIn('amelie_poulin1', (self.config.game_path / 'village/j2/hotel_de_ville/rapport_activites.txt').read_text())
 
     def test_recuperation_mv_puis_retour_interdit(self):
         self.reussir()
         self.creer()
-        source = self.crypte.zone(self.profil, 'j1') / 'recompense/general1'
-        cible = self.config.game_path / 'village/j1/garnison/1/general1'
+        source = self.crypte.zone(self.profil, 'j1') / 'recompense/amelie_poulin1'
+        cible = self.config.game_path / 'village/j1/garnison/1/amelie_poulin1'
         source.rename(cible)
         self.securite.verifier_tous_les_deplacements(self.profil)
-        self.assertEqual(self.etat.charger_positions_generaux()['j1:general1'], 'village')
+        self.assertEqual(self.etat.charger_positions_generaux()['j1:amelie_poulin1'], 'village')
         self.assertIsNone(self.crypte.charger(self.profil)['j1']['en_attente'])
         cible.rename(source)
         self.securite.verifier_tous_les_deplacements(self.profil)
         self.assertFalse(source.exists())
-        self.assertEqual(self.etat.charger_positions_generaux()['j1:general1'], 'repli')
+        self.assertEqual(self.etat.charger_positions_generaux()['j1:amelie_poulin1'], 'repli')
 
     def test_trois_pdf(self):
         for j in ('j1', 'j2'):

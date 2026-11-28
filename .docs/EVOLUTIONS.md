@@ -69,20 +69,15 @@ mv /game/village/j1/garnison/1/general1 /game/village/j1/hopital/1/
 
 Les places `1..20` sont disponibles par défaut. Chaque numéro est partagé
 logiquement entre j1 et j2 : ne pas occuper une place déjà prise par un allié.
-Tous les généraux ayant passé un tour complet à l'hôpital sont soignés ensemble.
+Tous les généraux légalement présents à la clôture sont traités ensemble après audit.
 Les blessures reviennent à zéro ; batailles, expérience et statuts sont conservés.
 Consulter `/game/village/<joueur>/hotel_de_ville/rapport_activites.txt` après publication.
 
-Pour l'hôpital, l'École et la Forge, une entrée pendant ACTIONS commence son séjour complet
-au début du tour suivant. La caserne militaire fait exception : elle attribue
-un point si le général est présent à la capture de fin de tour.
-Une sortie, même suivie d'un retour, annule le séjour. Les passages entre caserne militaire,
-garnison et bâtiments restent des réorganisations internes au village sans coût
-de mouvement ; les déplacements entre territoires gardent leurs règles.
-
-Le contrôle de présence est conservateur : changer le général de place ou
-réorganiser les unités pendant les soins peut invalider la preuve de séjour.
-Pour garantir sa validation, garder les dossiers à leur place pendant ce tour.
+L'hôpital, l'École, la Forge et la caserne militaire valident dès la première
+clôture suivant l'arrivée du général. Une arrivée à la fin des ACTIONS est admise.
+Les demandes peuvent être modifiées jusqu'à la clôture. Il faut rester dans le
+bâtiment et être accepté par l'audit ; un départ avant clôture ne donne aucun gain.
+Les collisions et les règles de déplacement restent applicables.
 
 ## Apprendre ou écrire à l'École
 
@@ -95,8 +90,7 @@ Le manuel commun possède seulement trois emplacements, `001`, `002`, `003` :
 cat /game/village/ecole_officiers/memoire_des_generaux.txt
 ```
 
-Dans le dossier `info/` du général, préparer **une seule demande** avant le début du
-tour complet de présence :
+Dans le dossier `info/` du général, préparer **une seule demande** pendant ACTIONS, avant la clôture :
 
 ```bash
 # Apprendre l'évolution 201 actuellement inscrite en 001 :
@@ -110,8 +104,7 @@ printf '%s\n' 'e 001 201' > ecrire_ses_memoires.txt
 
 `A` et `E` sont également acceptés. Un ID de lecture différent de celui du manuel
 est refusé. Les anciennes demandes sans lettre restent compatibles.
-Les demandes sont figées au début du tour : les modifier ensuite ne raccourcit
-pas l'attente. Toutes les lectures se déroulent avant les écritures du même tour.
+Les demandes retenues sont celles présentes à la clôture. Toutes les lectures se déroulent avant les écritures du même tour.
 Ainsi, apprendre et remplacer simultanément la même entrée conserve l'ancien ID
 sur la fiche de l'élève. Le manuel reste disponible aux autres généraux.
 
@@ -130,7 +123,7 @@ La Forge accueille un seul général, dans `/game/village/forge/1/j1/` ou le
 compartiment `j2/`. Il doit être Instinctif ou Hybride et posséder
 la technologie 104 dans ses évolutions acquises.
 
-Avant son tour complet, équiper les cavaliers existants avec les quatre fichiers
+Avant la clôture, équiper les cavaliers existants avec les quatre fichiers
 `cuirasse`, `armure`, `casque`, `bouclier`, en conservant `cheval`. Après validation,
 le moteur renomme les dossiers en `cavalerie_LN`. Blessures, batailles et statuts
 sont conservés. Une recette incomplète laisse le cavalier intact. La conversion
@@ -154,7 +147,8 @@ même après ajout d'unités. Aucun déplacement direct vers `est_1` ni aucune
 marche forcée ne permet de sauter cette étape. Les délais des bâtiments, l'attente
 après entraînement en caserne militaire et celle d'un rappel du tour courant restent
 applicables ; les restrictions du tour 0 sont conservées.
-Une récompense peut effectuer un déplacement normal dès sa publication.
+Une récompense Crypte peut rejoindre une place du village dès crypte_fin.
+Attendre la confirmation de fin de préparation avant de quitter le village.
 Un fuyard arrivant au village rejoint la caserne militaire si la garnison ne peut l'accueillir,
 avec toutes ses unités et ses données.
 

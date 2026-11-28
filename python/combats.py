@@ -715,16 +715,6 @@ def _resoudre_affrontement_actif_interne(
                     territory,
                     engagements_combat_range
                 )
-            else:
-                rapports.ecrire_rapport_territoire(territory, "")
-                rapports.ecrire_rapport_territoire(
-                    territory,
-                    "=================== COMBAT RANGÉ ==================="
-                )
-                rapports.ecrire_rapport_territoire(
-                    territory,
-                    "Aucun combat rangé."
-                )
 
             rapports.afficher_et_ecrire(
                 f"Fin du combat. "
@@ -760,16 +750,6 @@ def _resoudre_affrontement_actif_interne(
                 rapports.ecrire_details_engagements(
                     territory,
                     engagements_combat_range
-                )
-            else:
-                rapports.ecrire_rapport_territoire(territory, "")
-                rapports.ecrire_rapport_territoire(
-                    territory,
-                    "=================== COMBAT RANGÉ ==================="
-                )
-                rapports.ecrire_rapport_territoire(
-                    territory,
-                    "Aucun combat rangé."
                 )
 
             rapports.afficher_et_ecrire(
@@ -847,16 +827,6 @@ def _resoudre_affrontement_actif_interne(
         rapports.ecrire_details_engagements(
             territory,
             engagements_combat_range
-        )
-    else:
-        rapports.ecrire_rapport_territoire(territory, "")
-        rapports.ecrire_rapport_territoire(
-            territory,
-            "=================== COMBAT RANGÉ ==================="
-        )
-        rapports.ecrire_rapport_territoire(
-            territory,
-            "Aucun combat rangé."
         )
 
     generaux_territoire = (

@@ -254,15 +254,15 @@ class DefisSurvie(unittest.TestCase):
         c.sauver(self.profil, d)
         self.valider()
         c.materialiser(self.profil, 1)
-        ancienne = self.config.game_path / 'village/j1/crypte/recompense/general1'
+        ancienne = self.config.game_path / 'village/j1/crypte/recompense/amelie_poulin1'
         self.materialiser()
         self.assertFalse(self.defi()['recompense_recue'])
-        self.assertEqual(self.etat.lire_compteur_general('j1'), 1)
+        self.assertEqual(self.etat.lire_compteur_general('j1'), 0)
         self.securite.memoriser_unites_actions(self.profil, 1)
-        ancienne.rename(self.config.game_path / 'village/j1/caserne_militaire/general1')
+        ancienne.rename(self.config.game_path / 'village/j1/caserne_militaire/amelie_poulin1')
         self.securite.verifier_tous_les_deplacements(self.profil)
         self.materialiser()
-        self.assertEqual(self.defi()['general'], 'general2')
+        self.assertEqual(self.defi()['general'], 'general1')
         self.assertEqual(self.etat.initialiser_quota_normal('j1'), 0)
         self.assertEqual(len(c.charger(self.profil)['j1']['attributions']), 2)
 

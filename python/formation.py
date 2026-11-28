@@ -110,12 +110,7 @@ def demande_lecture(texte):
 
 def commencer_sejour(tour, general, lieu, camp, preuve_presence,
                      ecrire='', lire='', unites=None, eligibles_forge=()):
-    """Appelé une fois au début du tour ; aucune modification tardive de demande.
-
-    preuve_presence est relevée par le moteur sur le disque vivant (inode et
-    changement du dossier), puis contrôlée avant la capture privée. Les seuls
-    chemins copiés ne peuvent pas démontrer un tour complet de présence.
-    """
+    """Enregistre la demande et les preuves sous gel de clôture, avant audit."""
     identite = f"{general['joueur']}:{general['nom']}"
     cle = f'{tour}:{identite}'
     donnees = charger()
@@ -238,7 +233,7 @@ def valider_sejour(tour, general, lieu, camp, preuve_presence, tour_termine=Fals
         message = f"{nombre} unité(s) transformée(s) en chevalier ; identifiants et états conservés."
     else:
         # La présence du général ne prouve pas celle des unités : le pilote doit
-        # relever séparément leur présence continue, avant toute copie privée.
+        # relever séparément leur présence à la clôture, avant toute copie privée.
         if unites is None:
             return False
         registre = soldats.charger()
@@ -342,7 +337,7 @@ def lire_demande(configuration, chemin):
 def alertes_actions(configuration, tour):
     """Conseils immédiats ; aucun séjour, apprentissage ou résultat n'est validé."""
     donnees = charger()
-    alertes = [dict(r, message='demande refusée à l’ouverture. Motif : ' + r['motif'])
+    alertes = [dict(r, message='demande refusée à la clôture. Motif : ' + r['motif'])
                for r in donnees.get('refus', {}).values() if r['tour'] == tour]
     for general in occupants(configuration):
         if general['lieu'] not in ('ecole_officiers', 'forge'):
@@ -366,7 +361,7 @@ def alertes_actions(configuration, tour):
             alertes.append(dict(joueur=general['joueur'], nom=general['nom'],
                 categorie=CATEGORIES[general['lieu']],
                 message=f'Demande actuelle invalide : {erreur} ' + (
-                    'Les demandes du séjour sont figées à l’ouverture.' if general['lieu'] == 'ecole_officiers'
+                    'La demande peut être corrigée avant la clôture.' if general['lieu'] == 'ecole_officiers'
                     else 'La validation finale attend la clôture du tour.')))
         except OSError:
             continue  # Déplacement/écriture en cours : le prochain relevé réessaiera.
@@ -517,7 +512,7 @@ def forger(general, sejour, initiales, finales, eligibles=()):
                 continue
             if (identifiant not in initiales or not initiales[identifiant] or
                     initiales[identifiant] != list(finales.get(identifiant, ()))):
-                refuser(unite, 'séjour ou recette non constants pendant le tour complet')
+                refuser(unite, 'présence ou recette différente du relevé de clôture')
                 continue
             valide = True
             for nom in catalogues.UNITES[4]['recette']:
@@ -552,7 +547,7 @@ def forger(general, sejour, initiales, finales, eligibles=()):
             'identifiants, blessures, batailles et statuts conservés.')
     if not transformees:
         raise ValueError('Forge : aucune cavalerie légère validée au tour précédent avec '
-                         'recette et séjour complets ; unités conservées.')
+                         'recette complète à la clôture ; unités conservées.')
 
 
 def migrer_ancienne_ecole(configuration):
@@ -583,16 +578,27 @@ def preparer(configuration):
 
 
 def ouvrir_tour(configuration, tour):
-    """Sous gel, avant ACTIONS : demandes figées et présence initiale officielle."""
+    """L'ouverture ne fige plus les demandes ni les présences des bâtiments."""
+    donnees = charger()
+    if tour not in donnees.setdefault('tours_ouverts', []):
+        donnees['tours_ouverts'].append(tour)
+        sauvegarder(donnees)
+
+
+def inscrire_cloture(configuration, tour):
+    """Relève les demandes finales, sans accorder de bénéfice avant l'audit."""
     import etat
     from cycle_linux import sans_liens
     donnees = charger()
-    if tour in donnees.get('tours_ouverts', []):
-        return
+    # Une capture annulée peut être recommencée : garder les reçus, renouveler
+    # uniquement les observations non consommées du même tour.
+    donnees['sejours'] = {k: s for k, s in donnees['sejours'].items() if s['tour'] != tour}
+    donnees['refus'] = {k: s for k, s in donnees.get('refus', {}).items() if s['tour'] != tour}
+    sauvegarder(donnees)
     positions = etat.charger_positions_generaux()
     for general in occupants(configuration):
         identite = f"{general['joueur']}:{general['nom']}"
-        if positions.get(identite) != 'village':
+        if identite not in positions:
             continue
         preparer_demandes(general)
         try:
@@ -620,13 +626,11 @@ def ouvrir_tour(configuration, tour):
                 tour=tour, joueur=general['joueur'], nom=general['nom'],
                 categorie=CATEGORIES[general['lieu']], motif=str(erreur))
             sauvegarder(refus)
-    donnees = charger()
-    donnees.setdefault('tours_ouverts', []).append(tour)
-    sauvegarder(donnees)
 
 
 def clore_tour(configuration, tour):
     """Sous gel de clôture : relève sans accorder encore soins ni apprentissages."""
+    inscrire_cloture(configuration, tour)
     donnees = charger()
     observations = {}
     for general in occupants(configuration):
@@ -648,7 +652,6 @@ def resoudre_tour(configuration, tour):
         rapports.noter_resultat(general['joueur'], categorie,
                                f"{general['nom']} : {message}", configuration)
 
-    refus_ouverture = {cle for cle, r in donnees.get('refus', {}).items() if r['tour'] == tour}
     refus_traites = False
     for cle, refus in list(donnees.get('refus', {}).items()):
         if refus['tour'] == tour:
@@ -706,28 +709,4 @@ def resoudre_tour(configuration, tour):
         restant = charger()
         restant['sejours'].pop(cle, None)
         sauvegarder(restant)
-    # La caserne crédite aussi les arrivants pendant ACTIONS, dès leur première
-    # clôture. Les séjours enregistrés à l'ouverture restent soumis à la preuve
-    # d'absence de sortie/retour et sont traités plus haut. Les reçus de
-    # progression empêchent tout double gain lors d'une reprise.
-    for identite, observation in cloture.items():
-        if observation.get('inscrit_ouverture', True):
-            continue
-        general = presents.get(identite)
-        if observation['lieu'] != 'caserne_militaire':
-            if general and f'{tour}:{identite}' not in refus_ouverture and not observation.get('incomplet_signale'):
-                activite(general, CATEGORIES[observation['lieu']],
-                         'séjour incomplet : aucune inscription valide à l’ouverture du tour.')
-                restant = charger()
-                restant['clotures'][str(tour)][identite]['incomplet_signale'] = True
-                sauvegarder(restant)
-            elif f'{tour}:{identite}' in refus_ouverture:
-                restant = charger()
-                restant['clotures'][str(tour)][identite]['incomplet_signale'] = True
-                sauvegarder(restant)
-            continue
-        # Les inodes de la copie privée diffèrent de ceux relevés sous gel.
-        # L'audit a déjà retiré les identités et déplacements non autorisés.
-        if general and general['lieu'] == 'caserne_militaire':
-            progression.valider_evenement(general, 'formation', f'{tour}:{identite}')
-    # Les copies des compteurs seront rafraîchies lors de la publication.
+    # Les reçus privés garantissent une seule validation par général et tour.

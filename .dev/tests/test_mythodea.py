@@ -340,7 +340,7 @@ class Regressions(unittest.TestCase):
         self.tour_sans_generation()
         self.assertEqual(len(self.engagements_journal()), 1)
         rapport = (self.config.rapports_territoires_dir / "terrain1.txt").read_text(encoding="utf-8")
-        self.assertIn("Aucun combat rangé.", rapport)
+        self.assertNotIn("COMBAT RANGÉ", rapport)
 
     def test_regles_deplacement_symetriques_pour_les_deux_joueurs(self):
         for joueur, base, voisin, deux, loin, intermediaire, ennemi in [

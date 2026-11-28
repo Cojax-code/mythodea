@@ -25,7 +25,7 @@ verifier_sous_montages() {
     montages="$(findmnt -rn -o TARGET)" || return 1
     while IFS= read -r montage; do
         case "$montage" in
-            "$GAME_PATH"/*|/home/j1/general*|/home/j2/general*)
+            "$GAME_PATH"/*|/home/j1/general*|/home/j2/general*|/home/j[12]/amelie_poulin[1-9]*|/home/j[12]/har_chez_moi[1-9]*|/home/j[12]/pic_nic[1-9]*)
                 echo "Erreur : sous-montage à examiner avant nettoyage : $montage" >&2
                 return 1 ;;
         esac

@@ -162,19 +162,19 @@ class ComplementsMoteur(unittest.TestCase):
             self.terminer(tour)
             self.assertTrue((general['chemin'] / 'avant/cavalerie1').is_dir())
 
-    def test_forge_sejour_incomplet_et_recette_tardive_refuses(self):
+    def test_forge_sortie_retour_et_recette_tardive_admis(self):
         general = self.forge(complet=False)
         self.formation.ouvrir_tour(self.profil, 1)
         for nom in ('armure', 'casque', 'bouclier'):
             (general['chemin'] / 'avant/cavalerie1' / nom).touch()
         self.terminer()
-        self.assertFalse(list(general['chemin'].rglob('cavalerie_L*')))
+        self.assertTrue(list(general['chemin'].rglob('cavalerie_L*')))
         self.formation.ouvrir_tour(self.profil, 2)
         ailleurs = self.config.game_path / 'village/j1/caserne_militaire/general1'
         general['chemin'].rename(ailleurs)
         ailleurs.rename(general['chemin'])
         self.terminer(2)
-        self.assertFalse(list(general['chemin'].rglob('cavalerie_L*')))
+        self.assertTrue(list(general['chemin'].rglob('cavalerie_L*')))
 
     def test_forge_collision_noms_et_pas_de_transformation_repetee(self):
         general = self.forge()

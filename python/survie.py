@@ -478,7 +478,7 @@ def _clore_tour_survie(configuration, gestion, aleatoire=None):
         gestion.afficher(tour, 'defaite' if resultat['defaite'] else 'consultation',
                          None if resultat['defaite'] else configuration['duree_consultation_secondes'],
                          'Rapports disponibles : phase de consultation (actions suspendues). '
-                         'Faire cd ~ puis revenir sur la carte.')
+                         'Le répertoire sera actualisé au retour à l’invite Bash.')
         if not resultat['defaite']:
             gestion.backend.annoncer(
                 'PHASE DE CONSULTATION — RAPPORTS DISPONIBLES\n'
@@ -512,6 +512,8 @@ def _resoudre_tour_capture(configuration, aleatoire=None):
     reference = etat.charger_unites_actions(configuration) or {}
     for identite in reference.get('premiers_deploiements', ()):
         joueur, nom = identite.split(':')
+        if identite in reference.get('creations_crypte', {}):
+            continue
         rapports.noter_resultat(joueur, 'GÉNÉRAUX', f'{nom} : création officielle dans le home.', configuration)
     rapports.afficher_et_ecrire(f"=== RÉSOLUTION TOUR {tour} / VAGUE {tour + 1} ===")
     controle_avant = etat.charger_controle_territoires(configuration)

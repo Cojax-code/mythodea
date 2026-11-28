@@ -73,7 +73,7 @@ def plan_rollback(configuration):
                 raise RuntimeError('Progression de ce tour déjà validée sur le plateau : rollback refusé.')
     for identite in identites:
         joueur, general = identite.split(':')
-        if identite not in positions or generaux.numero_general_depuis_nom(general) > etat.lire_compteur_general(joueur):
+        if not generaux.identite_officielle(joueur, general, configuration):
             raise RuntimeError('Identités/compteurs incohérents : examen manuel nécessaire.')
     return {'tour': cycle['tour'], 'generation': generation.name,
             'operation': 'reouvrir_actions_sans_restaurer',
@@ -86,6 +86,8 @@ def plan_rollback(configuration):
 
 @cycle_linux.interruption_differee()
 def rollback(configuration, dry_run=False, gestion=None):
+    if not dry_run:
+        print('[1/5] Vérification des données et du verrou...', flush=True)
     exiger_moteur_arrete(configuration)
     for nom in ('gel_survie.json', 'verrou_cycle_survie'):
         if (configuration['game_path'] / '.systeme' / nom).exists():
@@ -97,10 +99,12 @@ def rollback(configuration, dry_run=False, gestion=None):
         gestion = gestion or cycle_linux.Generations(configuration)
         # Pas de preparer() : aucune migration avant la sauvegarde de diagnostic.
         gestion.backend.preparer()
+        print(f'=== RÉCUPÉRATION DU TOUR {plan["tour"]} ===\n[2/5] Gel sécurisé des joueurs...', flush=True)
         gestion.backend.geler()
         try:
             gestion.backend.verifier_gel()
             plan = plan_rollback(configuration)
+            print('[3/5] Sauvegarde de diagnostic...', flush=True)
             generation = configuration['game_path'] / '.systeme/generations' / plan['generation']
             sauvegarde = generation / ('recuperation-' + uuid.uuid4().hex)
             cycle_linux.dossier_prive(sauvegarde)
@@ -127,11 +131,14 @@ def rollback(configuration, dry_run=False, gestion=None):
             if 'generation_active' in precedent:
                 reprise['generation_active'] = precedent['generation_active']
             gestion.backend.verifier_gel()
+            print('[4/5] Validation de la reprise...', flush=True)
             # Point de validation unique. Avant : recommencer la récupération.
             # Après : reprendre ACTIONS, sans nouvelle attribution de général.
             etat.sauvegarder_cycle_survie(reprise, configuration)
         finally:
+            print('[5/5] Dégel des joueurs...', flush=True)
             gestion.backend.degeler()
+    print(f'Récupération terminée. Le tour {plan["tour"]} peut reprendre en phase ACTIONS.', flush=True)
     return plan
 
 
@@ -179,6 +186,86 @@ def retirer_verrou(configuration):
         cycle_linux.synchroniser_dossier(verrou.parent)
 
 
+def plan_residus(configuration):
+    """Inspection complète en lecture seule ; toute ambiguïté est bloquante."""
+    systeme = configuration['game_path'] / '.systeme'
+    fichiers = {nom: systeme / nom for nom in
+                ('verrou_cycle_survie', 'gel_survie.json', 'communication/crypte.sock')}
+    signatures = {}
+    for nom, fichier in fichiers.items():
+        cycle_linux.sans_liens(fichier)
+        if not fichier.exists():
+            continue
+        infos = fichier.lstat()
+        attendu = stat.S_ISSOCK if nom.endswith('.sock') else stat.S_ISREG
+        if not attendu(infos.st_mode) or infos.st_uid != 0 or infos.st_nlink != 1:
+            raise RuntimeError(f'Résidu de type ou propriétaire inattendu : {fichier}')
+        if not nom.endswith('.sock') and infos.st_mode & 0o077:
+            raise RuntimeError(f'Résidu privé accessible à un tiers : {fichier}')
+        signatures[nom] = [infos.st_dev, infos.st_ino, infos.st_mtime_ns]
+    exiger_moteur_arrete(configuration)
+    # Un moteur ayant perdu son verrou doit également bloquer la maintenance.
+    for proc in Path('/proc').iterdir():
+        if not proc.name.isdecimal() or int(proc.name) == os.getpid():
+            continue
+        try:
+            arguments = (proc / 'cmdline').read_bytes().split(b'\0')
+        except (FileNotFoundError, ProcessLookupError):
+            continue
+        if any(Path(os.fsdecode(a)).name in ('mythodea_v_1_5.py', 'survie_admin.py') for a in arguments):
+            raise RuntimeError(f'Moteur ou administration encore actif : PID {proc.name}.')
+    socket = fichiers['communication/crypte.sock']
+    # La table du noyau détecte aussi une socket liée mais pas encore en écoute.
+    for ligne in Path('/proc/net/unix').read_text().splitlines()[1:]:
+        champs = ligne.split(maxsplit=7)
+        if len(champs) == 8 and champs[7] == str(socket):
+            raise RuntimeError('Socket Crypte active : nettoyage refusé.')
+    gel = fichiers['gel_survie.json']
+    if gel.exists():
+        donnees = json.loads(gel.read_text())
+        backend = cycle_linux.Linux(configuration)
+        groupes = donnees.get('groupes')
+        if (not isinstance(groupes, list) or len(groupes) != len(set(groupes))
+                or not set(groupes) <= {str(p) for p in backend.groupes}):
+            raise RuntimeError('Journal de gel incompatible : aucun dégel autorisé.')
+        verrou = fichiers['verrou_cycle_survie']
+        if verrou.exists() and int(verrou.read_text()) != donnees['pid']:
+            raise RuntimeError('PID du gel différent du verrou : examen manuel nécessaire.')
+        # Sans identité durable du cgroup, un ancien journal ne prouve pas que
+        # le gel actuel nous appartient. Conserver les commandes individuelles.
+        if any((Path(g) / 'cgroup.freeze').exists() and
+               (Path(g) / 'cgroup.freeze').read_text().strip() != '0' for g in groupes):
+            raise RuntimeError('Groupes encore gelés : vérifier leur origine puis utiliser degeler explicitement.')
+    return {'operations': list(signatures), 'signatures': signatures,
+            'note': 'Retrait des seuls résidus inactifs ; aucun changement du cycle ni rollback.'}
+
+
+@cycle_linux.interruption_differee()
+def nettoyer_residus(configuration, dry_run=False):
+    plan = plan_residus(configuration)
+    if dry_run:
+        return plan
+    systeme = configuration['game_path'] / '.systeme'
+    # Revalider toutes les conditions avant le premier retrait.
+    if plan_residus(configuration) != plan:
+        raise RuntimeError('Résidus modifiés pendant le diagnostic.')
+    verrou = systeme / 'verrou_cycle_survie'
+    if 'verrou_cycle_survie' in plan['signatures']:
+        verrou.unlink()
+    with etat.verrou_cycle_survie(configuration):
+        for nom, signature in plan['signatures'].items():
+            if nom == 'verrou_cycle_survie':
+                continue
+            fichier = systeme / nom
+            cycle_linux.sans_liens(fichier)
+            infos = fichier.lstat()
+            if [infos.st_dev, infos.st_ino, infos.st_mtime_ns] != signature:
+                raise RuntimeError(f'Résidu modifié : {fichier}')
+            fichier.unlink()
+            cycle_linux.synchroniser_dossier(fichier.parent)
+    return plan
+
+
 @cycle_linux.interruption_differee()
 def republier(configuration, generation):
     if not re.fullmatch(r'g[0-9]{6,}-[0-9a-f]{12}', generation or ''):
@@ -219,7 +306,7 @@ def republier(configuration, generation):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('operation', choices=('diagnostic', 'degeler', 'retirer-verrou', 'republier', 'rollback'))
+    p.add_argument('operation', choices=('diagnostic', 'degeler', 'retirer-verrou', 'republier', 'rollback', 'nettoyer-residus'))
     p.add_argument('--confirmer', action='store_true', help='administrateur : diagnostic vérifié')
     p.add_argument('--generation')
     p.add_argument('--dry-run', action='store_true', help='diagnostic rollback sans aucune écriture')
@@ -233,18 +320,24 @@ def main(argv=None):
             fichier = c['game_path'] / '.systeme' / nom
             print(nom + ':\n' + (fichier.read_text() if fichier.exists() else 'absent'))
         try:
+            print(json.dumps(plan_residus(c), ensure_ascii=False, indent=2))
+        except (RuntimeError, ValueError, OSError) as erreur:
+            print('Résidus : ' + str(erreur))
+        try:
             print(json.dumps(rollback(c, dry_run=True), ensure_ascii=False, indent=2))
         except (RuntimeError, ValueError, OSError) as erreur:
             print('Rollback : ' + str(erreur))
         return
     if args.dry_run:
-        if args.operation != 'rollback':
-            p.error('--dry-run est réservé à rollback.')
-        print(json.dumps(rollback(c, dry_run=True), ensure_ascii=False, indent=2))
+        if args.operation not in ('rollback', 'nettoyer-residus'):
+            p.error('--dry-run est réservé à rollback et nettoyer-residus.')
+        operation = rollback if args.operation == 'rollback' else nettoyer_residus
+        print(json.dumps(operation(c, dry_run=True), ensure_ascii=False, indent=2))
         return
     if not args.confirmer:
         p.error('--confirmer est requis après vérification administrative.')
     {'degeler': lambda: degeler(c), 'retirer-verrou': lambda: retirer_verrou(c),
+     'nettoyer-residus': lambda: print(json.dumps(nettoyer_residus(c), ensure_ascii=False, indent=2)),
      'rollback': lambda: print(json.dumps(rollback(c), ensure_ascii=False, indent=2)),
      'republier': lambda: republier(c, args.generation)}[args.operation]()
 
